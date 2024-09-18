@@ -1,10 +1,18 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-require_once 'controllers/OrderController.php';
-require_once 'controllers/ClienteController.php';
-require_once 'controllers/EventController.php';
+// Requerendo os controladores
+require_once 'controllers/ComposicaoController.php';
+require_once 'controllers/DashboardController.php';
+require_once 'controllers/EstoqueController.php';
+require_once 'controllers/FornecedoresController.php';
+require_once 'controllers/InsumoController.php';
+require_once 'controllers/NecessidadesController.php';
+require_once 'controllers/ProductionController.php';
+require_once 'controllers/SalesController.php';
+require_once 'controllers/TransfersController.php';
 
+// Pegando o corpo da requisição
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
 
@@ -13,6 +21,7 @@ if (isset($data['method']) && isset($data['data'])) {
     $requestData = $data['data'];
     $requestToken = $data['token'];
 
+    // Métodos que não precisam de autenticação
     $noAuthMethods = ['validateCPF', 'validateCNPJ'];
 
     if (!in_array($method, $noAuthMethods)) {
@@ -28,151 +37,251 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
-            // Métodos para OrderController
-            case 'createOrder':
-                $response = OrderController::createOrder($requestData);
+            // Métodos para ComposicaoController
+            case 'createComposicao':
+                $response = ComposicaoController::createComposicao($requestData);
                 break;
-            case 'updateOrder':
-                if (isset($requestData['id']) && isset($requestData)) {
-                    $response = OrderController::updateOrder($requestData['id'], $requestData);
-                } else {
-                    http_response_code(400);
-                    $response = array('error' => 'Parâmetros order_id ou data ausentes');
-                }
-                break;
-            case 'createOrderItem':
-                $response = OrderController::createOrderItem($requestData);
-                break;
-            case 'updateOrderItem':
+            case 'updateComposicao':
                 if (isset($requestData['id'])) {
-                    $response = OrderController::updateOrderItem($requestData['id'], $requestData);
+                    $response = ComposicaoController::updateComposicao($requestData['id'], $requestData);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro id ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'createOrderPayment':
-                $response = OrderController::createOrderPayment($requestData);
-                break;
-            case 'updateOrderPayment':
+            case 'getComposicaoById':
                 if (isset($requestData['id'])) {
-                    $response = OrderController::updateOrderPayment($requestData['id'], $requestData);
+                    $response = ComposicaoController::getComposicaoById($requestData['id']);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro id ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'createOrderService':
-                $response = OrderController::createOrderService($requestData);
-                break;
-            case 'updateOrderService':
-                if (isset($requestData['id']) && isset($requestData)) {
-                    $response = OrderController::updateOrderService($requestData['id'], $requestData);
+            case 'listComposicoes':
+                if (isset($requestData['unit_id'])) {
+                    $response = ComposicaoController::listComposicoes($requestData['unit_id']);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetros id ou data ausentes');
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
-                break;
-            case 'getOrderDetails':
-                if (isset($requestData['order_id'])) {
-                    $response = OrderController::getOrderDetails($requestData['order_id']);
-                } else {
-                    http_response_code(400);
-                    $response = array('error' => 'Parâmetro order_id ausente');
-                }
-                break;
-            case 'listOrders':
-                $response = OrderController::listOrders();
                 break;
 
-            case 'listMaterials':
-                $response = OrderController::listMaterials();
+            // Métodos para DashboardController
+            case 'getDashboardData':
+                if (isset($requestData['unit_id'])) {
+                    $response = DashboardController::getDashboardData($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
                 break;
 
-            case 'listServices':
-                $response = OrderController::listServices();
+            // Métodos para EstoqueController
+            case 'createEstoque':
+                $response = EstoqueController::createEstoque($requestData);
                 break;
-            
-            case 'listPaymentMethods':
-                $response = OrderController::listPaymentMethods();
+            case 'updateEstoque':
+                if (isset($requestData['id'])) {
+                    $response = EstoqueController::updateEstoque($requestData['id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'getEstoqueById':
+                if (isset($requestData['id'])) {
+                    $response = EstoqueController::getEstoqueById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listEstoque':
+                if (isset($requestData['unit_id'])) {
+                    $response = EstoqueController::listEstoque($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
                 break;
 
-            // Métodos para ClienteController
-            case 'createCliente':
-                $response = ClienteController::createCliente($requestData);
+            // Métodos para FornecedoresController
+            case 'createFornecedor':
+                $response = FornecedoresController::createFornecedor($requestData);
                 break;
-            case 'updateCliente':
+            case 'updateFornecedor':
                 if (isset($requestData['id'])) {
-                    $response = ClienteController::updateCliente($requestData['id'], $requestData);
+                    $response = FornecedoresController::updateFornecedor($requestData['id'], $requestData);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro id ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'getClienteById':
+            case 'getFornecedorById':
                 if (isset($requestData['id'])) {
-                    $response = ClienteController::getClienteById($requestData['id']);
+                    $response = FornecedoresController::getFornecedorById($requestData['id']);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro id ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'listClients':
-                $response = ClienteController::listClients();
+            case 'listFornecedores':
+                if (isset($requestData['unit_id'])) {
+                    $response = FornecedoresController::listFornecedores($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
                 break;
 
-            // Métodos para EventController
-            case 'createEvent':
-                $response = EventController::createEvent($requestData);
+            // Métodos para InsumoController
+            case 'createInsumo':
+                $response = InsumoController::createInsumo($requestData);
                 break;
-            case 'updateEvent':
-                if (isset($requestData['id']) && isset($requestData)) {
-                    $response = EventController::updateEvent($requestData['id'], $requestData);
-                } else {
-                    http_response_code(400);
-                    $response = array('error' => 'Parâmetros id ou data ausentes');
-                }
-                break;
-            case 'getEventById':
+            case 'updateInsumo':
                 if (isset($requestData['id'])) {
-                    $response = EventController::getEventById($requestData['id']);
+                    $response = InsumoController::updateInsumo($requestData['id'], $requestData);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro id ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'deleteEvent':
+            case 'getInsumoById':
                 if (isset($requestData['id'])) {
-                    $response = EventController::deleteEvent($requestData['id']);
+                    $response = InsumoController::getInsumoById($requestData['id']);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro id ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'listEvents':
-                $response = EventController::listEvents();
+            case 'listInsumos':
+                if (isset($requestData['unit_id'])) {
+                    $response = InsumoController::listInsumos($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
                 break;
 
-            case 'validateCPF':
-                if (isset($requestData['cpf'])) {
-                    $response = ClienteController::validateCPF($requestData['cpf']);
+            // Métodos para NecessidadesController
+            case 'createNecessidade':
+                $response = NecessidadesController::createNecessidade($requestData);
+                break;
+            case 'updateNecessidade':
+                if (isset($requestData['id'])) {
+                    $response = NecessidadesController::updateNecessidade($requestData['id'], $requestData);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro cpf ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
-            case 'validateCNPJ':
-                if (isset($requestData['cnpj'])) {
-                    $response = ClienteController::validateCNPJ($requestData['cnpj']);
+            case 'getNecessidadeById':
+                if (isset($requestData['id'])) {
+                    $response = NecessidadesController::getNecessidadeById($requestData['id']);
                 } else {
                     http_response_code(400);
-                    $response = array('error' => 'Parâmetro cnpj ausente');
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listNecessidades':
+                if (isset($requestData['unit_id'])) {
+                    $response = NecessidadesController::listNecessidades($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            // Métodos para ProductionController
+            case 'createProduction':
+                $response = ProductionController::createProduction($requestData);
+                break;
+            case 'updateProduction':
+                if (isset($requestData['id'])) {
+                    $response = ProductionController::updateProduction($requestData['id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'getProductionById':
+                if (isset($requestData['id'])) {
+                    $response = ProductionController::getProductionById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listProductions':
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductionController::listProductions($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            // Métodos para SalesController
+            case 'createSale':
+                $response = SalesController::createSale($requestData);
+                break;
+            case 'updateSale':
+                if (isset($requestData['id'])) {
+                    $response = SalesController::updateSale($requestData['id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'getSaleById':
+                if (isset($requestData['id'])) {
+                    $response = SalesController::getSaleById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listSales':
+                if (isset($requestData['unit_id'])) {
+                    $response = SalesController::listSales($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            // Métodos para TransfersController
+            case 'createTransfer':
+                $response = TransfersController::createTransfer($requestData);
+                break;
+            case 'updateTransfer':
+                if (isset($requestData['id'])) {
+                    $response = TransfersController::updateTransfer($requestData['id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'getTransferById':
+                if (isset($requestData['id'])) {
+                    $response = TransfersController::getTransferById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listTransfers':
+                if (isset($requestData['unit_id'])) {
+                    $response = TransfersController::listTransfers($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
 
             default:
                 http_response_code(405);
-                $response = array('error' => 'Método não suportado');
+                $response = ['error' => 'Método não suportado'];
                 break;
         }
 
@@ -180,13 +289,13 @@ if (isset($data['method']) && isset($data['data'])) {
         echo json_encode($response);
     } catch (Exception $e) {
         http_response_code(500);
-        $response = array('error' => 'Erro interno do servidor: ' . $e->getMessage());
+        $response = ['error' => 'Erro interno do servidor: ' . $e->getMessage()];
         echo json_encode($response);
     }
 } else {
     header('Content-Type: application/json');
     http_response_code(400);
-    echo json_encode(array('error' => 'Parâmetros inválidos'));
+    echo json_encode(['error' => 'Parâmetros inválidos']);
 }
 
 // Função de verificação do token
