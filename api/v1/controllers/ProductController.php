@@ -71,12 +71,27 @@ class ProductController {
     public static function listProducts($system_unit_id) {
         try {
             global $pdo;
-            $stmt = $pdo->query("SELECT * FROM products WHERE system_unit_id = $system_unit_id");
+
+            // Preparar a consulta SQL para buscar produtos com composições associadas
+            $sql = "
+            SELECT p.* 
+            FROM products p
+            INNER JOIN compositions c ON p.id = c.product_id
+            WHERE p.system_unit_id = :system_unit_id
+            GROUP BY p.id
+        ";
+
+            // Preparar e executar a consulta
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             return ['success' => true, 'products' => $products];
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Erro ao listar produtos: ' . $e->getMessage()];
         }
     }
+
 }
 ?>
