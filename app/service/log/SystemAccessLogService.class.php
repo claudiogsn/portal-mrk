@@ -29,6 +29,7 @@ class SystemAccessLogService
         $object = new SystemAccessLog;
         $object->login = TSession::getValue('login');
         $object->sessionid = session_id();
+        TSession::setValue('sessionid', session_id());
         $object->login_time = date("Y-m-d H:i:s");
         $object->login_year = date("Y");
         $object->login_month = date("m");
