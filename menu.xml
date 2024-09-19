@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
+  <menuitem label="Fichas Tecnicas">
+    <action>CompositionList</action>
+    <icon>fas:clipboard-list fa-fw</icon>
+  </menuitem>
   <menuitem label="_t{Administration}">
     <icon>fas:home fa-fw</icon>
     <menu>
@@ -92,11 +96,11 @@
     <menu>
       <menuitem label="_t{Page management}">
         <action>SystemWikiList</action>
-        <icon>fab fa:wikipedia-w fa-fw</icon>
+        <icon>fab fa fa-fw fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Search pages}">
         <action>SystemWikiSearchList</action>
-        <icon>fa fa:search fa-fw</icon>
+        <icon>fa fa fa-fw fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
