@@ -11,6 +11,7 @@ require_once 'controllers/NecessidadesController.php';
 require_once 'controllers/ProductionController.php';
 require_once 'controllers/SalesController.php';
 require_once 'controllers/TransfersController.php';
+require_once 'controllers/ProductController.php';
 
 // Pegando o corpo da requisição
 $json = file_get_contents('php://input');
@@ -65,6 +66,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+                case 'listFichaTecnica':
+                if (isset($requestData['unit_id']) && isset($requestData['product_id'])) {
+                    $response = ComposicaoController::listFichaTecnica($requestData['product_id'],$requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
+                }
+                    break;
 
             // Métodos para DashboardController
             case 'getDashboardData':
@@ -273,6 +282,35 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'listTransfers':
                 if (isset($requestData['unit_id'])) {
                     $response = TransfersController::listTransfers($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            // Métodos para ProductController
+            case 'createProduct':
+                $response = ProductController::createProduct($requestData);
+                break;
+            case 'updateProduct':
+                if (isset($requestData['id'])) {
+                    $response = ProductController::updateProduct($requestData['id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'getProductById':
+                if (isset($requestData['id'])) {
+                    $response = ProductController::getProductById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listProducts':
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductController::listProducts($requestData['unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro unit_id ausente'];

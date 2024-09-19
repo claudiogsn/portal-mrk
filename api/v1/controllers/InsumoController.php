@@ -9,10 +9,10 @@ class InsumoController {
 
         $name = $data['name'];
         $description = $data['description'];
-        $unit_id = $data['unit_id'];
+        $system_unit_id = $data['system_unit_id'];
 
-        $stmt = $pdo->prepare("INSERT INTO insumos (name, description, unit_id) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $description, $unit_id]);
+        $stmt = $pdo->prepare("INSERT INTO insumos (name, description, system_unit_id) VALUES (?, ?, ?)");
+        $stmt->execute([$name, $description, $system_unit_id]);
 
         if ($stmt->rowCount() > 0) {
             return array('success' => true, 'message' => 'Insumo criado com sucesso', 'insumo_id' => $pdo->lastInsertId());
@@ -68,10 +68,10 @@ class InsumoController {
         }
     }
 
-    public static function listInsumos($unit_id) {
+    public static function listInsumos($system_unit_id) {
         try {
             global $pdo;
-            $stmt = $pdo->query("SELECT * FROM insumos WHERE unit_id = $unit_id");
+            $stmt = $pdo->query("SELECT * FROM insumos WHERE system_unit_id = $system_unit_id");
             $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             return ['success' => true, 'insumos' => $insumos];
         } catch (Exception $e) {

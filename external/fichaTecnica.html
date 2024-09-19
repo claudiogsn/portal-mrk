@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Produtos</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+<!-- Filtros de Busca -->
+<div class="container mx-auto mt-10">
+    <h1 class="text-2xl font-bold mb-4">Busca de Produtos</h1>
+    <div class="flex mb-6">
+        <input type="text" id="searchById" placeholder="Buscar por ID" class="border border-gray-400 p-2 mr-4">
+        <input type="text" id="searchByName" placeholder="Buscar por Nome" class="border border-gray-400 p-2">
+        <button class="ml-4 bg-blue-500 text-white px-4 py-2 rounded" onclick="loadProducts()">Buscar</button>
+    </div>
+
+    <!-- Tabela de Produtos -->
+    <table class="min-w-full bg-white">
+        <thead>
+        <tr>
+            <th class="py-2 px-4 border">ID</th>
+            <th class="py-2 px-4 border">Nome</th>
+            <th class="py-2 px-4 border">Descrição</th>
+        </tr>
+        </thead>
+        <tbody id="products-list" class="text-center"></tbody>
+    </table>
+</div>
+
+<!-- Modal de Ficha Técnica -->
+<div id="modalFichaTecnica" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-8 rounded shadow-lg w-full max-w-lg">
+        <h2 class="text-xl font-bold mb-4" id="product-name"></h2>
+        <h3 class="font-semibold mb-2">Ficha Técnica:</h3>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="flex items-center justify-center mb-4 hidden">
+            <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-500" role="status"></div>
+            <span class="ml-2">Carregando...</span>
+        </div>
+
+        <!-- Tabela de Insumos -->
+        <table class="min-w-full bg-white">
+            <thead>
+            <tr>
+                <th class="py-2 px-4 border">ID</th>
+                <th class="py-2 px-4 border">Nome do Insumo</th>
+                <th class="py-2 px-4 border">Quantidade</th>
+            </tr>
+            </thead>
+            <tbody id="composicoes-list"></tbody>
+        </table>
+
+        <button class="mt-6 bg-red-500 text-white px-4 py-2 rounded" onclick="closeModal()">Fechar</button>
+    </div>
+</div>
+
+<script>
+    // Função para obter parâmetros da URL
+    function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+    }
+
+    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+    const token = getQueryParam('token');
+    const unitId = getQueryParam('unit_id');
+
+    // Carrega lista de produtos com filtro
+    async function loadProducts() {
+        const searchById = document.getElementById('searchById').value;
+        const searchByName = document.getElementById('searchByName').value;
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listProducts',
+                token: token,
+                data: {
+                    unit_id: unitId
+                }
+            });
+
+            let products = response.data.products;
+
+            // Filtros
+            if (searchById) {
+                products = products.filter(product => product.id.toString().includes(searchById));
+            }
+            if (searchByName) {
+                products = products.filter(product => product.name.toLowerCase().includes(searchByName.toLowerCase()));
+            }
+
+            const productsList = document.getElementById('products-list');
+            productsList.innerHTML = '';
+
+            products.forEach(product => {
+                const productRow = `
+                        <tr class="cursor-pointer hover:bg-gray-200" onclick="openFichaTecnica(${product.id}, '${product.name}')">
+                            <td class="py-2 px-4 border">${product.id}</td>
+                            <td class="py-2 px-4 border">${product.name}</td>
+                            <td class="py-2 px-4 border">${product.description}</td>
+                        </tr>
+                    `;
+                productsList.innerHTML += productRow;
+            });
+        } catch (error) {
+            console.error("Erro ao carregar produtos:", error);
+        }
+    }
+
+    // Abre modal com ficha técnica do produto
+    async function openFichaTecnica(productId, productName) {
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const composicoesList = document.getElementById('composicoes-list');
+        const modal = document.getElementById('modalFichaTecnica');
+
+        composicoesList.innerHTML = '';
+        loadingSpinner.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        document.getElementById('product-name').textContent = productName;
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listFichaTecnica',
+                token: token,
+                data: {
+                    unit_id: unitId,
+                    product_id: productId
+                }
+            });
+
+            const composicoes = response.data.composicoes;
+
+            composicoes.forEach(composicao => {
+                const insumoRow = `
+                        <tr>
+                            <td class="py-2 px-4 border">${composicao.insumo_id}</td>
+                            <td class="py-2 px-4 border">${composicao.insumo_name}</td>
+                            <td class="py-2 px-4 border">${composicao.quantity}</td>
+                        </tr>
+                    `;
+                composicoesList.innerHTML += insumoRow;
+            });
+        } catch (error) {
+            console.error("Erro ao carregar ficha técnica:", error);
+        } finally {
+            loadingSpinner.classList.add('hidden');
+        }
+    }
+
+    // Fecha o modal
+    function closeModal() {
+        document.getElementById('modalFichaTecnica').classList.add('hidden');
+    }
+
+    // Carregar produtos ao carregar a página
+    window.onload = loadProducts;
+</script>
+
+</body>
+</html>

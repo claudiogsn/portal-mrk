@@ -10,10 +10,10 @@ class ComposicaoController {
         $product_id = $data['product_id'];
         $insumo_id = $data['insumo_id'];
         $quantity = $data['quantity'];
-        $unit_id = $data['unit_id'];
+        $system_unit_id = $data['system_unit_id'];
 
-        $stmt = $pdo->prepare("INSERT INTO compositions (product_id, insumo_id, quantity, unit_id) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$product_id, $insumo_id, $quantity, $unit_id]);
+        $stmt = $pdo->prepare("INSERT INTO compositions (product_id, insumo_id, quantity, system_unit_id) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$product_id, $insumo_id, $quantity, $system_unit_id]);
 
         if ($stmt->rowCount() > 0) {
             return array('success' => true, 'message' => 'Composição criada com sucesso', 'composicao_id' => $pdo->lastInsertId());
@@ -69,15 +69,38 @@ class ComposicaoController {
         }
     }
 
-    public static function listComposicoes($unit_id) {
+    public static function listComposicoes($system_unit_id) {
         try {
             global $pdo;
-            $stmt = $pdo->query("SELECT * FROM compositions WHERE unit_id = $unit_id");
+            $stmt = $pdo->query("SELECT * FROM compositions WHERE system_unit_id = $system_unit_id");
             $composicoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             return ['success' => true, 'composicoes' => $composicoes];
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Erro ao listar composições: ' . $e->getMessage()];
         }
     }
+
+    public static function listFichaTecnica($product_id, $system_unit_id) {
+        global $pdo;
+
+        try {
+            $stmt = $pdo->prepare("
+            SELECT c.id, c.insumo_id,i.name AS insumo_name, c.quantity
+            FROM compositions c
+            JOIN insumos i ON c.insumo_id = i.id
+            WHERE c.product_id = :product_id AND c.system_unit_id = :system_unit_id
+        ");
+            $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $composicoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'composicoes' => $composicoes];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar ficha técnica: ' . $e->getMessage()];
+        }
+    }
+
 }
 ?>
