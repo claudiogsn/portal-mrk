@@ -8,10 +8,18 @@ class ProductController {
         global $pdo;
 
         // Campos da nova estrutura da tabela
+        $requiredFields = ['codigo', 'nome', 'preco', 'und', 'venda', 'composicao', 'insumo', 'system_unit_id'];
+
+        // Verifica se todos os campos obrigatórios estão presentes
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
+                return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
+            }
+        }
+
         $codigo = $data['codigo'];
         $nome = $data['nome'];
         $preco = $data['preco'];
-        $categ = $data['categ'];
         $und = $data['und'];
         $venda = $data['venda'];
         $composicao = $data['composicao'];
@@ -19,9 +27,10 @@ class ProductController {
         $system_unit_id = $data['system_unit_id'];
 
         // Inserção no banco de dados com os novos campos
-        $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco,categ, und, venda, composicao, insumo, system_unit_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$codigo, $nome, $categ , $preco, $und, $venda, $composicao, $insumo, $system_unit_id]);
+        $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco, und, venda, composicao, insumo, system_unit_id) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+
+        $stmt->execute([$codigo, $nome, $preco, $und, $venda, $composicao, $insumo, $system_unit_id]);
 
         if ($stmt->rowCount() > 0) {
             return array('success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId());
@@ -29,6 +38,7 @@ class ProductController {
             return array('success' => false, 'message' => 'Falha ao criar produto');
         }
     }
+
 
     public static function updateProduct($id, $data, $system_unit_id) {
         global $pdo;

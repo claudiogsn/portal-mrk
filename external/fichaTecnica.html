@@ -64,11 +64,9 @@
         <label for="filterCategoria" class="ml-4 mr-2">Categoria:</label>
         <select id="filterCategoria" class="border border-gray-400 p-1">
             <option value="">Todos</option>
-            <!-- As opções de categoria serão preenchidas dinamicamente -->
         </select>
     </div>
 
-    <!-- Tabela de Produtos -->
     <table id="productsTable" class="display">
         <thead>
         <tr>
@@ -85,128 +83,7 @@
     </table>
 </div>
 
-<script>
-    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
-    const token = new URLSearchParams(window.location.search).get('token');
-    const unitId = new URLSearchParams(window.location.search).get('unit_id');
-
-    $(document).ready(function() {
-        const productsTable = $('#productsTable').DataTable({
-            "pageLength": -1, // Define para mostrar todos os registros
-            "lengthChange": false, // Oculta a opção de seleção de exibição
-            "language": {
-                "search": "Pesquisar:" // Aqui você altera o texto "Search"
-            },
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: 'Exportar para Excel',
-                    exportOptions: {
-                        columns: [0, 1, 2, 3, 4] // Exclui a última coluna (coluna de ações)
-                    }
-                },
-                {
-                    extend: 'pdfHtml5',
-                    text: 'Exportar para PDF',
-                    exportOptions: {
-                        columns: [0, 1, 2, 3, 4], // Exclui a última coluna (coluna de ações)
-                        modifier: {
-                            page: 'all' // Exporta todas as páginas
-                        }
-                    }
-                },
-                'print'
-            ],
-            dom: 'fBrtip'
-        }); // Inicializa o DataTables
-
-        // Carrega lista de produtos
-        loadProducts();
-
-        async function loadProducts() {
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            loadingSpinner.classList.remove('hidden'); // Mostra o spinner
-
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'listProducts',
-                    token: token,
-                    data: {
-                        unit_id: unitId
-                    }
-                });
-
-                let products = response.data.products;
-
-                // Limpa a tabela existente
-                productsTable.clear();
-
-                // Preenche a tabela com os produtos
-                products.forEach(product => {
-                    const categoriaNome = product.nome_categoria || 'Desconhecida';
-                    const tipo = [];
-                    if (product.venda) tipo.push('Venda');
-                    if (product.composicao) tipo.push('Composição');
-                    if (product.insumo) tipo.push('Insumo');
-
-                    const precoFormatado = product.preco != null && !isNaN(product.preco)
-                        ? `R$ ${product.preco.toFixed(2)}`
-                        : 'R$ 0,00';
-
-                    productsTable.row.add([
-                        product.codigo,
-                        product.nome,
-                        tipo.join(' | '),
-                        categoriaNome,
-                        precoFormatado,
-                        `<button class="text-blue-500" onclick="editProduct(${product.id})">✏️</button>`
-                    ]).draw();
-                });
-
-                // Carrega categorias para o filtro
-                loadCategories(products);
-
-            } catch (error) {
-                console.error("Erro ao carregar produtos:", error);
-                productsTable.clear().row.add(['Erro ao carregar produtos.', '', '', '', '', '']).draw();
-            } finally {
-                loadingSpinner.classList.add('hidden'); // Oculta o spinner
-            }
-        }
-
-        async function loadCategories(products) {
-            const categorias = [...new Set(products.map(product => product.nome_categoria))];
-
-            const filterCategoria = $('#filterCategoria');
-            filterCategoria.empty(); // Limpa opções existentes
-            filterCategoria.append('<option value="">Todos</option>'); // Adiciona opção 'Todos'
-
-            categorias.forEach(categoria => {
-                filterCategoria.append(`<option value="${categoria}">${categoria}</option>`);
-            });
-        }
-
-        // Função para aplicar filtros
-        function applyFilters() {
-            const tipoFilter = $('#filterTipo').val();
-            const categoriaFilter = $('#filterCategoria').val();
-
-            productsTable.column(2).search(tipoFilter ? '^' + tipoFilter + '$' : '', true, false); // Filtro de tipo
-            productsTable.column(3).search(categoriaFilter ? '^' + categoriaFilter + '$' : '', true, false); // Filtro de categoria
-
-            productsTable.draw();
-        }
-
-        // Eventos de mudança nos dropdowns
-        $('#filterTipo, #filterCategoria').change(applyFilters);
-
-        // Função para editar o produto
-        window.editProduct = function(productId) {
-            console.log('Editando produto com ID:', productId);
-        };
-
-    });
-</script>
+<script src="script/produtos.js"></script>
 
 </body>
 </html>
