@@ -320,7 +320,7 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'updateCategoria':
                 if (isset($requestData['unit_id'])) { // Verifica se o unit_id está presente
                     if (isset($requestData['id'])) {
-                        $response = CategoriesController::updateCategoria($requestData['id'], $requestData, $requestData['unit_id']);
+                        $response = CategoriesController::updateCategoria($requestData['id'], $requestData[$data], $requestData['unit_id']);
                     } else {
                         http_response_code(400);
                         $response = ['error' => 'Parâmetro id ausente'];

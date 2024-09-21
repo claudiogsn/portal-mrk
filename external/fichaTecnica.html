@@ -7,10 +7,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.dataTables.min.css">
+    <script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
+
     <style>
         body {
             background-color: #e9e9e9;
             font-family: 'Roboto', sans-serif;
+            font-size: 14px;
         }
         .form-control:focus {
             border-color: #015e9a;
@@ -18,8 +28,12 @@
             border-radius: 5px!important;
             box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(0, 94, 154, .6)!important;
         }
-        .btn-hover:hover {
-            background-color: #013c5a; /* Tom mais escuro para hover */
+        #productsTable td,
+        #productsTable th {
+            text-align: center;
+        }
+        .dropdown {
+            display: none;
         }
     </style>
 </head>
@@ -28,10 +42,6 @@
 <!-- Filtros de Busca -->
 <div class="container mx-auto mt-10">
     <h1 class="text-2xl font-bold mb-4">Produtos</h1>
-    <div class="flex mb-6">
-        <input type="text" id="searchField" placeholder="Pesquisar ..." class="form-control border border-gray-400 p-2 mr-4" oninput="loadProducts()">
-        <button class="ml-4 bg-blue-500 text-white px-4 py-2 rounded btn-hover" onclick="loadProducts()">Buscar</button>
-    </div>
 
     <!-- Loading Spinner -->
     <div id="loadingSpinner" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
@@ -41,172 +51,162 @@
         </div>
     </div>
 
+    <!-- Filtros -->
+    <div class="mb-4">
+        <label for="filterTipo" class="mr-2">Tipo:</label>
+        <select id="filterTipo" class="border border-gray-400 p-1">
+            <option value="">Todos</option>
+            <option value="Venda">Venda</option>
+            <option value="Composição">Composição</option>
+            <option value="Insumo">Insumo</option>
+        </select>
+
+        <label for="filterCategoria" class="ml-4 mr-2">Categoria:</label>
+        <select id="filterCategoria" class="border border-gray-400 p-1">
+            <option value="">Todos</option>
+            <!-- As opções de categoria serão preenchidas dinamicamente -->
+        </select>
+    </div>
 
     <!-- Tabela de Produtos -->
-    <table class="min-w-full bg-white">
+    <table id="productsTable" class="display">
         <thead>
         <tr>
-            <th class="py-2 px-4 border">
-                Código
-            </th>
-            <th class="py-2 px-4 border">
-                Nome
-            </th>
-            <th class="py-2 px-4 border">
-                Tipo
-                <select id="filterTipo" class="border border-gray-400 p-1">
-                    <option value="">Todos os Tipos</option>
-                    <option value="Venda">Venda</option>
-                    <option value="Composição">Composição</option>
-                    <option value="Insumo">Insumo</option>
-                </select>
-            </th>
-            <th class="py-2 px-4 border">
-                Categoria
-                <select id="filterCategoria" class="border border-gray-400 p-1">
-                    <option value="">Todas</option>
-                    <!-- As opções de categoria serão carregadas dinamicamente -->
-                </select>
-            </th>
-            <th class="py-2 px-4 border">
-                Preço
-            </th>
-            <th class="py-2 px-4 border"></th>
+            <th class="text-center">Código</th>
+            <th class="text-center">Nome</th>
+            <th class="text-center">Tipo</th>
+            <th class="text-center">Categoria</th>
+            <th class="text-center">Preço</th>
+            <th class="text-center">Ações</th>
         </tr>
         </thead>
-        <tbody id="products-list" class="text-center"></tbody>
+        <tbody id="products-list">
+        </tbody>
     </table>
-
 </div>
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
     const token = new URLSearchParams(window.location.search).get('token');
     const unitId = new URLSearchParams(window.location.search).get('unit_id');
-    let allProducts = []; // Armazena todos os produtos carregados
 
-    // Carrega lista de produtos
-    async function loadProducts() {
-        const searchTerm = document.getElementById('searchField').value.toLowerCase();
-        const filterCategoria = document.getElementById('filterCategoria');
-        const filterTipo = document.getElementById('filterTipo');
-        const productsList = document.getElementById('products-list');
-        const loadingSpinner = document.getElementById('loadingSpinner');
+    $(document).ready(function() {
+        const productsTable = $('#productsTable').DataTable({
+            "pageLength": -1, // Define para mostrar todos os registros
+            "lengthChange": false, // Oculta a opção de seleção de exibição
+            "language": {
+                "search": "Pesquisar:" // Aqui você altera o texto "Search"
+            },
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: 'Exportar para Excel',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4] // Exclui a última coluna (coluna de ações)
+                    }
+                },
+                {
+                    extend: 'pdfHtml5',
+                    text: 'Exportar para PDF',
+                    exportOptions: {
+                        columns: [0, 1, 2, 3, 4], // Exclui a última coluna (coluna de ações)
+                        modifier: {
+                            page: 'all' // Exporta todas as páginas
+                        }
+                    }
+                },
+                'print'
+            ],
+            dom: 'fBrtip'
+        }); // Inicializa o DataTables
 
-        loadingSpinner.classList.remove('hidden'); // Mostra o spinner
+        // Carrega lista de produtos
+        loadProducts();
 
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'listProducts',
-                token: token,
-                data: {
-                    unit_id: unitId
-                }
-            });
+        async function loadProducts() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            loadingSpinner.classList.remove('hidden'); // Mostra o spinner
 
-            allProducts = response.data.products; // Armazena todos os produtos carregados
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'listProducts',
+                    token: token,
+                    data: {
+                        unit_id: unitId
+                    }
+                });
 
-            // Carrega categorias
-            const categoriasResponse = await axios.post(baseUrl, {
-                method: 'listCategorias',
-                token: token,
-                data: {
-                    unit_id: unitId
-                }
-            });
-            const categorias = categoriasResponse.data.categorias;
+                let products = response.data.products;
 
-            // Preenche o select de categorias com a opção "Todos"
-            filterCategoria.innerHTML = '<option value="">Todos</option>'; // Adiciona a opção "Todos"
-            categorias.forEach(categoria => {
-                const option = document.createElement('option');
-                option.value = categoria.id; // ID da categoria
-                option.textContent = categoria.nome; // Nome da categoria
-                filterCategoria.appendChild(option);
-            });
+                // Limpa a tabela existente
+                productsTable.clear();
 
-            // Exibe produtos filtrados com base no termo de pesquisa inicial
-            filterAndDisplayProducts(searchTerm, filterCategoria.value, filterTipo.value);
+                // Preenche a tabela com os produtos
+                products.forEach(product => {
+                    const categoriaNome = product.nome_categoria || 'Desconhecida';
+                    const tipo = [];
+                    if (product.venda) tipo.push('Venda');
+                    if (product.composicao) tipo.push('Composição');
+                    if (product.insumo) tipo.push('Insumo');
 
-        } catch (error) {
-            console.error("Erro ao carregar produtos:", error);
-            productsList.innerHTML = '<tr><td colspan="6" class="text-center py-4">Erro ao carregar produtos.</td></tr>';
-        } finally {
-            loadingSpinner.classList.add('hidden'); // Oculta o spinner
+                    const precoFormatado = product.preco != null && !isNaN(product.preco)
+                        ? `R$ ${product.preco.toFixed(2)}`
+                        : 'R$ 0,00';
+
+                    productsTable.row.add([
+                        product.codigo,
+                        product.nome,
+                        tipo.join(' | '),
+                        categoriaNome,
+                        precoFormatado,
+                        `<button class="text-blue-500" onclick="editProduct(${product.id})">✏️</button>`
+                    ]).draw();
+                });
+
+                // Carrega categorias para o filtro
+                loadCategories(products);
+
+            } catch (error) {
+                console.error("Erro ao carregar produtos:", error);
+                productsTable.clear().row.add(['Erro ao carregar produtos.', '', '', '', '', '']).draw();
+            } finally {
+                loadingSpinner.classList.add('hidden'); // Oculta o spinner
+            }
         }
-    }
 
-    // Filtra e exibe os produtos
-    function filterAndDisplayProducts(searchTerm, selectedCategory, selectedTipo) {
-        const productsList = document.getElementById('products-list');
-        productsList.innerHTML = ''; // Limpa a lista antes de adicionar os produtos
+        async function loadCategories(products) {
+            const categorias = [...new Set(products.map(product => product.nome_categoria))];
 
-        const filteredProducts = allProducts.filter(product => {
-            const matchesSearch = product.nome.toLowerCase().includes(searchTerm) ||
-                product.codigo.toString().includes(searchTerm) ||
-                (product.nome_categoria && product.nome_categoria.toLowerCase().includes(searchTerm));
-            const matchesCategory = selectedCategory === "" || product.categ == selectedCategory; // Filtra por categoria se selecionado
-            const matchesTipo = selectedTipo === "" || (product.venda && selectedTipo === 'Venda') ||
-                (product.composicao && selectedTipo === 'Composição') ||
-                (product.insumo && selectedTipo === 'Insumo'); // Filtra por tipo se selecionado
-            return matchesSearch && matchesCategory && matchesTipo;
-        });
+            const filterCategoria = $('#filterCategoria');
+            filterCategoria.empty(); // Limpa opções existentes
+            filterCategoria.append('<option value="">Todos</option>'); // Adiciona opção 'Todos'
 
-        filteredProducts.forEach(product => {
-            const tipo = [];
-            if (product.venda) tipo.push('Venda');
-            if (product.composicao) tipo.push('Composição');
-            if (product.insumo) tipo.push('Insumo');
+            categorias.forEach(categoria => {
+                filterCategoria.append(`<option value="${categoria}">${categoria}</option>`);
+            });
+        }
 
-            const precoFormatado = product.preco != null && !isNaN(product.preco)
-                ? `R$ ${product.preco.toFixed(2)}`
-                : 'R$ 0,00';
+        // Função para aplicar filtros
+        function applyFilters() {
+            const tipoFilter = $('#filterTipo').val();
+            const categoriaFilter = $('#filterCategoria').val();
 
-            const productRow = `
-                <tr class="hover:bg-blue-200">
-                    <td class="py-2 px-4 border">${product.codigo}</td>
-                    <td class="py-2 px-4 border">${product.nome}</td>
-                    <td class="py-2 px-4 border">${tipo.length > 0 ? tipo.join(' | ') : 'Nenhum'}</td>
-                    <td class="py-2 px-4 border">${product.nome_categoria || 'Desconhecida'}</td>
-                    <td class="py-2 px-4 border">${precoFormatado}</td>
-                    <td class="py-2 px-4 border"><button class="text-blue-500" onclick="editProduct(${product.id})">✏️</button></td>
-                </tr>
-            `;
-            productsList.innerHTML += productRow;
-        });
-    }
+            productsTable.column(2).search(tipoFilter ? '^' + tipoFilter + '$' : '', true, false); // Filtro de tipo
+            productsTable.column(3).search(categoriaFilter ? '^' + categoriaFilter + '$' : '', true, false); // Filtro de categoria
 
-    // Adiciona evento de mudança ao filtro de categorias
-    document.getElementById('filterCategoria').addEventListener('change', (event) => {
-        const searchTerm = document.getElementById('searchField').value.toLowerCase();
-        const selectedTipo = document.getElementById('filterTipo').value;
-        filterAndDisplayProducts(searchTerm, event.target.value, selectedTipo); // Filtra usando o valor selecionado
+            productsTable.draw();
+        }
+
+        // Eventos de mudança nos dropdowns
+        $('#filterTipo, #filterCategoria').change(applyFilters);
+
+        // Função para editar o produto
+        window.editProduct = function(productId) {
+            console.log('Editando produto com ID:', productId);
+        };
+
     });
-
-    // Adiciona evento de mudança ao filtro de tipos
-    document.getElementById('filterTipo').addEventListener('change', (event) => {
-        const searchTerm = document.getElementById('searchField').value.toLowerCase();
-        const selectedCategory = document.getElementById('filterCategoria').value;
-        filterAndDisplayProducts(searchTerm, selectedCategory, event.target.value); // Filtra usando o valor selecionado
-    });
-
-    // Adiciona evento de input para pesquisa
-    document.getElementById('searchField').addEventListener('input', (event) => {
-        const selectedCategory = document.getElementById('filterCategoria').value;
-        const selectedTipo = document.getElementById('filterTipo').value;
-        filterAndDisplayProducts(event.target.value.toLowerCase(), selectedCategory, selectedTipo); // Filtra usando o valor da pesquisa
-    });
-
-    // Função para editar o produto
-    function editProduct(productId) {
-        console.log('Editando produto com ID:', productId);
-    }
-
-    // Carregar produtos ao carregar a página
-    window.onload = loadProducts;
 </script>
-
-
 
 </body>
 </html>
