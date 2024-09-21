@@ -12,6 +12,7 @@ require_once 'controllers/ProductionController.php';
 require_once 'controllers/SalesController.php';
 require_once 'controllers/TransfersController.php';
 require_once 'controllers/ProductController.php';
+require_once 'controllers/CategoriesController.php';
 
 // Pegando o corpo da requisição
 $json = file_get_contents('php://input');
@@ -142,36 +143,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
-
-            // Métodos para InsumoController
-            case 'createInsumo':
-                $response = InsumoController::createInsumo($requestData);
-                break;
-            case 'updateInsumo':
-                if (isset($requestData['id'])) {
-                    $response = InsumoController::updateInsumo($requestData['id'], $requestData);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ausente'];
-                }
-                break;
-            case 'getInsumoById':
-                if (isset($requestData['id'])) {
-                    $response = InsumoController::getInsumoById($requestData['id']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ausente'];
-                }
-                break;
-            case 'listInsumos':
-                if (isset($requestData['unit_id'])) {
-                    $response = InsumoController::listInsumos($requestData['unit_id']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro unit_id ausente'];
-                }
-                break;
-
             // Métodos para NecessidadesController
             case 'createNecessidade':
                 $response = NecessidadesController::createNecessidade($requestData);
@@ -203,24 +174,42 @@ if (isset($data['method']) && isset($data['data'])) {
 
             // Métodos para ProductionController
             case 'createProduction':
-                $response = ProductionController::createProduction($requestData);
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductionController::createProduction($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
                 break;
+
             case 'updateProduction':
-                if (isset($requestData['id'])) {
-                    $response = ProductionController::updateProduction($requestData['id'], $requestData);
+                if (isset($requestData['unit_id'])) {
+                    if (isset($requestData['id'])) {
+                        $response = ProductionController::updateProduction($requestData['id'], $requestData);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro id ausente'];
+                    }
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ausente'];
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+
             case 'getProductionById':
-                if (isset($requestData['id'])) {
-                    $response = ProductionController::getProductionById($requestData['id']);
+                if (isset($requestData['unit_id'])) {
+                    if (isset($requestData['id'])) {
+                        $response = ProductionController::getProductionById($requestData['id']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro id ausente'];
+                    }
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ausente'];
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+
             case 'listProductions':
                 if (isset($requestData['unit_id'])) {
                     $response = ProductionController::listProductions($requestData['unit_id']);
@@ -229,6 +218,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+
 
             // Métodos para SalesController
             case 'createSale':
@@ -316,6 +306,54 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+
+            // Métodos para CategoriesController
+            case 'createCategoria':
+                if (isset($requestData['unit_id'])) { // Verifica se o unit_id está presente
+                    $response = CategoriesController::createCategoria($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            case 'updateCategoria':
+                if (isset($requestData['unit_id'])) { // Verifica se o unit_id está presente
+                    if (isset($requestData['id'])) {
+                        $response = CategoriesController::updateCategoria($requestData['id'], $requestData, $requestData['unit_id']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro id ausente'];
+                    }
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            case 'getCategoriaById':
+                if (isset($requestData['unit_id'])) { // Verifica se o unit_id está presente
+                    if (isset($requestData['id'])) {
+                        $response = CategoriesController::getCategoriaById($requestData['id'], $requestData['unit_id']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro id ausente'];
+                    }
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            case 'listCategorias':
+                if (isset($requestData['unit_id'])) { // Verifica se o unit_id está presente
+                    $response = CategoriesController::listCategorias($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
 
             default:
                 http_response_code(405);

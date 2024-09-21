@@ -4,76 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lista de Produtos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #e9e9e9;
+            font-family: 'Roboto', sans-serif;
+        }
+        .form-control:focus {
+            border-color: #015e9a;
+            outline: 0;
+            border-radius: 5px!important;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(0, 94, 154, .6)!important;
+        }
+        .btn-hover:hover {
+            background-color: #013c5a; /* Tom mais escuro para hover */
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body>
 
 <!-- Filtros de Busca -->
 <div class="container mx-auto mt-10">
-    <h1 class="text-2xl font-bold mb-4">Busca de Produtos</h1>
+    <h1 class="text-2xl font-bold mb-4">Produtos</h1>
     <div class="flex mb-6">
-        <input type="text" id="searchById" placeholder="Buscar por ID" class="border border-gray-400 p-2 mr-4">
-        <input type="text" id="searchByName" placeholder="Buscar por Nome" class="border border-gray-400 p-2">
-        <button class="ml-4 bg-blue-500 text-white px-4 py-2 rounded" onclick="loadProducts()">Buscar</button>
+        <input type="text" id="searchField" placeholder="Pesquisar ..." class="form-control border border-gray-400 p-2 mr-4" oninput="loadProducts()">
+        <button class="ml-4 bg-blue-500 text-white px-4 py-2 rounded btn-hover" onclick="loadProducts()">Buscar</button>
     </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded shadow-lg text-center">
+            <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-500" role="status"></div>
+            <p class="mt-2">Carregando os produtos...</p>
+        </div>
+    </div>
+
 
     <!-- Tabela de Produtos -->
     <table class="min-w-full bg-white">
         <thead>
         <tr>
-            <th class="py-2 px-4 border">ID</th>
-            <th class="py-2 px-4 border">Nome</th>
-            <th class="py-2 px-4 border">Descrição</th>
+            <th class="py-2 px-4 border">
+                Código
+            </th>
+            <th class="py-2 px-4 border">
+                Nome
+            </th>
+            <th class="py-2 px-4 border">
+                Tipo
+                <select id="filterTipo" class="border border-gray-400 p-1">
+                    <option value="">Todos os Tipos</option>
+                    <option value="Venda">Venda</option>
+                    <option value="Composição">Composição</option>
+                    <option value="Insumo">Insumo</option>
+                </select>
+            </th>
+            <th class="py-2 px-4 border">
+                Categoria
+                <select id="filterCategoria" class="border border-gray-400 p-1">
+                    <option value="">Todas</option>
+                    <!-- As opções de categoria serão carregadas dinamicamente -->
+                </select>
+            </th>
+            <th class="py-2 px-4 border">
+                Preço
+            </th>
+            <th class="py-2 px-4 border"></th>
         </tr>
         </thead>
         <tbody id="products-list" class="text-center"></tbody>
     </table>
-</div>
 
-<!-- Modal de Ficha Técnica -->
-<div id="modalFichaTecnica" class="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center hidden">
-    <div class="bg-white p-8 rounded shadow-lg w-full max-w-lg">
-        <h2 class="text-xl font-bold mb-4" id="product-name"></h2>
-        <h3 class="font-semibold mb-2">Ficha Técnica:</h3>
-
-        <!-- Loading Spinner -->
-        <div id="loadingSpinner" class="flex items-center justify-center mb-4 hidden">
-            <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-500" role="status"></div>
-            <span class="ml-2">Carregando...</span>
-        </div>
-
-        <!-- Tabela de Insumos -->
-        <table class="min-w-full bg-white">
-            <thead>
-            <tr>
-                <th class="py-2 px-4 border">ID</th>
-                <th class="py-2 px-4 border">Nome do Insumo</th>
-                <th class="py-2 px-4 border">Quantidade</th>
-            </tr>
-            </thead>
-            <tbody id="composicoes-list"></tbody>
-        </table>
-
-        <button class="mt-6 bg-red-500 text-white px-4 py-2 rounded" onclick="closeModal()">Fechar</button>
-    </div>
 </div>
 
 <script>
-    // Função para obter parâmetros da URL
-    function getQueryParam(param) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(param);
-    }
-
     const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
-    const token = getQueryParam('token');
-    const unitId = getQueryParam('unit_id');
+    const token = new URLSearchParams(window.location.search).get('token');
+    const unitId = new URLSearchParams(window.location.search).get('unit_id');
+    let allProducts = []; // Armazena todos os produtos carregados
 
-    // Carrega lista de produtos com filtro
+    // Carrega lista de produtos
     async function loadProducts() {
-        const searchById = document.getElementById('searchById').value;
-        const searchByName = document.getElementById('searchByName').value;
+        const searchTerm = document.getElementById('searchField').value.toLowerCase();
+        const filterCategoria = document.getElementById('filterCategoria');
+        const filterTipo = document.getElementById('filterTipo');
+        const productsList = document.getElementById('products-list');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        loadingSpinner.classList.remove('hidden'); // Mostra o spinner
 
         try {
             const response = await axios.post(baseUrl, {
@@ -84,82 +104,109 @@
                 }
             });
 
-            let products = response.data.products;
+            allProducts = response.data.products; // Armazena todos os produtos carregados
 
-            // Filtros
-            if (searchById) {
-                products = products.filter(product => product.id.toString().includes(searchById));
-            }
-            if (searchByName) {
-                products = products.filter(product => product.name.toLowerCase().includes(searchByName.toLowerCase()));
-            }
-
-            const productsList = document.getElementById('products-list');
-            productsList.innerHTML = '';
-
-            products.forEach(product => {
-                const productRow = `
-                        <tr class="cursor-pointer hover:bg-gray-200" onclick="openFichaTecnica(${product.id}, '${product.name}')">
-                            <td class="py-2 px-4 border">${product.id}</td>
-                            <td class="py-2 px-4 border">${product.name}</td>
-                            <td class="py-2 px-4 border">${product.description}</td>
-                        </tr>
-                    `;
-                productsList.innerHTML += productRow;
-            });
-        } catch (error) {
-            console.error("Erro ao carregar produtos:", error);
-        }
-    }
-
-    // Abre modal com ficha técnica do produto
-    async function openFichaTecnica(productId, productName) {
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const composicoesList = document.getElementById('composicoes-list');
-        const modal = document.getElementById('modalFichaTecnica');
-
-        composicoesList.innerHTML = '';
-        loadingSpinner.classList.remove('hidden');
-        modal.classList.remove('hidden');
-        document.getElementById('product-name').textContent = productName;
-
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'listFichaTecnica',
+            // Carrega categorias
+            const categoriasResponse = await axios.post(baseUrl, {
+                method: 'listCategorias',
                 token: token,
                 data: {
-                    unit_id: unitId,
-                    product_id: productId
+                    unit_id: unitId
                 }
             });
+            const categorias = categoriasResponse.data.categorias;
 
-            const composicoes = response.data.composicoes;
-
-            composicoes.forEach(composicao => {
-                const insumoRow = `
-                        <tr>
-                            <td class="py-2 px-4 border">${composicao.insumo_id}</td>
-                            <td class="py-2 px-4 border">${composicao.insumo_name}</td>
-                            <td class="py-2 px-4 border">${composicao.quantity}</td>
-                        </tr>
-                    `;
-                composicoesList.innerHTML += insumoRow;
+            // Preenche o select de categorias com a opção "Todos"
+            filterCategoria.innerHTML = '<option value="">Todos</option>'; // Adiciona a opção "Todos"
+            categorias.forEach(categoria => {
+                const option = document.createElement('option');
+                option.value = categoria.id; // ID da categoria
+                option.textContent = categoria.nome; // Nome da categoria
+                filterCategoria.appendChild(option);
             });
+
+            // Exibe produtos filtrados com base no termo de pesquisa inicial
+            filterAndDisplayProducts(searchTerm, filterCategoria.value, filterTipo.value);
+
         } catch (error) {
-            console.error("Erro ao carregar ficha técnica:", error);
+            console.error("Erro ao carregar produtos:", error);
+            productsList.innerHTML = '<tr><td colspan="6" class="text-center py-4">Erro ao carregar produtos.</td></tr>';
         } finally {
-            loadingSpinner.classList.add('hidden');
+            loadingSpinner.classList.add('hidden'); // Oculta o spinner
         }
     }
 
-    // Fecha o modal
-    function closeModal() {
-        document.getElementById('modalFichaTecnica').classList.add('hidden');
+    // Filtra e exibe os produtos
+    function filterAndDisplayProducts(searchTerm, selectedCategory, selectedTipo) {
+        const productsList = document.getElementById('products-list');
+        productsList.innerHTML = ''; // Limpa a lista antes de adicionar os produtos
+
+        const filteredProducts = allProducts.filter(product => {
+            const matchesSearch = product.nome.toLowerCase().includes(searchTerm) ||
+                product.codigo.toString().includes(searchTerm) ||
+                (product.nome_categoria && product.nome_categoria.toLowerCase().includes(searchTerm));
+            const matchesCategory = selectedCategory === "" || product.categ == selectedCategory; // Filtra por categoria se selecionado
+            const matchesTipo = selectedTipo === "" || (product.venda && selectedTipo === 'Venda') ||
+                (product.composicao && selectedTipo === 'Composição') ||
+                (product.insumo && selectedTipo === 'Insumo'); // Filtra por tipo se selecionado
+            return matchesSearch && matchesCategory && matchesTipo;
+        });
+
+        filteredProducts.forEach(product => {
+            const tipo = [];
+            if (product.venda) tipo.push('Venda');
+            if (product.composicao) tipo.push('Composição');
+            if (product.insumo) tipo.push('Insumo');
+
+            const precoFormatado = product.preco != null && !isNaN(product.preco)
+                ? `R$ ${product.preco.toFixed(2)}`
+                : 'R$ 0,00';
+
+            const productRow = `
+                <tr class="hover:bg-blue-200">
+                    <td class="py-2 px-4 border">${product.codigo}</td>
+                    <td class="py-2 px-4 border">${product.nome}</td>
+                    <td class="py-2 px-4 border">${tipo.length > 0 ? tipo.join(' | ') : 'Nenhum'}</td>
+                    <td class="py-2 px-4 border">${product.nome_categoria || 'Desconhecida'}</td>
+                    <td class="py-2 px-4 border">${precoFormatado}</td>
+                    <td class="py-2 px-4 border"><button class="text-blue-500" onclick="editProduct(${product.id})">✏️</button></td>
+                </tr>
+            `;
+            productsList.innerHTML += productRow;
+        });
+    }
+
+    // Adiciona evento de mudança ao filtro de categorias
+    document.getElementById('filterCategoria').addEventListener('change', (event) => {
+        const searchTerm = document.getElementById('searchField').value.toLowerCase();
+        const selectedTipo = document.getElementById('filterTipo').value;
+        filterAndDisplayProducts(searchTerm, event.target.value, selectedTipo); // Filtra usando o valor selecionado
+    });
+
+    // Adiciona evento de mudança ao filtro de tipos
+    document.getElementById('filterTipo').addEventListener('change', (event) => {
+        const searchTerm = document.getElementById('searchField').value.toLowerCase();
+        const selectedCategory = document.getElementById('filterCategoria').value;
+        filterAndDisplayProducts(searchTerm, selectedCategory, event.target.value); // Filtra usando o valor selecionado
+    });
+
+    // Adiciona evento de input para pesquisa
+    document.getElementById('searchField').addEventListener('input', (event) => {
+        const selectedCategory = document.getElementById('filterCategoria').value;
+        const selectedTipo = document.getElementById('filterTipo').value;
+        filterAndDisplayProducts(event.target.value.toLowerCase(), selectedCategory, selectedTipo); // Filtra usando o valor da pesquisa
+    });
+
+    // Função para editar o produto
+    function editProduct(productId) {
+        console.log('Editando produto com ID:', productId);
     }
 
     // Carregar produtos ao carregar a página
     window.onload = loadProducts;
 </script>
+
+
 
 </body>
 </html>

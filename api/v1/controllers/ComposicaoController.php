@@ -80,17 +80,17 @@ class ComposicaoController {
         }
     }
 
-    public static function listFichaTecnica($product_id, $system_unit_id) {
+    public static function listFichaTecnica($product_codigo, $system_unit_id) {
         global $pdo;
 
         try {
             $stmt = $pdo->prepare("
-            SELECT c.id, c.insumo_id,i.name AS insumo_name, c.quantity
-            FROM compositions c
-            JOIN insumos i ON c.insumo_id = i.id
-            WHERE c.product_id = :product_id AND c.system_unit_id = :system_unit_id
+            SELECT p.codigo AS insumo_codigo, p.nome AS insumo_name, c.quantity
+            FROM products p
+            JOIN compositions c ON p.codigo = c.insumo_id
+            WHERE c.product_id = :product_codigo AND p.system_unit_id = :system_unit_id AND p.insumo = 1
         ");
-            $stmt->bindParam(':product_id', $product_id, PDO::PARAM_INT);
+            $stmt->bindParam(':product_codigo', $product_codigo, PDO::PARAM_INT);
             $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
 
@@ -101,6 +101,7 @@ class ComposicaoController {
             return ['success' => false, 'message' => 'Erro ao listar ficha técnica: ' . $e->getMessage()];
         }
     }
+
 
 }
 ?>

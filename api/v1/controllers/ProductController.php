@@ -7,12 +7,21 @@ class ProductController {
     public static function createProduct($data) {
         global $pdo;
 
-        $name = $data['name'];
-        $description = $data['description'];
+        // Campos da nova estrutura da tabela
+        $codigo = $data['codigo'];
+        $nome = $data['nome'];
+        $preco = $data['preco'];
+        $categ = $data['categ'];
+        $und = $data['und'];
+        $venda = $data['venda'];
+        $composicao = $data['composicao'];
+        $insumo = $data['insumo'];
         $system_unit_id = $data['system_unit_id'];
 
-        $stmt = $pdo->prepare("INSERT INTO products (name, description, system_unit_id) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $description, $system_unit_id]);
+        // Inserção no banco de dados com os novos campos
+        $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco,categ, und, venda, composicao, insumo, system_unit_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$codigo, $nome, $categ , $preco, $und, $venda, $composicao, $insumo, $system_unit_id]);
 
         if ($stmt->rowCount() > 0) {
             return array('success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId());
@@ -21,7 +30,7 @@ class ProductController {
         }
     }
 
-    public static function updateProduct($id, $data) {
+    public static function updateProduct($id, $data, $system_unit_id) {
         global $pdo;
 
         $sql = "UPDATE products SET ";
@@ -31,8 +40,9 @@ class ProductController {
             $values[":$key"] = $value;
         }
         $sql = rtrim($sql, ", ");
-        $sql .= " WHERE id = :id";
+        $sql .= " WHERE id = :id AND system_unit_id = :system_unit_id";
         $values[':id'] = $id;
+        $values[':system_unit_id'] = $system_unit_id;
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($values);
@@ -44,21 +54,23 @@ class ProductController {
         }
     }
 
-    public static function getProductById($id) {
+    public static function getProductById($id, $system_unit_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT * FROM products WHERE id = :id");
+        $stmt = $pdo->prepare("SELECT * FROM products WHERE id = :id AND system_unit_id = :system_unit_id");
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public static function deleteProduct($id) {
+    public static function deleteProduct($id, $system_unit_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("DELETE FROM products WHERE id = :id");
+        $stmt = $pdo->prepare("DELETE FROM products WHERE id = :id AND system_unit_id = :system_unit_id");
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
         $stmt->execute();
 
         if ($stmt->rowCount() > 0) {
@@ -72,26 +84,50 @@ class ProductController {
         try {
             global $pdo;
 
-            // Preparar a consulta SQL para buscar produtos com composições associadas
+            // Atualiza a consulta SQL para lidar com os novos campos
             $sql = "
-            SELECT p.* 
-            FROM products p
-            INNER JOIN compositions c ON p.id = c.product_id
-            WHERE p.system_unit_id = :system_unit_id
-            GROUP BY p.id
+        SELECT p.*, 
+            c.nome AS nome_categoria,
+            CASE 
+                WHEN p.venda = 1 THEN 'Venda' 
+                ELSE NULL 
+            END AS tipo_venda,
+            CASE 
+                WHEN p.composicao = 1 THEN 'Composição' 
+                ELSE NULL 
+            END AS tipo_composicao,
+            CASE 
+                WHEN p.insumo = 1 THEN 'Insumo' 
+                ELSE NULL 
+            END AS tipo_insumo
+        FROM products p
+        LEFT JOIN categorias c ON c.id = p.categ
+        WHERE p.system_unit_id = :system_unit_id
+        GROUP BY p.id
         ";
 
-            // Preparar e executar a consulta
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Formata o campo 'tipo'
+            foreach ($products as &$product) {
+                $tipo = [];
+                if ($product['tipo_venda']) $tipo[] = $product['tipo_venda'];
+                if ($product['tipo_composicao']) $tipo[] = $product['tipo_composicao'];
+                if ($product['tipo_insumo']) $tipo[] = $product['tipo_insumo'];
+
+                $product['tipo'] = implode(' | ', array_filter($tipo));
+                unset($product['tipo_venda'], $product['tipo_composicao'], $product['tipo_insumo']); // Remove campos temporários
+            }
 
             return ['success' => true, 'products' => $products];
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Erro ao listar produtos: ' . $e->getMessage()];
         }
     }
+
 
 }
 ?>
