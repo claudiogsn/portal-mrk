@@ -40,7 +40,7 @@ class ProductController {
     }
 
 
-    public static function updateProduct($id, $data, $system_unit_id) {
+    public static function updateProduct($codigo, $data, $system_unit_id) {
         global $pdo;
 
         $sql = "UPDATE products SET ";
@@ -50,8 +50,8 @@ class ProductController {
             $values[":$key"] = $value;
         }
         $sql = rtrim($sql, ", ");
-        $sql .= " WHERE id = :id AND system_unit_id = :system_unit_id";
-        $values[':id'] = $id;
+        $sql .= " WHERE codigo = :codigo AND system_unit_id = :system_unit_id";
+        $values[':codigo'] = $codigo;
         $values[':system_unit_id'] = $system_unit_id;
 
         $stmt = $pdo->prepare($sql);
@@ -64,11 +64,11 @@ class ProductController {
         }
     }
 
-    public static function getProductById($id, $system_unit_id) {
+    public static function getProductById($codigo, $system_unit_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT * FROM products WHERE id = :id AND system_unit_id = :system_unit_id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt = $pdo->prepare("SELECT * FROM products WHERE codigo = :codigo AND system_unit_id = :system_unit_id");
+        $stmt->bindParam('codigo', $codigo, PDO::PARAM_INT);
         $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
         $stmt->execute();
 
