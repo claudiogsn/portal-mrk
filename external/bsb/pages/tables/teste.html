@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Product Listing | AdminBSB Integration</title>
+    
+    <!-- Favicon-->
+    <link rel="icon" href="../../favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="../../plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="../../plugins/node-waves/waves.css" rel="stylesheet">
+
+    <!-- Animation Css -->
+    <link href="../../plugins/animate-css/animate.css" rel="stylesheet">
+
+    <!-- JQuery DataTable Css -->
+    <link href="../../plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- Custom Css -->
+    <link href="../../css/style.css" rel="stylesheet">
+
+    <!-- AdminBSB Themes -->
+    <link href="../../css/themes/all-themes.css" rel="stylesheet">
+</head>
+
+<body class="theme-red">
+    <!-- Page Loader -->
+    <div class="page-loader-wrapper">
+        <div class="loader">
+            <div class="preloader">
+                <div class="spinner-layer pl-red">
+                    <div class="circle-clipper left">
+                        <div class="circle"></div>
+                    </div>
+                    <div class="circle-clipper right">
+                        <div class="circle"></div>
+                    </div>
+                </div>
+            </div>
+            <p>Please wait...</p>
+        </div>
+    </div>
+    <!-- #END# Page Loader -->
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="block-header">
+                <h2>
+                    Product Listing with Filters and Actions
+                </h2>
+            </div>
+
+            <!-- Filters -->
+            <div class="row clearfix">
+                <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                    <div class="form-group">
+                        <label for="filterTipo">Type:</label>
+                        <select id="filterTipo" class="form-control">
+                            <option value="">All Types</option>
+                            <option value="Venda">Venda</option>
+                            <option value="Composição">Composição</option>
+                            <option value="Insumo">Insumo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                    <div class="form-group">
+                        <label for="filterCategoria">Category:</label>
+                        <select id="filterCategoria" class="form-control">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                    <button id="exportBtn" class="btn btn-primary waves-effect">Export</button>
+                </div>
+            </div>
+
+            <!-- Product Table -->
+            <div class="row clearfix">
+                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                    <div class="card">
+                        <div class="header">
+                            <h2>
+                                Product List
+                            </h2>
+                        </div>
+                        <div class="body">
+                            <div class="table-responsive">
+                                <table id="productsTable" class="table table-bordered table-striped table-hover dataTable">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Category</th>
+                                            <th>Price</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rows will be populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="loadingSpinner" class="hidden">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- #END# Product Table -->
+        </div>
+    </section>
+
+    <!-- Jquery Core Js -->
+    <script src="../../plugins/jquery/jquery.min.js"></script>
+
+    <!-- Bootstrap Core Js -->
+    <script src="../../plugins/bootstrap/js/bootstrap.js"></script>
+
+    <!-- Waves Effect Plugin Js -->
+    <script src="../../plugins/node-waves/waves.js"></script>
+
+    <!-- Jquery DataTable Plugin Js -->
+    <script src="../../plugins/jquery-datatable/jquery.dataTables.js"></script>
+    <script src="../../plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+
+    <!-- Axios for API requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- Custom Script -->
+    <script>
+        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+        const token = new URLSearchParams(window.location.search).get('token');
+        const unitId = new URLSearchParams(window.location.search).get('unit_id');
+
+        $(document).ready(function() {
+            const productsTable = $('#productsTable').DataTable({
+                "pageLength": -1,
+                "lengthChange": false,
+                "language": {
+                    "search": "Pesquisar:"
+                },
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: 'Exportar para Excel',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3, 4]
+                        }
+                    },
+                    {
+                        extend: 'pdfHtml5',
+                        text: 'Exportar para PDF',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3, 4],
+                            modifier: {
+                                page: 'all'
+                            }
+                        }
+                    },
+                    'print'
+                ],
+                dom: 'fBrtip'
+            });
+
+            loadProducts();
+
+            async function loadProducts() {
+                const loadingSpinner = document.getElementById('loadingSpinner');
+                loadingSpinner.classList.remove('hidden');
+
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'listProducts',
+                        token: token,
+                        data: {
+                            unit_id: unitId
+                        }
+                    });
+
+                    let products = response.data.products;
+
+                    productsTable.clear();
+
+                    products.forEach(product => {
+                        const categoriaNome = product.nome_categoria || 'Desconhecida';
+                        const tipo = [];
+                        if (product.venda) tipo.push('Venda');
+                        if (product.composicao) tipo.push('Composição');
+                        if (product.insumo) tipo.push('Insumo');
+
+                        const precoFormatado = product.preco != null && !isNaN(product.preco)
+                            ? `R$ ${product.preco.toFixed(2)}`
+                            : 'R$ 0,00';
+
+                        productsTable.row.add([
+                            product.codigo,
+                            product.nome,
+                            tipo.join(' | '),
+                            categoriaNome,
+                            precoFormatado,
+                            `<button class="text-blue-500" onclick="editProduct(${product.id})">✏️</button>`
+                        ]).draw();
+                    });
+
+                    loadCategories(products);
+
+                } catch (error) {
+                    console.error("Erro ao carregar produtos:", error);
+                    productsTable.clear().row.add(['Erro ao carregar produtos.', '', '', '', '', '']).draw();
+                } finally {
+                    loadingSpinner.classList.add('hidden');
+                }
+            }
+
+            async function loadCategories(products) {
+                const categorias = [...new Set(products.map(product => product.nome_categoria))];
+
+                const filterCategoria = $('#filterCategoria');
+                filterCategoria.empty();
+                filterCategoria.append('<option value="">Todos</option>');
+
+                categorias.forEach(categoria => {
+                    filterCategoria.append(`<option value="${categoria}">${categoria}</option>`);
+                });
+            }
+
+            function applyFilters() {
+                const tipoFilter = $('#filterTipo').val();
+                const categoriaFilter = $('#filterCategoria').val();
+
+                productsTable.column(2).search(tipoFilter ? '^' + tipoFilter + '$' : '', true, false);
+                productsTable.column(3).search(categoriaFilter ? '^' + categoriaFilter + '$' : '', true, false);
+
+                productsTable.draw();
+            }
+
+            $('#filterTipo, #filterCategoria').change(applyFilters);
+
+            window.editProduct = function(productId) {
+                console.log('Editando produto com ID:', productId);
+            };
+        });
+    </script>
+</body>
+
+</html>
