@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+  <title>Balanço de Estoque</title>
+  <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+  <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+  <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+  <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+  <link href="bsb/css/style.css" rel="stylesheet">
+  <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+  <style>
+    @media (max-width: 768px) {
+      .container-fluid {
+        display: flex;
+        flex-direction: column; /* Empilhar os elementos */
+      }
+      .col-lg-3, .col-md-3 {
+        order: 1; /* Mover o bloco esquerdo para cima */
+        width: 100%; /* Ajustar largura */
+      }
+      .col-lg-9, .col-md-9 {
+        order: 2; /* Mover o bloco direito para baixo */
+        width: 100%; /* Ajustar largura */
+      }
+    }
+    /* Adicionando espaçamento ao topo */
+    .card {
+      margin-top: 20px; /* Espaçamento superior */
+    }
+    .header {
+      margin-bottom: 15px; /* Espaçamento abaixo do cabeçalho */
+    }
+  </style>
+</head>
+<body class="theme-blue">
+
+<!-- Conteúdo da página -->
+<div class="container-fluid">
+  <div class="row clearfix">
+    <!-- Lado Esquerdo (Formulário) -->
+    <div class="col-lg-3 col-md-3 col-sm-12">
+      <div class="card">
+        <div class="header">
+          <h2>Inventário</h2>
+        </div>
+        <div class="body">
+          <!-- Documento gerado automaticamente -->
+          <div class="form-group">
+            <label for="documentNumber">Documento:</label>
+            <input type="text" id="documentNumber" class="form-control" readonly>
+          </div>
+          <!-- Data -->
+          <div class="form-group">
+            <label for="currentDate">Data:</label>
+            <input type="date" id="currentDate" class="form-control">
+          </div>
+          <!-- Removido botão para novo lançamento -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Lado Direito (Tabela de Produtos) -->
+    <div class="col-lg-9 col-md-9 col-sm-12">
+      <div class="card">
+        <div class="header">
+          <h2>Balanço</h2> <!-- Alterado para "Balanço" -->
+        </div>
+        <div class="body">
+          <button id="btnAddProduct" class="btn btn-primary" style="margin-bottom: 15px;">Adicionar Produto</button> <!-- Mover botão para cima -->
+          <div class="table-responsive">
+            <table id="balancoTable" class="table table-bordered table-striped">
+              <thead>
+              <tr>
+                <th>Código</th>
+                <th>Produto</th>
+                <th>Unidade</th>
+                <th>Quantidade</th>
+                <th>Ação</th>
+              </tr>
+              </thead>
+              <tbody>
+              <!-- Dados dinâmicos -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- Rodapé com botões de ação -->
+      <div class="footer text-right">
+        <button id="limparBalanco" class="btn btn-warning">Limpar</button>
+        <button id="finalizarLançamento" class="btn btn-success">Finalizar lançamento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para seleção de produtos -->
+<div class="modal fade" id="modalProduto" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">Selecionar Produto</h4>
+      </div>
+      <div class="modal-body">
+        <!-- Campo de pesquisa -->
+        <div class="form-group">
+          <input type="text" id="searchProduct" class="form-control" placeholder="Pesquisar pelo nome do produto" onkeyup="filterProducts()">
+        </div>
+        <table id="produtosTable" class="table table-bordered table-striped">
+          <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nome</th>
+            <th>Unidade</th>
+            <th>Ação</th>
+          </tr>
+          </thead>
+          <tbody>
+          <!-- Dados dinâmicos de produtos -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Jquery Core Js -->
+<script src="bsb/plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap Core Js -->
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<!-- Waves Effect Plugin Js -->
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<!-- Jquery DataTable Plugin Js -->
+<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+<!-- Axios for API requests -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<!-- Custom Script -->
+<script src="script/balanco.js"></script>
+
+<script>
+  function filterProducts() {
+    var input = document.getElementById("searchProduct");
+    var filter = input.value.toLowerCase();
+    var table = document.getElementById("produtosTable");
+    var tr = table.getElementsByTagName("tr");
+
+    for (var i = 1; i < tr.length; i++) { // Começa em 1 para ignorar o cabeçalho
+      var td = tr[i].getElementsByTagName("td")[1]; // Índice 1 é para o nome do produto
+      if (td) {
+        var txtValue = td.textContent || td.innerText;
+        tr[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+      }
+    }
+  }
+</script>
+
+</body>
+</html>

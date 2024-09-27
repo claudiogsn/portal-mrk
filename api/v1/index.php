@@ -1,4 +1,8 @@
 <?php
+header("Access-Control-Allow-Origin: *"); // Permitir todas as origens
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Métodos permitidos
+header("Access-Control-Allow-Headers: Content-Type, Authorization"); // Cabeçalhos permitidos
+header("Access-Control-Allow-Origin: http://localhost:3000");
 header('Content-Type: application/json; charset=utf-8');
 
 // Requerendo os controladores
@@ -13,6 +17,12 @@ require_once 'controllers/SalesController.php';
 require_once 'controllers/TransfersController.php';
 require_once 'controllers/ProductController.php';
 require_once 'controllers/CategoriesController.php';
+require_once 'controllers/MovimentacaoController.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 // Pegando o corpo da requisição
 $json = file_get_contents('php://input');
@@ -317,6 +327,16 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'listInsumos':
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductController::listInsumos($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+
             case 'updateCategoria':
                 if (isset($requestData['unit_id'])) { // Verifica se o unit_id está presente
                     if (isset($requestData['id'])) {
@@ -351,6 +371,70 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            // Métodos para ProductController
+            case 'createMovimentacao':
+                $response = MovimentacaoController::createMovimentacao($requestData);
+                break;
+
+            case 'createMovimentacaoMassa':
+                //$response = $requestData;
+                $response = MovimentacaoController::createMovimentacaoMassa($requestData);
+                break;
+
+            case 'updateMovimentacao':
+                if (isset($requestData['id']) && isset($requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::updateMovimentacao($requestData['id'], $requestData, $requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
+                }
+                break;
+
+            case 'getMovimentacaoById':
+                if (isset($requestData['id']) && isset($requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::getMovimentacaoById($requestData['id'], $requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
+                }
+                break;
+
+            case 'getMovimentacaoByDoc':
+                if (isset($requestData['doc']) && isset($requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::getMovimentacaoByDoc($requestData['system_unit_id'], $requestData['doc']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro doc ou system_unit_id ausente'];
+                }
+                break;
+
+            case 'deleteMovimentacao':
+                if (isset($requestData['id']) && isset($requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::deleteMovimentacao($requestData['id'], $requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
+                }
+                break;
+
+            case 'listMovimentacoes':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::listMovimentacoes($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
+                }
+                break;
+
+            case 'getLastMov':
+                if (isset($requestData['system_unit_id']) && isset($requestData['tipo'])) {
+                    $response = MovimentacaoController::getLastMov($requestData['system_unit_id'], $requestData['tipo']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou tipo ausente'];
                 }
                 break;
 

@@ -68,15 +68,5 @@ class InsumoController {
         }
     }
 
-    public static function listInsumos($system_unit_id) {
-        try {
-            global $pdo;
-            $stmt = $pdo->query("SELECT * FROM insumos WHERE system_unit_id = $system_unit_id");
-            $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return ['success' => true, 'insumos' => $insumos];
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao listar insumos: ' . $e->getMessage()];
-        }
-    }
 }
 ?>

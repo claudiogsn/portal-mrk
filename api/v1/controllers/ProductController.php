@@ -138,6 +138,17 @@ class ProductController {
         }
     }
 
+    public static function listInsumos($system_unit_id) {
+        try {
+            global $pdo;
+            $stmt = $pdo->query("SELECT * FROM products WHERE system_unit_id = $system_unit_id and insumo = 1");
+            $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return ['success' => true, 'insumos' => $insumos];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar insumos: ' . $e->getMessage()];
+        }
+    }
+
 
 }
 ?>

@@ -4,6 +4,10 @@
     <action>CompositionList</action>
     <icon>fas:clipboard-list fa-fw</icon>
   </menuitem>
+  <menuitem label="Balanco">
+    <action>Balanco</action>
+    <icon>fas:clipboard-list fa-fw</icon>
+  </menuitem>
   <menuitem label="_t{Administration}">
     <icon>fas:home fa-fw</icon>
     <menu>
