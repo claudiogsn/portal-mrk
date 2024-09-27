@@ -107,20 +107,18 @@ $(document).ready(function() {
     $('#finalizarLançamento').click(async function() {
         const movements = productsInBalance.map((product, index) => ({
             system_unit_id: unitId,
-            system_unit_id_destino: unitId,
             doc: currentDocNumber,
-            tipo: 'entrada', // Ajustar se necessário
-            produto: product.nome,
+            tipo: 'b',
+            produto: product.codigo,
             seq: index + 1,
             data: $('#currentDate').val(),
-            valor: 0, // Ajustar se necessário
             quantidade: product.quantidade,
             usuario_id: username
         }));
 
         try {
             const response = await axios.post(baseUrl, {
-                method: 'createMovimentacao',
+                method: 'createMovimentacaoMassa',
                 token: token,
                 data: movements
             });

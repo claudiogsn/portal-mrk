@@ -25,12 +25,15 @@ class ProductController {
         $composicao = $data['composicao'];
         $insumo = $data['insumo'];
         $system_unit_id = $data['system_unit_id'];
+        $preco_custo = isset($data['preco_custo']) ? $data['preco_custo'] : null; // Novo campo
+        $saldo = isset($data['saldo']) ? $data['saldo'] : null; // Novo campo
+        $ultimo_doc = isset($data['ultimo_doc']) ? $data['ultimo_doc'] : null; // Novo campo
 
         // Inserção no banco de dados com os novos campos
-        $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco, und, venda, composicao, insumo, system_unit_id) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco, und, venda, composicao, insumo, system_unit_id, preco_custo, saldo, ultimo_doc) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-        $stmt->execute([$codigo, $nome, $preco, $und, $venda, $composicao, $insumo, $system_unit_id]);
+        $stmt->execute([$codigo, $nome, $preco, $und, $venda, $composicao, $insumo, $system_unit_id, $preco_custo, $saldo, $ultimo_doc]);
 
         if ($stmt->rowCount() > 0) {
             return array('success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId());
@@ -39,15 +42,17 @@ class ProductController {
         }
     }
 
-
     public static function updateProduct($codigo, $data, $system_unit_id) {
         global $pdo;
 
         $sql = "UPDATE products SET ";
         $values = [];
         foreach ($data as $key => $value) {
-            $sql .= "$key = :$key, ";
-            $values[":$key"] = $value;
+            // Excluindo campos que não podem ser atualizados
+            if ($key != 'id' && $key != 'system_unit_id') {
+                $sql .= "$key = :$key, ";
+                $values[":$key"] = $value;
+            }
         }
         $sql = rtrim($sql, ", ");
         $sql .= " WHERE codigo = :codigo AND system_unit_id = :system_unit_id";
@@ -149,6 +154,28 @@ class ProductController {
         }
     }
 
+
+    public static function updateStockBalance($system_unit_id, $codigo, $saldo, $documento) {
+        global $pdo;
+
+        try {
+            // Atualiza o saldo do produto
+            $stmt = $pdo->prepare("UPDATE products SET saldo = :saldo, ultimo_doc = :documento WHERE system_unit_id = :system_unit_id AND codigo = :codigo");
+            $stmt->bindParam(':saldo', $saldo, PDO::PARAM_STR);
+            $stmt->bindParam(':documento', $documento, PDO::PARAM_STR);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(':codigo', $codigo, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                return array('success' => true, 'message' => 'Saldo atualizado com sucesso');
+            } else {
+                return array('success' => false, 'message' => 'Falha ao atualizar saldo');
+            }
+        } catch (Exception $e) {
+            return array('success' => false, 'message' => 'Erro ao atualizar saldo: ' . $e->getMessage());
+        }
+    }
 
 }
 ?>

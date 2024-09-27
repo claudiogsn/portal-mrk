@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
 
+
 class MovimentacaoController {
 
     // Criação de nova movimentação
@@ -26,17 +27,23 @@ class MovimentacaoController {
         $produto = $data['produto'];
         $seq = $data['seq'];
         $data_movimentacao = $data['data'];
-        $valor = isset($data['valor']) ? $data['valor'] : null;
+        $valor = isset($data['valor']) ? $data['valor'] : null; // A quantidade que deve ser adicionada ou subtraída
         $quantidade = $data['quantidade'];
         $usuario_id = $data['usuario_id'];
 
         // Inserção no banco de dados
         $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, valor, quantidade, usuario_id) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $produto, $seq, $data_movimentacao, $valor, $quantidade, $usuario_id]);
 
         if ($stmt->rowCount() > 0) {
+            // Atualiza o saldo do estoque após a movimentação
+            $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, $quantidade, $doc);
+            if (!$productResponse['success']) {
+                return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
+            }
+
             return array('success' => true, 'message' => 'Movimentação criada com sucesso', 'movimentacao_id' => $pdo->lastInsertId());
         } else {
             return array('success' => false, 'message' => 'Falha ao criar movimentação');
@@ -151,6 +158,7 @@ class MovimentacaoController {
         $stmt->bindParam(':tipo', $tipo, PDO::PARAM_INT);
         $stmt->execute();
         $movimentacao = $stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$movimentacao) return "b-000000";
         return $movimentacao['doc'];
 
     }
