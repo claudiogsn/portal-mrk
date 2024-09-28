@@ -46,40 +46,43 @@
     <div class="col-lg-3 col-md-3 col-sm-12">
       <div class="card">
         <div class="header">
-          <h2>Inventário</h2>
+          <h2>Modelo de Balanço</h2>
         </div>
         <div class="body">
-          <!-- Documento gerado automaticamente -->
+          <!-- Nome do modelo -->
           <div class="form-group">
-            <label for="documentNumber">Documento:</label>
-            <input type="text" id="documentNumber" class="form-control" readonly>
+            <label for="modelName">Nome do Modelo:</label>
+            <input type="text" id="modelName" class="form-control" oninput="generateTag()">
+          </div>
+          <!-- Tag do modelo -->
+          <div class="form-group">
+            <label for="modelTag">Tag:</label>
+            <input type="text" id="modelTag" class="form-control" readonly>
           </div>
           <!-- Data -->
           <div class="form-group">
             <label for="currentDate">Data:</label>
             <input type="date" id="currentDate" class="form-control">
           </div>
-          <!-- Removido botão para novo lançamento -->
         </div>
       </div>
     </div>
 
-    <!-- Lado Direito (Tabela de Produtos) -->
+    <!-- Lado Direito (Tabela de Categorias) -->
     <div class="col-lg-9 col-md-9 col-sm-12">
       <div class="card">
         <div class="header">
-          <h2>Balanço</h2> <!-- Alterado para "Balanço" -->
+          <h2>Balanço</h2>
         </div>
         <div class="body">
-          <button id="btnAddProduct" class="btn btn-primary" style="margin-bottom: 15px;">Adicionar Produto</button> <!-- Mover botão para cima -->
+          <button id="btnAddCategory" class="btn btn-primary" style="margin-bottom: 15px;">Adicionar Categorias</button>
           <div class="table-responsive">
             <table id="balancoTable" class="table table-bordered table-striped">
               <thead>
               <tr>
                 <th>Código</th>
-                <th>Produto</th>
+                <th>Categoria</th>
                 <th>Unidade</th>
-                <th>Quantidade</th>
                 <th>Ação</th>
               </tr>
               </thead>
@@ -93,25 +96,25 @@
       <!-- Rodapé com botões de ação -->
       <div class="footer text-right">
         <button id="limparBalanco" class="btn btn-warning">Limpar</button>
-        <button id="finalizarLançamento" class="btn btn-success">Finalizar lançamento</button>
+        <button id="finalizarLancamento" class="btn btn-success">Finalizar Lançamento</button> <!-- Botão para finalizar -->
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal para seleção de produtos -->
-<div class="modal fade" id="modalProduto" tabindex="-1" role="dialog">
+<!-- Modal para seleção de categorias -->
+<div class="modal fade" id="modalCategoria" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title">Selecionar Produto</h4>
+        <h4 class="modal-title">Selecionar Categoria</h4>
       </div>
       <div class="modal-body">
         <!-- Campo de pesquisa -->
         <div class="form-group">
-          <input type="text" id="searchProduct" class="form-control" placeholder="Pesquisar pelo nome do produto" onkeyup="filterProducts()">
+          <input type="text" id="searchCategory" class="form-control" placeholder="Pesquisar pela categoria" onkeyup="filterCategories()">
         </div>
-        <table id="produtosTable" class="table table-bordered table-striped">
+        <table id="categoriasTable" class="table table-bordered table-striped">
           <thead>
           <tr>
             <th>Código</th>
@@ -121,7 +124,7 @@
           </tr>
           </thead>
           <tbody>
-          <!-- Dados dinâmicos de produtos -->
+          <!-- Dados dinâmicos de categorias -->
           </tbody>
         </table>
       </div>
@@ -148,16 +151,24 @@
 <script src="script/balanco.js"></script>
 
 <script>
-  function filterProducts() {
-    var input = document.getElementById("searchProduct");
-    var filter = input.value.toLowerCase();
-    var table = document.getElementById("produtosTable");
-    var tr = table.getElementsByTagName("tr");
+  // Função para gerar a tag a partir do nome do modelo
+  function generateTag() {
+    const modelName = document.getElementById("modelName").value;
+    const modelTag = modelName.toLowerCase().replace(/\s+/g, '-');
+    document.getElementById("modelTag").value = modelTag;
+  }
 
-    for (var i = 1; i < tr.length; i++) { // Começa em 1 para ignorar o cabeçalho
-      var td = tr[i].getElementsByTagName("td")[1]; // Índice 1 é para o nome do produto
+  // Filtro para categorias
+  function filterCategories() {
+    const input = document.getElementById("searchCategory");
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById("categoriasTable");
+    const tr = table.getElementsByTagName("tr");
+
+    for (let i = 1; i < tr.length; i++) {
+      const td = tr[i].getElementsByTagName("td")[1]; // Nome da categoria
       if (td) {
-        var txtValue = td.textContent || td.innerText;
+        const txtValue = td.textContent || td.innerText;
         tr[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
       }
     }

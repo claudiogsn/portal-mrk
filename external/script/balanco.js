@@ -8,140 +8,134 @@ $(document).ready(function() {
     const unitId = urlParams.get('unit_id');
     const username = urlParams.get('username');
 
-    let currentDocNumber = ''; // Para armazenar o número do documento gerado
     let productsInBalance = []; // Array para armazenar produtos adicionados ao balanço
 
-    // Função para carregar o último número de lançamento
-    async function loadLastMovement() {
+    // Função para abrir modal e listar categorias
+    async function loadCategories() {
         try {
             const response = await axios.post(baseUrl, {
-                method: 'getLastMov',
-                token: token,
-                data: {
-                    system_unit_id: unitId,
-                    tipo: 'b'
-                }
-            });
-            currentDocNumber = generateNextDoc(response.data);
-            $('#documentNumber').val(currentDocNumber); // Corrigido para campo de entrada
-            $('#currentDate').val(new Date().toISOString().split('T')[0]); // Definindo a data de hoje
-        } catch (error) {
-            console.error('Erro ao carregar último lançamento:', error);
-        }
-    }
-
-    // Função para gerar o próximo número do documento
-    function generateNextDoc(lastDoc) {
-        let lastNumber = parseInt(lastDoc.split('-')[1], 10);
-        lastNumber++; // Incrementa o número
-        return `b-${String(lastNumber).padStart(5, '0')}`; // Retorna o novo número formatado
-    }
-
-    // Função para abrir modal e listar insumos
-    async function loadInsumos() {
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'listInsumos',
+                method: 'listProductsByCategory', // Endpoint atualizado
                 token: token,
                 data: { unit_id: unitId }
             });
-            populateInsumosModal(response.data.insumos);
+
+            // Verifique o que está sendo retornado
+            console.log('Response from API:', response.data);
+
+            // Verifique se a propriedade 'products_by_category' existe e é um array
+            if (response.data && response.data.success) {
+                const productsByCategory = response.data.products_by_category;
+
+                if (Array.isArray(productsByCategory)) {
+                    // Itera sobre cada categoria no array
+                    productsByCategory.forEach(category => {
+                        // Adiciona o nome da categoria na tabela
+                        $('#categoriasTable tbody').append(`<tr><td colspan="4"><strong>${category.categoria}</strong></td></tr>`);
+
+                        // Itera sobre os itens da categoria e adiciona à tabela
+                        category.itens.forEach(item => {
+                            $('#categoriasTable tbody').append(`
+                                <tr>
+                                    <td>${item.codigo}</td>
+                                    <td>${item.nome}</td>
+                                    <td>${item.und}</td>
+                                    <td><button class="btn btn-primary add-product" data-codigo="${item.codigo}" data-nome="${item.nome}" data-und="${item.und}">Adicionar</button></td>
+                                </tr>
+                            `);
+                        });
+                    });
+                }
+            }
         } catch (error) {
-            console.error('Erro ao listar insumos:', error);
+            console.error('Erro ao carregar categorias:', error);
         }
     }
 
-    // Função para popular o modal com a lista de insumos
-    function populateInsumosModal(insumos) {
-        const insumosTableBody = $('#produtosTable tbody');
-        insumosTableBody.empty(); // Limpa a tabela antes de adicionar novos dados
-        insumos.forEach(insumo => {
-            insumosTableBody.append(`
-                <tr>
-                    <td>${insumo.codigo}</td>
-                    <td>${insumo.nome}</td>
-                    <td>${insumo.und}</td>
-                    <td><button class="btn btn-primary" onclick="addProductToBalance('${insumo.codigo}', '${insumo.nome}', '${insumo.und}')">Adicionar</button></td>
-                </tr>
-            `);
-        });
-        $('#modalProduto').modal('show'); // Exibe o modal após popular a tabela
-    }
+    // Abrir o modal ao clicar em "Adicionar Categorias"
+    $('#btnAddCategory').click(function() {
+        // Limpar a tabela de categorias antes de carregar
+        $('#categoriasTable tbody').empty();
+        loadCategories(); // Carregar as categorias
+        $('#modalCategoria').modal('show'); // Mostrar o modal
+    });
 
-    // Função para adicionar produto ao balanço
-    window.addProductToBalance = function(codigo, nome, unidade) {
-        productsInBalance.push({ codigo, nome, unidade, quantidade: 0 }); // Adiciona produto ao array
-        updateBalanceTable();
-        $('#modalProduto').modal('hide'); // Fecha o modal
-    }
+    // Função para adicionar produtos ao balanço
+    $(document).on('click', '.add-product', function() {
+        const codigo = $(this).data('codigo');
+        const nome = $(this).data('nome');
+        const und = $(this).data('und');
 
-    // Função para atualizar a tabela do balanço
-    function updateBalanceTable() {
-        const balanceTableBody = $('#balancoTable tbody'); // ID corrigido
-        balanceTableBody.empty(); // Limpa a tabela antes de adicionar novos dados
-        productsInBalance.forEach((product, index) => {
-            balanceTableBody.append(`
-                <tr>
-                    <td>${product.codigo}</td>
-                    <td>${product.nome}</td>
-                    <td>${product.unidade}</td>
-                    <td><input type="number" value="${product.quantidade}" onchange="updateProductQuantity(${index}, this.value)" /></td>
-                    <td><button onclick="removeProductFromBalance(${index})">Excluir</button></td>
-                </tr>
-            `);
-        });
-    }
+        // Adiciona o produto ao array
+        productsInBalance.push({ codigo, nome, und });
 
-    // Função para atualizar a quantidade de um produto
-    window.updateProductQuantity = function(index, quantity) {
-        productsInBalance[index].quantidade = parseFloat(quantity); // Atualiza a quantidade
-    }
+        // Adiciona o produto à tabela do balanço
+        $('#balancoTable tbody').append(`
+            <tr>
+                <td>${codigo}</td>
+                <td>${nome}</td>
+                <td>${und}</td>
+                <td><button class="btn btn-danger remove-product">Remover</button></td>
+            </tr>
+        `);
 
-    // Função para remover produto do balanço
-    window.removeProductFromBalance = function(index) {
-        productsInBalance.splice(index, 1); // Remove o produto do array
-        updateBalanceTable(); // Atualiza a tabela
-    }
+        // Fecha o modal após adicionar
+        $('#modalCategoria').modal('hide');
+    });
+
+    // Função para remover produtos do balanço
+    $(document).on('click', '.remove-product', function() {
+        const row = $(this).closest('tr');
+        const codigo = row.find('td:first').text(); // Obtém o código do produto
+
+        // Remove o produto do array
+        productsInBalance = productsInBalance.filter(product => product.codigo !== codigo);
+
+        // Remove a linha da tabela
+        row.remove();
+    });
 
     // Função para finalizar o lançamento
-    $('#finalizarLançamento').click(async function() {
-        const movements = productsInBalance.map((product, index) => ({
-            system_unit_id: unitId,
-            doc: currentDocNumber,
-            tipo: 'b',
-            produto: product.codigo,
-            seq: index + 1,
-            data: $('#currentDate').val(),
-            quantidade: product.quantidade,
-            usuario_id: username
-        }));
+    $('#finalizarLancamento').click(async function() {
+        const modelName = $('#modelName').val();
+        const modelTag = $('#modelTag').val();
+        const currentDate = $('#currentDate').val();
 
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'createMovimentacaoMassa',
-                token: token,
-                data: movements
-            });
-            alert('Lançamento finalizado com sucesso!');
-            // Limpar tabela e resetar estado
-            productsInBalance = [];
-            updateBalanceTable();
-        } catch (error) {
-            console.error('Erro ao finalizar lançamento:', error);
-            alert('Erro ao finalizar lançamento. Tente novamente.');
+        if (modelName && modelTag && currentDate && productsInBalance.length > 0) {
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'createModelo', // Endpoint para finalizar balanço
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        nome: modelName,
+                        tag: modelTag,
+                        data: currentDate,
+                        usuario_id: username,
+                        itens: productsInBalance
+                    }
+                });
+
+                console.log('Finalização de Balanço:', response.data);
+
+                if (response.data.success) {
+                    alert('Lançamento finalizado com sucesso!');
+                    // Limpar tabela e campos
+                    $('#balancoTable tbody').empty();
+                    $('#modelName').val('');
+                    $('#modelTag').val('');
+                    $('#currentDate').val('');
+                    productsInBalance = []; // Limpa o array
+                } else {
+                    alert('Erro ao finalizar o lançamento: ' + response.data.message);
+                }
+            } catch (error) {
+                console.error('Erro ao finalizar lançamento:', error);
+            }
+        } else {
+            alert('Por favor, preencha todos os campos e adicione produtos ao balanço antes de finalizar.');
         }
     });
 
-    // Evento para inicializar o balanço
-    $('#btnNovoLancamento').click(function() {
-        console.log("Botão 'Novo Lançamento' foi clicado!");
-        loadLastMovement(); // Carrega o último movimento
-        $('#balanceSection').show(); // Mostra a seção do balanço
-    });
-
-    // Carregar a lista de insumos ao abrir o modal
-    $('#btnAddProduct').click(loadInsumos);
-
-    // Inicializa a tela ao carregar
-    loadLastMovement();
+    // Chamar função para carregar categorias
+    loadCategories();
 });

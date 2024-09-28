@@ -18,6 +18,7 @@ require_once 'controllers/TransfersController.php';
 require_once 'controllers/ProductController.php';
 require_once 'controllers/CategoriesController.php';
 require_once 'controllers/MovimentacaoController.php';
+require_once 'controllers/ModeloBalancoController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -85,6 +86,51 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
                 }
                     break;
+
+            // Métodos para ModeloBalancoController
+            case 'createModelo':
+                if (isset($requestData['nome']) && isset($requestData['usuario_id']) && isset($requestData['itens'])) {
+                    $response = ModeloBalancoController::createModelo($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes: nome, usuario_id ou itens'];
+                }
+                break;
+            case 'updateModelo':
+                if (isset($requestData['id'])) {
+                    $response = ModeloBalancoController::updateModelo($requestData['id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'deleteModelo':
+                if (isset($requestData['id'])) {
+                    $response = ModeloBalancoController::deleteModelo($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listModelos':
+                $response = ModeloBalancoController::listModelos();
+                break;
+            case 'listItensByModelo':
+                if (isset($requestData['id'])) {
+                    $response = ModeloBalancoController::listItensByModelo($requestData['id'], $requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'deleteItemFromModelo':
+                if (isset($requestData['modelo_id']) && isset($requestData['produto_id'])) {
+                    $response = ModeloBalancoController::deleteItemFromModelo($requestData['modelo_id'], $requestData['produto_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros modelo_id ou produto_id ausente'];
+                }
+                break;
 
             // Métodos para DashboardController
             case 'getDashboardData':
@@ -311,6 +357,16 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'listProducts':
                 if (isset($requestData['unit_id'])) {
                     $response = ProductController::listProducts($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+            case 'listProductsByCategory':
+                //print_r($requestData);
+                //exit();
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductController::listProductsByCategory($requestData['unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro unit_id ausente'];

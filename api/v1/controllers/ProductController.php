@@ -177,5 +177,63 @@ class ProductController {
         }
     }
 
+    public static function listProductsByCategory($system_unit_id) {
+        try {
+            global $pdo;
+
+            // Consulta SQL para listar produtos agrupados por categoria
+            $sql = "
+        SELECT 
+            c.id AS categoria_id,
+            c.nome AS categoria_nome,
+            p.codigo,
+            p.nome,
+            p.und
+        FROM products p
+        LEFT JOIN categorias c ON c.id = p.categ
+        WHERE p.system_unit_id = :system_unit_id
+        AND p.insumo = 1
+        ORDER BY c.nome, p.nome";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Agrupar produtos por categoria
+            $groupedProducts = [];
+            foreach ($products as $product) {
+                $categoria_id = $product['categoria_id'] ?: 0; // Usamos 0 se a categoria não for definida
+                $categoria_nome = $product['categoria_nome'] ?: 'Sem Categoria';
+
+                // Se a categoria ainda não foi adicionada ao array, inicializamos
+                if (!isset($groupedProducts[$categoria_id])) {
+                    $groupedProducts[$categoria_id] = [
+                        'id' => $categoria_id,
+                        'categoria' => $categoria_nome,
+                        'itens' => []
+                    ];
+                }
+
+                // Adicionamos o produto dentro da chave 'itens' da categoria
+                $groupedProducts[$categoria_id]['itens'][] = [
+                    'codigo' => $product['codigo'],
+                    'nome' => $product['nome'],
+                    'und' => $product['und']
+                ];
+            }
+
+            // Reorganizamos para retornar apenas os valores (sem as chaves de categoria)
+            $groupedProducts = array_values($groupedProducts);
+
+            return ['success' => true, 'products_by_category' => $groupedProducts];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar produtos por categoria: ' . $e->getMessage()];
+        }
+    }
+
+
 }
 ?>
