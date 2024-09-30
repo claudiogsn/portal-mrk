@@ -2,6 +2,8 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
+RewriteRule ^balanco/([a-zA-Z0-9-]+)/?$ balanco.php?tag=$1 [L]
+
 #Headers when using Apache with CGI/FastCGI
 SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
