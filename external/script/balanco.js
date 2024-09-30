@@ -1,4 +1,4 @@
-$(document).ready(function() {
+$(document).ready(function () {
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
         'http://localhost/portal-mrk/api/v1/index.php';
@@ -8,134 +8,272 @@ $(document).ready(function() {
     const unitId = urlParams.get('unit_id');
     const username = urlParams.get('username');
 
+    let categories = []; // Array para armazenar as categorias disponíveis
+    let selectedCategories = {}; // Objeto para armazenar as categorias e seus produtos selecionados
     let productsInBalance = []; // Array para armazenar produtos adicionados ao balanço
 
-    // Função para abrir modal e listar categorias
+    // Função para carregar as categorias e produtos
     async function loadCategories() {
         try {
             const response = await axios.post(baseUrl, {
-                method: 'listProductsByCategory', // Endpoint atualizado
+                method: 'listProductsByCategory',
                 token: token,
                 data: { unit_id: unitId }
             });
 
-            // Verifique o que está sendo retornado
-            console.log('Response from API:', response.data);
-
-            // Verifique se a propriedade 'products_by_category' existe e é um array
             if (response.data && response.data.success) {
-                const productsByCategory = response.data.products_by_category;
-
-                if (Array.isArray(productsByCategory)) {
-                    // Itera sobre cada categoria no array
-                    productsByCategory.forEach(category => {
-                        // Adiciona o nome da categoria na tabela
-                        $('#categoriasTable tbody').append(`<tr><td colspan="4"><strong>${category.categoria}</strong></td></tr>`);
-
-                        // Itera sobre os itens da categoria e adiciona à tabela
-                        category.itens.forEach(item => {
-                            $('#categoriasTable tbody').append(`
-                                <tr>
-                                    <td>${item.codigo}</td>
-                                    <td>${item.nome}</td>
-                                    <td>${item.und}</td>
-                                    <td><button class="btn btn-primary add-product" data-codigo="${item.codigo}" data-nome="${item.nome}" data-und="${item.und}">Adicionar</button></td>
-                                </tr>
-                            `);
-                        });
-                    });
-                }
+                categories = response.data.products_by_category;
+                renderCategoriesList();
             }
         } catch (error) {
             console.error('Erro ao carregar categorias:', error);
         }
     }
 
-    // Abrir o modal ao clicar em "Adicionar Categorias"
-    $('#btnAddCategory').click(function() {
-        // Limpar a tabela de categorias antes de carregar
-        $('#categoriasTable tbody').empty();
-        loadCategories(); // Carregar as categorias
-        $('#modalCategoria').modal('show'); // Mostrar o modal
+    // Função para renderizar a lista de categorias disponíveis (esquerda)
+    function renderCategoriesList() {
+        const categoriesList = $('#categoriesList');
+        categoriesList.empty();
+        categories.forEach(category => {
+            categoriesList.append(`
+                <li class="list-group-item category-item" data-category='${JSON.stringify(category)}'>
+                    <span>${category.categoria}</span>
+                </li>
+            `);
+        });
+    }
+
+    // Função para renderizar a lista de categorias selecionadas (direita)
+    function renderSelectedCategories() {
+        const selectedCategoriesList = $('#selectedCategoriesList');
+        selectedCategoriesList.empty();
+
+        Object.keys(selectedCategories).forEach(categoryName => {
+            const category = selectedCategories[categoryName];
+            selectedCategoriesList.append(`
+                <li class="list-group-item selected-category-item" data-category="${categoryName}">
+                    <strong>${categoryName}</strong>
+                    <div class="sub-items">
+                        <ul>
+                            ${category.itens.map(item => `
+                                <li>
+                                    <input type="checkbox" class="select-item" data-category="${categoryName}" data-codigo="${item.codigo}" ${item.selected ? 'checked' : ''}>
+                                    ${item.nome} (${item.und})
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </li>
+            `);
+        });
+    }
+
+    // Evento para adicionar/remover categoria à lista selecionada ao clicar
+    $(document).on('click', '.category-item', function () {
+        const category = JSON.parse($(this).attr('data-category'));
+
+        if (selectedCategories[category.categoria]) {
+            delete selectedCategories[category.categoria];
+        } else {
+            selectedCategories[category.categoria] = {
+                itens: category.itens.map(item => ({
+                    ...item,
+                    selected: true // Define os itens como selecionados ao adicionar a categoria inteira
+                }))
+            };
+        }
+        renderSelectedCategories();
     });
 
-    // Função para adicionar produtos ao balanço
-    $(document).on('click', '.add-product', function() {
-        const codigo = $(this).data('codigo');
-        const nome = $(this).data('nome');
-        const und = $(this).data('und');
+    // Evento para remover categoria da lista selecionada ao clicar
+    $(document).on('click', '.selected-category-item', function () {
+        const categoryName = $(this).attr('data-category');
+        delete selectedCategories[categoryName];
+        renderSelectedCategories();
+    });
 
-        // Adiciona o produto ao array
-        productsInBalance.push({ codigo, nome, und });
+    // Evento para selecionar/desmarcar um item específico
+    $(document).on('change', '.select-item', function () {
+        const categoryName = $(this).attr('data-category');
+        const codigo = $(this).attr('data-codigo');
+        const isChecked = $(this).is(':checked');
+        const item = selectedCategories[categoryName].itens.find(i => i.codigo == codigo);
+        if (item) {
+            item.selected = isChecked;
+        }
+    });
 
-        // Adiciona o produto à tabela do balanço
-        $('#balancoTable tbody').append(`
-            <tr>
-                <td>${codigo}</td>
-                <td>${nome}</td>
-                <td>${und}</td>
-                <td><button class="btn btn-danger remove-product">Remover</button></td>
-            </tr>
-        `);
+    // Abrir modal e carregar categorias
+    $('#btnAddCategory').click(function () {
+        loadCategories();
+        $('#modalCategoriaProduto').modal('show');
+    });
 
-        // Fecha o modal após adicionar
-        $('#modalCategoria').modal('hide');
+    // Confirmar adição de categorias e produtos
+    $('#btnConfirmarAdicionar').click(function () {
+        const itemsToAdd = [];
+        Object.keys(selectedCategories).forEach(categoryName => {
+            selectedCategories[categoryName].itens
+                .filter(item => item.selected)
+                .forEach(item => itemsToAdd.push(item));
+        });
+
+        // Adiciona os itens selecionados ao array e tabela do balanço
+        itemsToAdd.forEach(item => {
+            if (!productsInBalance.some(p => p.codigo === item.codigo)) {
+                productsInBalance.push(item);
+
+                $('#balancoTable tbody').append(`
+                    <tr>
+                        <td>${item.codigo}</td>
+                        <td>${item.nome}</td>
+                        <td>${item.und}</td>
+                        <td><button class="btn btn-danger remove-product" data-codigo="${item.codigo}">Remover</button></td>
+                    </tr>
+                `);
+            }
+        });
+
+        $('#modalCategoriaProduto').modal('hide');
     });
 
     // Função para remover produtos do balanço
-    $(document).on('click', '.remove-product', function() {
-        const row = $(this).closest('tr');
-        const codigo = row.find('td:first').text(); // Obtém o código do produto
+    $(document).on('click', '.remove-product', function () {
+        const codigo = $(this).data('codigo');
 
         // Remove o produto do array
         productsInBalance = productsInBalance.filter(product => product.codigo !== codigo);
 
         // Remove a linha da tabela
-        row.remove();
+        $(this).closest('tr').remove();
+    });
+
+    // Função para validar a tag
+    async function validateTag(tag) {
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'validateTagExists',
+                token: token,
+                data: { tag: tag }
+            });
+
+            return response.data.success;
+        } catch (error) {
+            console.error('Erro ao validar a tag:', error);
+            return false;
+        }
+    }
+
+    // Função para gerar a tag a partir do nome do modelo e atualizar a URL
+    window.generateTag = async function () {
+        const modelName = $('#modelName').val().trim();
+        const modelTag = `${unitId}-${modelName.toLowerCase().replace(/\s+/g, '-')}`;
+        const modelUrl = `https://portal.mrksolucoes.com.br/balanco?tag=${modelTag}`;
+
+        $('#modelTag').val(modelTag);
+        $('#modelUrl').val(modelUrl);
+
+        const isValid = await validateTag(modelTag);
+        if (!isValid) {
+            $('#tagValidationMessage').show();
+            $('#finalizarLancamento').prop('disabled', true);
+        } else {
+            $('#tagValidationMessage').hide();
+            $('#finalizarLancamento').prop('disabled', false);
+        }
+    };
+
+    // Copiar URL para a área de transferência
+    $('#btnCopyUrl').click(function () {
+        const url = $('#modelUrl').val();
+        navigator.clipboard.writeText(url).then(() => {
+            alert('URL copiada para a área de transferência');
+        }).catch(err => {
+            console.error('Erro ao copiar URL:', err);
+        });
+    });
+
+    // Compartilhar URL via WhatsApp
+    $('#btnShareWhatsapp').click(function () {
+        const url = $('#modelUrl').val();
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent('Confira o modelo de balanço: ' + url)}`;
+        window.open(whatsappUrl, '_blank');
     });
 
     // Função para finalizar o lançamento
-    $('#finalizarLancamento').click(async function() {
+    $('#finalizarLancamento').click(async function () {
         const modelName = $('#modelName').val();
         const modelTag = $('#modelTag').val();
-        const currentDate = $('#currentDate').val();
 
-        if (modelName && modelTag && currentDate && productsInBalance.length > 0) {
+        if (modelName && modelTag && productsInBalance.length > 0) {
+            // Exibir spinner de carregamento
+            $('#pageLoader').show();
+
             try {
                 const response = await axios.post(baseUrl, {
-                    method: 'createModelo', // Endpoint para finalizar balanço
+                    method: 'createModelo',
                     token: token,
                     data: {
                         system_unit_id: unitId,
                         nome: modelName,
                         tag: modelTag,
-                        data: currentDate,
                         usuario_id: username,
                         itens: productsInBalance
                     }
                 });
 
-                console.log('Finalização de Balanço:', response.data);
-
                 if (response.data.success) {
-                    alert('Lançamento finalizado com sucesso!');
                     // Limpar tabela e campos
                     $('#balancoTable tbody').empty();
                     $('#modelName').val('');
                     $('#modelTag').val('');
-                    $('#currentDate').val('');
-                    productsInBalance = []; // Limpa o array
+                    $('#modelUrl').val('');
+                    productsInBalance = [];
+                    selectedCategories = {};
+                    renderSelectedCategories(); // Limpa a lista de categorias selecionadas
+                    $('#finalizarLancamento').prop('disabled', true);
+
+                    // Mostrar modal de sucesso do AdminBSB
+                    showDialog('Lançamento finalizado com sucesso!', 'success');
                 } else {
-                    alert('Erro ao finalizar o lançamento: ' + response.data.message);
+                    showDialog('Erro ao finalizar o lançamento: ' + response.data.message, 'danger');
                 }
             } catch (error) {
                 console.error('Erro ao finalizar lançamento:', error);
+                showDialog('Erro ao finalizar lançamento. Tente novamente.', 'danger');
+            } finally {
+                // Ocultar spinner de carregamento
+                $('#pageLoader').hide();
             }
         } else {
-            alert('Por favor, preencha todos os campos e adicione produtos ao balanço antes de finalizar.');
+            showDialog('Por favor, preencha todos os campos e adicione produtos ao balanço antes de finalizar.', 'warning');
         }
     });
 
-    // Chamar função para carregar categorias
+    // Função para mostrar o diálogo de mensagem usando AdminBSB
+    // Função para mostrar o diálogo de mensagem usando SweetAlert
+    function showDialog(message, type) {
+        Swal.fire({
+            title: type === 'success' ? "Sucesso" : "Erro",
+            text: message,
+            icon: type,
+            confirmButtonText: "OK",
+        });
+    }
+
+
+    // Função para limpar todos os campos e variáveis ao clicar em "Limpar"
+    $('#limparBalanco').click(function () {
+        $('#balancoTable tbody').empty();
+        $('#modelName').val('');
+        $('#modelTag').val('');
+        $('#modelUrl').val('');
+        productsInBalance = [];
+        selectedCategories = {};
+        renderSelectedCategories();
+        $('#finalizarLancamento').prop('disabled', true);
+        console.log('Balanço limpo!');
+    });
+
     loadCategories();
 });

@@ -6,7 +6,7 @@ class Balanco extends TPage
     {
         parent::__construct();
 
-        $username = TSession::getValue('username');
+        $username = TSession::getValue('userid');
         $token = TSession::getValue('sessionid');
         $unit_id = TSession::getValue('userunitid');
 

@@ -209,5 +209,29 @@ class ModeloBalancoController {
             self::sendResponse(false, 'Erro ao remover item: ' . $e->getMessage(), [], 500);
         }
     }
+
+    public static function validateTagExists($tag) {
+        global $pdo;
+
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM modelos_balanco WHERE tag = :tag");
+            $stmt->bindParam(':tag', $tag, PDO::PARAM_STR);
+            $stmt->execute();
+
+            $count = $stmt->fetchColumn();
+
+            if ($count > 0) {
+                // Retorna true indicando que a tag já existe
+                self::sendResponse(false, "A tag já existe.", [], 200);
+            } else {
+                // Retorna false indicando que a tag não existe
+                self::sendResponse(true, "A tag não existe.", [], 200);
+            }
+
+        } catch (Exception $e) {
+            self::sendResponse(false, 'Erro ao validar a tag: ' . $e->getMessage(), [], 500);
+        }
+    }
+
 }
 ?>

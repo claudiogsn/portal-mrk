@@ -494,6 +494,16 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'validateTagExists':
+                if (isset($requestData['tag'])) {
+                    $response = ModeloBalancoController::validateTagExists($requestData['tag']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro tag ausente'];
+                }
+                break;
+
+
 
             default:
                 http_response_code(405);

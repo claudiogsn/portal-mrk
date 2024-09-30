@@ -6,7 +6,6 @@
   <title>Balanço de Estoque</title>
   <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
   <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
   <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
   <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
   <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
@@ -14,61 +13,99 @@
   <link href="bsb/css/style.css" rel="stylesheet">
   <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
   <style>
+    /* Estilo padrão para os inputs */
+    input.form-control {
+      border: 1px solid #585858; /* Adiciona uma borda leve */
+      padding: 10px;
+      transition: border-color 0.3s, box-shadow 0.3s; /* Suaviza a transição da borda e do brilho */
+    }
+
+    /* Efeito quando o input está em foco */
+    input.form-control:focus {
+      border-color: #3f51b5; /* Altera a cor da borda ao focar no input */
+      box-shadow: 0 0 8px rgba(63, 81, 181, 0.6); /* Adiciona um brilho leve */
+      outline: none; /* Remove o outline padrão do navegador */
+    }
+
+    .modal-body {
+      max-height: 500px; /* Define a altura máxima do conteúdo do modal */
+      overflow-y: auto; /* Adiciona a barra de rolagem vertical */
+    }
+
     @media (max-width: 768px) {
       .container-fluid {
         display: flex;
-        flex-direction: column; /* Empilhar os elementos */
+        flex-direction: column;
       }
       .col-lg-3, .col-md-3 {
-        order: 1; /* Mover o bloco esquerdo para cima */
-        width: 100%; /* Ajustar largura */
+        order: 1;
+        width: 100%;
       }
       .col-lg-9, .col-md-9 {
-        order: 2; /* Mover o bloco direito para baixo */
-        width: 100%; /* Ajustar largura */
+        order: 2;
+        width: 100%;
       }
     }
-    /* Adicionando espaçamento ao topo */
+
     .card {
-      margin-top: 20px; /* Espaçamento superior */
+      margin-top: 20px;
     }
     .header {
-      margin-bottom: 15px; /* Espaçamento abaixo do cabeçalho */
+      margin-bottom: 15px;
     }
   </style>
 </head>
 <body class="theme-blue">
 
-<!-- Conteúdo da página -->
+  <!-- Spinner de carregamento -->
+<div id="pageLoader" class="page-loader-wrapper" style="display: none;">
+  <div class="loader">
+      <div class="preloader">
+          <div class="spinner-layer pl-blue">
+              <div class="circle-clipper left">
+                  <div class="circle"></div>
+              </div>
+              <div class="circle-clipper right">
+                  <div class="circle"></div>
+              </div>
+          </div>
+      </div>
+      <p>Carregando...</p>
+  </div>
+</div>
+
 <div class="container-fluid">
   <div class="row clearfix">
-    <!-- Lado Esquerdo (Formulário) -->
     <div class="col-lg-3 col-md-3 col-sm-12">
       <div class="card">
         <div class="header">
           <h2>Modelo de Balanço</h2>
         </div>
         <div class="body">
-          <!-- Nome do modelo -->
           <div class="form-group">
             <label for="modelName">Nome do Modelo:</label>
-            <input type="text" id="modelName" class="form-control" oninput="generateTag()">
+            <input style="border: 1px solid #ccc;" type="text" id="modelName" class="form-control" autocomplete="off" oninput="generateTag()">
           </div>
-          <!-- Tag do modelo -->
           <div class="form-group">
             <label for="modelTag">Tag:</label>
-            <input type="text" id="modelTag" class="form-control" readonly>
+            <input style="border: 1px solid #ccc;" type="text" id="modelTag" class="form-control" autocomplete="off" readonly>
+            <span id="tagValidationMessage" style="color: red; display: none;">Tag já existe. Escolha outro nome.</span>
           </div>
-          <!-- Data -->
+          <!-- Campo para URL -->
           <div class="form-group">
-            <label for="currentDate">Data:</label>
-            <input type="date" id="currentDate" class="form-control">
+            <label for="modelUrl">URL:</label>
+            <div class="input-group">
+              <input type="text" id="modelUrl" class="form-control" readonly>
+              <div class="input-group-append">
+                <button id="btnCopyUrl" class="btn btn-secondary" type="button">Copiar</button>
+                <button id="btnShareWhatsapp" class="btn btn-success" type="button">Compartilhar</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Lado Direito (Tabela de Categorias) -->
     <div class="col-lg-9 col-md-9 col-sm-12">
       <div class="card">
         <div class="header">
@@ -87,93 +124,59 @@
               </tr>
               </thead>
               <tbody>
-              <!-- Dados dinâmicos -->
               </tbody>
             </table>
           </div>
         </div>
       </div>
-      <!-- Rodapé com botões de ação -->
       <div class="footer text-right">
         <button id="limparBalanco" class="btn btn-warning">Limpar</button>
-        <button id="finalizarLancamento" class="btn btn-success">Finalizar Lançamento</button> <!-- Botão para finalizar -->
+        <button id="finalizarLancamento" class="btn btn-success" disabled>Finalizar Lançamento</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal para seleção de categorias -->
-<div class="modal fade" id="modalCategoria" tabindex="-1" role="dialog">
+<div class="modal fade" id="modalCategoriaProduto" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h4 class="modal-title">Selecionar Categoria</h4>
+        <h4 class="modal-title">Adicionar Categoria/Produto</h4>
       </div>
       <div class="modal-body">
-        <!-- Campo de pesquisa -->
-        <div class="form-group">
-          <input type="text" id="searchCategory" class="form-control" placeholder="Pesquisar pela categoria" onkeyup="filterCategories()">
+        <div class="row">
+          <div class="col-md-5">
+            <h5>Todas</h5>
+            <input type="text" id="searchCategoriesLeft" class="form-control" placeholder="Buscar...">
+            <ul id="categoriesList" class="list-group">
+            </ul>
+          </div>
+
+          <div class="col-md-7">
+            <h5>Selecionadas</h5>
+            <ul id="selectedCategoriesList" class="list-group">
+            </ul>
+          </div>
         </div>
-        <table id="categoriasTable" class="table table-bordered table-striped">
-          <thead>
-          <tr>
-            <th>Código</th>
-            <th>Nome</th>
-            <th>Unidade</th>
-            <th>Ação</th>
-          </tr>
-          </thead>
-          <tbody>
-          <!-- Dados dinâmicos de categorias -->
-          </tbody>
-        </table>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Fechar</button>
+        <button id="btnConfirmarAdicionar" type="button" class="btn btn-primary">Adicionar</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Jquery Core Js -->
 <script src="bsb/plugins/jquery/jquery.min.js"></script>
-<!-- Bootstrap Core Js -->
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<!-- Waves Effect Plugin Js -->
 <script src="bsb/plugins/node-waves/waves.js"></script>
-<!-- Jquery DataTable Plugin Js -->
 <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
 <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
-<!-- Axios for API requests -->
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<!-- Custom Script -->
 <script src="script/balanco.js"></script>
-
-<script>
-  // Função para gerar a tag a partir do nome do modelo
-  function generateTag() {
-    const modelName = document.getElementById("modelName").value;
-    const modelTag = modelName.toLowerCase().replace(/\s+/g, '-');
-    document.getElementById("modelTag").value = modelTag;
-  }
-
-  // Filtro para categorias
-  function filterCategories() {
-    const input = document.getElementById("searchCategory");
-    const filter = input.value.toLowerCase();
-    const table = document.getElementById("categoriasTable");
-    const tr = table.getElementsByTagName("tr");
-
-    for (let i = 1; i < tr.length; i++) {
-      const td = tr[i].getElementsByTagName("td")[1]; // Nome da categoria
-      if (td) {
-        const txtValue = td.textContent || td.innerText;
-        tr[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? "" : "none";
-      }
-    }
-  }
-</script>
 
 </body>
 </html>
