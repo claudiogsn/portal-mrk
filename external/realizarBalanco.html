@@ -31,6 +31,12 @@
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
 
     <style>
+        .card {
+      margin-top: 20px;
+    }
+    .header {
+      margin-bottom: 15px;
+    }
         .page-loader-wrapper {
             position: fixed;
             top: 0;
@@ -127,8 +133,7 @@
                         <table id="itensTable" class="table table-bordered table-striped">
                             <thead>
                                 <tr>
-                                    <th>Código</th>
-                                    <th>Nome Produto</th>
+                                    <th>Nome do Produto</th>
                                     <th>Unidade</th>
                                     <th>Quantidade</th>
                                 </tr>
@@ -209,8 +214,7 @@
                 itens.forEach((item, index) => {
                     tbody.append(`
                         <tr>
-                            <td>${item.codigo_produto}</td>
-                            <td>${item.nome_produto}</td>
+                            <td>${item.nome_produto} <br></br><span style="font-weight: bold; color: #888;">(Código: ${item.codigo_produto})</span></td>
                             <td>${item.und_produto}</td>
                             <td><input type="text" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
                         </tr>
@@ -219,7 +223,7 @@
 
                 // Aplicar a máscara de quantidade em cada input conforme o tipo de unidade
                 $('.quantidade').each(function () {
-                    const unidade = $(this).closest('tr').find('td:nth-child(3)').text();
+                    const unidade = $(this).closest('tr').find('td:nth-child(2)').text();
                     if (['KG', 'LT', 'L'].includes(unidade)) {
                         $(this).on('input', function () {
                             let valor = $(this).val().replace(/\D/g, '');
@@ -252,7 +256,7 @@
 
                 const itens = [];
                 $('#itensTable tbody tr').each(function () {
-                    const codigo_produto = $(this).find('td:first').text();
+                    const codigo_produto = $(this).find('.quantidade').data('id');
                     const quantidade = $(this).find('.quantidade').val();
                     const seq = $(this).find('.quantidade').data('seq');
                     if (quantidade) {
