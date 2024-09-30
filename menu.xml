@@ -5,8 +5,16 @@
     <icon>fas:clipboard-list fa-fw</icon>
   </menuitem>
   <menuitem label="Balanco">
-    <action>Balanco</action>
     <icon>fas:clipboard-list fa-fw</icon>
+    <menu>
+      <menuitem label="Modelo de Balanço">
+        <action>ListBalanco</action>
+        <icon>fas:clipboard-list fa-fw</icon>
+      </menuitem>
+      <menuitem label="Criar Modelo de Balanco">
+        <action>CreateBalanco</action>
+        <icon>fas:clipboard-list fa-fw</icon>
+      </menuitem>
   </menuitem>
   <menuitem label="_t{Administration}">
     <icon>fas:home fa-fw</icon>

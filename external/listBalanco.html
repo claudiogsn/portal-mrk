@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Modelos de Balanço</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- JQuery DataTable Css -->
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <style>
+        .status-active {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: red;
+            font-weight: bold;
+        }
+
+        .card {
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            margin-bottom: 20px;
+        }
+
+        .modal-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        #filterStatus {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+    
+    </style>
+</head>
+
+<body class="theme-red">
+
+    <div class="container-fluid">
+        <div class="row clearfix">
+            <div class="col-lg-12 col-md-12 col-sm-12">
+                <div class="header d-flex align-items-center" style="justify-content: space-between;">
+                    <h2>Modelos de Balanço</h2>
+                    <div class="d-flex align-items-center" style="margin-bottom: 20px;">
+                        <select id="filterStatus" class="form-control" style="width: 150px; margin-right: 10px;">
+                            <option value="all">Todos</option>
+                            <option value="1">Ativos</option>
+                            <option value="0">Inativos</option>
+                        </select>
+                        <button id="btnNovoModelo" class="btn btn-primary waves-effect">Novo Modelo</button>
+                    </div>
+                </div>
+                <div id="cardsContainer" class="row clearfix">
+                    <!-- Conteúdo dos cards será inserido aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes -->
+    <div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modalTitle">Detalhes do Balanço</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table id="detalhesTable" class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nome Produto</th>
+                                    <th>Unidade</th>
+                                    <th>Código Produto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Conteúdo Dinâmico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <!-- Bootstrap Core Js -->
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Waves Effect Plugin Js -->
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <!-- SweetAlert Plugin Js -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function () {
+            const baseUrl = window.location.hostname !== 'localhost' ?
+                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+                'http://localhost/portal-mrk/api/v1/index.php';
+
+            const baseUrlRedirect = window.location.hostname !== 'localhost' ?
+                'https://portal.mrksolucoes.com.br' :
+                'http://localhost/portal-mrk';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const unitId = urlParams.get('unit_id');
+            const username = urlParams.get('username');
+
+            async function loadModelos() {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'listModelosWithProducts',
+                        token: token,
+                        data: { unit_id: unitId }
+                    });
+
+                    if (response.data && response.data.success) {
+                        renderCards(response.data.modelos);
+                    } else {
+                        Swal.fire("Erro", "Falha ao carregar modelos: " + response.data.message, "error");
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar modelos:', error);
+                    Swal.fire("Erro", "Erro ao carregar modelos. Tente novamente.", "error");
+                }
+            }
+
+            function renderCards(modelos) {
+                const container = $('#cardsContainer');
+                container.empty();
+
+                modelos.forEach(modelo => {
+                    const statusClass = modelo.ativo ? 'status-active' : 'status-inactive';
+                    const statusText = modelo.ativo ? 'Ativado' : 'Desativado';
+                    const cardHtml = `
+                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                            <div class="card ${modelo.ativo ? 'active' : 'inactive'}" data-tag="${modelo.tag}">
+                                <div class="header">
+                                    <h2>
+                                        ${modelo.nome} <small>${modelo.tag}</small>
+                                        <small>https://portal.mrksolucoes.com.br/balanco/${modelo.tag}</small>
+                                    </h2>
+                                    <ul class="header-dropdown m-r--5">
+                                        <li>
+                                            <a href="javascript:void(0);" class="btn-toggle-status" data-tag="${modelo.tag}" data-status="${modelo.ativo ? 0 : 1}">
+                                                <i class="material-icons">${modelo.ativo ? 'toggle_off' : 'toggle_on'}</i>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="https://wa.me/?text=${encodeURIComponent('Confira o modelo de balanço: https://portal.mrksolucoes.com.br/balanco/' + modelo.tag)}" target="_blank">
+                                                <i class="material-icons">share</i>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="body">
+                                    Criado por: ${modelo.usuario_login}<br>
+                                    Criado em: ${new Date(modelo.created_at).toLocaleDateString('pt-BR')}<br>
+                                    Atualizado em: ${new Date(modelo.updated_at).toLocaleDateString('pt-BR')}<br>
+                                    Contagem de Itens do Modelo: ${modelo.itens.length}<br>
+                                    Status: <span class="${statusClass}">${statusText}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(cardHtml);
+                });
+            }
+
+            // Abrir detalhes ao clicar no card
+            $(document).on('click', '.card', function (e) {
+                if ($(e.target).closest('.header-dropdown').length) {
+                    return; // Evitar que o clique nos ícones de ação abra o modal
+                }
+                const tag = $(this).data('tag');
+                showDetalhes(tag);
+            });
+
+            // Exibir o modal de detalhes
+            async function showDetalhes(tag) {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getModelByTag',
+                        token: token,
+                        data: { tag }
+                    });
+
+                    if (response.data && response.data.success) {
+                        const modelo = response.data.modelo;
+                        const itens = response.data.itens;
+
+                        $('#modalTitle').text(`Detalhes do Balanço: ${modelo.nome}`);
+                        const tbody = $('#detalhesTable tbody');
+                        tbody.empty();
+
+                        if (Array.isArray(itens) && itens.length > 0) {
+                            itens.forEach(item => {
+                                const row = `
+                                    <tr>
+                                        <td>${item.nome_produto}</td>
+                                        <td>${item.und_produto}</td>
+                                        <td>${item.codigo_produto}</td>
+                                    </tr>
+                                `;
+                                tbody.append(row);
+                            });
+                        } else {
+                            tbody.append(`
+                                <tr>
+                                    <td colspan="3" class="text-center">Nenhum item encontrado para este modelo.</td>
+                                </tr>
+                            `);
+                        }
+
+                        $('#modalDetalhes').modal('show');
+                    } else {
+                        Swal.fire("Erro", "Erro ao carregar detalhes do modelo: " + response.data.message, "error");
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar detalhes:', error);
+                    Swal.fire("Erro", "Erro ao carregar detalhes. Tente novamente.", "error");
+                }
+            }
+
+            // Alterar o status de um modelo (ativar/desativar)
+            $(document).on('click', '.btn-toggle-status', async function (e) {
+                e.stopPropagation();
+                const tag = $(this).data('tag');
+                const status = $(this).data('status');
+
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'toggleModeloStatus',
+                        token: token,
+                        data: {
+                            unit_id: unitId,
+                            tag: tag,
+                            status: status
+                        }
+                    });
+
+                    if (response.data && response.data.success) {
+                        Swal.fire("Sucesso", response.data.message, "success").then(() => {
+                            loadModelos(); // Recarregar os modelos para atualizar o status
+                        });
+                    } else {
+                        Swal.fire("Erro", "Erro ao atualizar status: " + response.data.message, "error");
+                    }
+                } catch (error) {
+                    console.error('Erro ao atualizar status:', error);
+                    Swal.fire("Erro", "Erro ao atualizar status. Tente novamente.", "error");
+                }
+            });
+
+            // Evento para o botão "Novo Modelo"
+            $('#btnNovoModelo').click(function () {
+                window.location.href = `${baseUrlRedirect}/external/createBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
+            });
+
+            // Evento para o filtro de status
+            $('#filterStatus').change(function () {
+                const status = $(this).val();
+                if (status === 'all') {
+                    $('.card').show();
+                } else {
+                    $('.card').hide();
+                    $(`.card.${status === '1' ? 'active' : 'inactive'}`).show();
+                }
+            });
+
+            // Carregar os modelos ao iniciar a página
+            loadModelos();
+        });
+    </script>
+</body>
+
+</html>

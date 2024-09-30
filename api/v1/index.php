@@ -380,6 +380,26 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+
+            case 'listModelosWithProducts':
+                if (isset($requestData['unit_id'])) {
+                    $response = ModeloBalancoController::listModelosWithProducts($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+                case 'toggleModeloStatus':
+                    if (isset($requestData['unit_id'])) {
+                        $response = ModeloBalancoController::toggleModeloStatus($requestData['unit_id'],$requestData['tag'],$requestData['status']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro ausentes'];
+                    }
+                    break;
+
+
             case 'listProductsByCategory':
                 //print_r($requestData);
                 //exit();

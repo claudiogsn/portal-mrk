@@ -284,6 +284,91 @@ class ModeloBalancoController {
             self::sendResponse(false, 'Erro ao buscar modelo por tag: ' . $e->getMessage(), [], 500);
         }
     }
+
+
+    public static function listModelosWithProducts($system_unit_id) {
+        global $pdo;
+    
+        try {
+            // Buscar todos os modelos de balanço pelo system_unit_id e os dados do usuário que criou o modelo
+            $sql = "
+                SELECT mb.*, u.login AS usuario_login
+                FROM modelos_balanco mb
+                LEFT JOIN system_users u ON mb.usuario_id = u.id
+                WHERE mb.system_unit_id = :system_unit_id
+            ";
+    
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $modelos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            if (!$modelos) {
+                self::sendResponse(false, 'Nenhum modelo encontrado.', [], 404); // 404 Not Found
+            }
+    
+            // Buscar os produtos associados a cada modelo
+            $modelosComProdutos = [];
+            foreach ($modelos as $modelo) {
+                $modelo_id = $modelo['id'];
+    
+                $stmtItens = $pdo->prepare("
+                    SELECT mbi.*, p.nome AS nome_produto, p.und AS und_produto, p.codigo AS codigo_produto
+                    FROM modelos_balanco_itens mbi
+                    LEFT JOIN products p ON mbi.id_produto = p.id AND mbi.system_unit_id = p.system_unit_id
+                    WHERE mbi.id_modelo = :modelo_id AND mbi.system_unit_id = :system_unit_id
+                ");
+                $stmtItens->bindParam(':modelo_id', $modelo_id, PDO::PARAM_INT);
+                $stmtItens->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmtItens->execute();
+                $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+    
+                // Adicionar os itens ao modelo atual
+                $modelo['itens'] = $itens;
+                $modelosComProdutos[] = $modelo;
+            }
+    
+            // Retornar os modelos e seus produtos
+            self::sendResponse(true, 'Modelos com produtos listados com sucesso.', ['modelos' => $modelosComProdutos], 200); // 200 OK
+    
+        } catch (Exception $e) {
+            self::sendResponse(false, 'Erro ao listar modelos com produtos: ' . $e->getMessage(), [], 500);
+        }
+    }
+
+
+    public static function toggleModeloStatus($system_unit_id, $tag, $status) {
+        global $pdo;
+    
+        try {
+            // Validar o status recebido (deve ser 0 ou 1)
+            if (!in_array($status, [0, 1])) {
+                self::sendResponse(false, "O valor de status deve ser 0 (inativo) ou 1 (ativo).", [], 400); // 400 Bad Request
+            }
+    
+            // Atualizar o status do modelo de balanço com base no system_unit_id e tag
+            $stmt = $pdo->prepare("
+                UPDATE modelos_balanco
+                SET ativo = :status
+                WHERE system_unit_id = :system_unit_id AND tag = :tag
+            ");
+            $stmt->bindParam(':status', $status, PDO::PARAM_INT);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(':tag', $tag, PDO::PARAM_STR);
+            $stmt->execute();
+    
+            if ($stmt->rowCount() > 0) {
+                self::sendResponse(true, 'success', [], 200); // 200 OK
+            } else {
+                self::sendResponse(false, 'Nenhum modelo encontrado com a tag e system_unit_id fornecidos.', [], 404); // 404 Not Found
+            }
+    
+        } catch (Exception $e) {
+            self::sendResponse(false, 'Erro ao atualizar status do modelo: ' . $e->getMessage(), [], 500);
+        }
+    }
+    
+    
     
 
 }

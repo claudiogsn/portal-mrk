@@ -99,6 +99,7 @@
               <div class="input-group-append">
                 <button id="btnCopyUrl" class="btn btn-secondary" type="button">Copiar</button>
                 <button id="btnShareWhatsapp" class="btn btn-success" type="button">Compartilhar</button>
+                <button id="btnListModelo" class="btn btn-primary waves-effect">Lista de Modelos</button>
               </div>
             </div>
           </div>
@@ -181,6 +182,11 @@
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
         'http://localhost/portal-mrk/api/v1/index.php';
+
+
+    const baseUrlRedirect = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br' :
+            'http://localhost/portal-mrk';
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -423,6 +429,7 @@
             } finally {
                 // Ocultar spinner de carregamento
                 $('#pageLoader').hide();
+                window.location.href = `${baseUrlRedirect}/external/listBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
             }
         } else {
             showDialog('Por favor, preencha todos os campos e adicione produtos ao balanço antes de finalizar.', 'warning');
@@ -439,6 +446,11 @@
             confirmButtonText: "OK",
         });
     }
+
+    // Evento para o botão "Novo Modelo"
+    $('#btnListModelo').click(function () {
+                window.location.href = `${baseUrlRedirect}/external/listBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
+            });
 
 
     // Função para limpar todos os campos e variáveis ao clicar em "Limpar"
