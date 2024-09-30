@@ -15,6 +15,7 @@
         <action>CreateBalanco</action>
         <icon>fas:clipboard-list fa-fw</icon>
       </menuitem>
+    </menu>
   </menuitem>
   <menuitem label="_t{Administration}">
     <icon>fas:home fa-fw</icon>
