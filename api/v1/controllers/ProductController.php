@@ -174,6 +174,7 @@ class ProductController {
             }
         } catch (Exception $e) {
             return array('success' => false, 'message' => 'Erro ao atualizar saldo: ' . $e->getMessage());
+            
         }
     }
 

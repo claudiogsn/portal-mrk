@@ -233,5 +233,58 @@ class ModeloBalancoController {
         }
     }
 
+
+    public static function getModelByTag($tag) {
+        global $pdo;
+    
+        try {
+            // Extrair system_unit_id e tag do valor recebido
+            if (strpos($tag, '-') === false) {
+                self::sendResponse(false, "Formato de tag inválido.", [], 400);
+            }
+    
+            list($system_unit_id, $actual_tag) = explode('-', $tag, 2);
+
+           // print_r($system_unit_id);
+            //print_r($actual_tag);
+            //exit;
+    
+            // Buscar o modelo pelo system_unit_id e tag
+            $stmt = $pdo->prepare("SELECT * FROM modelos_balanco WHERE system_unit_id = :system_unit_id AND tag = :tag");
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(':tag', $tag, PDO::PARAM_STR);
+            $stmt->execute();
+    
+            $modelo = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            if (!$modelo) {
+                self::sendResponse(false, 'Modelo de balanço não encontrado.', [], 404);
+            }
+    
+            // Buscar itens associados ao modelo
+            $stmtItens = $pdo->prepare("
+                SELECT mbi.*, p.nome AS nome_produto,p.und as und_produto, p.codigo as codigo_produto
+                FROM modelos_balanco_itens mbi
+                LEFT JOIN products p ON mbi.id_produto = p.id AND mbi.system_unit_id = p.system_unit_id
+                WHERE mbi.id_modelo = :modelo_id AND mbi.system_unit_id = :system_unit_id
+            ");
+            $stmtItens->bindParam(':modelo_id', $modelo['id'], PDO::PARAM_INT);
+            $stmtItens->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmtItens->execute();
+    
+            $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+    
+            // Retornar as informações do modelo e seus itens
+            self::sendResponse(true, 'Modelo de balanço encontrado.', [
+                'modelo' => $modelo,
+                'itens' => $itens
+            ], 200);
+    
+        } catch (Exception $e) {
+            self::sendResponse(false, 'Erro ao buscar modelo por tag: ' . $e->getMessage(), [], 500);
+        }
+    }
+    
+
 }
 ?>

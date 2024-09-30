@@ -32,10 +32,10 @@ $data = json_decode($json, true);
 if (isset($data['method']) && isset($data['data'])) {
     $method = $data['method'];
     $requestData = $data['data'];
-    $requestToken = $data['token'];
+    if (isset($data['token'])){$requestToken = $data['token'];}
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['validateCPF', 'validateCNPJ'];
+    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -129,6 +129,24 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros modelo_id ou produto_id ausente'];
+                }
+                break;
+
+            case 'getModelByTag':
+                if (isset($requestData['tag'])) {
+                    $response = ModeloBalancoController::getModelByTag($requestData['tag']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro tag ausente'];
+                }
+                break;
+            
+            case  'saveBalanceItems':
+                if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
+                    $response = MovimentacaoController::saveBalanceItems($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
                 }
                 break;
 

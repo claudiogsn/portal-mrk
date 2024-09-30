@@ -162,5 +162,102 @@ class MovimentacaoController {
         return $movimentacao['doc'];
 
     }
+
+
+    public static function saveBalanceItems($data) {
+
+        global $pdo;
+    
+        // Campos obrigatórios para a movimentação
+        $requiredFields = ['system_unit_id', 'itens'];
+    
+        // Verifica se todos os campos obrigatórios estão presentes
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
+                return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
+            }
+        }
+    
+        // Verifica se 'itens' é um array e possui ao menos um item
+        if (!is_array($data['itens']) || count($data['itens']) == 0) {
+            return array('success' => false, 'message' => "É necessário incluir ao menos um item.");
+        }
+    
+        // Extraindo os dados
+        $system_unit_id = $data['system_unit_id'];
+        $system_unit_id_destino = isset($data['system_unit_id_destino']) ? $data['system_unit_id_destino'] : null;
+        $itens = $data['itens'];
+    
+        // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter um novo valor
+        $ultimoDoc = self::getLastMov($system_unit_id, 'b');
+        $doc = self::incrementDoc($ultimoDoc);
+    
+        // Definindo valores fixos
+        $tipo = 'b';
+        $usuario_id = 999;
+    
+        try {
+            // Inicia a transação
+            $pdo->beginTransaction();
+    
+            foreach ($itens as $item) {
+                // Verifica se cada item possui os campos obrigatórios
+                $itemRequiredFields = ['codigo', 'seq', 'quantidade'];
+                foreach ($itemRequiredFields as $field) {
+                    if (!isset($item[$field])) {
+                        return array('success' => false, 'message' => "O campo '$field' é obrigatório para cada item.");
+                    }
+                }
+    
+                // Extraindo os dados do item
+                $produto = $item['codigo'];
+                $seq = $item['seq'];
+                $quantidade = $item['quantidade'];
+    
+                // Inserção no banco de dados
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, quantidade, usuario_id) 
+                                       VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
+    
+                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $produto, $seq, $quantidade, $usuario_id]);
+    
+                if ($stmt->rowCount() > 0) {
+                    // Atualiza o saldo do estoque após a movimentação
+                    
+                    $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, $quantidade, $doc);
+                    if (!$productResponse['success']) {
+                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
+                        $pdo->rollBack();
+                        return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
+                    }
+                } else {
+                    // Se a inserção do item falhar, faz rollback e retorna o erro
+                    $pdo->rollBack();
+                    return array('success' => false, 'message' => 'Falha ao criar movimentação para o item com código ' . $produto);
+                }
+            }
+    
+            // Commit da transação
+            $pdo->commit();
+            return array('success' => true, 'message' => 'Movimentação criada com sucesso','balanco' => $doc);
+    
+        } catch (Exception $e) {
+            // Rollback em caso de erro
+            $pdo->rollBack();
+            return array('success' => false, 'message' => 'Erro ao criar movimentação: ' . $e->getMessage());
+        }
+    }
+    
+    // Função para incrementar o documento (doc)
+    private static function incrementDoc($ultimoDoc) {
+        // Supondo que o formato do doc seja algo como "b-000001"
+        if (preg_match('/^b-(\d+)$/', $ultimoDoc, $matches)) {
+            $numero = (int)$matches[1] + 1;
+            return 'b-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
+        }
+        return 'b-000001';
+    }
+    
+    
+    
 }
 ?>
