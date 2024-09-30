@@ -176,13 +176,18 @@
                                     </h2>
                                     <ul class="header-dropdown m-r--5">
                                         <li>
-                                            <a href="javascript:void(0);" class="btn-toggle-status" data-tag="${modelo.tag}" data-status="${modelo.ativo ? 0 : 1}">
-                                                <i class="material-icons">${modelo.ativo ? 'toggle_off' : 'toggle_on'}</i>
+                                            <a href="javascript:void(0);" class="btn-toggle-status action-icon" data-tag="${modelo.tag}" data-status="${modelo.ativo ? 0 : 1}">
+                                                <i class="material-icons">toggle_${modelo.ativo ? 'off' : 'on'}</i>
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="https://wa.me/?text=${encodeURIComponent('Confira o modelo de balanço: https://portal.mrksolucoes.com.br/balanco/' + modelo.tag)}" target="_blank">
+                                            <a href="https://wa.me/?text=${encodeURIComponent('Confira o modelo de balanço: https://portal.mrksolucoes.com.br/balanco/' + modelo.tag)}" target="_blank" class="action-icon">
                                                 <i class="material-icons">share</i>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="${baseUrlRedirect}/balanco/${modelo.tag}" target="_blank" class="action-icon">
+                                                <i class="material-icons">assignment_turned_in</i> <!-- Ícone para Realizar Balanço -->
                                             </a>
                                         </li>
                                     </ul>
