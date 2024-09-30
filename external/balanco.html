@@ -347,7 +347,7 @@
     window.generateTag = async function () {
         const modelName = $('#modelName').val().trim();
         const modelTag = `${unitId}-${modelName.toLowerCase().replace(/\s+/g, '-')}`;
-        const modelUrl = `https://portal.mrksolucoes.com.br/balanco?tag=${modelTag}`;
+        const modelUrl = `https://portal.mrksolucoes.com.br/balanco/${modelTag}`;
 
         $('#modelTag').val(modelTag);
         $('#modelUrl').val(modelUrl);
