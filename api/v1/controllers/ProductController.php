@@ -225,7 +225,6 @@ class ProductController {
                 ];
             }
 
-            // Reorganizamos para retornar apenas os valores (sem as chaves de categoria)
             $groupedProducts = array_values($groupedProducts);
 
             return ['success' => true, 'products_by_category' => $groupedProducts];
@@ -234,6 +233,68 @@ class ProductController {
             return ['success' => false, 'message' => 'Erro ao listar produtos por categoria: ' . $e->getMessage()];
         }
     }
+
+    public static function getProductCards($system_unit_id) {
+        global $pdo;
+    
+        try {
+            // Consulta para obter as informações dos produtos, incluindo as duas últimas movimentações
+            $sql = "
+                SELECT 
+                    p.id,
+                    p.nome AS produto_nome,
+                    c.nome AS nome_categoria,
+                    p.saldo AS quantidade,
+                    p.und,
+                    p.preco_custo,
+                    p.saldo * p.preco_custo AS valor_estoque,
+                    p.system_unit_id,
+                    (
+                        SELECT JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'data', m.data,
+                                'tipo', m.tipo,
+                                'doc', m.doc,
+                                'quantidade', m.quantidade
+                            )
+                        )
+                        FROM movimentacao m 
+                        WHERE m.produto = p.codigo AND m.system_unit_id = p.system_unit_id
+                        ORDER BY m.created_at DESC
+                        LIMIT 2
+                    ) AS atividade_recente
+                FROM products p
+                LEFT JOIN categorias c ON c.id = p.categ
+                WHERE p.system_unit_id = :system_unit_id
+            ";
+    
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+    
+            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            // Formatar os dados para o retorno desejado
+            $productCards = [];
+            foreach ($products as $product) {
+                $productCards[] = [
+                    'nome' => $product['produto_nome'],
+                    'categ' => $product['nome_categoria'],
+                    'quantidade' => "{$product['quantidade']} {$product['und']}",
+                    'estoque_minimo' => isset($product['estoque_minimo']) ? "{$product['estoque_minimo']} {$product['und']}" : 'N/A',
+                    'custo_unitario' => 'R$ ' . number_format($product['preco_custo'], 2, ',', '.') . " / {$product['und']}",
+                    'valor_estoque' => 'R$ ' . number_format($product['valor_estoque'], 2, ',', '.'),
+                    'atividade_recente' => json_decode($product['atividade_recente'], true) ?: [],
+                ];
+            }
+    
+            return ['success' => true, 'product_cards' => $productCards];
+    
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao buscar produtos: ' . $e->getMessage()];
+        }
+    }
+    
 
 
 }
