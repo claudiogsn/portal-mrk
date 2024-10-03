@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Produtos em Estoque</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- JQuery DataTable Css -->
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <style>
+        .status-active {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: red;
+            font-weight: bold;
+        }
+
+        .card {
+            margin-bottom: 20px;
+        }
+
+        .category-badge {
+            background-color: #007bff; /* cor bg-primary */
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .panel-heading {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body class="theme-red">
+
+    <div class="container-fluid">
+        <div class="row clearfix">
+            <div class="col-lg-12 col-md-12 col-sm-12">
+                <div class="header">
+                    <h2>Produtos em Estoque</h2>
+                    <button id="btnNovoProduto" class="btn btn-primary waves-effect" style="float: right;">Criar Novo Produto</button>
+                </div>
+                <div id="productsContainer" class="row clearfix">
+                    <!-- Conteúdo dos cards será inserido aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <!-- Bootstrap Core Js -->
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Waves Effect Plugin Js -->
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <!-- SweetAlert Plugin Js -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function () {
+            const baseUrl = window.location.hostname !== 'localhost' ?
+                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+                'http://localhost/portal-mrk/api/v1/index.php';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const unitId = urlParams.get('unit_id');
+
+            async function loadProducts() {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getProductCards',
+                        token: token,
+                        data: { system_unit_id: unitId }
+                    });
+
+                    if (response.data && response.data.success) {
+                        renderProductCards(response.data.product_cards);
+                    } else {
+                        Swal.fire("Erro", "Falha ao carregar produtos: " + response.data.message, "error");
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar produtos:', error);
+                    Swal.fire("Erro", "Erro ao carregar produtos. Tente novamente.", "error");
+                }
+            }
+
+            function renderProductCards(products) {
+                const container = $('#productsContainer');
+                container.empty();
+
+                let categories = {};
+
+                products.forEach(product => {
+                    if (!categories[product.categ]) {
+                        categories[product.categ] = [];
+                    }
+                    categories[product.categ].push(product);
+                });
+
+                Object.keys(categories).forEach(categoria => {
+                    const cardCategoryHtml = `
+                        <div class="col-lg-12">
+                            <h4 class="category-badge">${categoria}</h4>
+                        </div>
+                    `;
+                    container.append(cardCategoryHtml);
+
+                    categories[categoria].forEach(product => {
+                        const movimentacoes = product.atividade_recente.map(mov => `
+                            <div class="activity">
+                                <i class="material-icons">${mov.tipo === 'entrada' ? 'arrow_forward' : 'arrow_back'}</i>
+                                ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
+                            </div>
+                        `).join('');
+
+                        const cardHtml = `
+                            <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                                <div class="card">
+    <div class="header">
+        <h2>
+            ${product.nome}
+            <small>Categoria: ${categoria}</small>
+        </h2>
+        <ul class="header-dropdown m-r--5">
+            <li class="dropdown">
+                <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    <i class="material-icons">more_vert</i>
+                </a>
+                <ul class="dropdown-menu pull-right">
+                    <li><a href="javascript:void(0);" class="btn-editar" data-id="${product.id}">Editar</a></li>
+                    <li><a href="javascript:void(0);" class="btn-excluir" data-id="${product.id}">Excluir</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+    <div class="body">
+        Quantidade: ${product.quantidade}<br>
+        Estoque mínimo: ${product.estoque_minimo}<br>
+        Custo unitário: ${product.custo_unitario}<br>
+        Valor do estoque: ${product.valor_estoque}<br>
+        <div class="panel-group" id="accordion_${product.id}" role="tablist" aria-multiselectable="true">
+            <div class="panel panel-primary">
+                <div class="panel-heading" role="tab" id="heading_${product.id}">
+                    <h4 class="panel-title">
+                        <a role="button" data-toggle="collapse" data-parent="#accordion_${product.id}" href="#collapse_${product.id}" aria-expanded="true" aria-controls="collapse_${product.id}">
+                            Atividade Recente
+                        </a>
+                    </h4>
+                </div>
+                <div id="collapse_${product.id}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_${product.id}">
+                    <div class="panel-body">
+                        ${movimentacoes || '<p>Sem movimentações recentes.</p>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                                
+</div>
+
+                            </div>
+                        `;
+                        container.append(cardHtml);
+                    });
+                });
+            }
+
+            // Carregar os produtos ao iniciar a página
+            loadProducts();
+        });
+    </script>
+
+</body>
+
+</html>
