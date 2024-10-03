@@ -6,18 +6,32 @@ class ProductController {
 
     public static function createProduct($data) {
         global $pdo;
-
-        // Campos da nova estrutura da tabela
-        $requiredFields = ['codigo', 'nome', 'preco', 'und', 'venda', 'composicao', 'insumo', 'system_unit_id'];
-
+    
+        // Campos da nova estrutura da tabela, exceto 'codigo'
+        $requiredFields = ['nome', 'preco', 'und', 'venda', 'composicao', 'insumo', 'system_unit_id'];
+    
         // Verifica se todos os campos obrigatórios estão presentes
         foreach ($requiredFields as $field) {
             if (!isset($data[$field])) {
                 return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
             }
         }
-
-        $codigo = $data['codigo'];
+    
+        // Gerar o valor de 'codigo' automaticamente a partir do valor máximo existente
+        try {
+            $stmt = $pdo->prepare("SELECT MAX(codigo) AS max_codigo FROM products WHERE system_unit_id = :system_unit_id");
+            $stmt->bindParam(':system_unit_id', $data['system_unit_id'], PDO::PARAM_INT);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            // Incrementar o valor do 'codigo' com base no máximo encontrado, iniciando com 1 se não houver registros
+            $codigo = ($result['max_codigo'] !== null) ? $result['max_codigo'] + 1 : 1;
+    
+        } catch (Exception $e) {
+            return array('success' => false, 'message' => 'Erro ao gerar código do produto: ' . $e->getMessage());
+        }
+    
+        // Obter os demais campos da requisição
         $nome = $data['nome'];
         $preco = $data['preco'];
         $und = $data['und'];
@@ -28,19 +42,24 @@ class ProductController {
         $preco_custo = isset($data['preco_custo']) ? $data['preco_custo'] : null; // Novo campo
         $saldo = isset($data['saldo']) ? $data['saldo'] : null; // Novo campo
         $ultimo_doc = isset($data['ultimo_doc']) ? $data['ultimo_doc'] : null; // Novo campo
-
+    
         // Inserção no banco de dados com os novos campos
         $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco, und, venda, composicao, insumo, system_unit_id, preco_custo, saldo, ultimo_doc) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-        $stmt->execute([$codigo, $nome, $preco, $und, $venda, $composicao, $insumo, $system_unit_id, $preco_custo, $saldo, $ultimo_doc]);
-
-        if ($stmt->rowCount() > 0) {
-            return array('success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId());
-        } else {
-            return array('success' => false, 'message' => 'Falha ao criar produto');
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    
+        try {
+            $stmt->execute([$codigo, $nome, $preco, $und, $venda, $composicao, $insumo, $system_unit_id, $preco_custo, $saldo, $ultimo_doc]);
+    
+            if ($stmt->rowCount() > 0) {
+                return array('success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId());
+            } else {
+                return array('success' => false, 'message' => 'Falha ao criar produto');
+            }
+        } catch (Exception $e) {
+            return array('success' => false, 'message' => 'Erro ao criar produto: ' . $e->getMessage());
         }
     }
+    
 
     public static function updateProduct($codigo, $data, $system_unit_id) {
         global $pdo;
@@ -242,7 +261,10 @@ class ProductController {
             $sql = "
                 SELECT 
                     p.id,
+                    p.codigo,
                     p.nome AS produto_nome,
+                    p.estoque_minimo,
+                    c.id AS categoria_id,
                     c.nome AS nome_categoria,
                     p.saldo AS quantidade,
                     p.und,
@@ -254,6 +276,7 @@ class ProductController {
                             JSON_OBJECT(
                                 'data', m.data,
                                 'tipo', m.tipo,
+                                'tipo_mov',m.tipo_mov,
                                 'doc', m.doc,
                                 'quantidade', m.quantidade
                             )
@@ -278,6 +301,8 @@ class ProductController {
             $productCards = [];
             foreach ($products as $product) {
                 $productCards[] = [
+                    'id' => $product['id'],
+                    'codigo' => $product['codigo'],
                     'nome' => $product['produto_nome'],
                     'categ' => $product['nome_categoria'],
                     'quantidade' => "{$product['quantidade']} {$product['und']}",

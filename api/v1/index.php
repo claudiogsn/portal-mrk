@@ -354,11 +354,11 @@ if (isset($data['method']) && isset($data['data'])) {
 
             // Métodos para ProductController
             case 'createProduct':
-                $response = ProductController::createProduct($requestData['data']);
+                $response = ProductController::createProduct($requestData);
                 break;
             case 'updateProduct':
-                if (isset($data['codigo'])) {
-                    $response = ProductController::updateProduct($data['codigo'], $requestData, $data['unit_id']);
+                if (isset($requestData['codigo']  )) {
+                    $response = ProductController::updateProduct($requestData['codigo'], $requestData, $requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro codigo ausente'];
@@ -366,7 +366,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getProductById':
                 if (isset($requestData['codigo'])) {
-                    $response = ProductController::getProductById($requestData['codigo'], $requestData['unit_id']);
+                    $response = ProductController::getProductById($requestData['codigo'], $requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro id ausente'];

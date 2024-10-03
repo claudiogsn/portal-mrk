@@ -60,7 +60,7 @@
     </style>
 </head>
 
-<body class="theme-red">
+<body class="theme-blue">
 
     <div class="container-fluid">
         <div class="row clearfix">
@@ -71,6 +71,49 @@
                 </div>
                 <div id="productsContainer" class="row clearfix">
                     <!-- Conteúdo dos cards será inserido aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Produto -->
+    <div class="modal fade" id="productModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modalTitle">Editar Produto</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <div class="form-group">
+                            <label for="nome">Nome do Produto</label>
+                            <input type="text" id="nome" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="saldo">Quantidade em Estoque</label>
+                            <input type="number" id="saldo" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="und">Unidade</label>
+                            <input type="text" id="und" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="estoque_minimo">Estoque Mínimo</label>
+                            <input type="number" id="estoque_minimo" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="preco_custo">Custo (R$)</label>
+                            <input type="number" id="preco_custo" class="form-control" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="categoria">Categoria(s)</label>
+                            <input type="text" id="categoria" class="form-control">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Cancelar</button>
+                    <button type="button" id="saveProduct" class="btn btn-primary waves-effect">Salvar Produto</button>
                 </div>
             </div>
         </div>
@@ -140,7 +183,7 @@
                     categories[categoria].forEach(product => {
                         const movimentacoes = product.atividade_recente.map(mov => `
                             <div class="activity">
-                                <i class="material-icons">${mov.tipo === 'entrada' ? 'arrow_forward' : 'arrow_back'}</i>
+                                <i class="material-icons">${mov.tipo_mov === 'entrada' ? 'arrow_forward' : 'arrow_back'}</i>
                                 ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
                             </div>
                         `).join('');
@@ -148,56 +191,174 @@
                         const cardHtml = `
                             <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
                                 <div class="card">
-    <div class="header">
-        <h2>
-            ${product.nome}
-            <small>Categoria: ${categoria}</small>
-        </h2>
-        <ul class="header-dropdown m-r--5">
-            <li class="dropdown">
-                <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                    <i class="material-icons">more_vert</i>
-                </a>
-                <ul class="dropdown-menu pull-right">
-                    <li><a href="javascript:void(0);" class="btn-editar" data-id="${product.id}">Editar</a></li>
-                    <li><a href="javascript:void(0);" class="btn-excluir" data-id="${product.id}">Excluir</a></li>
-                </ul>
-            </li>
-        </ul>
-    </div>
-    <div class="body">
-        Quantidade: ${product.quantidade}<br>
-        Estoque mínimo: ${product.estoque_minimo}<br>
-        Custo unitário: ${product.custo_unitario}<br>
-        Valor do estoque: ${product.valor_estoque}<br>
-        <div class="panel-group" id="accordion_${product.id}" role="tablist" aria-multiselectable="true">
-            <div class="panel panel-primary">
-                <div class="panel-heading" role="tab" id="heading_${product.id}">
-                    <h4 class="panel-title">
-                        <a role="button" data-toggle="collapse" data-parent="#accordion_${product.id}" href="#collapse_${product.id}" aria-expanded="true" aria-controls="collapse_${product.id}">
-                            Atividade Recente
-                        </a>
-                    </h4>
-                </div>
-                <div id="collapse_${product.id}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_${product.id}">
-                    <div class="panel-body">
-                        ${movimentacoes || '<p>Sem movimentações recentes.</p>'}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-                                
-</div>
-
+                                    <div class="header">
+                                        <h2>
+                                            ${product.nome}
+                                            <small>Categoria: ${categoria}</small>
+                                        </h2>
+                                        <ul class="header-dropdown m-r--5">
+                                            <li class="dropdown">
+                                                <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                                                    <i class="material-icons">more_vert</i>
+                                                </a>
+                                                <ul class="dropdown-menu pull-right">
+                                                    <li><a href="javascript:void(0);" class="btn-editar" data-id="${product.codigo}">Editar</a></li>
+                                                    <li><a href="javascript:void(0);" class="btn-excluir" data-id="${product.codigo}">Excluir</a></li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="body">
+                                        Quantidade: ${product.quantidade}<br>
+                                        Estoque mínimo: ${product.estoque_minimo}<br>
+                                        Custo unitário: ${product.custo_unitario}<br>
+                                        Valor do estoque: ${product.valor_estoque}<br>
+                                        <div class="panel-group" id="accordion_${product.codigo}" role="tablist" aria-multiselectable="true">
+                                            <div class="panel panel-primary">
+                                                <div class="panel-heading" role="tab" id="heading_${product.codigo}">
+                                                    <h4 class="panel-title">
+                                                        <a role="button" data-toggle="collapse" data-parent="#accordion_${product.codigo}" href="#collapse_${product.codigo}" aria-expanded="true" aria-controls="collapse_${product.codigo}">
+                                                            Atividade Recente
+                                                        </a>
+                                                    </h4>
+                                                </div>
+                                                <div id="collapse_${product.codigo}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_${product.codigo}">
+                                                    <div class="panel-body">
+                                                        ${movimentacoes || '<p>Sem movimentações recentes.</p>'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         `;
                         container.append(cardHtml);
                     });
                 });
             }
+
+            // Função para abrir o modal de produto
+            function openProductModal(product = null) {
+                if (product) {
+                    // Atualizar modal para edição
+                    $('#modalTitle').text('Editar Produto');
+                    $('#nome').val(product.nome);
+                    $('#saldo').val(product.saldo);
+                    $('#und').val(product.und);
+                    $('#estoque_minimo').val(product.estoque_minimo);
+                    $('#preco_custo').val(product.preco_custo);
+                    $('#categoria').val(product.categ);
+                    $('#saveProduct').data('id', product.codigo); // Atribuir o ID do produto ao botão de salvar
+                } else {
+                    // Modal para criação de um novo produto
+                    $('#modalTitle').text('Criar Produto');
+                    $('#productForm')[0].reset(); // Resetar o formulário
+                    $('#saveProduct').removeData('id'); // Remover o ID do produto do botão de salvar
+                }
+
+                // Mostrar modal
+                $('#productModal').modal('show');
+            }
+
+            // Evento para salvar o produto
+            $('#saveProduct').click(async function () {
+                const produtoId = $(this).data('id');
+
+                // Obter os dados do formulário
+                const data = {
+                    codigo: produtoId || $('#codigo').val(),
+                    nome: $('#nome').val(),
+                    preco: parseFloat($('#preco_custo').val()) || 0,
+                    und: $('#und').val(),
+                    venda: 1, // Definir valor adequado
+                    composicao: 0, // Definir valor adequado
+                    insumo: 1, // Definir valor adequado
+                    system_unit_id: unitId,
+                    preco_custo: parseFloat($('#preco_custo').val()) || 0,
+                    saldo: parseFloat($('#saldo').val()) || 0,
+                    ultimo_doc: 'N/A' // Ajustar conforme necessário
+                };
+
+                try {
+                    let response;
+                    if (produtoId) {
+                        // Atualizar Produto
+                        response = await axios.post(baseUrl, {
+                            method: 'updateProduct',
+                            token: token,
+                            data: data
+                        });
+                    } else {
+                        // Criar Produto
+                        response = await axios.post(baseUrl, {
+                            method: 'createProduct',
+                            token: token,
+                            data: data
+                        });
+                    }
+
+                    if (response.data.success) {
+                        Swal.fire({
+                            title: 'Sucesso!',
+                            text: response.data.message,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            $('#productModal').modal('hide'); // Fechar o modal
+                            loadProducts(); // Recarregar os produtos
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Erro!',
+                            text: response.data.message,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    Swal.fire({
+                        title: 'Erro!',
+                        text: 'Ocorreu um erro ao salvar o produto. Tente novamente.',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            });
+
+            // Evento para abrir o modal de novo produto
+            $('#btnNovoProduto').click(function () {
+                openProductModal();
+            });
+
+            // Evento para editar um produto
+            $(document).on('click', '.btn-editar', function () {
+                const productId = $(this).data('id');
+                // Fazer requisição para buscar o produto por ID e abrir o modal
+                axios.post(baseUrl, {
+                    method: 'getProductById',
+                    token: token,
+                    data:{
+                        codigo: productId,
+                        system_unit_id: unitId
+                        }
+                })
+                    .then(response => {
+                        if (response.data) {
+                            openProductModal(response.data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar produto:', error);
+                        Swal.fire({
+                            title: 'Erro!',
+                            text: 'Ocorreu um erro ao buscar o produto. Tente novamente.',
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    });
+            });
 
             // Carregar os produtos ao iniciar a página
             loadProducts();
