@@ -22,7 +22,7 @@ $(document).ready(function () {
                 categoriaSelect.empty();
                 categoriaSelect.append('<option value="">Todas as Categorias</option>');
                 categorias.forEach(categoria => {
-                    categoriaSelect.append(`<option value="${categoria.nome}">${categoria.nome}</option>`);
+                    categoriaSelect.append(`<option value="${categoria.id}">${categoria.nome}</option>`);
                 });
 
                 if (selectedCategory) {
@@ -67,7 +67,8 @@ $(document).ready(function () {
         const searchName = $('#filterName').val().toLowerCase();
 
         let filteredProducts = products.filter(product => {
-            let categoryMatch = !selectedCategory || product.categ === selectedCategory;
+
+            let categoryMatch = !selectedCategory || parseInt(product.categoria_id) === parseInt(selectedCategory);
             let typeMatch = !selectedType ||
                 (selectedType === 'Venda' && product.venda === 1) ||
                 (selectedType === 'Insumo' && product.insumo === 1) ||
@@ -260,6 +261,7 @@ $(document).ready(function () {
     });
 
     $('#btnNovoProduto').click(function () {
+
         openProductModal();
     });
 
@@ -275,6 +277,7 @@ $(document).ready(function () {
         })
         .then(response => {
             if (response.data) {
+                console.log('Produto:', response.data);
                 openProductModal(response.data);
             }
         })
