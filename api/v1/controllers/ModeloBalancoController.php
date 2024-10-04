@@ -236,54 +236,73 @@ class ModeloBalancoController {
 
     public static function getModelByTag($tag) {
         global $pdo;
-    
+
         try {
             // Extrair system_unit_id e tag do valor recebido
             if (strpos($tag, '-') === false) {
                 self::sendResponse(false, "Formato de tag inválido.", [], 400);
             }
-    
+
             list($system_unit_id, $actual_tag) = explode('-', $tag, 2);
 
-           // print_r($system_unit_id);
-            //print_r($actual_tag);
-            //exit;
-    
             // Buscar o modelo pelo system_unit_id e tag
-            $stmt = $pdo->prepare("SELECT * FROM modelos_balanco WHERE system_unit_id = :system_unit_id AND tag = :tag");
+            $stmt = $pdo->prepare("
+            SELECT mb.*, su.name as system_unit_name
+            FROM modelos_balanco mb
+            LEFT JOIN system_unit su ON mb.system_unit_id = su.id
+            WHERE mb.system_unit_id = :system_unit_id AND mb.tag = :tag
+        ");
             $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmt->bindParam(':tag', $tag, PDO::PARAM_STR);
             $stmt->execute();
-    
+
             $modelo = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
             if (!$modelo) {
                 self::sendResponse(false, 'Modelo de balanço não encontrado.', [], 404);
             }
-    
-            // Buscar itens associados ao modelo
+
+            // Buscar itens associados ao modelo e agrupá-los por categoria
             $stmtItens = $pdo->prepare("
-                SELECT mbi.*, p.nome AS nome_produto,p.und as und_produto, p.codigo as codigo_produto
-                FROM modelos_balanco_itens mbi
-                LEFT JOIN products p ON mbi.id_produto = p.id AND mbi.system_unit_id = p.system_unit_id
-                WHERE mbi.id_modelo = :modelo_id AND mbi.system_unit_id = :system_unit_id
-            ");
+            SELECT mbi.*, p.nome AS nome_produto, p.und AS und_produto, p.codigo AS codigo_produto, c.nome AS nome_categoria
+            FROM modelos_balanco_itens mbi
+            LEFT JOIN products p ON mbi.id_produto = p.id AND mbi.system_unit_id = p.system_unit_id
+            LEFT JOIN categorias c ON p.categoria = c.id
+            WHERE mbi.id_modelo = :modelo_id AND mbi.system_unit_id = :system_unit_id
+        ");
             $stmtItens->bindParam(':modelo_id', $modelo['id'], PDO::PARAM_INT);
             $stmtItens->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmtItens->execute();
-    
+
             $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
-    
-            // Retornar as informações do modelo e seus itens
+
+            // Agrupar itens por categoria
+            $itensPorCategoria = [];
+            foreach ($itens as $item) {
+                $categoria = $item['nome_categoria'] ?: 'Sem Categoria';
+                if (!isset($itensPorCategoria[$categoria])) {
+                    $itensPorCategoria[$categoria] = [];
+                }
+                $itensPorCategoria[$categoria][] = $item;
+            }
+
+            // Retornar as informações do modelo e seus itens agrupados por categoria
             self::sendResponse(true, 'Modelo de balanço encontrado.', [
-                'modelo' => $modelo,
-                'itens' => $itens
+                'modelo' => [
+                    'id' => $modelo['id'],
+                    'tag' => $modelo['tag'],
+                    'system_unit_id' => $modelo['system_unit_id'],
+                    'system_unit_name' => $modelo['system_unit_name'],
+                    // Adicione outros campos relevantes do modelo, se necessário
+                ],
+                'itens' => $itensPorCategoria
             ], 200);
-    
+
         } catch (Exception $e) {
             self::sendResponse(false, 'Erro ao buscar modelo por tag: ' . $e->getMessage(), [], 500);
         }
     }
+
 
 
     public static function listModelosWithProducts($system_unit_id) {
