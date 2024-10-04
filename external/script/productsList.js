@@ -39,6 +39,8 @@ $(document).ready(function () {
 
     // Função para carregar os produtos e preencher a página
     async function loadProducts() {
+        // Mostrar spinner antes de começar a requisição
+
         try {
             const response = await axios.post(baseUrl, {
                 method: 'getProductCards',
@@ -54,13 +56,17 @@ $(document).ready(function () {
         } catch (error) {
             console.error('Erro ao carregar produtos:', error);
             Swal.fire("Erro", "Erro ao carregar produtos. Tente novamente.", "error");
+        } finally {
+            // Esconder spinner após a requisição ser concluída
+            $('#loadingSpinner').hide();
         }
     }
 
     // Função para renderizar os cartões dos produtos
     function renderProductCards(products) {
+        $('#loadingSpinner').show();
         const container = $('#productsContainer');
-        container.empty();
+        container.find('.col-lg-4').remove(); // Remove os cards antigos, mantendo apenas o spinner
 
         const selectedCategory = $('#filterCategory').val();
         const selectedType = $('#filterType').val();
@@ -177,7 +183,7 @@ $(document).ready(function () {
     // Função para abrir o modal de produto
     function openProductModal(product = null) {
         if (product) {
-            $('#modalTitle').text('Editar Produto');
+            $('#modalTitle').text('Editar Produto - ID: ' + product.codigo);
             $('#nome').val(product.nome);
             $('#saldo').val(product.saldo);
             $('#und').val(product.und);
@@ -297,6 +303,7 @@ $(document).ready(function () {
         loadProducts();
     });
 
+    $('#loadingSpinner').show();
     loadCategories();
     loadProducts();
 });
