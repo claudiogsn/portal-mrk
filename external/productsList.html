@@ -30,44 +30,57 @@
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
 
-    <style>
-        .status-active {
-            color: green;
-            font-weight: bold;
-        }
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/custom.css">
 
-        .status-inactive {
-            color: red;
-            font-weight: bold;
-        }
-
-        .card {
-            margin-bottom: 20px;
-        }
-
-        .category-badge {
-            background-color: #007bff;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            display: inline-block;
-            margin-bottom: 10px;
-        }
-
-        .panel-heading {
-            cursor: pointer;
-        }
-    </style>
 </head>
 
 <body class="theme-blue">
 
     <div class="container-fluid">
+        <!-- Filtros -->
         <div class="row clearfix">
             <div class="col-lg-12 col-md-12 col-sm-12">
                 <div class="header">
                     <h2>Produtos em Estoque</h2>
-                    <button id="btnNovoProduto" class="btn btn-primary waves-effect" style="float: right;">Criar Novo Produto</button>
+                    <!-- Card de Filtros -->
+                    <div class="row clearfix">
+                        <div class="col-lg-12 col-md-12 col-sm-12">
+                            <div class="card">
+                                <div class="header">
+                                    <h2>Filtros de Produtos</h2>
+                                </div>
+                                <div class="body">
+                                    <div class="row clearfix">
+                                        <div class="col-lg-3 col-md-3 col-sm-6">
+                                            <label for="filterCategory">Filtrar por Categoria:</label>
+                                            <select id="filterCategory" class="form-control">
+                                                <option value="">Todas as Categorias</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-lg-3 col-md-3 col-sm-6">
+                                            <label for="filterType">Filtrar por Tipo:</label>
+                                            <select id="filterType" class="form-control">
+                                                <option value="">Todos os Tipos</option>
+                                                <option value="Venda">Venda</option>
+                                                <option value="Insumo">Insumo</option>
+                                                <option value="Composição">Composição</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-lg-3 col-md-3 col-sm-6">
+                                            <label for="filterName">Buscar por Nome do Produto:</label>
+                                            <input type="text" id="filterName" class="form-control" placeholder="Digite o nome do produto">
+                                        </div>
+                                        <div class="col-lg-3 col-md-3 col-sm-6">
+                                            <button id="btnApplyFilters" class="btn btn-primary waves-effect" style="margin-top: 25px;">Aplicar Filtros</button>
+                                            <button id="btnNovoProduto" class="btn btn-primary waves-effect" style="margin-top: 25px;">Criar Novo Produto</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
                 <div id="productsContainer" class="row clearfix">
                     <!-- Conteúdo dos cards será inserido aqui -->
@@ -76,93 +89,88 @@
         </div>
     </div>
 
-   <!-- Modal de Produto -->
-<div class="modal fade" id="productModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="modalTitle">Editar Produto</h4>
-            </div>
-            <div class="modal-body">
-                <form id="productForm">
-                    <div class="row clearfix">
-                        <!-- Campo Nome do Produto e Categoria na mesma linha -->
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <div class="form-line">
-                                    <label for="nome">Nome do Produto</label>
-                                    <input type="text" id="nome" class="form-control" required>
+    <!-- Modal de Produto -->
+    <div class="modal fade" id="productModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modalTitle">Editar Produto</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <div class="row clearfix">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-line">
+                                        <label for="nome">Nome do Produto</label>
+                                        <input type="text" id="nome" class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-line">
+                                        <label for="categoria">Categoria</label>
+                                        <select id="categoria" class="form-control" required>
+                                            <option value="">Selecione a Categoria</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <div class="form-line">
-                                    <label for="categoria">Categoria</label>
-                                    <select id="categoria" class="form-control" required>
-                                        <option value="">Selecione a Categoria</option>
-                                        <!-- Opções serão preenchidas dinamicamente -->
-                                    </select>
+                        <div class="row clearfix">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-line">
+                                        <label for="saldo">Quantidade em Estoque</label>
+                                        <input type="number" id="saldo" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-line">
+                                        <label for="und">Unidade</label>
+                                        <select id="und" class="form-control" required>
+                                            <option value="und">unidades (und)</option>
+                                            <option value="L">litros (L)</option>
+                                            <option value="pct">pacotes (pct)</option>
+                                            <option value="kg">quilogramas (kg)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row clearfix">
-                        <!-- Campo Quantidade em Estoque e Unidade na mesma linha -->
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <div class="form-line">
-                                    <label for="saldo">Quantidade em Estoque</label>
-                                    <input type="number" id="saldo" class="form-control">
+                        <div class="row clearfix">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <div class="form-line">
+                                        <label for="preco_custo">Custo (R$)</label>
+                                        <input type="number" id="preco_custo" class="form-control" step="0.01" placeholder="Preço de custo por unidade do produto (campo opcional).">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <label>Tipo:</label>
+                                <div class="demo-checkbox">
+                                    <input type="checkbox" id="tipo_venda" class="chk-col-blue" />
+                                    <label for="tipo_venda">Venda</label>
+                                    <input type="checkbox" id="tipo_insumo" class="chk-col-blue" />
+                                    <label for="tipo_insumo">Insumo</label>
+                                    <input type="checkbox" id="tipo_composicao" class="chk-col-blue" />
+                                    <label for="tipo_composicao">Composição</label>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <div class="form-line">
-                                    <label for="und">Unidade</label>
-                                    <select id="und" class="form-control" required>
-                                        <option value="und">unidades (und)</option>
-                                        <option value="L">litros (L)</option>
-                                        <option value="pct">pacotes (pct)</option>
-                                        <option value="kg">quilogramas (kg)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row clearfix">
-                        <!-- Campo Custo e Tipo (Checkboxes) na mesma linha -->
-                        <div class="col-sm-6">
-                            <div class="form-group">
-                                <div class="form-line">
-                                    <label for="preco_custo">Custo (R$)</label>
-                                    <input type="number" id="preco_custo" class="form-control" step="0.01" placeholder="Preço de custo por unidade do produto (campo opcional).">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <label>Tipo:</label>
-                            <div class="demo-checkbox">
-                                <input type="checkbox" id="tipo_venda" class="chk-col-blue" checked />
-                                <label for="tipo_venda">Venda</label>
-                                <input type="checkbox" id="tipo_insumo" class="chk-col-blue" />
-                                <label for="tipo_insumo">Insumo</label>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Cancelar</button>
-                <button type="button" id="saveProduct" class="btn btn-primary waves-effect">Salvar Produto</button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Cancelar</button>
+                    <button type="button" id="saveProduct" class="btn btn-primary waves-effect">Salvar Produto</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
 
     <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
@@ -174,282 +182,12 @@
     <script src="bsb/plugins/node-waves/waves.js"></script>
     <!-- SweetAlert Plugin Js -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- DataTables Js -->
+    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
 
-    <script>
-      $(document).ready(function () {
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const unitId = urlParams.get('unit_id');
-
-    // Função para carregar categorias e preencher o select
-    async function loadCategories() {
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'listCategorias',
-                token: token,
-                data: { unit_id: unitId }
-            });
-
-            if (response.data && response.data.success) {
-                const categorias = response.data.categorias;
-                const categoriaSelect = $('#categoria');
-                categoriaSelect.empty();
-                categoriaSelect.append('<option value="">Selecione a Categoria</option>');
-                categorias.forEach(categoria => {
-                    categoriaSelect.append(`<option value="${categoria.id}">${categoria.nome}</option>`);
-                });
-            } else {
-                Swal.fire("Erro", "Falha ao carregar categorias: " + response.data.message, "error");
-            }
-        } catch (error) {
-            console.error('Erro ao carregar categorias:', error);
-            Swal.fire("Erro", "Erro ao carregar categorias. Tente novamente.", "error");
-        }
-    }
-
-    // Função para carregar os produtos e preencher a página
-    async function loadProducts() {
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'getProductCards',
-                token: token,
-                data: { system_unit_id: unitId }
-            });
-
-            if (response.data && response.data.success) {
-                renderProductCards(response.data.product_cards);
-            } else {
-                Swal.fire("Erro", "Falha ao carregar produtos: " + response.data.message, "error");
-            }
-        } catch (error) {
-            console.error('Erro ao carregar produtos:', error);
-            Swal.fire("Erro", "Erro ao carregar produtos. Tente novamente.", "error");
-        }
-    }
-
-    // Função para renderizar os cartões dos produtos
-    function renderProductCards(products) {
-        const container = $('#productsContainer');
-        container.empty();
-
-        let categories = {};
-
-        products.forEach(product => {
-            if (!categories[product.categ]) {
-                categories[product.categ] = [];
-            }
-            categories[product.categ].push(product);
-        });
-
-        Object.keys(categories).forEach(categoria => {
-            const cardCategoryHtml = `
-                <div class="col-lg-12">
-                    <h4 class="category-badge">${categoria}</h4>
-                </div>
-            `;
-            container.append(cardCategoryHtml);
-
-            categories[categoria].forEach(product => {
-                const movimentacoes = product.atividade_recente.map(mov => `
-                    <div class="activity">
-                        <i class="material-icons">${mov.tipo_mov === 'entrada' ? 'arrow_forward' : 'arrow_back'}</i>
-                        ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
-                    </div>
-                `).join('');
-
-                const cardHtml = `
-                    <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                        <div class="card">
-                            <div class="header">
-                                <h2>
-                                    ${product.nome}
-                                    <small>Categoria: ${categoria}</small>
-                                </h2>
-                                <ul class="header-dropdown m-r--5">
-                                    <li class="dropdown">
-                                        <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                                            <i class="material-icons">more_vert</i>
-                                        </a>
-                                        <ul class="dropdown-menu pull-right">
-                                            <li><a href="javascript:void(0);" class="btn-editar" data-id="${product.codigo}">Editar</a></li>
-                                            <li><a href="javascript:void(0);" class="btn-excluir" data-id="${product.codigo}">Excluir</a></li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                            </div>
-                            <div class="body">
-                                Quantidade: ${product.quantidade}<br>
-                                Custo unitário: ${product.custo_unitario}<br>
-                                Valor do estoque: ${product.valor_estoque}<br>
-                                <div class="panel-group" id="accordion_${product.codigo}" role="tablist" aria-multiselectable="true">
-                                    <div class="panel panel-primary">
-                                        <div class="panel-heading" role="tab" id="heading_${product.codigo}">
-                                            <h4 class="panel-title">
-                                                <a role="button" data-toggle="collapse" data-parent="#accordion_${product.codigo}" href="#collapse_${product.codigo}" aria-expanded="true" aria-controls="collapse_${product.codigo}">
-                                                    Atividade Recente
-                                                </a>
-                                            </h4>
-                                        </div>
-                                        <div id="collapse_${product.codigo}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_${product.codigo}">
-                                            <div class="panel-body">
-                                                ${movimentacoes || '<p>Sem movimentações recentes.</p>'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.append(cardHtml);
-            });
-        });
-    }
-
-    // Função para abrir o modal de produto
-    function openProductModal(product = null) {
-        if (product) {
-            // Atualizar modal para edição
-            $('#modalTitle').text('Editar Produto');
-            $('#nome').val(product.nome);
-            $('#saldo').val(product.saldo);
-            $('#und').val(product.und);
-            $('#preco_custo').val(product.preco_custo);
-            $('#categoria').val(product.categ);
-            $('#saveProduct').data('id', product.codigo); // Atribuir o ID do produto ao botão de salvar
-            $('#tipo_primario').prop('checked', product.venda === 1);
-            $('#tipo_insumo').prop('checked', product.insumo === 1);
-            $('#tipo_composicao').prop('checked', product.composicao === 1);
-        } else {
-            // Modal para criação de um novo produto
-            $('#modalTitle').text('Criar Produto');
-            $('#productForm')[0].reset(); // Resetar o formulário
-            $('#saveProduct').removeData('id'); // Remover o ID do produto do botão de salvar
-        }
-
-        // Mostrar modal
-        $('#productModal').modal('show');
-    }
-
-    // Evento para salvar o produto
-    $('#saveProduct').click(async function () {
-        const produtoId = $(this).data('id');
-
-        // Obter os dados do formulário
-        const data = {
-            codigo: produtoId || $('#codigo').val(),
-            nome: $('#nome').val(),
-            categoria: $('#categoria').val(),
-            preco: parseFloat($('#preco_custo').val()) || 0,
-            und: $('#und').val(),
-            venda: $('#tipo_primario').is(':checked') ? 1 : 0,
-            composicao: $('#tipo_composicao').is(':checked') ? 1 : 0,
-            insumo: $('#tipo_insumo').is(':checked') ? 1 : 0,
-            system_unit_id: unitId,
-            preco_custo: parseFloat($('#preco_custo').val()) || 0,
-            saldo: parseFloat($('#saldo').val()) || 0
-        };
-
-        try {
-            let response;
-            if (produtoId) {
-                // Atualizar Produto
-                response = await axios.post(baseUrl, {
-                    method: 'updateProduct',
-                    token: token,
-                    data: data
-                });
-            } else {
-                // Criar Produto
-                response = await axios.post(baseUrl, {
-                    method: 'createProduct',
-                    token: token,
-                    data: data
-                });
-            }
-
-            if (response.data.success) {
-                Swal.fire({
-                    title: 'Sucesso!',
-                    text: response.data.message,
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    $('#productModal').modal('hide'); // Fechar o modal
-                    loadProducts(); // Recarregar os produtos
-                });
-            } else {
-                Swal.fire({
-                    title: 'Erro!',
-                    text: response.data.message,
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                });
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            Swal.fire({
-                title: 'Erro!',
-                text: 'Ocorreu um erro ao salvar o produto. Tente novamente.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    });
-
-    // Evento para abrir o modal de novo produto
-    $('#btnNovoProduto').click(function () {
-        loadCategories();
-        openProductModal();
-    });
-
-    // Evento para editar um produto
-    $(document).on('click', '.btn-editar', function () {
-        const productId = $(this).data('id');
-        loadCategories();
-
-        // Fazer requisição para buscar o produto por ID e abrir o modal
-        axios.post(baseUrl, {
-            method: 'getProductById',
-            token: token,
-            data: {
-                codigo: productId,
-                system_unit_id: unitId
-            }
-        })
-        .then(response => {
-            if (response.data) {
-                openProductModal(response.data);
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao buscar produto:', error);
-            Swal.fire({
-                title: 'Erro!',
-                text: 'Ocorreu um erro ao buscar o produto. Tente novamente.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        });
-    });
-
-    // Controlar o comportamento dos radio buttons
-    $('input[name="tipo"]').change(function () {
-        if ($('#tipo_insumo').is(':checked') && $('#tipo_composicao').is(':checked')) {
-            // Não permitir Insumo e Composição ao mesmo tempo
-            $('#tipo_composicao').prop('checked', false);
-        }
-    });
-
-    // Carregar os produtos ao iniciar a página
-    loadProducts();
-});
-
-    </script>
+    <!-- Custom Js -->
+    <script src="script/productsList.js"></script>
 
 </body>
 

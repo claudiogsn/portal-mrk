@@ -306,7 +306,7 @@ class ProductController {
             FROM products p
             LEFT JOIN categorias c ON c.id = p.categoria
             WHERE p.system_unit_id = :system_unit_id
-            and p.codigo = 1210
+            
         ";
 
             $stmt = $pdo->prepare($sql);
@@ -323,6 +323,8 @@ class ProductController {
                     'codigo' => $product['codigo'],
                     'nome' => $product['produto_nome'],
                     'categ' => $product['nome_categoria'],
+                    'und' => $product['und'],
+                    'categoria_id' => $product['categoria_id'],
                     'insumo' => $product['insumo'],
                     'venda' => $product['venda'],
                     'composicao' => $product['composicao'],
