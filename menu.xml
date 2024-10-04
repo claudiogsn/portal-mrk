@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
-  <menuitem label="Produtos">
+  <menuitem>
+    <label>Estoque</label>
+    <icon>fas:warehouse fa-fw</icon>
+    <menu>
+    <menuitem label="Produtos">
     <icon>fas:clipboard-list fa-fw</icon>
     <menu>
       <menuitem label="Cadastro de Produtos">
@@ -24,6 +28,8 @@
         <action>CreateBalanco</action>
         <icon>fas:clipboard-list fa-fw</icon>
       </menuitem>
+    </menu>
+  </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">
