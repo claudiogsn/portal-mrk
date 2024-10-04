@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
-  <menuitem label="Fichas Tecnicas">
-    <action>CompositionList</action>
+  <menuitem label="Produtos">
     <icon>fas:clipboard-list fa-fw</icon>
+    <menu>
+      <menuitem label="Cadastro de Produtos">
+        <action>ListBalanco</action>
+        <icon>fas:clipboard-list fa-fw</icon>
+      </menuitem>
+      <menuitem label="Fichas Técnicas">
+        <action>ProductsList</action>
+        <icon>fas:clipboard-list fa-fw</icon>
+      </menuitem>
+    </menu>
   </menuitem>
   <menuitem label="Balanco">
     <icon>fas:clipboard-list fa-fw</icon>
