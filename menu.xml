@@ -1,35 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
-  <menuitem>
-    <label>Estoque</label>
+  <menuitem label="Estoque">
     <icon>fas:warehouse fa-fw</icon>
     <menu>
-    <menuitem label="Produtos">
-    <icon>fas:clipboard-list fa-fw</icon>
-    <menu>
-      <menuitem label="Cadastro de Produtos">
-        <action>ProductsList</action>
+      <menuitem label="Produtos">
         <icon>fas:clipboard-list fa-fw</icon>
+        <menu>
+          <menuitem label="Cadastro de Produtos">
+            <action>ProductsList</action>
+            <icon>fas:clipboard-list fa-fw</icon>
+          </menuitem>
+          <menuitem label="Fichas Técnicas">
+            <action>CompositionsList</action>
+            <icon>fas:clipboard-list fa-fw</icon>
+          </menuitem>
+        </menu>
       </menuitem>
-      <menuitem label="Fichas Técnicas">
-        <action>CompositionsList</action>
+      <menuitem label="Balanco">
         <icon>fas:clipboard-list fa-fw</icon>
+        <menu>
+          <menuitem label="Modelo de Balanço">
+            <action>ListBalanco</action>
+            <icon>fas:clipboard-list fa-fw</icon>
+          </menuitem>
+          <menuitem label="Criar Modelo de Balanco">
+            <action>CreateBalanco</action>
+            <icon>fas:clipboard-list fa-fw</icon>
+          </menuitem>
+        </menu>
       </menuitem>
-    </menu>
-  </menuitem>
-  <menuitem label="Balanco">
-    <icon>fas:clipboard-list fa-fw</icon>
-    <menu>
-      <menuitem label="Modelo de Balanço">
-        <action>ListBalanco</action>
-        <icon>fas:clipboard-list fa-fw</icon>
-      </menuitem>
-      <menuitem label="Criar Modelo de Balanco">
-        <action>CreateBalanco</action>
-        <icon>fas:clipboard-list fa-fw</icon>
-      </menuitem>
-    </menu>
-  </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">
