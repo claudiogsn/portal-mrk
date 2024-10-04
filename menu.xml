@@ -4,11 +4,11 @@
     <icon>fas:clipboard-list fa-fw</icon>
     <menu>
       <menuitem label="Cadastro de Produtos">
-        <action>ListBalanco</action>
+        <action>ProductsList</action>
         <icon>fas:clipboard-list fa-fw</icon>
       </menuitem>
       <menuitem label="Fichas Técnicas">
-        <action>ProductsList</action>
+        <action>CompositionsList</action>
         <icon>fas:clipboard-list fa-fw</icon>
       </menuitem>
     </menu>
