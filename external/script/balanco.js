@@ -13,7 +13,7 @@ $(document).ready(function () {
     let productsInBalance = []; // Array para armazenar produtos adicionados ao balanço
 
     // Função para carregar as categorias e produtos
-    async function loadCategories() {
+    async function loadCategories() {''
         try {
             const response = await axios.post(baseUrl, {
                 method: 'listProductsByCategory',
