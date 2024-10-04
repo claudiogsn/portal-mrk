@@ -306,6 +306,7 @@ class ProductController {
             FROM products p
             LEFT JOIN categorias c ON c.id = p.categoria
             WHERE p.system_unit_id = :system_unit_id
+            ORDER BY c.nome, p.nome";
             
         ";
 

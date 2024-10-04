@@ -79,6 +79,7 @@ class CategoriesController {
             SELECT * 
             FROM categorias 
             WHERE system_unit_id = :system_unit_id
+            ORDER BY nome ASC
         ";
 
             $stmt = $pdo->prepare($sql);
