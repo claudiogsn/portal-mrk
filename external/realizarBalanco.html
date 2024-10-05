@@ -101,6 +101,30 @@
 
 <body class="theme-blue">
 
+    <!-- Modal de Login -->
+    <div id="loginModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Login Necessário</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="loginUsername">Usuário</label>
+                        <input type="text" id="loginUsername" class="form-control" placeholder="Digite seu usuário">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Senha</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Digite sua senha">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="loginButton" class="btn btn-primary">Entrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Page Loader -->
     <div class="page-loader-wrapper" id="pageLoader">
         <div class="loader">
@@ -140,7 +164,7 @@
                         </table>
                     </div>
                     <div class="footer">
-                        <button id="btnEnviar" style="margin-bottom: 30px;" class="btn btn-primary waves-effect btnEnviar">Enviar</button>
+                        <button id="btnEnviar" class="btn btn-primary waves-effect btnEnviar">Enviar</button>
                     </div>
                 </div>
             </div>
@@ -167,11 +191,7 @@
                 'https://portal.mrksolucoes.com.br/api/v1/index.php' :
                 'http://localhost/portal-mrk/api/v1/index.php';
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const tag = urlParams.get('tag');
-
-            // Extrair system_unit_id da tag
-            const system_unit_id = tag.split('-')[0];
+            let isAuthenticated = false;
 
             function showLoader() {
                 $('#pageLoader').fadeIn();
@@ -181,9 +201,38 @@
                 $('#pageLoader').fadeOut();
             }
 
+            function checkAuthentication() {
+                if (!isAuthenticated) {
+                    $('#loginModal').modal('show');
+                }
+            }
+
+            $('#loginButton').click(function () {
+                const username = $('#loginUsername').val();
+                const password = $('#loginPassword').val();
+
+                // Simulação de autenticação
+                if (username === "admin" && password === "admin") {
+                    isAuthenticated = true;
+                    $('#loginModal').modal('hide');
+                    loadItemsByTag();
+                } else {
+                    swal("Erro", "Usuário ou senha inválidos", "error");
+                }
+            });
+
             // Carregar os itens do modelo de balanço pela tag
             async function loadItemsByTag() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const tag = urlParams.get('tag');
+
+                if (!tag) {
+                    swal("Erro", "Tag não encontrada.", "error");
+                    return;
+                }
+
                 showLoader();
+
                 try {
                     const response = await axios.post(baseUrl, {
                         method: 'getModelByTag',
@@ -210,7 +259,6 @@
                 tbody.empty();
 
                 for (const categoria in itens) {
-                    // Adiciona o nome da categoria como uma linha de cabeçalho na tabela
                     tbody.append(`
                         <tr class="category-header">
                             <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
@@ -228,7 +276,6 @@
                     });
                 }
 
-                // Aplicar a máscara de quantidade em cada input conforme o tipo de unidade
                 $('.quantidade').each(function () {
                     const unidade = $(this).closest('tr').find('td:nth-child(2)').text();
                     if (['KG', 'LT', 'L'].includes(unidade)) {
@@ -246,7 +293,6 @@
             }
 
             $('#btnEnviar').click(async function () {
-                // Verificar se todos os campos de quantidade estão preenchidos
                 let allFilled = true;
                 $('.quantidade').each(function () {
                     if ($(this).val() === '') {
@@ -293,7 +339,8 @@
                 }
             });
 
-            loadItemsByTag();
+            // Executar a verificação de autenticação ao carregar a página
+            checkAuthentication();
         });
     </script>
 </body>
