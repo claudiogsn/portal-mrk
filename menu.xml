@@ -19,12 +19,12 @@
       <menuitem label="Balanco">
         <icon>fas:clipboard-list fa-fw</icon>
         <menu>
-          <menuitem label="Modelo de Balanço">
-            <action>ListBalanco</action>
+          <menuitem label="Modelos de Balanço">
+            <action>CreateBalanco</action>
             <icon>fas:clipboard-list fa-fw</icon>
           </menuitem>
-          <menuitem label="Criar Modelo de Balanco">
-            <action>CreateBalanco</action>
+          <menuitem label="Relatório de Balanços">
+            <action>ListBalanco</action>
             <icon>fas:clipboard-list fa-fw</icon>
           </menuitem>
         </menu>
