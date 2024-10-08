@@ -1,5 +1,5 @@
 <?php
-class ListBalanco extends TPage
+class ListModelBalanco extends TPage
 {
     private $form;
     public function __construct($param)
@@ -12,9 +12,9 @@ class ListBalanco extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/listBalancos.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/external/listModelBalanco.html.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/listBalancos.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/listModelBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }
 
         $iframe = new TElement('iframe');

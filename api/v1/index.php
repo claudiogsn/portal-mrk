@@ -150,6 +150,30 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+                case 'listBalance':
+                    if (isset($requestData['system_unit_id'])) {
+                        // Verifica se as datas estão presentes e as atribui, caso contrário passa null
+                        $data_inicial = isset($requestData['data_inicial']) ? $requestData['data_inicial'] : null;
+                        $data_final = isset($requestData['data_final']) ? $requestData['data_final'] : null;
+                
+                        // Chama o método listBalance com os parâmetros corretos
+                        $response = MovimentacaoController::listBalance($requestData['system_unit_id'], $data_inicial, $data_final);
+                    } else {
+                        http_response_code(400); // Código HTTP 400 para Bad Request
+                        $response = ['error' => 'Parâmetro system_unit_id ausente'];
+                    }
+                    break;
+
+                case 'getBalanceByDoc':
+                    if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
+                        $response = MovimentacaoController::getBalanceByDoc($requestData['system_unit_id'], $requestData['doc']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                    }
+                    break;
+                
+
             // Métodos para DashboardController
             case 'getDashboardData':
                 if (isset($requestData['unit_id'])) {

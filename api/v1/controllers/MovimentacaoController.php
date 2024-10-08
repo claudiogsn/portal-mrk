@@ -4,8 +4,6 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class MovimentacaoController {
 
-    // Métodos Gerais para Movimentações
-
     // Criação de nova movimentação
     public static function createMovimentacao($data) {
         global $pdo;
@@ -174,6 +172,144 @@ class MovimentacaoController {
 
     // Métodos Específicos para Balanço
 
+    // Listar balanços agrupados por 'doc' com mais informações e filtro de data
+public static function listBalance($system_unit_id, $data_inicial = null, $data_final = null) {
+    global $pdo;
+
+    try {
+        // Validação das datas
+        if (!empty($data_inicial) && !empty($data_final) && $data_inicial > $data_final) {
+            http_response_code(400); // Código HTTP 400 para Bad Request
+            return ['success' => false, 'message' => 'A data inicial não pode ser maior que a data final.'];
+        }
+
+        // Constrói a base da consulta
+        $query = "
+            SELECT 
+                m.doc, 
+                JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'produto', m.produto, 
+                        'quantidade', m.quantidade, 
+                        'nome_produto', p.nome, 
+                        'categoria_id', c.id, 
+                        'nome_categoria', c.nome
+                    )
+                ) AS itens, 
+                MAX(m.created_at) AS created_at
+            FROM movimentacao m
+            INNER JOIN products p ON p.codigo = m.produto
+            INNER JOIN categorias c ON c.id = p.categoria
+            WHERE m.system_unit_id = :system_unit_id 
+            AND m.tipo = 'b'";
+
+        // Adiciona as condições de data, se fornecidas
+        if (!empty($data_inicial) && !empty($data_final)) {
+            $query .= " AND m.created_at BETWEEN :data_inicial AND :data_final";
+        } elseif (!empty($data_inicial)) {
+            $query .= " AND m.created_at >= :data_inicial";
+        } elseif (!empty($data_final)) {
+            $query .= " AND m.created_at <= :data_final";
+        }
+
+        $query .= " GROUP BY m.doc ORDER BY MAX(m.created_at) DESC";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+
+        // Bind das datas se fornecidas
+        if (!empty($data_inicial)) {
+            $stmt->bindParam(':data_inicial', $data_inicial);
+        }
+        if (!empty($data_final)) {
+            $stmt->bindParam(':data_final', $data_final);
+        }
+
+        $stmt->execute();
+        $balances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Decodifica os itens de JSON para array/objeto
+        foreach ($balances as &$balance) {
+            $balance['itens'] = json_decode($balance['itens'], true); // Converte o JSON em array associativo
+        }
+
+        return ['success' => true, 'balances' => $balances];
+    } catch (Exception $e) {
+        http_response_code(500); // Código HTTP 500 para erro interno
+        return ['success' => false, 'message' => 'Erro ao listar balanços: ' . $e->getMessage()];
+    }
+}
+
+
+
+public static function getBalanceByDoc($system_unit_id, $doc) {
+    global $pdo;
+
+    // Validação de parâmetros obrigatórios
+    if (!$system_unit_id || !$doc) {
+        return ['success' => false, 'message' => 'Parâmetros obrigatórios ausentes.'];
+    }
+
+    try {
+        // Consulta os detalhes do balanço, incluindo nome do produto, categoria e nome do usuário
+        $stmt = $pdo->prepare("
+            SELECT 
+                m.doc,
+                p.codigo as produto_codigo,
+                p.nome AS produto_nome,
+                m.quantidade,
+                c.nome AS categoria_nome,
+                u.login AS usuario_nome,
+                m.created_at
+            FROM movimentacao m
+            LEFT JOIN products p ON m.produto = p.codigo AND m.system_unit_id = p.system_unit_id
+            LEFT JOIN categorias c ON p.categoria = c.codigo AND m.system_unit_id = c.system_unit_id
+            LEFT JOIN system_users u ON m.usuario_id = u.id
+            WHERE m.system_unit_id = :system_unit_id AND m.doc = :doc
+        ");
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Verifica se encontrou o balanço
+        if ($movimentacoes) {
+            // Agrupa os dados do balanço e dos itens
+            $response = [
+                'success' => true,
+                'balance' => [
+                    'doc' => $movimentacoes[0]['doc'],
+                    'usuario_nome' => $movimentacoes[0]['usuario_nome'],
+                    'created_at' => $movimentacoes[0]['created_at'],
+                    'itens' => []
+                ]
+            ];
+
+            // Adiciona os itens ao array de itens
+            foreach ($movimentacoes as $movimentacao) {
+                $response['balance']['itens'][] = [
+                    'codigo' => $movimentacao['produto_codigo'],
+                    'produto' => $movimentacao['produto_nome'],
+                    'quantidade' => $movimentacao['quantidade'],
+                    'categoria' => $movimentacao['categoria_nome']
+                ];
+            }
+
+            return $response;
+        } else {
+            return ['success' => false, 'message' => 'Balanço não encontrado.'];
+        }
+    } catch (Exception $e) {
+        return ['success' => false, 'message' => 'Erro ao buscar balanço: ' . $e->getMessage()];
+    }
+}
+
+
+
+
+
+
     // Criação de movimentação de balanço (tipo 'b')
     public static function saveBalanceItems($data) {
         global $pdo;
@@ -204,7 +340,7 @@ class MovimentacaoController {
 
         // Definindo valores fixos
         $tipo = 'b';
-        $usuario_id = 999;
+        $usuario_id = 5;
 
         try {
             // Inicia a transação

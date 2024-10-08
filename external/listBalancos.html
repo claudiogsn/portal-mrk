@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Lista de Balanços</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <style>
+        .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .table-container {
+            position: relative;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Estilo da linha selecionada */
+        .selected-row {
+            background-color: rgba(0, 123, 255, 0.2); /* Azul com baixa opacidade */
+        }
+
+        
+    </style>
+</head>
+
+<body class="theme-blue">
+
+    <div class="page-loader-wrapper">
+        <div class="loader">
+            <div class="preloader">
+                <div class="spinner-layer pl-blue">
+                    <div class="circle-clipper left">
+                        <div class="circle"></div>
+                    </div>
+                    <div class="circle-clipper right">
+                        <div class="circle"></div>
+                    </div>
+                </div>
+            </div>
+            <p>Aguarde...</p>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Filtros e Ações -->
+        <div class="header-card">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="date" id="dataInicial" class="form-control" placeholder="Data Inicial">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" id="dataFinal" class="form-control" placeholder="Data Final">
+                </div>
+                <div class="col-md-3 text-right">
+                    <button id="btnBuscar" class="btn btn-primary">Buscar</button>
+                    <button id="btnExportarSelecionados" class="btn btn-success">Exportar Selecionados</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Balanços -->
+        <div class="card">
+            <div class="body table-responsive">
+                <div class="table-container">
+                    <table id="balancosTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <!-- Usando o atributo label e title para acessibilidade -->
+                                <th>
+                                    <input type="checkbox" id="selectAll" title="Selecionar Todos">
+                                </th>
+                                <th>Doc</th>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Conteúdo Dinâmico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes do Balanço -->
+    <div id="balancoModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes do Balanço</h5>
+                </div>
+                <div class="modal-body">
+                    <!-- Detalhes dinâmicos aqui -->
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                                <th>Categoria</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalhesBalanco">
+                            <!-- Conteúdo Dinâmico -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnExportarModal" class="btn btn-success">Exportar Excel</button>
+                    <button id="btnImprimir" class="btn btn-info">Imprimir</button>
+                    <button class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jquery Core Js -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/sweetalert/sweetalert.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+    <script src="script/listBalancos.js"></script> <!-- Script externo -->
+</body>
+
+</html>
