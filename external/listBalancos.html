@@ -6,15 +6,31 @@
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <title>Lista de Balanços</title>
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
-    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
-    <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+
+     <!-- Google Fonts -->
+     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+ 
+     <!-- Bootstrap Core Css -->
+     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+ 
+     <!-- Waves Effect Css -->
+     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+ 
+     <!-- Animation Css -->
+     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+ 
+     <!-- JQuery DataTable Css -->
+     <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+ 
+     <!-- SweetAlert Css -->
+     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+ 
+     <!-- Custom Css -->
+     <link href="bsb/css/style.css" rel="stylesheet">
+     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+ 
 
     <style>
         .header-card {
@@ -89,7 +105,7 @@
                             <tr>
                                 <!-- Usando o atributo label e title para acessibilidade -->
                                 <th>
-                                    <input type="checkbox" id="selectAll" title="Selecionar Todos">
+                                <input class="chk-col-blue"  type="checkbox" id="selectAll" title="Selecionar Todos"><label for="selectAll" ></label>
                                 </th>
                                 <th>Doc</th>
                                 <th>Data</th>
@@ -136,11 +152,21 @@
         </div>
     </div>
 
-    <!-- Jquery Core Js -->
+    <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <!-- Bootstrap Core Js -->
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <!-- Axios CDN -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="bsb/plugins/sweetalert/sweetalert.min.js"></script>
+    <!-- Waves Effect Plugin Js -->
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <!-- SweetAlert Plugin Js -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- DataTables Js -->
+    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+    
+    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
     <script src="script/listBalancos.js"></script> <!-- Script externo -->
