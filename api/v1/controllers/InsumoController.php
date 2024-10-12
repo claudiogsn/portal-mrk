@@ -68,5 +68,36 @@ class InsumoController {
         }
     }
 
+
+    public static function getInsumosUsage($system_unit_id) {
+        global $pdo;
+
+        $sql = "
+            SELECT 
+                c.insumo_id,
+                p.nome AS insumo_nome,
+                p.categoria AS categoria_id,
+                cat.nome AS categoria_nome,
+                p.saldo AS total_quantity
+            FROM 
+                compositions c
+            JOIN 
+                products p ON c.insumo_id = p.codigo AND c.system_unit_id = p.system_unit_id
+            JOIN 
+                categorias cat ON p.categoria = cat.codigo AND p.system_unit_id = cat.system_unit_id
+            WHERE 
+                c.system_unit_id = ?
+            GROUP BY 
+                c.insumo_id, p.nome, p.categoria, cat.nome
+            ORDER BY 
+                p.nome;
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$system_unit_id]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
 ?>

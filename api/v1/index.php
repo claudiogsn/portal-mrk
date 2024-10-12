@@ -5,7 +5,6 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization"); // Cabeçal
 header("Access-Control-Allow-Origin: http://localhost:3000");
 header('Content-Type: application/json; charset=utf-8');
 
-// Requerendo os controladores
 require_once 'controllers/ComposicaoController.php';
 require_once 'controllers/DashboardController.php';
 require_once 'controllers/EstoqueController.php';
@@ -25,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-// Pegando o corpo da requisição
+
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
 
@@ -50,6 +49,33 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
+            // Métodos para InsumoController
+            case 'getInsumosUsage':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = InsumoController::getInsumosUsage($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+                case 'getInsumoConsumption':
+                    if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes'])) {
+                        $response = NecessidadesController::getInsumoConsumption($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
+                    }
+                    break;
+
+                    case 'getFiliaisByMatriz':
+                        if (isset($requestData['unit_matriz_id'])) {
+                            $response = NecessidadesController::getFiliaisByMatriz($requestData['unit_matriz_id']);
+                        } else {
+                            http_response_code(400);
+                            $response = ['error' => 'Parâmetro $unit_matriz_id ausente'];
+                        }
+                        break;
             // Métodos para ComposicaoController
             case 'createComposicao':
                 $response = ComposicaoController::createComposicao($requestData);
