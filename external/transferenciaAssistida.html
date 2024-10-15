@@ -183,8 +183,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
 
     <!-- Custom JS -->
-    <script>
-       document.addEventListener('DOMContentLoaded', function () {
+     <script>
+            document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
         'http://localhost/portal-mrk/api/v1/index.php';
@@ -226,7 +226,6 @@
 
             // Verifica se está tentando voltar (newIndex < currentIndex)
             if (newIndex < currentIndex) {
-                // Se está tentando voltar, força um reload e volta para o step 1
                 window.location.reload();  // Força o reload da página
                 return false; // Impede que o step volte normalmente
             }
@@ -310,7 +309,11 @@
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
 
-        const dates = calcularUltimos4DiasSemana(new Date(endDate));
+        // Exibe as datas no console
+        console.log("Datas selecionadas:", startDate, endDate);
+
+        const dates = calcularUltimas4DatasPorSemana(startDate, endDate);
+        console.log("Últimas 4 datas calculadas:", dates); // Exibe as datas calculadas no console
 
         showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
 
@@ -322,7 +325,7 @@
                 token: token,
                 data: {
                     system_unit_id: selectedUnitId,
-                    dates: dates,
+                    dates: dates,  // Enviando as últimas 4 datas para cada dia da semana
                     productCodes: selectedProducts
                 }
             })
@@ -365,18 +368,54 @@
         document.getElementById('result-section').style.display = 'block'; // Mostrar a tabela de resultados
     }
 
-    // Função para calcular os últimos 4 dias da semana
-    function calcularUltimos4DiasSemana(dataReferencia) {
-        let diasSelecionados = [];
-        let d = new Date(dataReferencia);
+    function isolarDiasDaSemana(startDateInput, endDateInput) {
+        const startDate = new Date(startDateInput);
+        const endDate = new Date(endDateInput);
+        let diasUnicos = new Set();
 
-        while (diasSelecionados.length < 4) {
-            diasSelecionados.push(new Date(d).toISOString().slice(0, 10));
-            d.setDate(d.getDate() - 7);
+        // Percorrer o intervalo de datas e identificar os dias da semana únicos
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            diasUnicos.add(d.getDay()); // Adiciona o índice do dia da semana (0 = Domingo, 6 = Sábado)
         }
 
-        return diasSelecionados;
+        console.log("Dias da semana isolados no período:", Array.from(diasUnicos)); // Exibe os dias da semana isolados
+        return Array.from(diasUnicos); // Retorna um array de dias únicos
     }
+
+    // Função que retorna as últimas 4 ocorrências de um dia da semana específico
+    function calcularUltimas4DatasParaDia(diaSemana) {
+        let datasEncontradas = [];
+        let dataAtual = new Date();  // Usaremos a data atual como ponto de referência
+
+        // Loop para encontrar as últimas 4 ocorrências do dia da semana
+        while (datasEncontradas.length < 4) {
+            if (dataAtual.getDay() === diaSemana) {
+                datasEncontradas.push(new Date(dataAtual).toISOString().slice(0, 10));
+            }
+            dataAtual.setDate(dataAtual.getDate() - 1); // Retrocede um dia
+        }
+
+        console.log(`Últimas 4 datas para o dia ${diaSemana}:`, datasEncontradas); // Log das últimas 4 datas para o dia
+        return datasEncontradas;
+    }
+
+
+    // Função principal que isola os dias da semana e calcula as últimas 4 datas de cada um
+    function calcularUltimas4DatasPorSemana(startDateInput, endDateInput) {
+        // Passa o intervalo de datas para a função que isola os dias da semana
+        const diasDaSemana = isolarDiasDaSemana(startDateInput, endDateInput);
+        let todasAsDatas = [];
+
+        // Para cada dia da semana isolado, calcular as 4 últimas datas
+        diasDaSemana.forEach(dia => {
+            const ultimas4Datas = calcularUltimas4DatasParaDia(dia);
+            todasAsDatas.push(...ultimas4Datas); // Adiciona as datas ao array principal
+        });
+
+        console.log("Todas as últimas 4 datas calculadas:", todasAsDatas); // Log das datas finais
+        return todasAsDatas; // Retorna todas as últimas 4 datas
+    }
+
 
     // Inicializar
     loadUnidades();
