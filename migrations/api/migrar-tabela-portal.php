@@ -8,58 +8,51 @@ $dsnMeraki = 'mysql:host=localhost;dbname=meraki89_portal';
 $usernameMeraki = 'meraki89_portal';
 $passwordMeraki = 'Portal@159';
 
-$dsnMenew = 'mysql:host=db.prod.menew.cloud;dbname=portalme_api';
-$usernameMenew = 'ped_claudio_gomes';
-$passwordMenew = 'dvHs3QjJRQDgKwpDe2@mAZmY';
-
 try {
     $pdoMeraki = new PDO($dsnMeraki, $usernameMeraki, $passwordMeraki);
     $pdoMeraki->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $pdoMenew = new PDO($dsnMenew, $usernameMenew, $passwordMenew);
-    $pdoMenew->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
     $data = json_decode(file_get_contents("php://input"), true);
     $tableName = $data['table'];
-    $customCode = $data['custom_code'];
-    $systemUnitId = $data['system_unit_id'];
+    $sourceSystemUnitId = $data['source_system_unit_id'];
+    $targetSystemUnitId = $data['target_system_unit_id'];
 
-    // Apagar dados existentes no banco Meraki para o system_unit_id informado
-    $pdoMeraki->prepare("DELETE FROM $tableName WHERE system_unit_id = ?")->execute([$systemUnitId]);
+    // Apagar dados existentes no destino
+    $pdoMeraki->prepare("DELETE FROM $tableName WHERE system_unit_id = ?")->execute([$targetSystemUnitId]);
 
-    // Selecionar dados do banco Menew para migração
+    // Selecionar dados da unidade de origem
     switch ($tableName) {
         case 'products':
-            $stmt = $pdoMenew->prepare("SELECT * FROM ckpt_produto WHERE estabelecimento = ?");
+            $stmt = $pdoMeraki->prepare("SELECT * FROM products WHERE system_unit_id = ?");
             break;
         case 'categorias':
-            $stmt = $pdoMenew->prepare("SELECT * FROM ckpt_categoria WHERE estabelecimento = ?");
+            $stmt = $pdoMeraki->prepare("SELECT * FROM categorias WHERE system_unit_id = ?");
             break;
         case 'compositions':
-            $stmt = $pdoMenew->prepare("SELECT * FROM ckpt_prod_composicao WHERE estabelecimento = ?");
+            $stmt = $pdoMeraki->prepare("SELECT * FROM compositions WHERE system_unit_id = ?");
             break;
         default:
             echo json_encode(['status' => 'error', 'message' => 'Tabela desconhecida']);
             exit();
     }
 
-    $stmt->execute([$customCode]);
+    $stmt->execute([$sourceSystemUnitId]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Inserir dados migrados no banco Meraki
+    // Inserir dados no destino
     foreach ($rows as $row) {
         switch ($tableName) {
             case 'products':
                 $pdoMeraki->prepare("INSERT INTO products (system_unit_id, codigo, nome, preco, categoria, und, venda, composicao, insumo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                    ->execute([$systemUnitId, $row['codigo'], $row['nome'], $row['preco'], $row['categ'], $row['und'], $row['venda'], $row['composicao'], $row['insumo']]);
+                    ->execute([$targetSystemUnitId, $row['codigo'], $row['nome'], $row['preco'], $row['categoria'], $row['und'], $row['venda'], $row['composicao'], $row['insumo']]);
                 break;
             case 'categorias':
                 $pdoMeraki->prepare("INSERT INTO categorias (system_unit_id, codigo, nome) VALUES (?, ?, ?)")
-                    ->execute([$systemUnitId, $row['codigo'], $row['nome']]);
+                    ->execute([$targetSystemUnitId, $row['codigo'], $row['nome']]);
                 break;
             case 'compositions':
                 $pdoMeraki->prepare("INSERT INTO compositions (product_id, insumo_id, quantity, system_unit_id) VALUES (?, ?, ?, ?)")
-                    ->execute([$row['produto'], $row['insumo'], $row['quantidade'], $systemUnitId]);
+                    ->execute([$row['product_id'], $row['insumo_id'], $row['quantity'], $targetSystemUnitId]);
                 break;
         }
     }
