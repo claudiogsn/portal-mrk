@@ -132,10 +132,35 @@
                                 <h2>Produtos</h2>
                                 <section>
                                     <h4>Selecione os Produtos</h4>
-                                    <select multiple id="product-select" name="product-select" class="multi-select" required>
-                                        <!-- Produtos serão preenchidos dinamicamente -->
-                                    </select>
-                                </section>
+                                
+                                    <!-- Opções para Importar ou Selecionar Manualmente -->
+                                    <div class="form-group">
+                                        <label>Como deseja selecionar os produtos?</label>
+                                        <div>
+                                            <input type="radio" id="option-importar" name="product-option" value="importar">
+                                            <label for="option-importar">Importar Produtos do Balanço</label>
+                                            
+                                            <input type="radio" id="option-manual" name="product-option" value="manual" checked>
+                                            <label for="option-manual">Selecionar Manualmente</label>
+                                        </div>
+                                    </div>
+                                
+                                    <!-- Importar Produtos do Balanço -->
+                                    <div id="importar-balance" style="display: none;">
+                                        <label for="modelos-select">Selecione o Balanço:</label>
+                                        <select id="modelos-select" name="modelos-select" class="form-control">
+                                            <!-- Modelos serão preenchidos dinamicamente -->
+                                        </select>
+                                    </div>
+                                
+                                    <!-- Seleção Manual de Produtos -->
+                                    <div id="manual-select">
+                                        <label for="product-select">Selecione os Produtos:</label>
+                                        <select multiple id="product-select" name="product-select" class="multi-select" required>
+                                            <!-- Produtos serão preenchidos dinamicamente -->
+                                        </select>
+                                    </div>
+                                </section>                                
 
                                 <h2>Necessidades Calculadas</h2>
                                 <section>
@@ -184,7 +209,7 @@
 
     <!-- Custom JS -->
      <script>
-            document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
         'http://localhost/portal-mrk/api/v1/index.php';
@@ -192,6 +217,8 @@
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const unitId = urlParams.get('unit_matriz_id');
+
+    let importedProducts = []; // Armazenar os produtos importados como objetos {codigo_produto, nome_produto}
 
     // Inicializar o Form Wizard
     const form = $("#wizard-form");
@@ -206,7 +233,7 @@
             "end-date": "required",
             "product-select": {
                 required: function () {
-                    return $("#product-select option:selected").length > 0; // Pelo menos um produto deve ser selecionado
+                    return $("#product-select option:selected").length > 0 || importedProducts.length > 0;
                 }
             }
         }
@@ -224,30 +251,27 @@
         onStepChanging: function (event, currentIndex, newIndex) {
             form.validate().settings.ignore = ":disabled,:hidden";
 
-            // Verifica se está tentando voltar (newIndex < currentIndex)
             if (newIndex < currentIndex) {
                 window.location.reload();  // Força o reload da página
-                return false; // Impede que o step volte normalmente
+                return false;
             }
 
-            return form.valid(); // Continua para o próximo step normalmente
+            return form.valid(); 
         },
         onStepChanged: function (event, currentIndex, priorIndex) {
-            // Se o step atual for "Necessidades Calculadas", calcular as necessidades
             if (currentIndex === 3) {
                 calcularNecessidades();
             } else if (currentIndex === 2) {
                 const selectedUnitId = document.getElementById('unit-select').value;
                 if (selectedUnitId) {
                     loadProdutos(selectedUnitId);
+                    loadModelos(selectedUnitId);  // Carregar modelos de balanço
                 } else {
                     alert("Por favor, selecione uma unidade de destino.");
                 }
             }
         },
-        onFinished: function (event, currentIndex) {
-            // Finalização do wizard
-        }
+        onFinished: function (event, currentIndex) {}
     });
 
     // Exibir Modal de Carregamento
@@ -255,12 +279,10 @@
         $('#defaultModal').modal('show');
     }
 
-    // Ocultar Modal de Carregamento
     function hideLoadingModal() {
         $('#defaultModal').modal('hide');
     }
 
-    // Carregar Unidades Vinculadas
     async function loadUnidades() {
         const response = await fetch(baseUrl, {
             method: 'POST',
@@ -302,18 +324,99 @@
         $('#product-select').multiSelect();
     }
 
+    // Carregar Modelos para "Importar Produtos do Balanço"
+    async function loadModelos(unitId) {
+        const response = await fetch(baseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                method: 'listModelosWithProducts',
+                token: token,
+                data: { unit_id: unitId }
+            })
+        });
+
+        const data = await response.json();
+        const select = document.getElementById('modelos-select');
+        select.innerHTML = ''; // Limpa opções antigas
+
+        data.modelos.forEach(modelo => {
+            const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
+            select.appendChild(option);
+        });
+
+        select.addEventListener('change', function () {
+            const tagSelecionada = this.value;
+            loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
+        });
+    }
+
+    // Carregar Produtos do Modelo ao selecionar uma tag
+    async function loadProdutosDoModelo(tag) {
+        const response = await fetch(baseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                method: 'getModelByTag',
+                data: { tag: tag }
+            })
+        });
+
+        const data = await response.json();
+        const produtosModelo = data.itens;
+        const selectProdutos = document.getElementById('product-select');
+        selectProdutos.innerHTML = ''; // Limpa produtos anteriores
+
+        importedProducts = []; // Limpa a variável de produtos importados
+
+        for (const categoria in produtosModelo) {
+            produtosModelo[categoria].forEach(item => {
+                const option = new Option(item.nome_produto, item.codigo_produto); // Usar código do produto
+                selectProdutos.appendChild(option);
+
+                // Adicionar os produtos importados como objetos
+                importedProducts.push({
+                    codigo_produto: item.codigo_produto,
+                    nome_produto: item.nome_produto
+                });
+            });
+        }
+
+        $('#product-select').multiSelect('refresh');
+    }
+
+    // Alternar entre "Importar Produtos" e "Selecionar Manualmente"
+    document.querySelectorAll('input[name="product-option"]').forEach(option => {
+        option.addEventListener('change', function () {
+            const importar = document.getElementById('importar-balance');
+            const manual = document.getElementById('manual-select');
+            if (this.value === 'importar') {
+                importar.style.display = 'block';
+                manual.style.display = 'none';
+            } else {
+                importar.style.display = 'none';
+                manual.style.display = 'block';
+            }
+        });
+    });
+
     // Calcular necessidades após o envio de datas e produtos
     async function calcularNecessidades() {
         const selectedUnitId = document.getElementById('unit-select').value;
-        const selectedProducts = $('#product-select').val(); // Produtos selecionados
+        const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
+
+        // Concatenar os produtos selecionados manualmente com os produtos importados
+        const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
+
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
 
-        // Exibe as datas no console
+        // Exibe as datas e produtos no console
         console.log("Datas selecionadas:", startDate, endDate);
+        console.log("Produtos selecionados:", allSelectedProducts);
 
         const dates = calcularUltimas4DatasPorSemana(startDate, endDate);
-        console.log("Últimas 4 datas calculadas:", dates); // Exibe as datas calculadas no console
+        console.log("Últimas 4 datas calculadas:", dates);
 
         showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
 
@@ -325,8 +428,8 @@
                 token: token,
                 data: {
                     system_unit_id: selectedUnitId,
-                    dates: dates,  // Enviando as últimas 4 datas para cada dia da semana
-                    productCodes: selectedProducts
+                    dates: dates,
+                    productCodes: allSelectedProducts  // Enviando todos os produtos selecionados
                 }
             })
         });
@@ -335,16 +438,25 @@
         const tableBody = document.getElementById('result-table').querySelector('tbody');
         tableBody.innerHTML = '';
 
-        // Adicionar a lógica para obter os nomes dos produtos e mostrar na tabela
         const productSelect = document.getElementById('product-select');
-        const productNames = Array.from(productSelect.selectedOptions).map(option => option.text);
+        const productNamesManual = Array.from(productSelect.selectedOptions).map(option => ({
+            nome_produto: option.text,
+            codigo_produto: option.value
+        }));
 
-        for (const [index, [productId, quantity]] of Object.entries(Object.entries(consumptions))) {
-            const productName = productNames[index]; // Nome do produto com base na seleção
+        // Combina os produtos importados e os manualmente selecionados
+        const allProducts = [
+            ...productNamesManual, 
+            ...importedProducts.filter(p => !productNamesManual.some(pm => pm.codigo_produto === p.codigo_produto))
+        ];
+
+        // Exibir os produtos na tabela
+        allProducts.forEach((product, index) => {
+            const quantity = consumptions[product.codigo_produto] || 0; // Busca a quantidade correspondente ao código do produto
             const row = `
                 <tr>
-                    <td>${productName}</td>
-                    <td>${productId}</td>
+                    <td>${product.codigo_produto}</td>
+                    <td>${product.nome_produto}</td>
                     <td>${quantity}</td>
                     <td>
                         <button type="button" class="btn btn-primary btn-apply" data-quantity="${quantity}">➡</button>
@@ -353,7 +465,7 @@
                 </tr>
             `;
             tableBody.insertAdjacentHTML('beforeend', row);
-        }
+        });
 
         // Adicionando evento para os botões de aplicar a quantidade
         document.querySelectorAll('.btn-apply').forEach(button => {
@@ -364,8 +476,8 @@
             });
         });
 
-        hideLoadingModal(); // Ocultar o modal após o cálculo
-        document.getElementById('result-section').style.display = 'block'; // Mostrar a tabela de resultados
+        hideLoadingModal();
+        document.getElementById('result-section').style.display = 'block';
     }
 
     function isolarDiasDaSemana(startDateInput, endDateInput) {
@@ -373,54 +485,46 @@
         const endDate = new Date(endDateInput);
         let diasUnicos = new Set();
 
-        // Percorrer o intervalo de datas e identificar os dias da semana únicos
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            diasUnicos.add(d.getDay()); // Adiciona o índice do dia da semana (0 = Domingo, 6 = Sábado)
+            diasUnicos.add(d.getDay());
         }
 
-        console.log("Dias da semana isolados no período:", Array.from(diasUnicos)); // Exibe os dias da semana isolados
-        return Array.from(diasUnicos); // Retorna um array de dias únicos
+        console.log("Dias da semana isolados no período:", Array.from(diasUnicos));
+        return Array.from(diasUnicos);
     }
 
-    // Função que retorna as últimas 4 ocorrências de um dia da semana específico
     function calcularUltimas4DatasParaDia(diaSemana) {
         let datasEncontradas = [];
-        let dataAtual = new Date();  // Usaremos a data atual como ponto de referência
+        let dataAtual = new Date();
 
-        // Loop para encontrar as últimas 4 ocorrências do dia da semana
         while (datasEncontradas.length < 4) {
             if (dataAtual.getDay() === diaSemana) {
                 datasEncontradas.push(new Date(dataAtual).toISOString().slice(0, 10));
             }
-            dataAtual.setDate(dataAtual.getDate() - 1); // Retrocede um dia
+            dataAtual.setDate(dataAtual.getDate() - 1);
         }
 
-        console.log(`Últimas 4 datas para o dia ${diaSemana}:`, datasEncontradas); // Log das últimas 4 datas para o dia
+        console.log(`Últimas 4 datas para o dia ${diaSemana}:`, datasEncontradas);
         return datasEncontradas;
     }
 
-
-    // Função principal que isola os dias da semana e calcula as últimas 4 datas de cada um
     function calcularUltimas4DatasPorSemana(startDateInput, endDateInput) {
-        // Passa o intervalo de datas para a função que isola os dias da semana
         const diasDaSemana = isolarDiasDaSemana(startDateInput, endDateInput);
         let todasAsDatas = [];
 
-        // Para cada dia da semana isolado, calcular as 4 últimas datas
         diasDaSemana.forEach(dia => {
             const ultimas4Datas = calcularUltimas4DatasParaDia(dia);
-            todasAsDatas.push(...ultimas4Datas); // Adiciona as datas ao array principal
+            todasAsDatas.push(...ultimas4Datas);
         });
 
-        console.log("Todas as últimas 4 datas calculadas:", todasAsDatas); // Log das datas finais
-        return todasAsDatas; // Retorna todas as últimas 4 datas
+        console.log("Todas as últimas 4 datas calculadas:", todasAsDatas);
+        return todasAsDatas;
     }
 
-
-    // Inicializar
     loadUnidades();
 });
 
     </script>
+
 </body>
 </html>

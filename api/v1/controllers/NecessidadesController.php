@@ -103,7 +103,7 @@ class NecessidadesController {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // Método para chamar a API Menew e obter o token
+    // Metodo para chamar a API Menew e obter o token
     private static function getMenewToken($user_api, $pass_api) {
         $loginPayload = json_encode([
             "token" => null,
