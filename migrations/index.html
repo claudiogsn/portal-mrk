@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migração de Dados entre Estabelecimentos</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/style.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/themes/all-themes.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="theme-blue">
+    <div class="container-fluid">
+        <div class="block-header">
+            <h2></h2>
+        </div>
+        <div class="row clearfix">
+            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                <div class="card">
+                    <div class="header">
+                        <h2>Configuração da Migração</h2>
+                    </div>
+                    <div class="body">
+                        <form id="migrationForm">
+                            <div class="form-group">
+                                <label for="sourceSystemUnitId">System Unit ID de Origem:</label>
+                                <input type="text" id="sourceSystemUnitId" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="targetSystemUnitId">System Unit ID de Destino:</label>
+                                <input type="text" id="targetSystemUnitId" class="form-control" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary waves-effect">Iniciar Migração</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.js"></script>
+
+    <script>
+        document.getElementById('migrationForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const sourceSystemUnitId = document.getElementById('sourceSystemUnitId').value;
+            const targetSystemUnitId = document.getElementById('targetSystemUnitId').value;
+
+            migrateTable('products', sourceSystemUnitId, targetSystemUnitId)
+                .then(() => migrateTable('categorias', sourceSystemUnitId, targetSystemUnitId))
+                .then(() => migrateTable('compositions', sourceSystemUnitId, targetSystemUnitId))
+                .then(() => Swal.fire('Sucesso', 'Migração concluída com sucesso!', 'success'))
+                .catch((error) => Swal.fire('Erro', 'Erro durante a migração: ' + error, 'error'));
+        });
+
+        function migrateTable(tableName, sourceSystemUnitId, targetSystemUnitId) {
+            return new Promise((resolve, reject) => {
+                Swal.fire({
+                    title: `Migrando ${tableName}...`,
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                axios.post('https://portal.mrksolucoes.com.br/migrations/api/migrar-tabela-portal.php', {
+                    table: tableName,
+                    source_system_unit_id: sourceSystemUnitId,
+                    target_system_unit_id: targetSystemUnitId
+                })
+                .then((response) => {
+                    if (response.data.status === 'success') {
+                        Swal.close();
+                        resolve();
+                    } else {
+                        reject(response.data.message);
+                    }
+                })
+                .catch((error) => {
+                    reject(error.message);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
