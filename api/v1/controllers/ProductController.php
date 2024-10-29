@@ -266,7 +266,7 @@ class ProductController {
                 p.codigo,
                 p.nome AS produto_nome,
                 p.estoque_minimo,
-                c.id AS categoria_id,
+                c.codigo AS categoria_id,
                 c.nome AS nome_categoria,
                 p.saldo AS quantidade,
                 p.insumo,
@@ -304,7 +304,7 @@ class ProductController {
                     WHERE comp.product_id = p.codigo AND comp.system_unit_id = p.system_unit_id
                 ) AS ficha_tecnica
             FROM products p
-            LEFT JOIN categorias c ON c.id = p.categoria and c.system_unit_id = p.system_unit_id
+            LEFT JOIN categorias c ON c.codigo = p.categoria and c.system_unit_id = p.system_unit_id
             WHERE p.system_unit_id = :system_unit_id
             ORDER BY c.nome, p.nome
             
