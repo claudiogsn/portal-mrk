@@ -304,7 +304,7 @@ class ProductController {
                     WHERE comp.product_id = p.codigo AND comp.system_unit_id = p.system_unit_id
                 ) AS ficha_tecnica
             FROM products p
-            LEFT JOIN categorias c ON c.id = p.categoria
+            LEFT JOIN categorias c ON c.id = p.categoria and c.system_unit_id = p.system_unit_id
             WHERE p.system_unit_id = :system_unit_id
             ORDER BY c.nome, p.nome
             
