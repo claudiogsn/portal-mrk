@@ -209,7 +209,8 @@
 
     <!-- Custom JS -->
      <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        // Custom JS
+document.addEventListener('DOMContentLoaded', function () {
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
         'http://localhost/portal-mrk/api/v1/index.php';
@@ -267,11 +268,19 @@
                     loadProdutos(selectedUnitId);
                     loadModelos(selectedUnitId);  // Carregar modelos de balanço
                 } else {
-                    alert("Por favor, selecione uma unidade de destino.");
+                    Swal.fire({
+                        title: 'Atenção!',
+                        text: "Por favor, selecione uma unidade de destino.",
+                        icon: 'warning',
+                        confirmButtonText: 'Ok'
+                    });
                 }
             }
         },
-        onFinished: function (event, currentIndex) {}
+        onFinished: function (event, currentIndex) {
+            // Chama a função de criar transferência ao finalizar o wizard
+            createTransfer();
+        }
     });
 
     // Exibir Modal de Carregamento
@@ -402,127 +411,210 @@
 
     // Calcular necessidades após o envio de datas e produtos
     async function calcularNecessidades() {
-        const selectedUnitId = document.getElementById('unit-select').value;
-        const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
+    const selectedUnitId = document.getElementById('unit-select').value;
+    const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
 
-        // Concatenar os produtos selecionados manualmente com os produtos importados
-        const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
+    // Concatenar os produtos selecionados manualmente com os produtos importados
+    const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
 
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
 
-        // Exibe as datas e produtos no console
-        console.log("Datas selecionadas:", startDate, endDate);
-        console.log("Produtos selecionados:", allSelectedProducts);
+    // Exibe as datas e produtos no console
+    console.log("Datas selecionadas:", startDate, endDate);
+    console.log("Produtos selecionados:", allSelectedProducts);
 
-        const dates = calcularUltimas4DatasPorSemana(startDate, endDate);
-        console.log("Últimas 4 datas calculadas:", dates);
+    const dates = calcularUltimas4DatasPorSemana(startDate, endDate);
+    console.log("Últimas 4 datas calculadas:", dates);
 
-        showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
+    showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
 
-        const response = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                method: 'getInsumoConsumption',
-                token: token,
-                data: {
-                    system_unit_id: selectedUnitId,
-                    dates: dates,
-                    productCodes: allSelectedProducts  // Enviando todos os produtos selecionados
-                }
-            })
-        });
-
-        const consumptions = await response.json();
-        const tableBody = document.getElementById('result-table').querySelector('tbody');
-        tableBody.innerHTML = '';
-
-        const productSelect = document.getElementById('product-select');
-        const productNamesManual = Array.from(productSelect.selectedOptions).map(option => ({
-            nome_produto: option.text,
-            codigo_produto: option.value
-        }));
-
-        // Combina os produtos importados e os manualmente selecionados
-        const allProducts = [
-            ...productNamesManual, 
-            ...importedProducts.filter(p => !productNamesManual.some(pm => pm.codigo_produto === p.codigo_produto))
-        ];
-
-        // Exibir os produtos na tabela
-        allProducts.forEach((product, index) => {
-            const quantity = consumptions[product.codigo_produto] || 0; // Busca a quantidade correspondente ao código do produto
-            const row = `
-                <tr>
-                    <td>${product.codigo_produto}</td>
-                    <td>${product.nome_produto}</td>
-                    <td>${quantity}</td>
-                    <td>
-                        <button type="button" class="btn btn-primary btn-apply" data-quantity="${quantity}">➡</button>
-                    </td>
-                    <td><input type="number" class="form-control" value=""></td>
-                </tr>
-            `;
-            tableBody.insertAdjacentHTML('beforeend', row);
-        });
-
-        // Adicionando evento para os botões de aplicar a quantidade
-        document.querySelectorAll('.btn-apply').forEach(button => {
-            button.addEventListener('click', function () {
-                const quantity = this.getAttribute('data-quantity');
-                const input = this.closest('tr').querySelector('input');
-                input.value = quantity; // Aplicar a quantidade sugerida no campo de input
-            });
-        });
-
-        hideLoadingModal();
-        document.getElementById('result-section').style.display = 'block';
-    }
-
-    function isolarDiasDaSemana(startDateInput, endDateInput) {
-        const startDate = new Date(startDateInput);
-        const endDate = new Date(endDateInput);
-        let diasUnicos = new Set();
-
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            diasUnicos.add(d.getDay());
-        }
-
-        console.log("Dias da semana isolados no período:", Array.from(diasUnicos));
-        return Array.from(diasUnicos);
-    }
-
-    function calcularUltimas4DatasParaDia(diaSemana) {
-        let datasEncontradas = [];
-        let dataAtual = new Date();
-
-        while (datasEncontradas.length < 4) {
-            if (dataAtual.getDay() === diaSemana) {
-                datasEncontradas.push(new Date(dataAtual).toISOString().slice(0, 10));
+    const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            method: 'getInsumoConsumption',
+            token: token,
+            data: {
+                system_unit_id: selectedUnitId,
+                dates: dates,
+                productCodes: allSelectedProducts  // Enviando todos os produtos selecionados
             }
-            dataAtual.setDate(dataAtual.getDate() - 1);
-        }
+        })
+    });
 
-        console.log(`Últimas 4 datas para o dia ${diaSemana}:`, datasEncontradas);
-        return datasEncontradas;
+    const consumos = await response.json();
+
+    // Verifique se a resposta da API é um objeto e log da resposta
+    console.log("Resposta da API:", consumos);
+    
+    if (typeof consumos !== 'object' || consumos === null) {
+        console.error('Esperado um objeto, mas recebeu:', consumos);
+        Swal.fire({
+            title: 'Erro!',
+            text: 'Não foi possível calcular as necessidades. A resposta da API não é válida.',
+            icon: 'error',
+            confirmButtonText: 'Ok'
+        });
+        hideLoadingModal(); // Ocultar o modal
+        return; // Interrompe a função se a resposta não for válida
     }
 
-    function calcularUltimas4DatasPorSemana(startDateInput, endDateInput) {
-        const diasDaSemana = isolarDiasDaSemana(startDateInput, endDateInput);
-        let todasAsDatas = [];
+    // Transformar o objeto de consumos em um array
+    const consumosArray = Object.entries(consumos).map(([codigo, quantidadeSugerida]) => ({
+        codigo,
+        quantidadeSugerida
+    }));
 
-        diasDaSemana.forEach(dia => {
-            const ultimas4Datas = calcularUltimas4DatasParaDia(dia);
-            todasAsDatas.push(...ultimas4Datas);
+    // Exibir os dados no grid
+    const grid = document.getElementById('result-table').querySelector('tbody');
+    grid.innerHTML = ''; // Limpa o grid
+
+    consumosArray.forEach(consumo => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${consumo.codigo}</td>
+            <td>${consumo.nome || 'Produto não encontrado'}</td> <!-- Adicione um tratamento caso o nome não esteja disponível -->
+            <td>${consumo.quantidadeSugerida}</td>
+            <td><input type="checkbox" class="apply-checkbox"></td>
+            <td><input type="number" id="quantidade-${consumo.codigo}" min="0" value="0"></td>
+        `;
+        grid.appendChild(row);
+    });
+
+    hideLoadingModal(); // Ocultar o modal
+    document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
+}
+
+
+    // Criar a transferência
+    async function createTransfer() {
+        const sourceUnitId = document.getElementById('unit-select').value;
+        const destinationUnitId = document.getElementById('destination-unit-select').value; // Substitua pelo seu campo de unidade de destino
+
+        // Captura todos os produtos e suas quantidades
+        const transferItems = [];
+        const rows = document.querySelectorAll('#result-table tbody tr');
+        
+        rows.forEach(row => {
+            const codigo = row.cells[0].innerText; // Captura o código do produto
+            const quantidadeInput = row.querySelector(`#quantidade-${codigo}`);
+            const quantidade = quantidadeInput ? parseInt(quantidadeInput.value) : 0;
+
+            // Adiciona ao array se a quantidade for maior que 0
+            if (quantidade > 0) {
+                transferItems.push({
+                    codigo: codigo,
+                    seq: transferItems.length + 1, // Sequência continua
+                    quantidade: quantidade
+                });
+            }
         });
 
-        console.log("Todas as últimas 4 datas calculadas:", todasAsDatas);
-        return todasAsDatas;
+        // Validar se algum item foi adicionado para transferência
+        if (transferItems.length === 0) {
+            Swal.fire({
+                title: 'Atenção!',
+                text: "Nenhum produto foi selecionado para a transferência.",
+                icon: 'warning',
+                confirmButtonText: 'Ok'
+            });
+            return;
+        }
+
+        const transferData = {
+            method: "createTransferItems",
+            token: token, // Use o token obtido da URL
+            data: {
+                system_unit_id: sourceUnitId,
+                system_unit_id_destino: destinationUnitId,
+                itens: transferItems,
+                usuario_id: 123 // Altere para o ID do usuário apropriado
+            }
+        };
+
+        // Perguntar ao usuário se deseja realizar a transferência
+        const confirmation = await Swal.fire({
+            title: 'Confirmação',
+            text: "Você deseja realizar a transferência?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Não'
+        });
+
+        if (confirmation.isConfirmed) {
+            showLoadingModal(); // Exibir modal de carregamento
+
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(transferData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    Swal.fire({
+                        title: 'Sucesso!',
+                        text: `Transferência realizada com sucesso. Documento: ${result.doc}`,
+                        icon: 'success',
+                        confirmButtonText: 'Ok'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Erro!',
+                        text: `Não foi possível realizar a transferência: ${result.message}`,
+                        icon: 'error',
+                        confirmButtonText: 'Ok'
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao realizar a transferência:', error);
+                Swal.fire({
+                    title: 'Erro!',
+                    text: 'Ocorreu um erro ao tentar realizar a transferência.',
+                    icon: 'error',
+                    confirmButtonText: 'Ok'
+                });
+            } finally {
+                hideLoadingModal(); // Ocultar modal de carregamento
+            }
+        }
     }
 
+    // Função para calcular as últimas 4 datas por semana
+    function calcularUltimas4DatasPorSemana(startDate, endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const result = [];
+
+        while (start <= end) {
+            // Obtém o dia da semana atual (0 = domingo, 6 = sábado)
+            const dayOfWeek = start.getDay();
+            const weekStart = new Date(start);
+            weekStart.setDate(start.getDate() - dayOfWeek); // Ajusta para o início da semana
+
+            // Adiciona as 4 datas para a semana atual
+            for (let i = 0; i < 4; i++) {
+                const weekDate = new Date(weekStart);
+                weekDate.setDate(weekStart.getDate() + i);
+                if (weekDate <= end) {
+                    result.push(weekDate.toISOString().split('T')[0]); // Formata a data no formato YYYY-MM-DD
+                }
+            }
+            start.setDate(start.getDate() + 7); // Avança para a próxima semana
+        }
+
+        return [...new Set(result)]; // Remove duplicados
+    }
+
+    // Inicializa as unidades e produtos ao carregar a página
     loadUnidades();
 });
+
+       
 
     </script>
 

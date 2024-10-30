@@ -267,7 +267,7 @@ class ModeloBalancoController {
             SELECT mbi.*, p.nome AS nome_produto, p.und AS und_produto, p.codigo AS codigo_produto, c.nome AS nome_categoria
             FROM modelos_balanco_itens mbi
             LEFT JOIN products p ON mbi.id_produto = p.id AND mbi.system_unit_id = p.system_unit_id
-            LEFT JOIN categorias c ON p.categoria = c.id
+            LEFT JOIN categorias c ON p.categoria = c.codigo AND p.system_unit_id = c.system_unit_id
             WHERE mbi.id_modelo = :modelo_id AND mbi.system_unit_id = :system_unit_id
         ");
             $stmtItens->bindParam(':modelo_id', $modelo['id'], PDO::PARAM_INT);

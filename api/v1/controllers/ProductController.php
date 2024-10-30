@@ -137,7 +137,7 @@ class ProductController {
                 ELSE NULL 
             END AS tipo_insumo
         FROM products p
-        LEFT JOIN categorias c ON c.id = p.categoria
+        LEFT JOIN categorias c ON c.codigo = p.categoria
         WHERE p.system_unit_id = :system_unit_id
         GROUP BY p.id
         ";
@@ -206,13 +206,13 @@ class ProductController {
             // Consulta SQL para listar produtos agrupados por categoria
             $sql = "
         SELECT 
-            c.id AS categoria_id,
+            c.codigo AS categoria_id,
             c.nome AS categoria_nome,
             p.codigo,
             p.nome,
             p.und
         FROM products p
-        LEFT JOIN categorias c ON c.id = p.categoria
+        LEFT JOIN categorias c ON c.codigo = p.categoria AND c.system_unit_id = p.system_unit_id
         WHERE p.system_unit_id = :system_unit_id
         AND p.insumo = 1
         ORDER BY c.nome, p.nome";

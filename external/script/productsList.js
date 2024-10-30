@@ -22,7 +22,7 @@ $(document).ready(function () {
                 categoriaSelect.empty();
                 categoriaSelect.append('<option value="">Todas as Categorias</option>');
                 categorias.forEach(categoria => {
-                    categoriaSelect.append(`<option value="${categoria.id}">${categoria.nome}</option>`);
+                    categoriaSelect.append(`<option value="${categoria.codigo}">${categoria.nome}</option>`);
                 });
 
                 if (selectedCategory) {

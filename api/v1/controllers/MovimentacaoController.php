@@ -192,14 +192,14 @@ public static function listBalance($system_unit_id, $data_inicial = null, $data_
                         'produto', m.produto, 
                         'quantidade', m.quantidade, 
                         'nome_produto', p.nome, 
-                        'categoria_id', c.id, 
+                        'categoria_id', c.codigo,
                         'nome_categoria', c.nome
                     )
                 ) AS itens, 
                 MAX(m.created_at) AS created_at
             FROM movimentacao m
-            INNER JOIN products p ON p.codigo = m.produto
-            INNER JOIN categorias c ON c.id = p.categoria
+            INNER JOIN products p ON p.codigo = m.produto AND p.system_unit_id = m.system_unit_id
+            INNER JOIN categorias c ON c.codigo = p.categoria AND c.system_unit_id = p.system_unit_id
             WHERE m.system_unit_id = :system_unit_id 
             AND m.tipo = 'b'";
 

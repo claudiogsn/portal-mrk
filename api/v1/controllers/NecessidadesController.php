@@ -132,6 +132,7 @@ class NecessidadesController {
 
     // Método para fazer requisições de vendas para múltiplos produtos em uma só requisição por data
     private static function fetchSalesData($token, $custom_code, $date) {
+
         $salesPayload = json_encode([
             "token" => $token,
             "requests" => [
@@ -146,6 +147,7 @@ class NecessidadesController {
                 "id" => "10000"
             ]
         ]);
+
 
         $ch = curl_init('https://public-api.prod.menew.cloud/');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -183,6 +185,7 @@ class NecessidadesController {
         // Busca todos os produtos que usam os insumos fornecidos
         $compositions = self::getProductsByInsumos($insumoIds);
 
+
         // Mapeia as composições para facilitar o acesso
         $insumoProductMap = [];
         foreach ($compositions as $composition) {
@@ -191,6 +194,7 @@ class NecessidadesController {
 
         // Variável para armazenar o consumo total de cada insumo
         $insumoConsumption = array_fill_keys($insumoIds, 0);
+
 
         // Itera sobre as datas e faz uma única requisição por data
         foreach ($dates as $date) {
@@ -236,6 +240,28 @@ class NecessidadesController {
         $stmt->execute([$unit_matriz_id]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function getProductStock($system_unit_id, $codigo) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(saldo, 0) AS saldo
+            FROM products 
+            WHERE system_unit_id = :system_unit_id 
+              AND codigo = :codigo
+        ");
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(':codigo', $codigo, PDO::PARAM_INT);
+
+        $stmt->execute();
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($product) {
+            return ['success' => true, 'saldo' => $product['saldo']];
+        } else {
+            return ['success' => false, 'message' => 'Produto não encontrado ou saldo indisponível.'];
+        }
     }
 
 
