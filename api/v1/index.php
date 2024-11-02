@@ -35,7 +35,7 @@ if (isset($data['method']) && isset($data['data'])) {
     if (isset($data['token'])){$requestToken = $data['token'];}
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup'];
+    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -59,6 +59,19 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro group_id ausente'];
                 }
                 break;
+            case 'registerJobExecution':
+                if (isset($requestData['nome_job'], $requestData['system_unit_id'], $requestData['custom_code'], $requestData['inicio'])) {
+                    $response = BiController::registerJobExecution($requestData);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+
             // Métodos para InsumoController
             case 'getInsumosUsage':
                 if (isset($requestData['system_unit_id'])) {
