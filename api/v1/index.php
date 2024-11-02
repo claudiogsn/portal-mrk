@@ -18,6 +18,7 @@ require_once 'controllers/ProductController.php';
 require_once 'controllers/CategoriesController.php';
 require_once 'controllers/MovimentacaoController.php';
 require_once 'controllers/ModeloBalancoController.php';
+require_once 'controllers/BiController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -34,7 +35,7 @@ if (isset($data['method']) && isset($data['data'])) {
     if (isset($data['token'])){$requestToken = $data['token'];}
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems'];
+    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -49,6 +50,15 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
+            // Métodos para BiController
+            case 'getUnitsByGroup':
+                if (isset($requestData['group_id'])) {
+                    $response = BiController::getUnitsByGroup($requestData['group_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro group_id ausente'];
+                }
+                break;
             // Métodos para InsumoController
             case 'getInsumosUsage':
                 if (isset($requestData['system_unit_id'])) {
