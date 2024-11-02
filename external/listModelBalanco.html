@@ -228,29 +228,33 @@
                         const modelo = response.data.modelo;
                         const itens = response.data.itens;
 
-                        $('#modalTitle').text(`Detalhes do Balanço: ${modelo.nome}`);
+                        // Definindo o título do modal
+                        $('#modalTitle').text(`Detalhes do Balanço: ${modelo.tag}`);
                         const tbody = $('#detalhesTable tbody');
                         tbody.empty();
 
-                        if (Array.isArray(itens) && itens.length > 0) {
-                            itens.forEach(item => {
-                                const row = `
+                        // Iterando sobre as categorias e itens
+                        for (const categoria in itens) {
+                            // Adicionando a linha da categoria
+                            tbody.append(`
+                                <tr class="category-header">
+                                    <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+                                </tr>
+                            `);
+
+                            // Adicionando os itens da categoria
+                            itens[categoria].forEach(item => {
+                                tbody.append(`
                                     <tr>
                                         <td>${item.nome_produto}</td>
                                         <td>${item.und_produto}</td>
                                         <td>${item.codigo_produto}</td>
                                     </tr>
-                                `;
-                                tbody.append(row);
+                                `);
                             });
-                        } else {
-                            tbody.append(`
-                                <tr>
-                                    <td colspan="3" class="text-center">Nenhum item encontrado para este modelo.</td>
-                                </tr>
-                            `);
                         }
 
+                        // Exibindo o modal com os detalhes
                         $('#modalDetalhes').modal('show');
                     } else {
                         Swal.fire("Erro", "Erro ao carregar detalhes do modelo: " + response.data.message, "error");
@@ -260,6 +264,7 @@
                     Swal.fire("Erro", "Erro ao carregar detalhes. Tente novamente.", "error");
                 }
             }
+
 
             // Alterar o status de um modelo (ativar/desativar)
             $(document).on('click', '.btn-toggle-status', async function (e) {
