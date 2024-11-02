@@ -191,6 +191,74 @@ class BiController {
         ];
     }
 
+    public static function persistSales($data) {
+        global $pdo;
+
+        // Prepara a consulta SQL para inserir os dados
+        $stmt = $pdo->prepare("
+        INSERT INTO sales (idItemVenda, valorBruto, valorUnitario, valorUnitarioLiquido, valorLiquido, modoVenda, idModoVenda, quantidade, dtLancamento, unidade, lojaId, idMaterial, codMaterial, descricao, grupo__idGrupo, grupo__codigo, grupo__descricao, __nfNumeroC, custom_code, system_unit_id)
+        VALUES (:idItemVenda, :valorBruto, :valorUnitario, :valorUnitarioLiquido, :valorLiquido, :modoVenda, :idModoVenda, :quantidade, :dtLancamento, :unidade, :lojaId, :idMaterial, :codMaterial, :descricao, :grupo_idGrupo, :grupo_codigo, :grupo_descricao, :nfNumeroC, :custom_code, :system_unit_id)
+        ON DUPLICATE KEY UPDATE 
+            valorBruto = VALUES(valorBruto),
+            valorUnitario = VALUES(valorUnitario),
+            valorUnitarioLiquido = VALUES(valorUnitarioLiquido),
+            valorLiquido = VALUES(valorLiquido),
+            modoVenda = VALUES(modoVenda),
+            idModoVenda = VALUES(idModoVenda),
+            quantidade = VALUES(quantidade),
+            dtLancamento = VALUES(dtLancamento),
+            unidade = VALUES(unidade),
+            lojaId = VALUES(lojaId),
+            idMaterial = VALUES(idMaterial),
+            codMaterial = VALUES(codMaterial),
+            descricao = VALUES(descricao),
+            grupo__idGrupo = VALUES(grupo__idGrupo),
+            grupo__codigo = VALUES(grupo__codigo),
+            grupo__descricao = VALUES(grupo__descricao),
+            __nfNumeroC = VALUES(__nfNumeroC),
+            custom_code = VALUES(custom_code),
+            system_unit_id = VALUES(system_unit_id),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+
+        // Associa os parâmetros
+        $stmt->bindParam(':idItemVenda', $data['idItemVenda'], PDO::PARAM_STR);
+        $stmt->bindParam(':valorBruto', $data['valorBruto'], PDO::PARAM_STR);
+        $stmt->bindParam(':valorUnitario', $data['valorUnitario'], PDO::PARAM_STR);
+        $stmt->bindParam(':valorUnitarioLiquido', $data['valorUnitarioLiquido'], PDO::PARAM_STR);
+        $stmt->bindParam(':valorLiquido', $data['valorLiquido'], PDO::PARAM_STR);
+        $stmt->bindParam(':modoVenda', $data['modoVenda'], PDO::PARAM_STR);
+        $stmt->bindParam(':idModoVenda', $data['idModoVenda'], PDO::PARAM_INT);
+        $stmt->bindParam(':quantidade', $data['quantidade'], PDO::PARAM_INT);
+        $stmt->bindParam(':dtLancamento', $data['dtLancamento'], PDO::PARAM_STR);
+        $stmt->bindParam(':unidade', $data['unidade'], PDO::PARAM_STR);
+        $stmt->bindParam(':lojaId', $data['lojaId'], PDO::PARAM_INT);
+        $stmt->bindParam(':idMaterial', $data['idMaterial'], PDO::PARAM_INT);
+        $stmt->bindParam(':codMaterial', $data['codMaterial'], PDO::PARAM_INT);
+        $stmt->bindParam(':descricao', $data['descricao'], PDO::PARAM_STR);
+        $stmt->bindParam(':grupo_idGrupo', $data['grupo__idGrupo'], PDO::PARAM_INT);
+        $stmt->bindParam(':grupo_codigo', $data['grupo__codigo'], PDO::PARAM_INT);
+        $stmt->bindParam(':grupo_descricao', $data['grupo__descricao'], PDO::PARAM_STR);
+        $stmt->bindParam(':nfNumeroC', $data['__nfNumeroC'], PDO::PARAM_INT);
+        $stmt->bindParam(':custom_code', $data['custom_code'], PDO::PARAM_STR);
+        $stmt->bindParam(':system_unit_id', $data['system_unit_id'], PDO::PARAM_INT);
+
+        // Executa a consulta e verifica o sucesso
+        if ($stmt->execute()) {
+            return [
+                'status' => 'success',
+                'message' => 'Dados persistidos com sucesso.',
+                'id' => $data['idItemVenda'], // Retorna o ID do item de venda
+            ];
+        } else {
+            return [
+                'status' => 'error',
+                'message' => 'Falha ao persistir os dados.',
+            ];
+        }
+    }
+
+
 
 }
 

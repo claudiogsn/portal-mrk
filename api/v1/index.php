@@ -35,7 +35,7 @@ if (isset($data['method']) && isset($data['data'])) {
     if (isset($data['token'])){$requestToken = $data['token'];}
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution'];
+    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution','persistSales'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -89,6 +89,15 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros group_id, dt_inicio ou dt_fim ausentes'];
                 }
                 break;
+
+                case 'persistSales':
+                    if (isset($requestData)) {
+                        $response = BiController::persistSales($requestData);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro sales ausente'];
+                    }
+                    break;
 
             // Métodos para InsumoController
             case 'getInsumosUsage':
