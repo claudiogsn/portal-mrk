@@ -4,94 +4,10 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController {
 
-    // Metodo para buscar os produtos associados a múltiplos insumos de uma vez só
-    private static function getProductsByInsumos($insumoIds) {
-        global $pdo;
-        $insumoIdsPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
-        $stmt = $pdo->prepare("SELECT product_id, insumo_id, quantity FROM compositions WHERE insumo_id IN ($insumoIdsPlaceholders)");
-        $stmt->execute($insumoIds);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    private static function getSystemUnitData($system_unit_id) {
-        global $pdo;
-        $stmt = $pdo->prepare("SELECT custom_code, user_api, pass_api FROM system_unit WHERE id = :id");
-        $stmt->bindParam(':id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    // Metodo para chamar a API Menew e obter o token
-    private static function getMenewToken($user_api, $pass_api) {
-        $loginPayload = json_encode([
-            "token" => null,
-            "requests" => [
-                "jsonrpc" => "2.0",
-                "method" => "Usuario/login",
-                "params" => [
-                    "usuario" => $user_api,
-                    "token" => $pass_api
-                ],
-                "id" => "1"
-            ]
-        ]);
-
-        $ch = curl_init('https://public-api.prod.menew.cloud/');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $loginPayload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        $responseArray = json_decode($response, true);
-        return $responseArray['result'] ?? null;  // Retorna o token se existir
-    }
-
-    // Método para fazer requisições de vendas para múltiplos produtos em uma só requisição por data
-    private static function fetchSalesData($token, $custom_code, $date) {
-
-        $salesPayload = json_encode([
-            "token" => $token,
-            "requests" => [
-                "jsonrpc" => "2.0",
-                "method" => "itensvenda-read",
-                "params" => [
-                    "dtinicio" => $date,
-                    "dtfim" => $date,
-                    "lojas" => $custom_code,
-                    "conferido" => 0
-                ],
-                "id" => "10000"
-            ]
-        ]);
-
-
-        $ch = curl_init('https://public-api.prod.menew.cloud/');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $salesPayload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        $responseArray = json_decode($response, true);
-        return $responseArray['result']['data'] ?? [];
-    }
-
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds) {
         global $pdo;
 
-        // Busca todos os produtos que usam os insumos fornecidos
-        $compositions = self::getProductsByInsumos($insumoIds);
-
-        // Mapeia as composições para facilitar o acesso
-        $insumoProductMap = [];
-        foreach ($compositions as $composition) {
-            $insumoProductMap[$composition['insumo_id']][] = $composition;
-        }
-
-        // Variável para armazenar o consumo total de cada insumo
+        // Inicializa o consumo dos insumos
         $insumoConsumption = [];
         foreach ($insumoIds as $insumo_id) {
             $insumoConsumption[$insumo_id] = [
@@ -103,58 +19,74 @@ class NecessidadesController {
             ];
         }
 
-        // Itera sobre as datas e faz uma única requisição por data
+        // Itera sobre as datas e calcula o total de consumo usando a nova consulta SQL
         foreach ($dates as $date) {
-            // Para cada insumo, calcula o consumo total baseado nas vendas e nas composições
-            foreach ($insumoIds as $insumo_id) {
-                if (isset($insumoProductMap[$insumo_id])) {
-                    foreach ($insumoProductMap[$insumo_id] as $composition) {
-                        $product_id = $composition['product_id'];
-                        $insumoQuantity = $composition['quantity']; // Quantidade de insumo usada no produto
+            // Busca o total de consumo de insumos para uma data específica
+            $consumoData = self::fetchTotalConsumption($system_unit_id, $insumoIds, $date);
 
-                        // Busca os dados de vendas do produto específico na tabela _bi_sales
-                        $salesData = self::fetchSalesDataFromBiSales($system_unit_id, $product_id, $date);
-
-                        // Atualiza a quantidade total de vendas do insumo
-                        if (isset($salesData['total_sales'])) {
-                            $insumoConsumption[$insumo_id]['sales'] += $salesData['total_sales'] * $insumoQuantity;
-                        }
-                    }
-                }
+            // Atualiza o consumo total de insumos
+            foreach ($consumoData as $row) {
+                $insumoConsumption[$row['insumo_id']]['sales'] += $row['total_consumo'];
             }
         }
 
-        // Atualiza saldo e calcula margem e recomendado
+        // Atualiza saldo, margem e recomendado
         foreach ($insumoIds as $insumo_id) {
             // Obtém o saldo atual do insumo
             $stockData = self::getProductStock($system_unit_id, $insumo_id);
             $insumoConsumption[$insumo_id]['saldo'] = $stockData['saldo'] ?? 0;
 
             // Calcula margem e recomendado
-            $insumoConsumption[$insumo_id]['margem'] = $insumoConsumption[$insumo_id]['sales'] * 0.15; // 15% da venda
+            $insumoConsumption[$insumo_id]['margem'] = ceil($insumoConsumption[$insumo_id]['sales'] * 0.15); // 15% da venda, arredondado para cima
             $insumoConsumption[$insumo_id]['recomendado'] = $insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo'];
         }
 
         return array_values($insumoConsumption); // Retorna um array indexado
     }
 
-// Método para buscar dados de vendas da tabela _bi_sales para um produto específico
-    private static function fetchSalesDataFromBiSales($system_unit_id, $product_id, $date) {
+    private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date) {
         global $pdo;
 
-        $stmt = $pdo->prepare("
-        SELECT SUM(quantidade) AS total_sales
-        FROM _bi_sales
-        WHERE system_unit_id = :system_unit_id AND cod_material = :product_id AND data_movimento = :date
-        GROUP BY cod_material
-    ");
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_STR); // Aqui, product_id é o código do item
-        $stmt->bindParam(':date', $date, PDO::PARAM_STR);
-        $stmt->execute();
+        // Cria uma string de placeholders nomeados para os insumos
+        $placeholders = [];
+        foreach ($insumoIds as $insumo_id) {
+            $placeholders[] = ":insumo_$insumo_id"; // Cria placeholders nomeados
+        }
+        $insumoIdsPlaceholders = implode(',', $placeholders); // Converte o array em uma string separada por vírgulas
 
-        return $stmt->fetch(PDO::FETCH_ASSOC); // Retorna apenas o total_sales do produto específico
+        // Consulta SQL para calcular o total de consumo
+        $stmt = $pdo->prepare("
+    SELECT 
+        c.insumo_id,
+        b.data_movimento,
+        SUM(b.quantidade * c.quantity) AS total_consumo
+    FROM 
+        compositions AS c
+    JOIN 
+        _bi_sales AS b ON c.product_id = b.cod_material AND c.system_unit_id = b.system_unit_id
+    WHERE 
+        c.insumo_id IN ($insumoIdsPlaceholders)
+        AND b.system_unit_id = :system_unit_id
+        AND b.data_movimento = :date
+    GROUP BY 
+        c.insumo_id, b.data_movimento
+    ");
+
+        // Bind dos parâmetros para system_unit_id e date
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(':date', $date, PDO::PARAM_STR);
+
+        // Bind dos parâmetros dos insumos
+        foreach ($insumoIds as $insumo_id) {
+            $stmt->bindValue(":insumo_$insumo_id", $insumo_id, PDO::PARAM_INT);
+        }
+
+        $stmt->execute(); // Executa a consulta
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todos os resultados
     }
+
+
 
 
 
