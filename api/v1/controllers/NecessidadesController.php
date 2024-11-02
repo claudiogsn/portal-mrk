@@ -4,89 +4,7 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController {
 
-    public static function createNecessidade($data) {
-        global $pdo;
-
-        $insumo_id = $data['insumo_id'];
-        $estimated_need = $data['estimated_need'];
-        $sobras = $data['sobras'];
-        $date = $data['date'];
-        $unit_id = $data['unit_id'];
-
-        $stmt = $pdo->prepare("
-            INSERT INTO necessidades (insumo_id, estimated_need, sobras, date, unit_id)
-            VALUES (:insumo_id, :estimated_need, :sobras, :date, :unit_id)
-        ");
-        $stmt->bindParam(':insumo_id', $insumo_id);
-        $stmt->bindParam(':estimated_need', $estimated_need);
-        $stmt->bindParam(':sobras', $sobras);
-        $stmt->bindParam(':date', $date);
-        $stmt->bindParam(':unit_id', $unit_id);
-
-        if ($stmt->execute()) {
-            return ['success' => 'Necessidade criada com sucesso.'];
-        } else {
-            throw new Exception('Erro ao criar necessidade.');
-        }
-    }
-
-    public static function updateNecessidade($id, $data) {
-        global $pdo;
-
-        $insumo_id = $data['insumo_id'];
-        $estimated_need = $data['estimated_need'];
-        $sobras = $data['sobras'];
-        $date = $data['date'];
-        $unit_id = $data['unit_id'];
-
-        $stmt = $pdo->prepare("
-            UPDATE necessidades
-            SET insumo_id = :insumo_id, estimated_need = :estimated_need, sobras = :sobras, date = :date, unit_id = :unit_id
-            WHERE id = :id
-        ");
-        $stmt->bindParam(':insumo_id', $insumo_id);
-        $stmt->bindParam(':estimated_need', $estimated_need);
-        $stmt->bindParam(':sobras', $sobras);
-        $stmt->bindParam(':date', $date);
-        $stmt->bindParam(':unit_id', $unit_id);
-        $stmt->bindParam(':id', $id);
-
-        if ($stmt->execute()) {
-            return ['success' => 'Necessidade atualizada com sucesso.'];
-        } else {
-            throw new Exception('Erro ao atualizar necessidade.');
-        }
-    }
-
-    public static function getNecessidadeById($id) {
-        global $pdo;
-
-        $stmt = $pdo->prepare("SELECT * FROM necessidades WHERE id = :id");
-        $stmt->bindParam(':id', $id);
-
-        $stmt->execute();
-        $necessidade = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($necessidade) {
-            return $necessidade;
-        } else {
-            throw new Exception('Necessidade não encontrada.');
-        }
-    }
-
-    public static function listNecessidades($unit_id) {
-        global $pdo;
-
-        $stmt = $pdo->prepare("
-            SELECT * FROM necessidades WHERE unit_id = :unit_id
-        ");
-        $stmt->bindParam(':unit_id', $unit_id);
-
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // Método para buscar os produtos associados a múltiplos insumos de uma vez só
+    // Metodo para buscar os produtos associados a múltiplos insumos de uma vez só
     private static function getProductsByInsumos($insumoIds) {
         global $pdo;
         $insumoIdsPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
@@ -161,30 +79,11 @@ class NecessidadesController {
         return $responseArray['result']['data'] ?? [];
     }
 
-    // Método principal para o cálculo de consumo otimizado
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds) {
         global $pdo;
 
-        // Primeiro, obtenha os dados da unidade do sistema (custom_code, user_api, pass_api)
-        $systemUnitData = self::getSystemUnitData($system_unit_id);
-
-        if (!$systemUnitData) {
-            return ['error' => 'Unidade do sistema não encontrada'];
-        }
-
-        $custom_code = $systemUnitData['custom_code'];
-        $user_api = $systemUnitData['user_api'];
-        $pass_api = $systemUnitData['pass_api'];
-
-        // Obtenha o token da API Menew usando os dados da unidade
-        $token = self::getMenewToken($user_api, $pass_api);
-        if (!$token) {
-            return ['error' => 'Falha ao obter token da API Menew'];
-        }
-
         // Busca todos os produtos que usam os insumos fornecidos
         $compositions = self::getProductsByInsumos($insumoIds);
-
 
         // Mapeia as composições para facilitar o acesso
         $insumoProductMap = [];
@@ -193,14 +92,19 @@ class NecessidadesController {
         }
 
         // Variável para armazenar o consumo total de cada insumo
-        $insumoConsumption = array_fill_keys($insumoIds, 0);
-
+        $insumoConsumption = [];
+        foreach ($insumoIds as $insumo_id) {
+            $insumoConsumption[$insumo_id] = [
+                'id' => $insumo_id,
+                'sales' => 0,
+                'margem' => 0,
+                'saldo' => 0,
+                'recomendado' => 0,
+            ];
+        }
 
         // Itera sobre as datas e faz uma única requisição por data
         foreach ($dates as $date) {
-            // Busca todas as vendas de uma data
-            $salesData = self::fetchSalesData($token, $custom_code, $date);
-
             // Para cada insumo, calcula o consumo total baseado nas vendas e nas composições
             foreach ($insumoIds as $insumo_id) {
                 if (isset($insumoProductMap[$insumo_id])) {
@@ -208,19 +112,52 @@ class NecessidadesController {
                         $product_id = $composition['product_id'];
                         $insumoQuantity = $composition['quantity']; // Quantidade de insumo usada no produto
 
-                        // Filtra as vendas para esse product_id e soma o consumo
-                        foreach ($salesData as $sale) {
-                            if ($sale['codProduto'] == $product_id) {
-                                $insumoConsumption[$insumo_id] += $sale['qtd'] * $insumoQuantity;
-                            }
+                        // Busca os dados de vendas do produto específico na tabela _bi_sales
+                        $salesData = self::fetchSalesDataFromBiSales($system_unit_id, $product_id, $date);
+
+                        // Atualiza a quantidade total de vendas do insumo
+                        if (isset($salesData['total_sales'])) {
+                            $insumoConsumption[$insumo_id]['sales'] += $salesData['total_sales'] * $insumoQuantity;
                         }
                     }
                 }
             }
         }
 
-        return $insumoConsumption;
+        // Atualiza saldo e calcula margem e recomendado
+        foreach ($insumoIds as $insumo_id) {
+            // Obtém o saldo atual do insumo
+            $stockData = self::getProductStock($system_unit_id, $insumo_id);
+            $insumoConsumption[$insumo_id]['saldo'] = $stockData['saldo'] ?? 0;
+
+            // Calcula margem e recomendado
+            $insumoConsumption[$insumo_id]['margem'] = $insumoConsumption[$insumo_id]['sales'] * 0.15; // 15% da venda
+            $insumoConsumption[$insumo_id]['recomendado'] = $insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo'];
+        }
+
+        return array_values($insumoConsumption); // Retorna um array indexado
     }
+
+// Método para buscar dados de vendas da tabela _bi_sales para um produto específico
+    private static function fetchSalesDataFromBiSales($system_unit_id, $product_id, $date) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        SELECT SUM(quantidade) AS total_sales
+        FROM _bi_sales
+        WHERE system_unit_id = :system_unit_id AND cod_material = :product_id AND data_movimento = :date
+        GROUP BY cod_material
+    ");
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(':product_id', $product_id, PDO::PARAM_STR); // Aqui, product_id é o código do item
+        $stmt->bindParam(':date', $date, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Retorna apenas o total_sales do produto específico
+    }
+
+
+
     public static function getFiliaisByMatriz($unit_matriz_id) {
         global $pdo;
 
