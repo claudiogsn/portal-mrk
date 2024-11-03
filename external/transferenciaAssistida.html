@@ -113,21 +113,39 @@
                                 <h2>Período</h2>
                                 <section>
                                     <h4>Selecione o Período</h4>
+                                    <h4>Esse é o periodo para o qual você deseja enviar os mantimentos</h4>
                                     <div class="form-group">
                                         <input type="checkbox" id="use-period" checked>
                                         <label for="use-period">Usar Período</label>
                                     </div>
                                     <div id="period-selection" class="row">
                                         <div class="col-sm-6">
-                                            <label for="start-date">Data Inicial</label>
-                                            <input type="date" id="start-date" name="start-date" class="form-control" required>
+                                            <label for="start-day">Dia Inicial</label>
+                                            <select id="start-day" name="start-day" class="form-control" required>
+                                                <option value="0">Domingo</option>
+                                                <option value="1">Segunda-feira</option>
+                                                <option value="2">Terça-feira</option>
+                                                <option value="3">Quarta-feira</option>
+                                                <option value="4">Quinta-feira</option>
+                                                <option value="5">Sexta-feira</option>
+                                                <option value="6">Sábado</option>
+                                            </select>
                                         </div>
                                         <div class="col-sm-6">
-                                            <label for="end-date">Data Final</label>
-                                            <input type="date" id="end-date" name="end-date" class="form-control" required>
+                                            <label for="end-day">Dia Final</label>
+                                            <select id="end-day" name="end-day" class="form-control" required>
+                                                <option value="0">Domingo</option>
+                                                <option value="1">Segunda-feira</option>
+                                                <option value="2">Terça-feira</option>
+                                                <option value="3">Quarta-feira</option>
+                                                <option value="4">Quinta-feira</option>
+                                                <option value="5">Sexta-feira</option>
+                                                <option value="6">Sábado</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </section>
+                                
 
                                 <h2>Produtos</h2>
                                 <section>
@@ -171,9 +189,12 @@
                                                 <tr>
                                                     <th>Codigo</th>
                                                     <th>Produto</th>
-                                                    <th>Quantidade Sugerida</th>
+                                                    <th>Vendas (+)</th>
+                                                    <th>Margem (+)</th>
+                                                    <th>Saldo (-)</th>
+                                                    <th>Recomendado (=)</th>
                                                     <th>Aplicar</th>
-                                                    <th>Quantidade para Transferência</th>
+                                                    <th>Quantidade</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -209,8 +230,23 @@
 
     <!-- Custom JS -->
      <script>
-        // Custom JS
+
+      function applyRecomendado(codigo, recomendado) {
+        const quantidadeInput = document.getElementById(`quantidade-${codigo}`);
+        if (quantidadeInput) {
+            quantidadeInput.value = recomendado;
+        }
+    }
 document.addEventListener('DOMContentLoaded', function () {
+
+    function applyRecomendado(codigo, recomendado) {
+        const quantidadeInput = document.getElementById(`quantidade-${codigo}`);
+        if (quantidadeInput) {
+            quantidadeInput.value = recomendado;
+        }
+    }
+
+
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
         'http://localhost/portal-mrk/api/v1/index.php';
@@ -417,14 +453,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Concatenar os produtos selecionados manualmente com os produtos importados
     const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
 
-    const startDate = document.getElementById('start-date').value;
-    const endDate = document.getElementById('end-date').value;
+    
 
-    // Exibe as datas e produtos no console
-    console.log("Datas selecionadas:", startDate, endDate);
-    console.log("Produtos selecionados:", allSelectedProducts);
-
-    const dates = calcularUltimas4DatasPorSemana(startDate, endDate);
+    const dates = calcularUltimas4DatasPorSemana();
     console.log("Últimas 4 datas calculadas:", dates);
 
     showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
@@ -465,146 +496,214 @@ document.addEventListener('DOMContentLoaded', function () {
     grid.innerHTML = ''; // Limpa o grid
 
     consumos.forEach(consumo => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${consumo.codigo}</td>
-            <td>${consumo.nome || 'Produto não encontrado'}</td> <!-- Se não houver nome, pode ser tratado aqui -->
-            <td>${consumo.necessidade}</td>
-            <td>${consumo.recomendado}</td> <!-- Exibir a recomendação -->
-            <td><input type="checkbox" class="apply-checkbox"></td>
-            <td><input type="number" id="quantidade-${consumo.codigo}" min="0" value="0"></td>
-        `;
-        grid.appendChild(row);
-    });
-
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>${consumo.codigo}</td>
+        <td>${consumo.nome || 'Produto não encontrado'}</td>
+        <td>${consumo.sales}</td>
+        <td>${consumo.margem}</td>
+        <td>${consumo.saldo}</td>
+        <td>${consumo.recomendado}</td>
+        <td>
+            <button type="button" class="btn btn-primary waves-effect apply-button" onclick="applyRecomendado('${consumo.codigo}', ${consumo.recomendado})">Aplicar</button>
+        </td>
+        <td><input type="number" id="quantidade-${consumo.codigo}" min="0" value="0"></td>
+    `;
+    grid.appendChild(row);
+});
     hideLoadingModal(); // Ocultar o modal
     document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
 }
 
-
-
     // Criar a transferência
     async function createTransfer() {
-        const sourceUnitId = document.getElementById('unit-select').value;
-        const destinationUnitId = document.getElementById('destination-unit-select').value; // Substitua pelo seu campo de unidade de destino
+    const sourceUnitId = unitId;
+    const destinoUnitId = document.getElementById('unit-select').value;
+    const transferItems = [];
+    const rows = document.querySelectorAll('#result-table tbody tr');
 
-        // Captura todos os produtos e suas quantidades
-        const transferItems = [];
-        const rows = document.querySelectorAll('#result-table tbody tr');
-        
-        rows.forEach(row => {
-            const codigo = row.cells[0].innerText; // Captura o código do produto
-            const quantidadeInput = row.querySelector(`#quantidade-${codigo}`);
-            const quantidade = quantidadeInput ? parseInt(quantidadeInput.value) : 0;
-
-            // Adiciona ao array se a quantidade for maior que 0
-            if (quantidade > 0) {
-                transferItems.push({
-                    codigo: codigo,
-                    seq: transferItems.length + 1, // Sequência continua
-                    quantidade: quantidade
-                });
-            }
-        });
-
-        // Validar se algum item foi adicionado para transferência
-        if (transferItems.length === 0) {
-            Swal.fire({
-                title: 'Atenção!',
-                text: "Nenhum produto foi selecionado para a transferência.",
-                icon: 'warning',
-                confirmButtonText: 'Ok'
+    rows.forEach(row => {
+        const codigo = row.cells[0].innerText;
+        const quantidadeInput = row.querySelector(`#quantidade-${codigo}`);
+        const quantidade = quantidadeInput ? parseInt(quantidadeInput.value) : 0;
+        if (quantidade > 0) {
+            transferItems.push({
+                codigo: codigo,
+                seq: transferItems.length + 1,
+                quantidade: quantidade
             });
-            return;
         }
+    });
 
-        const transferData = {
-            method: "createTransferItems",
-            token: token, // Use o token obtido da URL
-            data: {
-                system_unit_id: sourceUnitId,
-                system_unit_id_destino: destinationUnitId,
-                itens: transferItems,
-                usuario_id: 123 // Altere para o ID do usuário apropriado
-            }
-        };
-
-        // Perguntar ao usuário se deseja realizar a transferência
-        const confirmation = await Swal.fire({
-            title: 'Confirmação',
-            text: "Você deseja realizar a transferência?",
+    if (transferItems.length === 0) {
+        Swal.fire({
+            title: 'Atenção!',
+            text: "Nenhum produto foi selecionado para a transferência.",
             icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim',
-            cancelButtonText: 'Não'
+            confirmButtonText: 'Ok'
         });
+        return;
+    }
 
-        if (confirmation.isConfirmed) {
-            showLoadingModal(); // Exibir modal de carregamento
+    const transferData = {
+        method: "createTransferItems",
+        token: token,
+        data: {
+            system_unit_id: sourceUnitId,
+            system_unit_id_destino: destinoUnitId,
+            itens: transferItems,
+            usuario_id: 123
+        }
+    };
 
-            try {
-                const response = await fetch(baseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(transferData)
+    const confirmation = await Swal.fire({
+        title: 'Confirmação',
+        text: "Você deseja realizar a transferência?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim',
+        cancelButtonText: 'Não'
+    });
+
+    if (confirmation.isConfirmed) {
+        showLoadingModal();
+
+        try {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(transferData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                Swal.fire({
+                    title: 'Sucesso!',
+                    text: `Transferência realizada com sucesso. Documento: ${result.transfer_doc}`,
+                    icon: 'success',
+                    confirmButtonText: 'Ok'
+                }).then((result) => {
+                if (result.isConfirmed) {
+                    // Chama a função para gerar o documento de impressão
+                    generatePrintDocument(result.transfer_doc, transferItems);
+                    location.reload();
+                    }
                 });
 
-                const result = await response.json();
                 
-                if (result.success) {
-                    Swal.fire({
-                        title: 'Sucesso!',
-                        text: `Transferência realizada com sucesso. Documento: ${result.doc}`,
-                        icon: 'success',
-                        confirmButtonText: 'Ok'
-                    });
-                } else {
-                    Swal.fire({
-                        title: 'Erro!',
-                        text: `Não foi possível realizar a transferência: ${result.message}`,
-                        icon: 'error',
-                        confirmButtonText: 'Ok'
-                    });
-                }
-            } catch (error) {
-                console.error('Erro ao realizar a transferência:', error);
+            } else {
                 Swal.fire({
                     title: 'Erro!',
-                    text: 'Ocorreu um erro ao tentar realizar a transferência.',
+                    text: `Não foi possível realizar a transferência: ${result.message}`,
                     icon: 'error',
                     confirmButtonText: 'Ok'
                 });
-            } finally {
-                hideLoadingModal(); // Ocultar modal de carregamento
             }
+        } catch (error) {
+            console.error('Erro ao realizar a transferência:', error);
+            Swal.fire({
+                title: 'Erro!',
+                text: 'Ocorreu um erro ao tentar realizar a transferência.',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            });
+        } finally {
+            hideLoadingModal();
         }
     }
+}
+
+function generatePrintDocument(docNumber, items) {
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+        <html>
+        <head>
+            <title>Documento de Transferência</title>
+            <style>
+                body { font-family: Arial, sans-serif; }
+                h1 { text-align: center; }
+                p, table { margin-top: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                table, th, td { border: 1px solid #ddd; padding: 8px; }
+                th { background-color: #f2f2f2; text-align: left; }
+                .signature-section { margin-top: 50px; }
+                .signature-line { border-top: 1px solid #000; width: 200px; margin: 0 auto; text-align: center; }
+                .signature-label { text-align: center; margin-top: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>Documento de Transferência</h1>
+            <p><strong>Documento:</strong> ${docNumber}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Seq</th>
+                        <th>Código</th>
+                        <th>Quantidade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => `
+                        <tr>
+                            <td>${item.seq}</td>
+                            <td>${item.codigo}</td>
+                            <td>${item.quantidade}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <div class="signature-section">
+                <div class="signature-line"></div>
+                <p class="signature-label">Assinatura do Responsável</p>
+            </div>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+
 
     // Função para calcular as últimas 4 datas por semana
-    function calcularUltimas4DatasPorSemana(startDate, endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const result = [];
+    function calcularUltimas4DatasPorSemana() {
+    const today = new Date();
+    const startDay = parseInt(document.getElementById('start-day').value);
+    const endDay = parseInt(document.getElementById('end-day').value);
 
-        while (start <= end) {
-            // Obtém o dia da semana atual (0 = domingo, 6 = sábado)
-            const dayOfWeek = start.getDay();
-            const weekStart = new Date(start);
-            weekStart.setDate(start.getDate() - dayOfWeek); // Ajusta para o início da semana
+    // Função para calcular as datas mais recentes para um dia da semana específico
+    function getLastDatesForDay(dayOfWeek) {
+        const dates = [];
+        let currentDate = new Date(today);
 
-            // Adiciona as 4 datas para a semana atual
-            for (let i = 0; i < 4; i++) {
-                const weekDate = new Date(weekStart);
-                weekDate.setDate(weekStart.getDate() + i);
-                if (weekDate <= end) {
-                    result.push(weekDate.toISOString().split('T')[0]); // Formata a data no formato YYYY-MM-DD
-                }
+        // Recuar até o dia da semana desejado e coletar as últimas 4 ocorrências
+        while (dates.length < 4) {
+            if (currentDate.getDay() === dayOfWeek) {
+                dates.push(new Date(currentDate));
             }
-            start.setDate(start.getDate() + 7); // Avança para a próxima semana
+            currentDate.setDate(currentDate.getDate() - 1);
         }
 
-        return [...new Set(result)]; // Remove duplicados
+        return dates;
     }
+
+    // Obter as datas para o dia inicial e final selecionados
+    const startDates = getLastDatesForDay(startDay);
+    const endDates = getLastDatesForDay(endDay);
+
+    // Combina as datas e ordena
+    const allDates = [...startDates, ...endDates]
+        .sort((a, b) => a - b)
+        .map(date => date.toISOString().split('T')[0]); // Formato YYYY-MM-DD
+
+    console.log("Datas selecionadas:", allDates);
+    return allDates;
+}
+
 
     // Inicializa as unidades e produtos ao carregar a página
     loadUnidades();

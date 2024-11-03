@@ -257,6 +257,10 @@ if (isset($data['method']) && isset($data['data'])) {
                         $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
                     }
                     break;
+                case 'createTransferItems':
+                    $response = MovimentacaoController::createTransferItems($requestData);
+                    break;
+
                 
 
             // Métodos para DashboardController

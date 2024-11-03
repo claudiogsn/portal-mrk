@@ -447,20 +447,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
                 $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo_saida, $produto, $seq, $quantidade, $usuario_id]);
-
-                if ($stmt->rowCount() > 0) {
-                    // Atualiza o saldo do estoque após a movimentação de saída
-                    $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, -$quantidade, $doc);
-                    if (!$productResponse['success']) {
-                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
-                        $pdo->rollBack();
-                        return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
-                    }
-                } else {
-                    // Se a inserção do item falhar, faz rollback e retorna o erro
-                    $pdo->rollBack();
-                    return array('success' => false, 'message' => 'Falha ao criar movimentação de saída para o item com código ' . $produto);
-                }
+                
             }
 
             // Criação dos movimentos de entrada
