@@ -11,11 +11,11 @@ class NecessidadesController {
         $insumoConsumption = [];
         foreach ($insumoIds as $insumo_id) {
             $insumoConsumption[$insumo_id] = [
-                'id' => $insumo_id,
+                'codigo' => $insumo_id,
                 'sales' => 0,
                 'margem' => 0,
                 'saldo' => 0,
-                'recomendado' => 0,
+                'necessidade' => 0,
             ];
         }
 

@@ -445,11 +445,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const consumos = await response.json();
 
-    // Verifique se a resposta da API é um objeto e log da resposta
+    // Verifique se a resposta da API é um array e log da resposta
     console.log("Resposta da API:", consumos);
     
-    if (typeof consumos !== 'object' || consumos === null) {
-        console.error('Esperado um objeto, mas recebeu:', consumos);
+    if (!Array.isArray(consumos)) {
+        console.error('Esperado um array, mas recebeu:', consumos);
         Swal.fire({
             title: 'Erro!',
             text: 'Não foi possível calcular as necessidades. A resposta da API não é válida.',
@@ -460,22 +460,17 @@ document.addEventListener('DOMContentLoaded', function () {
         return; // Interrompe a função se a resposta não for válida
     }
 
-    // Transformar o objeto de consumos em um array
-    const consumosArray = Object.entries(consumos).map(([codigo, quantidadeSugerida]) => ({
-        codigo,
-        quantidadeSugerida
-    }));
-
     // Exibir os dados no grid
     const grid = document.getElementById('result-table').querySelector('tbody');
     grid.innerHTML = ''; // Limpa o grid
 
-    consumosArray.forEach(consumo => {
+    consumos.forEach(consumo => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${consumo.codigo}</td>
-            <td>${consumo.nome || 'Produto não encontrado'}</td> <!-- Adicione um tratamento caso o nome não esteja disponível -->
-            <td>${consumo.quantidadeSugerida}</td>
+            <td>${consumo.nome || 'Produto não encontrado'}</td> <!-- Se não houver nome, pode ser tratado aqui -->
+            <td>${consumo.necessidade}</td>
+            <td>${consumo.recomendado}</td> <!-- Exibir a recomendação -->
             <td><input type="checkbox" class="apply-checkbox"></td>
             <td><input type="number" id="quantidade-${consumo.codigo}" min="0" value="0"></td>
         `;
@@ -485,6 +480,7 @@ document.addEventListener('DOMContentLoaded', function () {
     hideLoadingModal(); // Ocultar o modal
     document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
 }
+
 
 
     // Criar a transferência
