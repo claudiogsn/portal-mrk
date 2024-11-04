@@ -29,6 +29,10 @@
           </menuitem>
         </menu>
       </menuitem>
+       <menuitem label="Transferência Assitida">
+            <action>TransferenciaAssitida</action>
+            <icon>fas:clipboard-list fa-fw</icon>
+        </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">
