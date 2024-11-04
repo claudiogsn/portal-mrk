@@ -371,30 +371,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Carregar Modelos para "Importar Produtos do Balanço"
     async function loadModelos(unitId) {
-        const response = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                method: 'listModelosWithProducts',
-                token: token,
-                data: { unit_id: unitId }
-            })
-        });
+    const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            method: 'listModelosWithProducts',
+            token: token,
+            data: { unit_id: unitId }
+        })
+    });
 
-        const data = await response.json();
-        const select = document.getElementById('modelos-select');
-        select.innerHTML = ''; // Limpa opções antigas
+    const data = await response.json();
+    const select = document.getElementById('modelos-select');
+    select.innerHTML = ''; // Limpa opções antigas
 
-        data.modelos.forEach(modelo => {
-            const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
-            select.appendChild(option);
-        });
+    // Adiciona a opção padrão
+    const defaultOption = new Option('Selecione um modelo', '');
+    select.appendChild(defaultOption);
 
-        select.addEventListener('change', function () {
-            const tagSelecionada = this.value;
-            loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
-        });
-    }
+    data.modelos.forEach(modelo => {
+        const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
+        select.appendChild(option);
+    });
+
+    select.addEventListener('change', function () {
+        const tagSelecionada = this.value;
+        loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
+    });
+}
+
 
     // Carregar Produtos do Modelo ao selecionar uma tag
     async function loadProdutosDoModelo(tag) {
