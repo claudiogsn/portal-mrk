@@ -14,7 +14,7 @@ class TransferenciaAssitida extends TPage
         if($_SERVER['SERVER_NAME'] == "localhost"){
             $link = "http://localhost/portal-mrk/external/transferenciaAssistida.html?username={$username}&token={$token}&unit_matriz_id=8";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/external/transferenciaAssistida.html?username={$username}&token={$token}&unit_matriz_id=8";
+            $link = "https://portal.mrksolucoes.com.br/external/transferenciaAssistida.html?username={$username}&token={$token}&unit_matriz_id=8";
         }
 
         $iframe = new TElement('iframe');
