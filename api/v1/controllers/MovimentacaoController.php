@@ -447,7 +447,6 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
                 $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo_saida, $produto, $seq, $quantidade, $usuario_id]);
-                
             }
 
             // Criação dos movimentos de entrada
@@ -457,14 +456,21 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $seq = $item['seq'];
                 $quantidade = $item['quantidade'];
 
+                // Busca o saldo atual do produto no estoque
+                $stockData = NecessidadesController::getProductStock($system_unit_id_destino, $produto);
+                $saldoAtual = $stockData['saldo'] ?? 0;
+
+                // Calcula o novo saldo, somando o valor transferido ao saldo atual
+                $novoSaldo = $saldoAtual + $quantidade;
+
                 // Inserção no banco de dados para o movimento de entrada
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)");
                 $stmt->execute([$system_unit_id_destino, $doc, $tipo_entrada, $produto, $seq, $quantidade, $usuario_id]);
 
                 if ($stmt->rowCount() > 0) {
-                    // Atualiza o saldo do estoque após a movimentação de entrada
-                    $productResponse = ProductController::updateStockBalance($system_unit_id_destino, $produto, $quantidade, $doc);
+                    // Atualiza o saldo do estoque após a movimentação de entrada com o novo saldo calculado
+                    $productResponse = ProductController::updateStockBalance($system_unit_id_destino, $produto, $novoSaldo, $doc);
                     if (!$productResponse['success']) {
                         // Se a atualização do saldo falhar, faz rollback e retorna o erro
                         $pdo->rollBack();
@@ -487,6 +493,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             return array('success' => false, 'message' => 'Erro ao criar transferência: ' . $e->getMessage());
         }
     }
+
 
 
     // Listar transferências
