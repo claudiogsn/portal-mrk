@@ -53,7 +53,7 @@ class NecessidadesController {
         foreach ($insumoIds as $insumo_id) {
             // Obtém o saldo atual do insumo
             $stockData = self::getProductStock($system_unit_id, $insumo_id);
-            $insumoConsumption[$insumo_id]['saldo'] = ceil($stockData['saldo']) ?? 0;
+            $insumoConsumption[$insumo_id]['saldo'] = number_format($stockData['saldo'] ?? 0, 2, '.', '');
     
             // Calcula margem e recomendado
             $insumoConsumption[$insumo_id]['sales'] = ceil( $insumoConsumption[$insumo_id]['sales'] / 4);
