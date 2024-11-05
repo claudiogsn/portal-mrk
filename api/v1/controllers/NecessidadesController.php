@@ -6,6 +6,9 @@ class NecessidadesController {
 
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds) {
         global $pdo;
+
+        // Remove datas duplicadas
+        $dates = array_unique($dates);
     
         // Busca os nomes de todos os insumos independentemente do consumo
         $stmt = $pdo->prepare("
