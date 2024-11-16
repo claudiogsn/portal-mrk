@@ -1,5 +1,7 @@
 <?php
 
+date_default_timezone_set('America/Recife');
+
 require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
 
 class MovimentacaoController {
@@ -483,9 +485,50 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 }
             }
 
+            // Consulta o nome da unidade de destino
+            $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+            $stmt->execute([$system_unit_id_destino]);
+            $unidade_destino = $stmt->fetch();
+
+            // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
+            if ($unidade_destino) {
+                $nome_unidade_destino = $unidade_destino['name'];
+            } else {
+                $pdo->rollBack();
+                return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
+            }
+
+            // Cria a estrutura dos itens com nome do produto
+            $itensComDetalhes = [];
+            foreach ($itens as $item) {
+                // Obter o nome do produto
+                $stmt = $pdo->prepare("SELECT nome as name FROM products WHERE codigo = ?");
+                $stmt->execute([$item['codigo']]);
+                $produtoData = $stmt->fetch();
+                $nomeProduto = $produtoData ? $produtoData['name'] : 'Desconhecido';
+
+                // Adiciona os detalhes do item
+                $itensComDetalhes[] = [
+                    'seq' => $item['seq'],
+                    'codigo' => $item['codigo'],
+                    'nome_produto' => $nomeProduto,
+                    'quantidade' => $item['quantidade']
+                ];
+            }
+
+            // Data e hora atual
+            $dataHoraAtual = date('d/m/Y H:i:s');
+
             // Commit da transação
             $pdo->commit();
-            return array('success' => true, 'message' => 'Transferência criada com sucesso', 'transfer_doc' => $doc);
+            return array(
+                'success' => true,
+                'message' => 'Transferência criada com sucesso',
+                'transfer_doc' => $doc,
+                'nome_unidade_destino' => $nome_unidade_destino,
+                'data_hora' => $dataHoraAtual,
+                'itens' => $itensComDetalhes
+            );
 
         } catch (Exception $e) {
             // Rollback em caso de erro
@@ -493,6 +536,8 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             return array('success' => false, 'message' => 'Erro ao criar transferência: ' . $e->getMessage());
         }
     }
+
+
 
 
 

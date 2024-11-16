@@ -522,8 +522,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Criar a transferência
     async function createTransfer() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const user_id = urlParams.get('username');
     const sourceUnitId = unitId;
     const destinoUnitId = document.getElementById('unit-select').value;
+    const destinoUnitName = document.getElementById('unit-select').textContent;
     const transferItems = [];
     const rows = document.querySelectorAll('#result-table tbody tr');
 
@@ -557,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function () {
             system_unit_id: sourceUnitId,
             system_unit_id_destino: destinoUnitId,
             itens: transferItems,
-            usuario_id: 123
+            usuario_id: user_id
         }
     };
 
@@ -588,15 +591,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     text: `Transferência realizada com sucesso. Documento: ${result.transfer_doc}`,
                     icon: 'success',
                     confirmButtonText: 'Ok'
-                }).then((result) => {
-                if (result.isConfirmed) {
-                    // Chama a função para gerar o documento de impressão
-                    generatePrintDocument(result.transfer_doc, transferItems);
+                }).then(() => {
+                    generatePrintDocument(result, transferItems);
                     location.reload();
-                    }
                 });
 
-                
+
             } else {
                 Swal.fire({
                     title: 'Erro!',
@@ -619,8 +619,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 }
 
-function generatePrintDocument(docNumber, items) {
+function generatePrintDocument(result, items) {
+
     const printWindow = window.open('', '_blank');
+
+    items = result.itens;
     const printContent = `
         <html>
         <head>
@@ -639,12 +642,18 @@ function generatePrintDocument(docNumber, items) {
         </head>
         <body>
             <h1>Documento de Transferência</h1>
-            <p><strong>Documento:</strong> ${docNumber}</p>
+            <br>
+            <br>
+            <p><strong>Unidade:</strong> ${result.nome_unidade_destino}</p>
+            <p><strong>Documento:</strong> ${result.transfer_doc}</p>
+            <p><strong>Data e Hora:</strong> ${result.data_hora}</p>
+            
             <table>
                 <thead>
                     <tr>
                         <th>Seq</th>
                         <th>Código</th>
+                        <th>Nome do Produto</th>
                         <th>Quantidade</th>
                     </tr>
                 </thead>
@@ -653,6 +662,7 @@ function generatePrintDocument(docNumber, items) {
                         <tr>
                             <td>${item.seq}</td>
                             <td>${item.codigo}</td>
+                            <td>${item.nome_produto}</td>
                             <td>${item.quantidade}</td>
                         </tr>
                     `).join('')}
@@ -674,6 +684,7 @@ function generatePrintDocument(docNumber, items) {
 
 
 
+
     // Função para calcular as últimas 4 datas por semana
     function calcularUltimas4DatasPorSemana() {
     const today = new Date();
@@ -684,6 +695,7 @@ function generatePrintDocument(docNumber, items) {
     function getLastDatesForDay(dayOfWeek) {
         const dates = [];
         let currentDate = new Date(today);
+        currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
 
         // Recuar até o dia da semana desejado e coletar as últimas 4 ocorrências
         while (dates.length < 4) {
@@ -700,14 +712,16 @@ function generatePrintDocument(docNumber, items) {
     const startDates = getLastDatesForDay(startDay);
     const endDates = getLastDatesForDay(endDay);
 
-    // Combina as datas e ordena
+    // Combina as datas, remove duplicatas e ordena
     const allDates = [...startDates, ...endDates]
-        .sort((a, b) => a - b)
-        .map(date => date.toISOString().split('T')[0]); // Formato YYYY-MM-DD
+        .map(date => date.toISOString().split('T')[0]) // Formato YYYY-MM-DD
+        .filter((date, index, self) => self.indexOf(date) === index) // Remove duplicatas
+        .sort(); // Ordena as datas
 
-    console.log("Datas selecionadas:", allDates);
+    console.log("Datas únicas selecionadas:", allDates);
     return allDates;
 }
+
 
 
     // Inicializa as unidades e produtos ao carregar a página
