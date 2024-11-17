@@ -369,12 +369,12 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
                 if ($stmt->rowCount() > 0) {
                     // Atualiza o saldo do estoque após a movimentação
-                    $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, $quantidade, $doc);
-                    if (!$productResponse['success']) {
-                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
-                        $pdo->rollBack();
-                        return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
-                    }
+//                    $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, $quantidade, $doc);
+//                    if (!$productResponse['success']) {
+//                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
+//                        $pdo->rollBack();
+//                        return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
+//                    }
                 } else {
                     // Se a inserção do item falhar, faz rollback e retorna o erro
                     $pdo->rollBack();

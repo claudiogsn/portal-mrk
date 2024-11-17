@@ -309,8 +309,7 @@ class BiController {
             // Verifica se o resultado está vazio
             if (empty($result)) {
                 // Se não houver resultados, retorna e encerra a função
-                http_response_code(200);
-                return "Nenhuma movimentação encontrada para a data e unidade especificadas.";
+                return ['mensage' => 'Nenhuma movimentação encontrada para a data e unidade especificadas.'] ;
             }
 
             // Preenche o array de diferencas com os dados dos balanços
