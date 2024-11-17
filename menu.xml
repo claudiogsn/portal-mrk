@@ -29,6 +29,10 @@
           </menuitem>
         </menu>
       </menuitem>
+      <menuitem label="Importar Compras">
+        <action>ImportComprasCsv</action>
+        <icon>fas:file-excel fa-fw</icon>
+      </menuitem>
       <menuitem label="Transferência Assitida">
         <action>TransferenciaAssitida</action>
         <icon>fas:arrows-alt-h fa-fw</icon>
