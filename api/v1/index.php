@@ -93,6 +93,19 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'importComprasCSV':
+                if (isset($requestData['usuario_id'], $requestData['itens'])){
+                    $response = MovimentacaoController::importComprasCSV($requestData['usuario_id'], $requestData['itens']);
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
                     $response = BiController::consolidateSalesByUnit($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim']);

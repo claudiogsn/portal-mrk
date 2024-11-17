@@ -573,5 +573,80 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+
+    public static function importComprasCSV($usuarioId, $produtos)
+    {
+        global $pdo;
+
+        try {
+            // Inicia uma transação para melhorar a performance
+            $pdo->beginTransaction();
+
+            // Mapeia todos os códigos de estabelecimento para system_unit_id
+            $estabelecimentos = array_column($produtos, 'estabelecimento');
+            $placeholders = rtrim(str_repeat('?,', count($estabelecimentos)), ',');
+
+            $query = "SELECT custom_code, id as system_unit_id
+                  FROM system_unit 
+                  WHERE custom_code IN ($placeholders)";
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($estabelecimentos);
+
+            $unitMap = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            // Prepara a query de inserção em massa
+            $insertQuery = "
+            INSERT INTO movimentacao (
+                system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ";
+            $insertStmt = $pdo->prepare($insertQuery);
+
+            foreach ($produtos as $produto) {
+                $systemUnitId = $unitMap[$produto['estabelecimento']] ?? null;
+
+                if (!$systemUnitId) {
+                    throw new Exception("Estabelecimento não encontrado: {$produto['estabelecimento']}");
+                }
+
+                // Insere a movimentação
+                $insertStmt->execute([
+                    $systemUnitId,
+                    1, // Status = Concluído
+                    $produto['doc'],
+                    $produto['tipo'],
+                    'entrada', // Tipo de movimento
+                    $produto['produto'],
+                    $produto['seq'],
+                    $produto['data'],
+                    $produto['qtde'],
+                    $usuarioId
+                ]);
+
+                // Busca o saldo atual do produto no estoque
+                $stockData = NecessidadesController::getProductStock($systemUnitId, $produto['produto']);
+                $saldoAtual = $stockData['saldo'] ?? 0;
+
+                // Calcula o novo saldo
+                $novoSaldo = $saldoAtual + $produto['qtde'];
+
+                // Atualiza o saldo no estoque
+                ProductController::updateStockBalance($systemUnitId, $produto['produto'], $novoSaldo, $produto['doc']);
+            }
+
+            // Confirma a transação
+            $pdo->commit();
+            return ['success' => true, 'message' => 'Movimentações salvas e estoque atualizado com sucesso!'];
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
+
+
 }
 ?>

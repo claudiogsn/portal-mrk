@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importação de Compras</title>
+
+    <!-- Links para o seu CSS -->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+</head>
+<body>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Importação de Compras</h2>
+                <form id="import-form">
+                    <div class="form-group">
+                        <label for="fileInput">Selecione o arquivo Excel:</label>
+                        <input type="file" id="fileInput" class="form-control" accept=".xlsx, .xls" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Importar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+    <script>
+        // Configuração da URL base e parâmetros da URL
+        const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const usuarioId = urlParams.get('user_id');
+
+        // Função para ler o arquivo Excel
+        function readExcel(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+                    resolve(json);
+                };
+                reader.onerror = (error) => reject(error);
+                reader.readAsBinaryString(file);
+            });
+        }
+
+        // Função para enviar os dados para a API
+        function sendDataToAPI(payload) {
+            axios.post(baseUrl, payload)
+                .then((response) => {
+                    Swal.fire({
+                        title: 'Sucesso!',
+                        text: 'Importação realizada com sucesso.',
+                        icon: 'success'
+                    });
+                })
+                .catch((error) => {
+                    console.error(error);
+                    Swal.fire({
+                        title: 'Erro!',
+                        text: 'Erro ao enviar os dados.',
+                        icon: 'error'
+                    });
+                });
+        }
+
+        // Evento de envio do formulário
+        $('#import-form').on('submit', async function (event) {
+            event.preventDefault();
+            
+            const file = $('#fileInput')[0].files[0];
+
+            if (file) {
+                try {
+                    const data = await readExcel(file);
+
+                    const itens = data.map((item) => ({
+                        estabelecimento: item['estabelecimento'],
+                        doc: item['doc'],
+                        tipo: item['tipo'],
+                        produto: item['produto'],
+                        seq: item['seq'],
+                        data: item['data'],
+                        qtde: item['qtde']
+                    }));
+
+                    const payload = {
+                        method: 'importComprasCSV',
+                        token: token,
+                        data: {
+                            usuario_id: usuarioId,
+                            itens: itens
+                        }
+                    };
+
+                    sendDataToAPI(payload);
+                } catch (error) {
+                    Swal.fire({
+                        title: 'Erro!',
+                        text: 'Erro ao ler o arquivo Excel.',
+                        icon: 'error'
+                    });
+                }
+            } else {
+                Swal.fire({
+                    title: 'Atenção!',
+                    text: 'Por favor, selecione um arquivo.',
+                    icon: 'warning'
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
