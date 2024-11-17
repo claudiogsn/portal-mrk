@@ -44,7 +44,7 @@ if (isset($data['method']) && isset($data['data'])) {
     if (isset($data['token'])){$requestToken = $data['token'];}
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution','persistSales','consolidateSalesByGroup'];
+    $noAuthMethods = ['validateCPF', 'validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution','persistSales','consolidateSalesByGroup','criarDiferencasEstoque'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -91,6 +91,7 @@ if (isset($data['method']) && isset($data['data'])) {
                         'message' => 'Missing required fields.'
                     ];
                 }
+                break;
 
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
