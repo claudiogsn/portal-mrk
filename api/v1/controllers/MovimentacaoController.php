@@ -424,7 +424,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
         // Definindo valores fixos
         $tipo_saida = 't';
-        $tipo_entrada = 'entrega';
+        $tipo_entrada = 't';
 
         try {
             // Inicia a transação

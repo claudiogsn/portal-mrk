@@ -275,6 +275,145 @@ class BiController {
         }
     }
 
+    public static function criarDiferencasEstoque($system_unit_id, $data) {
+        global $pdo;
+
+        // Inicializar o array de diferencas
+        $diferencas = [];
+
+        try {
+            // Montando o array de diferencas
+            $sql = "SELECT
+            doc,
+            produto,
+            quantidade
+        FROM movimentacao
+        WHERE id IN (
+            SELECT MAX(id)
+            FROM movimentacao
+            WHERE 
+                data = :data
+                AND system_unit_id = :system_unit_id
+                AND status = 0
+                AND tipo = 'b'
+            GROUP BY produto
+        )
+        ORDER BY id DESC";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':data', $data);
+            $stmt->bindParam(':system_unit_id', $system_unit_id);
+            $stmt->execute();
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Verifica se o resultado está vazio
+            if (empty($result)) {
+                // Se não houver resultados, retorna e encerra a função
+                return "Nenhuma movimentação encontrada para a data e unidade especificadas.";
+            }
+
+            // Preenche o array de diferencas com os dados dos balanços
+            foreach ($result as $row) {
+                $diferencas[] = [
+                    'data' => $data,
+                    'system_unit_id' => $system_unit_id,
+                    'doc' => $row['doc'],
+                    'produto' => $row['produto'],
+                    'nome_produto' => $row['produto'], // Nome do produto, se disponível
+                    'saldo' => 0, // Inicializa com 0, será atualizado depois
+                    'saldo_ideal' => 0,
+                    'vendas' => 0, // Inicializa com 0, será atualizado depois
+                    'balanco' => $row['quantidade'], // O balanço do produto
+                    'diferenca' => 0 // Inicializa com 0, será calculado depois
+                ];
+            }
+
+            // Monta o array de datas duplicadas (se necessário, pode duplicar a data por produto)
+            $datasDuplicadas = array_fill(0, count($diferencas), $data); // Duplicando a data para cada produto
+
+            // Agora, chama a função NecessidadesController::getInsumoConsumption passando o array de datas duplicadas
+            $produtos = array_column($diferencas, 'produto'); // ID dos produtos
+
+            // Chama a função e passa o array de datas duplicadas
+            $consumos = NecessidadesController::getInsumoConsumption($system_unit_id, $datasDuplicadas, $produtos);
+
+            // Agora vamos preencher as informações de vendas, saldo e nome no array de diferencas
+            foreach ($diferencas as $key => $diferenca) {
+                foreach ($consumos as $consumo) {
+                    if ($consumo['codigo'] == $diferenca['produto']) {
+                        // Garantir que saldo, vendas e balanco sejam tratados como números
+                        $diferencas[$key]['vendas'] = floatval($consumo['sales']);
+                        $diferencas[$key]['nome_produto'] = $consumo['nome'];
+                        $diferencas[$key]['saldo'] = floatval($consumo['saldo']);
+                        $diferencas[$key]['saldo_ideal'] = floatval(($consumo['saldo'] - $consumo['sales']));
+                        $diferencas[$key]['balanco'] = floatval($diferenca['balanco']);
+                        $diferencas[$key]['diferenca'] = $diferenca['balanco'] - ($consumo['saldo'] - $consumo['sales']);
+                    }
+                }
+            }
+
+            // Persistir as diferenças no banco de dados
+            foreach ($diferencas as $diferenca) {
+                $sqlInsert = "INSERT INTO diferencas_estoque (
+                    data,
+                    system_unit_id,
+                    doc,
+                    produto,
+                    nome_produto,
+                    saldo,
+                    saldo_ideal,
+                    vendas,
+                    balanco,
+                    diferenca
+                ) VALUES (
+                    :data,
+                    :system_unit_id,
+                    :doc,
+                    :produto,
+                    :nome_produto,
+                    :saldo,
+                    :saldo_ideal,
+                    :vendas,
+                    :balanco,
+                    :diferenca
+                ) ON DUPLICATE KEY UPDATE
+                    saldo = VALUES(saldo),
+                    saldo_ideal = VALUES(saldo_ideal),
+                    vendas = VALUES(vendas),
+                    balanco = VALUES(balanco),
+                    diferenca = VALUES(diferenca)";
+
+                $stmt = $pdo->prepare($sqlInsert);
+                $stmt->bindParam(':data', $diferenca['data']);
+                $stmt->bindParam(':system_unit_id', $diferenca['system_unit_id']);
+                $stmt->bindParam(':doc', $diferenca['doc']);
+                $stmt->bindParam(':produto', $diferenca['produto']);
+                $stmt->bindParam(':nome_produto', $diferenca['nome_produto']);
+                $stmt->bindParam(':saldo', $diferenca['saldo']);
+                $stmt->bindParam(':saldo_ideal', $diferenca['saldo_ideal']);
+                $stmt->bindParam(':vendas', $diferenca['vendas']);
+                $stmt->bindParam(':balanco', $diferenca['balanco']);
+                $stmt->bindParam(':diferenca', $diferenca['diferenca']);
+                $stmt->execute();
+            }
+
+            return $diferencas;
+
+        } catch (PDOException $e) {
+            // Em caso de erro na execução, captura a exceção e retorna a mensagem de erro
+            return "Erro no banco de dados: " . $e->getMessage();
+        } catch (Exception $e) {
+            // Em caso de outro tipo de erro, captura a exceção e retorna a mensagem de erro
+            return "Erro inesperado: " . $e->getMessage();
+        }
+    }
+
+
+
+
+
+
+
 
 
 

@@ -80,6 +80,17 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'criarDiferencasEstoque':
+                if (isset($requestData['system_unit_id'], $requestData['data'])){
+                    $response = BiController::criarDiferencasEstoque($requestData['system_unit_id'], $requestData['data']);
+                    http_response_code(200);
+                } else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
 
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
@@ -225,7 +236,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro tag ausente'];
                 }
                 break;
-            
+
             case  'saveBalanceItems':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
                     $response = MovimentacaoController::saveBalanceItems($requestData);
@@ -240,7 +251,7 @@ if (isset($data['method']) && isset($data['data'])) {
                         // Verifica se as datas estão presentes e as atribui, caso contrário passa null
                         $data_inicial = isset($requestData['data_inicial']) ? $requestData['data_inicial'] : null;
                         $data_final = isset($requestData['data_final']) ? $requestData['data_final'] : null;
-                
+
                         // Chama o método listBalance com os parâmetros corretos
                         $response = MovimentacaoController::listBalance($requestData['system_unit_id'], $data_inicial, $data_final);
                     } else {
@@ -261,7 +272,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = MovimentacaoController::createTransferItems($requestData);
                     break;
 
-                
+
 
             // Métodos para DashboardController
             case 'getDashboardData':
@@ -504,7 +515,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
                 case 'toggleModeloStatus':
-                   
+
                     if (isset($requestData['unit_id'])) {
                         $response = ModeloBalancoController::toggleModeloStatus($requestData['unit_id'],$requestData['tag'],$requestData['status']);
                     } else {
@@ -512,7 +523,7 @@ if (isset($data['method']) && isset($data['data'])) {
                         $response = ['error' => 'Parâmetro ausentes'];
                     }
                     break;
-                    
+
             case 'getProductCards':
                 if (isset ($requestData['system_unit_id'])){
                         $response = ProductController::getProductCards($requestData['system_unit_id']);
