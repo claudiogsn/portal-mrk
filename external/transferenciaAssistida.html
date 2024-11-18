@@ -686,41 +686,45 @@ function generatePrintDocument(result, items) {
 
 
     // Função para calcular as últimas 4 datas por semana
-    function calcularUltimas4DatasPorSemana() {
-    const today = new Date();
-    const startDay = parseInt(document.getElementById('start-day').value);
-    const endDay = parseInt(document.getElementById('end-day').value);
+        function calcularUltimas4DatasPorSemana() {
+            const today = new Date();
+            const startDay = parseInt(document.getElementById('start-day').value); // Ex: Segunda = 1
+            const endDay = parseInt(document.getElementById('end-day').value); // Ex: Sexta = 5
 
-    // Função para calcular as datas mais recentes para um dia da semana específico
-    function getLastDatesForDay(dayOfWeek) {
-        const dates = [];
-        let currentDate = new Date(today);
-        currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
+            // Função para calcular as últimas 4 datas de um único dia da semana
+            function getLastDatesForDay(dayOfWeek) {
+                const dates = [];
+                let currentDate = new Date(today);
+                currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
 
-        // Recuar até o dia da semana desejado e coletar as últimas 4 ocorrências
-        while (dates.length < 4) {
-            if (currentDate.getDay() === dayOfWeek) {
-                dates.push(new Date(currentDate));
+                while (dates.length < 4) {
+                    if (currentDate.getDay() === dayOfWeek) {
+                        dates.push(new Date(currentDate));
+                    }
+                    currentDate.setDate(currentDate.getDate() - 1);
+                }
+
+                return dates;
             }
-            currentDate.setDate(currentDate.getDate() - 1);
+
+            // Itera por todos os dias no intervalo [startDay, endDay]
+            const allDates = [];
+            for (let day = startDay; day <= endDay; day++) {
+                const datesForDay = getLastDatesForDay(day % 7); // Garante dias entre 0 (Domingo) e 6 (Sábado)
+                allDates.push(...datesForDay);
+                //console.log("Datas para o dia", day, ":", datesForDay);
+            }
+           // console.log("Todas as datas selecionadas:", allDates);
+
+
+            // Remove duplicatas e ordena as datas
+            const uniqueDates = Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0])))
+                .sort();
+
+            console.log("Datas únicas selecionadas:", uniqueDates);
+            return uniqueDates;
         }
 
-        return dates;
-    }
-
-    // Obter as datas para o dia inicial e final selecionados
-    const startDates = getLastDatesForDay(startDay);
-    const endDates = getLastDatesForDay(endDay);
-
-    // Combina as datas, remove duplicatas e ordena
-    const allDates = [...startDates, ...endDates]
-        .map(date => date.toISOString().split('T')[0]) // Formato YYYY-MM-DD
-        .filter((date, index, self) => self.indexOf(date) === index) // Remove duplicatas
-        .sort(); // Ordena as datas
-
-    console.log("Datas únicas selecionadas:", allDates);
-    return allDates;
-}
 
 
 
