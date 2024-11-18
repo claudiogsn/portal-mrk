@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -16,6 +15,7 @@
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="bsb/plugins/dropzone/dropzone.css" rel="stylesheet">
 
 </head>
 <body>
@@ -24,12 +24,14 @@
         <div class="row">
             <div class="col-md-12">
                 <h2>Importação de Compras</h2>
-                <form id="import-form">
-                    <div class="form-group">
-                        <label for="fileInput">Selecione o arquivo Excel:</label>
-                        <input type="file" id="fileInput" class="form-control" accept=".xlsx, .xls" required>
+                <form id="import-form" class="dropzone">
+                    <div class="dz-message">
+                        <div class="drag-icon-cph">
+                            <i class="material-icons">touch_app</i>
+                        </div>
+                        <h3>Arraste o arquivo Excel aqui ou clique para selecionar.</h3>
+                        <em>(Apenas arquivos <strong>.xls</strong> ou <strong>.xlsx</strong> são aceitos.)</em>
                     </div>
-                    <button type="submit" class="btn btn-primary">Importar</button>
                 </form>
             </div>
         </div>
@@ -43,99 +45,123 @@
     <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
     <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="bsb/plugins/dropzone/dropzone.js"></script>
 
     <script>
-        // Configuração da URL base e parâmetros da URL
+        Dropzone.autoDiscover = false;
+    
         const baseUrl = window.location.hostname !== 'localhost' ?
             'https://portal.mrksolucoes.com.br/api/v1/index.php' :
             'http://localhost/portal-mrk/api/v1/index.php';
-
+    
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const usuarioId = urlParams.get('user_id');
-
-        // Função para ler o arquivo Excel
-        function readExcel(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const data = e.target.result;
-                    const workbook = XLSX.read(data, { type: 'binary' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet);
-                    resolve(json);
-                };
-                reader.onerror = (error) => reject(error);
-                reader.readAsBinaryString(file);
-            });
-        }
-
-        // Função para enviar os dados para a API
-        function sendDataToAPI(payload) {
-            axios.post(baseUrl, payload)
-                .then((response) => {
-                    Swal.fire({
-                        title: 'Sucesso!',
-                        text: 'Importação realizada com sucesso.',
-                        icon: 'success'
-                    });
-                })
-                .catch((error) => {
-                    console.error(error);
-                    Swal.fire({
-                        title: 'Erro!',
-                        text: 'Erro ao enviar os dados.',
-                        icon: 'error'
-                    });
+    
+        // Função para validar os campos obrigatórios no Excel
+        function validateExcelFields(data) {
+            const requiredFields = ['estabelecimento', 'doc', 'tipo', 'produto', 'seq', 'data', 'qtde'];
+            const missingFields = requiredFields.filter(field => !Object.keys(data[0] || {}).includes(field));
+    
+            if (missingFields.length > 0) {
+                Swal.fire({
+                    title: 'Erro!',
+                    text: `O arquivo Excel está faltando os campos: ${missingFields.join(', ')}`,
+                    icon: 'error'
                 });
+                return false;
+            }
+            return true;
         }
-
-        // Evento de envio do formulário
-        $('#import-form').on('submit', async function (event) {
-            event.preventDefault();
-            
-            const file = $('#fileInput')[0].files[0];
-
-            if (file) {
-                try {
-                    const data = await readExcel(file);
-
-                    const itens = data.map((item) => ({
-                        estabelecimento: item['estabelecimento'],
-                        doc: item['doc'],
-                        tipo: item['tipo'],
-                        produto: item['produto'],
-                        seq: item['seq'],
-                        data: item['data'],
-                        qtde: item['qtde']
-                    }));
-
-                    const payload = {
-                        method: 'importComprasCSV',
-                        token: token,
-                        data: {
-                            usuario_id: usuarioId,
-                            itens: itens
+    
+        // Configuração do Dropzone
+        const dropzone = new Dropzone("#import-form", {
+            url: "/fake-url", // URL fictícia
+            acceptedFiles: ".xls,.xlsx",
+            maxFiles: 1,
+            autoProcessQueue: false,
+            init: function () {
+                this.on("addedfile", function (file) {
+                    const reader = new FileReader();
+    
+                    reader.onload = async function (e) {
+                        try {
+                            // Lê o arquivo Excel
+                            const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const data = XLSX.utils.sheet_to_json(sheet);
+    
+                            // Valida os campos obrigatórios
+                            if (!validateExcelFields(data)) {
+                                return; // Interrompe o fluxo
+                            }
+    
+                            // Mapeia os itens do arquivo
+                            const itens = data.map(item => ({
+                                estabelecimento: item['estabelecimento'],
+                                doc: item['doc'],
+                                tipo: item['tipo'],
+                                produto: item['produto'],
+                                seq: item['seq'],
+                                data: item['data'],
+                                qtde: item['qtde']
+                            }));
+    
+                            const payload = {
+                                method: 'importComprasCSV',
+                                token: token,
+                                data: {
+                                    usuario_id: usuarioId,
+                                    itens: itens
+                                }
+                            };
+    
+                            // Exibe o loader
+                            Swal.fire({
+                                title: 'Aguarde...',
+                                text: 'Processando os dados...',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+    
+                            // Envia os dados para a API
+                            axios.post(baseUrl, payload)
+                                .then(() => {
+                                    Swal.fire({
+                                        title: 'Sucesso!',
+                                        text: 'Importação realizada com sucesso.',
+                                        icon: 'success'
+                                    });
+                                })
+                                .catch(() => {
+                                    Swal.fire({
+                                        title: 'Erro!',
+                                        text: 'Erro ao enviar os dados.',
+                                        icon: 'error'
+                                    });
+                                });
+                        } catch (error) {
+                            Swal.fire({
+                                title: 'Erro!',
+                                text: 'Erro ao processar o arquivo.',
+                                icon: 'error'
+                            });
                         }
                     };
-
-                    sendDataToAPI(payload);
-                } catch (error) {
-                    Swal.fire({
-                        title: 'Erro!',
-                        text: 'Erro ao ler o arquivo Excel.',
-                        icon: 'error'
-                    });
-                }
-            } else {
-                Swal.fire({
-                    title: 'Atenção!',
-                    text: 'Por favor, selecione um arquivo.',
-                    icon: 'warning'
+    
+                    // Lê o arquivo como string binária
+                    reader.readAsBinaryString(file);
+                });
+    
+                this.on("error", function (file, message) {
+                    Swal.fire('Erro!', message, 'error');
                 });
             }
         });
     </script>
+    
 
 </body>
 </html>

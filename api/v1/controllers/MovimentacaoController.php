@@ -595,11 +595,16 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             $unitMap = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            // Prepara a query de inserção em massa
+            // Prepara a query de inserção com atualização em caso de duplicidade
             $insertQuery = "
-            INSERT INTO movimentacao (
-                system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO movimentacao (
+            system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+            status = VALUES(status),
+            data = VALUES(data),
+            quantidade = VALUES(quantidade),
+            usuario_id = VALUES(usuario_id)
         ";
             $insertStmt = $pdo->prepare($insertQuery);
 
@@ -610,7 +615,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                     throw new Exception("Estabelecimento não encontrado: {$produto['estabelecimento']}");
                 }
 
-                // Insere a movimentação
+                // Insere ou atualiza a movimentação
                 $insertStmt->execute([
                     $systemUnitId,
                     1, // Status = Concluído
@@ -644,6 +649,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
+
 
 
 
