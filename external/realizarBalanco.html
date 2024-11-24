@@ -99,7 +99,7 @@
     </style>
 </head>
 
-<body class="theme-blue">
+<body class="theme-red">
 
     <!-- Modal de Login -->
     <div id="loginModal" class="modal fade" tabindex="-1" role="dialog">
@@ -147,7 +147,15 @@
             <div class="col-lg-12 col-md-12 col-sm-12">
                 <div class="card">
                     <div class="header">
+                       
                         <h2 id="pageTitle">Realizar Balanço</h2>
+                        <br>
+                        <div>
+                            <label for="dateBalance">Data do Balanço</label>
+                            <select id="dateBalance" class="form-control" style="width: 200px; margin-right: 10px;">
+                                <!-- As opções serão preenchidas dinamicamente -->
+                            </select>
+                        </div>
                     </div>
                     <div class="body table-responsive">
                         <table id="itensTable" class="table table-bordered table-striped">
@@ -200,6 +208,20 @@
             function hideLoader() {
                 $('#pageLoader').fadeOut();
             }
+
+             // Função para preencher o campo de data
+            function populateDateSelect() {
+                const today = new Date();
+                const yesterday = new Date();
+                yesterday.setDate(today.getDate() - 1);
+
+                const todayFormatted = today.toLocaleDateString('pt-BR');
+                const yesterdayFormatted = yesterday.toLocaleDateString('pt-BR');
+
+                $('#dateBalance').append(new Option(`Hoje (${todayFormatted})`, today.toISOString().split('T')[0]));
+                $('#dateBalance').append(new Option(`Ontem (${yesterdayFormatted})`, yesterday.toISOString().split('T')[0]));
+            }
+
     
             function checkAuthentication() {
                 if (!isAuthenticated) {
@@ -321,12 +343,15 @@
                         itens.push({ codigo: codigo_produto, seq, quantidade: quantidade.replace(',', '.') });
                     }
                 });
+
+                 const date_balance = $('#dateBalance').val();
     
                 try {
                     const response = await axios.post(baseUrl, {
                         method: 'saveBalanceItems',
                         data: {
                             system_unit_id: parseInt(system_unit_id, 10),
+                            date_balance: date_balance,
                             itens: itens
                         }
                     });
@@ -346,6 +371,7 @@
     
             extractSystemUnitId();
             checkAuthentication();
+            populateDateSelect();
         });
     </script>
     

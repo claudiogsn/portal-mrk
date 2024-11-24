@@ -335,6 +335,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         $system_unit_id = $data['system_unit_id'];
         $system_unit_id_destino = isset($data['system_unit_id_destino']) ? $data['system_unit_id_destino'] : null;
         $itens = $data['itens'];
+        $date_balance = $data['date_balance'];
 
         // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter um novo valor
         $ultimoDoc = self::getLastMov($system_unit_id, 'b');
@@ -343,6 +344,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         // Definindo valores fixos
         $tipo = 'b';
         $usuario_id = 5;
+
 
         try {
             // Inicia a transação
@@ -364,8 +366,8 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
                 // Inserção no banco de dados
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, quantidade, usuario_id) 
-                                       VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $produto, $seq, $quantidade, $usuario_id]);
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $produto, $seq,$date_balance , $quantidade, $usuario_id]);
 
                 if ($stmt->rowCount() > 0) {
                     // Atualiza o saldo do estoque após a movimentação
