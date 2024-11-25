@@ -405,8 +405,8 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         $doc = self::incrementDoc($ultimoDoc, 't');
 
         // Definindo valores fixos
-        $tipo_saida = 't';
-        $tipo_entrada = 't';
+        $tipo_saida = 'saida';
+        $tipo_entrada = 'entrada';
 
         try {
             // Inicia a transação
