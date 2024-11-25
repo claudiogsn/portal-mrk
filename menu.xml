@@ -4,7 +4,7 @@
     <icon>fas:warehouse fa-fw</icon>
     <menu>
       <menuitem label="Produtos">
-        <icon>fas:clipboard-list fa-fw</icon>
+        <icon>fab fa:product-hunt fa-fw</icon>
         <menu>
           <menuitem label="Cadastro de Produtos">
             <action>ProductsList</action>
@@ -17,7 +17,7 @@
         </menu>
       </menuitem>
       <menuitem label="Balanco">
-        <icon>fas:clipboard-list fa-fw</icon>
+        <icon>fas:balance-scale fa-fw</icon>
         <menu>
           <menuitem label="Modelos de Balanço">
             <action>CreateBalanco</action>
@@ -29,13 +29,22 @@
           </menuitem>
         </menu>
       </menuitem>
+      <menuitem label="Transferências">
+        <icon>fas:arrows-alt-h fa-fw</icon>
+        <menu>
+          <menuitem label="Transferência Assitida">
+            <action>TransferenciaAssitida</action>
+            <icon>fas:copy fa-fw</icon>
+          </menuitem>
+          <menuitem label="Transferência Manual">
+            <action>TransferenciaManual</action>
+            <icon>fas:dolly-flatbed fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
       <menuitem label="Importar Compras">
         <action>ImportComprasCsv</action>
         <icon>fas:file-excel fa-fw</icon>
-      </menuitem>
-      <menuitem label="Transferência Assitida">
-        <action>TransferenciaAssitida</action>
-        <icon>fas:arrows-alt-h fa-fw</icon>
       </menuitem>
       <menuitem label="Aprovação de Movimentações">
         <action>AprovarMovimentacoes</action>
