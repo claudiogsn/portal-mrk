@@ -617,6 +617,14 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
             // Métodos para ProductController
+            case 'efetivarTransacoes':
+                if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
+                    $response = MovimentacaoController::efetivarTransacoes($requestData['system_unit_id'], $requestData['doc']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
+                }
+                break;
             case 'listarMovimentacoesPendentes':
                 if (isset($requestData['system_unit_id'])) {
                     $response = MovimentacaoController::listarMovimentacoesPendentes($requestData['system_unit_id']);
@@ -625,6 +633,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
+                case 'getMovimentacao':
+                    if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
+                        $response = MovimentacaoController::getMovimentacao($requestData['system_unit_id'],$requestData['doc']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro id ausente'];
+                    }
+                    break;
             case 'getLastMov':
                 if (isset($requestData['system_unit_id']) && isset($requestData['tipo'])) {
                     $response = MovimentacaoController::getLastMov($requestData['system_unit_id'], $requestData['tipo']);

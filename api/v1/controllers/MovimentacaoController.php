@@ -6,6 +6,88 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class MovimentacaoController {
 
+
+
+    public static function getMovimentacao($system_unit_id, $doc) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        SELECT 
+            movimentacao.*, 
+            products.nome AS product_name
+        FROM 
+            movimentacao
+        INNER JOIN 
+            products 
+        ON 
+            movimentacao.produto = products.codigo
+        WHERE 
+            movimentacao.system_unit_id = :system_unit_id 
+        AND 
+            movimentacao.doc = :doc
+    ");
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
+        $stmt->execute();
+        $movimentacao = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $movimentacao;
+    }
+
+
+    public static function efetivarTransacoes($systemUnitId, $doc)
+    {
+        try {
+            // Buscar todas as movimentações associadas ao `doc` e `system_unit_id`
+            $movimentacoes = self::getMovimentacao($systemUnitId, $doc);
+
+            if (empty($movimentacoes)) {
+                return ['success' => false, 'message' => 'Nenhuma movimentação encontrada para o documento especificado.'];
+            }
+
+            foreach ($movimentacoes as $produto) {
+                $tipo = $produto['tipo'];
+                $quantidade = $produto['quantidade'];
+                $produtoId = $produto['produto'];
+
+                // Verificar tipo de movimentação
+                if ($tipo === 'b') { // Balanço
+                    ProductController::updateStockBalance($systemUnitId, $produtoId, $quantidade, $doc);
+                } elseif (in_array($tipo, ['t', 'c'])) { // Transferência ou Compra
+                    $stockData = NecessidadesController::getProductStock($systemUnitId, $produtoId);
+                    $saldoAtual = $stockData['saldo'] ?? 0;
+                    $novoSaldo = $saldoAtual + $quantidade;
+
+                    ProductController::updateStockBalance($systemUnitId, $produtoId, $novoSaldo, $doc);
+                } else {
+                    throw new Exception("Tipo de movimentação inválido: $tipo");
+                }
+            }
+
+            // Atualizar o status de todas as movimentações do `doc`
+            self::atualizarStatusMovimentacoes($systemUnitId, $doc);
+
+            return ['success' => true, 'message' => 'Transações efetivadas com sucesso!'];
+
+        } catch (Exception $e) {
+            // Captura de erros e retorno de mensagem de erro
+            return ['success' => false, 'message' => 'Erro ao efetivar transações: ' . $e->getMessage()];
+        }
+    }
+
+
+    private static function atualizarStatusMovimentacoes($systemUnitId, $doc)
+    {
+        global $pdo;
+
+        $query = "UPDATE movimentacao SET status = 1 WHERE system_unit_id = :system_unit_id AND doc = :doc";
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
+        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
+        $stmt->execute();
+    }
+
+
     public static function listarMovimentacoesPendentes($systemUnitId){
 
         global $pdo;

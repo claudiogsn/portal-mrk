@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Lista de Movimentações Pendentes</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Fonts e Ícones -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- CSS Principais -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <style>
+        .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        .selected-row {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+
+    <!-- Carregador -->
+    <div class="page-loader-wrapper">
+        <div class="loader">
+            <div class="preloader">
+                <div class="spinner-layer pl-blue">
+                    <div class="circle-clipper left">
+                        <div class="circle"></div>
+                    </div>
+                    <div class="circle-clipper right">
+                        <div class="circle"></div>
+                    </div>
+                </div>
+            </div>
+            <p>Aguarde...</p>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="container-fluid">
+        <!-- Filtros -->
+        <div class="header-card">
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+            <div class="header">
+                <h2>Movimentações Pendentes</h2>
+            </div>
+            <div class="body table-responsive">
+                <div class="table-container position-relative">
+                    <div class="spinner">
+                        <div class="preloader pl-size-xs">
+                            <div class="spinner-layer pl-blue">
+                                <div class="circle-clipper left">
+                                    <div class="circle"></div>
+                                </div>
+                                <div class="circle-clipper right">
+                                    <div class="circle"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <table id="movimentacoesTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Doc</th>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Origem</th>
+                                <th>Destino</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Conteúdo Dinâmico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="movimentacaoModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes da Movimentação</h5>
+                    <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalhesMovimentacao">
+                            <!-- Conteúdo Dinâmico -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
+                    <button id="btnEfetivarModal" class="btn btn-success">Efetivar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+
+
+
+    <script>
+        $(document).ready(function () {
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unitId = urlParams.get('unit_id');
+
+    function showLoader() {
+        $('.page-loader-wrapper').fadeIn();
+    }
+
+    function hideLoader() {
+        $('.page-loader-wrapper').fadeOut();
+    }
+
+    // Carregar movimentações
+    async function loadMovements() {
+        showLoader();
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listarMovimentacoesPendentes',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                }
+            });
+
+            if (response.data) {
+                renderMovements(response.data);
+            } else {
+                swal("Erro", "Erro ao carregar movimentações.", "error");
+            }
+        } catch (error) {
+            console.error('Erro ao carregar movimentações:', error);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    function renderMovements(movements) {
+        const tbody = $('#movimentacoesTable tbody');
+        tbody.empty();
+
+        movements.forEach(movement => {
+            const row = $(`
+                <tr>
+                    <td>${movement.doc}</td>
+                    <td>${new Date(movement.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    <td>${movement.tipo_movimentacao}</td>
+                    <td>${movement.nome_unidade_origem || 'N/A'}</td>
+                    <td>${movement.nome_unidade_destino || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
+                        <button class="btn btn-success btnEfetivar" data-doc="${movement.doc}">Efetivar</button>
+                    </td>
+                </tr>
+            `);
+
+            tbody.append(row);
+
+            // Evento para exibir detalhes
+            row.find('.btnDetalhes').on('click', function () {
+                const doc = $(this).data('doc');
+                loadMovementDetails(doc);
+            });
+
+            // Evento para efetivar transação
+            row.find('.btnEfetivar').on('click', function () {
+                const doc = $(this).data('doc');
+                confirmarEfetivacao(doc);
+            });
+        });
+    }
+
+    // Perguntar antes de efetivar a transação
+    function confirmarEfetivacao(doc) {
+        Swal.fire({
+            title: 'Confirmar Efetivação',
+            text: 'Deseja realmente efetivar esta transação?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, efetivar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                efetivarTransacao(doc);
+            }
+        });
+    }
+
+    // Efetivar transação
+    async function efetivarTransacao(doc) {
+        showLoader();
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'efetivarTransacoes',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    doc: doc
+                }
+            });
+
+            if (response.status === 200) {
+                hideLoader();
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: 'Transação efetivada com sucesso.',
+                    confirmButtonText: 'OK'
+                });
+
+                // Recarregar página ao fechar o alerta
+                location.reload();
+            } else {
+                hideLoader();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Falha ao efetivar a transação.',
+                });
+            }
+        } catch (error) {
+            hideLoader();
+            console.error('Erro ao efetivar transação:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro',
+                text: 'Ocorreu um erro ao tentar efetivar a transação.',
+            });
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // Carregar detalhes de uma movimentação
+    async function loadMovementDetails(doc) {
+        showLoader();
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'getMovimentacao',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    doc: doc
+                }
+            });
+
+            if (response.data) {
+                renderDetailsModal(response.data);
+                $('#movimentacaoModal').modal('show');
+            } else {
+                swal("Erro", "Erro ao carregar detalhes da movimentação.", "error");
+            }
+        } catch (error) {
+            console.error('Erro ao carregar detalhes:', error);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    function renderDetailsModal(movements) {
+    const tbody = $('#detalhesMovimentacao');
+    tbody.empty();
+
+    if (Array.isArray(movements)) {
+        const doc = movements[0].doc; // Assumindo que `doc` está no primeiro item do array
+
+        $('#movimentacaoModal .modal-title').text(`Detalhes da Movimentação - Doc: ${doc}`);
+        $('#btnEfetivarModal').data('doc', doc); // Armazena o `doc` no botão Efetivar
+
+        movements.forEach(item => {
+            const row = $(` 
+                <tr>
+                    <td>${item.produto} - ${item.product_name}</td>
+                    <td>${item.quantidade}</td>
+                </tr>
+            `);
+            tbody.append(row);
+        });
+
+        // Adiciona o evento de click ao botão Efetivar
+        $('#btnEfetivarModal').off('click').on('click', function () {
+            const doc = $(this).data('doc');
+            confirmarEfetivacao(doc);
+        });
+    } else {
+        console.error('Estrutura de dados inesperada:', movements);
+        swal("Erro", "Formato de dados inesperado para os detalhes.", "error");
+    }
+}
+
+
+    loadMovements();
+});
+
+    </script>
+
+
+</body>
+
+</html>
