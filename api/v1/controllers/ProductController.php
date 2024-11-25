@@ -120,7 +120,6 @@ class ProductController {
         try {
             global $pdo;
 
-            // Atualiza a consulta SQL para lidar com os novos campos
             $sql = "
         SELECT p.*, 
             c.nome AS nome_categoria,
