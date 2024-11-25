@@ -1,262 +1,242 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transferência de Itens</title>
-    
     <!-- Favicon-->
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
-
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
-
     <!-- Bootstrap Core Css -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
     <!-- Waves Effect Css -->
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
     <!-- Animation Css -->
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-
     <!-- JQuery DataTable Css -->
     <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-
     <!-- SweetAlert Css -->
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
-
     <!-- Custom Css -->
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
-
     <!-- JQuery Steps CSS (para o Wizard) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.css">
-
     <!-- MultiSelect CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
-
     <style>
-        .form-control {
-            margin-bottom: 10px;
-        }
-        table {
-            margin-top: 20px;
-        }
-        th, td {
-            text-align: left;
-        }
-        .modal-body {
-            max-height: 400px;
-            overflow-y: auto;
-        }
+      .form-control {
+        margin-bottom: 10px;
+      }
+
+      table {
+        margin-top: 20px;
+      }
+
+      th,
+      td {
+        text-align: left;
+      }
+
+      .modal-body {
+        max-height: 400px;
+        overflow-y: auto;
+      }
     </style>
-</head>
-<body class="theme-blue">
-
-<div class="container-fluid">
-    <div class="block-header">
-        <h2> </h2>
+  </head>
+  <body class="theme-blue">
+    <div class="container-fluid">
+      <div class="block-header">
+        <h2></h2>
         <br>
-    </div>
-
-    <!-- Formulário de Transferência -->
-    <div class="row">
+      </div>
+      <!-- Formulário de Transferência -->
+      <div class="row">
         <div class="col-md-12">
-            <div class="card">
-                <div class="header">
-                    <h2>Transferência de Itens</h2>
-                </div>
-                <div class="body">
-                    <form id="transferForm">
-                        <div class="row">
-                            <!-- <div class="col-md-4">
-                                <label for="date">Data</label>
-                                <input type="date" id="date" class="form-control" required>
-                            </div> -->
-                            <div class="col-md-6">
-                                <label for="origin-unit">Unidade de Origem</label>
-                                <select id="origin-unit" class="form-control" required>
-                                    <option value="">Selecione</option>
-                                    <!-- Opções carregadas dinamicamente -->
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="destination-unit">Unidade de Destino</label>
-                                <select id="destination-unit" class="form-control" required>
-                                    <option value="">Selecione</option>
-                                    <!-- Opções carregadas dinamicamente -->
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-1">
-                                <label for="item-codigo">Código</label>
-                                <input type="text" id="item-codigo" class="form-control" readonly>
-                            </div>
-                            
-                            <div class="col-md-5">
-                                <label for="item-description">Descrição do Item</label>
-                                <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um item" data-toggle="modal" data-target="#itemModal">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="item-unit">Unidade</label>
-                                <input type="text" id="item-unit" class="form-control" readonly>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="item-quantity">Quantidade</label>
-                                <input type="number" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
-                            </div>
-                        </div>
-                        <button type="button" id="add-item" class="btn btn-primary waves-effect">Adicionar Item</button>
-                    </form>
-                </div>
+          <div class="card">
+            <div class="header">
+              <h2>Transferência de Itens</h2>
             </div>
+            <div class="body">
+              <form id="transferForm">
+                <div class="row">
+                  <!-- <div class="col-md-4"><label for="date">Data</label><input type="date" id="date" class="form-control" required></div> -->
+                  <div class="col-md-6">
+                    <label for="origin-unit">Unidade de Origem</label>
+                    <select id="origin-unit" class="form-control" required>
+                      <option value="">Selecione</option>
+                      <!-- Opções carregadas dinamicamente -->
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="destination-unit">Unidade de Destino</label>
+                    <select id="destination-unit" class="form-control" required>
+                      <option value="">Selecione</option>
+                      <!-- Opções carregadas dinamicamente -->
+                    </select>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-1">
+                    <label for="item-codigo">Código</label>
+                    <input type="text" id="item-codigo" class="form-control" readonly>
+                  </div>
+                  <div class="col-md-5">
+                    <label for="item-description">Descrição do Item</label>
+                    <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um item" data-toggle="modal" data-target="#itemModal">
+                  </div>
+                  <div class="col-md-3">
+                    <label for="item-unit">Unidade</label>
+                    <input type="text" id="item-unit" class="form-control" readonly>
+                  </div>
+                  <div class="col-md-3">
+                    <label for="item-quantity">Quantidade</label>
+                    <input type="number" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
+                  </div>
+                </div>
+                <button type="button" id="add-item" class="btn btn-primary waves-effect">Adicionar Item</button>
+              </form>
+            </div>
+          </div>
         </div>
-    </div>
-
-    <!-- Tabela de Itens -->
-     <div class="card">
-    <div class="row">
-        <div class="col-md-12">
+      </div>
+      <!-- Tabela de Itens -->
+      <div class="card">
+        <div class="row">
+          <div class="col-md-12">
             <table id="result-table" class="table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Descrição</th>
-                        <th>Unidade</th>
-                        <th>Quantidade</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Unidade</th>
+                  <th>Quantidade</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
             </table>
+          </div>
         </div>
+      </div>
+      <button type="button" id="transfer-button" class="btn btn-success waves-effect">Realizar Transferência</button>
     </div>
-</div>
-
-    <button type="button" id="transfer-button" class="btn btn-success waves-effect">Realizar Transferência</button>
-</div>
-
-<!-- Modal para Seleção de Itens -->
-<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+    <!-- Modal para Seleção de Itens -->
+    <div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title">Selecionar Item</h4>
-            </div>
-            <div class="modal-body">
-                <table id="item-table" class="table table-bordered table-hover">
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Descrição</th>
-                            <th>Saldo</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Dados carregados dinamicamente -->
-                    </tbody>
-                </table>
-            </div>
+          <div class="modal-header">
+            <h4 class="modal-title">Selecionar Item</h4>
+          </div>
+          <div class="modal-body">
+            <table id="item-table" class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Saldo</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Dados carregados dinamicamente -->
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
     </div>
-</div>
-
- <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
- <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
- <!-- Bootstrap Core Js -->
- <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
- <!-- Waves Effect Plugin Js -->
- <script src="bsb/plugins/node-waves/waves.js"></script>
- <!-- SweetAlert Plugin Js -->
- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
- <!-- jQuery Steps JS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
- <!-- jQuery Validation JS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
- <!-- jQuery Multi-Select -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
-
-<!-- Adicionar Axios e SweetAlert -->
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const unit_matriz_id = urlParams.get('unit_matriz_id');
-    const username = urlParams.get('username');
-
-    // Função para carregar unidades
-    async function loadUnidades() {
-        try {
+    <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <!-- Bootstrap Core Js -->
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <!-- Waves Effect Plugin Js -->
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <!-- SweetAlert Plugin Js -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- jQuery Steps JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
+    <!-- jQuery Validation JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+    <!-- jQuery Multi-Select -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
+    <!-- Adicionar Axios e SweetAlert -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const unit_matriz_id = urlParams.get('unit_matriz_id');
+        const username = urlParams.get('username');
+        // Função para carregar unidades
+        async function loadUnidades() {
+          try {
             const response = await fetch(baseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    method: 'getFiliaisByMatriz',
-                    token: token,
-                    data: { unit_matriz_id: unit_matriz_id }
-                })
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                method: 'getFiliaisByMatriz',
+                token: token,
+                data: {
+                  unit_matriz_id: unit_matriz_id
+                }
+              })
             });
-
             if (!response.ok) {
-                throw new Error('Erro ao carregar unidades');
+              throw new Error('Erro ao carregar unidades');
             }
-
             const filiais = await response.json();
             const originSelect = document.getElementById('origin-unit');
             const destinationSelect = document.getElementById('destination-unit');
-
             // Limpar as opções anteriores
-            originSelect.innerHTML = '<option value="">Selecione</option>';
-            destinationSelect.innerHTML = '<option value="">Selecione</option>';
-
-            // Adicionar as unidades
+            originSelect.innerHTML = ' < option value = "" > Selecione < /option>';
+            destinationSelect.innerHTML = ' < option value = "" > Selecione < /option>';
+            // Adicionar opção manualmente
+            const manualOptionOrigin = new Option('RED Burguer - Produção', '10');
+            originSelect.appendChild(manualOptionOrigin);
+            // Adicionar as unidades carregadas da API
             filiais.forEach(filial => {
-                const option = new Option(filial.filial_nome, filial.filial_id);
-                originSelect.appendChild(option);
-                destinationSelect.appendChild(option.cloneNode(true));
+              const option = new Option(filial.filial_nome, filial.filial_id);
+              originSelect.appendChild(option);
+              destinationSelect.appendChild(option.cloneNode(true));
             });
-        } catch (error) {
+          } catch (error) {
             swal.fire('Erro', error.message, 'error');
+          }
         }
-    }
-
-    // Função para carregar itens
-    async function loadItems(unitId) {
-        if (!unitId) {
+        // Função para carregar itens
+        async function loadItems(unitId) {
+          if (!unitId) {
             swal.fire('Atenção', 'Selecione a unidade de origem antes de buscar itens.', 'warning');
             return;
-        }
-
-        try {
+          }
+          try {
             const response = await axios.post(baseUrl, {
-                method: 'listInsumos',
-                token: token,
-                data: { unit_id: unitId }
+              method: 'listInsumos',
+              token: token,
+              data: {
+                unit_id: unitId
+              }
             });
-
             if (response.data.success) {
-                const items = response.data.insumos;
-                const tbody = $('#item-table tbody');
-                tbody.empty();
-
-                items.forEach(item => {
-                    const row = `
-                        <tr>
-                            <td>${item.codigo}</td>
-                            <td>${item.nome}</td>
-                            <td>${item.saldo}</td>
-                            <td>
-                                <button 
+              const items = response.data.insumos;
+              const tbody = $('#item-table tbody');
+              tbody.empty();
+              items.forEach(item => {
+                const row = `
+                        
+																		<tr>
+																			<td>${item.codigo}</td>
+																			<td>${item.nome}</td>
+																			<td>${item.saldo}</td>
+																			<td>
+																				<button 
                                     class="btn btn-primary select-item" 
                                     data-codigo="${item.codigo}" 
                                     data-nome="${item.nome}" 
@@ -264,119 +244,111 @@
                                     data-und="${item.und}">
                                     Selecionar
                                 </button>
-                            </td>
-                        </tr>
+																			</td>
+																		</tr>
                     `;
-                    tbody.append(row);
-                });
-
-                // Configurar botão para selecionar item
-                $('.select-item').click(function () {
-                    const codigo = $(this).data('codigo');
-                    const nome = $(this).data('nome');
-                    const saldo = $(this).data('saldo');
-                    const und = $(this).data('und');
-
-                    $('#item-codigo').val(codigo);
-                    $('#item-description').val(nome);
-                    $('#item-unit').val(und);
-                    $('#itemModal').modal('hide');
-                });
+                tbody.append(row);
+              });
+              // Configurar botão para selecionar item
+              $('.select-item').click(function() {
+                const codigo = $(this).data('codigo');
+                const nome = $(this).data('nome');
+                const saldo = $(this).data('saldo');
+                const und = $(this).data('und');
+                $('#item-codigo').val(codigo);
+                $('#item-description').val(nome);
+                $('#item-unit').val(und);
+                $('#itemModal').modal('hide');
+              });
             } else {
-                swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+              swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
             }
-        } catch (error) {
+          } catch (error) {
             console.error(error);
             swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
+          }
         }
-    }
-
-    // Função para enviar os itens de transferência para o backend
-    async function sendTransferItems() {
-        const originUnit = $('#origin-unit').val();
-        const destinationUnit = $('#destination-unit').val();
-        const username = "<?php echo $username; ?>"; // Obtendo o valor do username da variável PHP, ou use qualquer outra forma de obtê-lo.
-
-        // Verificar se as unidades de origem e destino foram selecionadas
-        if (!originUnit || !destinationUnit) {
+        // Função para enviar os itens de transferência para o backend
+        async function sendTransferItems() {
+          const originUnit = $('#origin-unit').val();
+          const destinationUnit = $('#destination-unit').val();
+          const username = " < ? php echo $username; ? > "; // Obtendo o valor do username da variável PHP, ou use qualquer outra forma de obtê-lo.
+          // Verificar se as unidades de origem e destino foram selecionadas
+          if (!originUnit || !destinationUnit) {
             swal.fire('Erro', 'Selecione a unidade de origem e destino.', 'error');
             return;
-        }
-
-        if (!originUnit == !destinationUnit) {
+          }
+          if (!originUnit == !destinationUnit) {
             swal.fire('Erro', 'A unidade de Origem não pode ser igual a unidade de destino', 'error');
             return;
-        }
-
-        // Obter os itens da tabela
-        const items = [];
-        $('#result-table tbody tr').each(function(index, row) {
+          }
+          // Obter os itens da tabela
+          const items = [];
+          $('#result-table tbody tr').each(function(index, row) {
             const codigo = $(row).find('td:eq(0)').text();
             const quantidade = $(row).find('td:eq(3)').text();
-
             if (codigo && quantidade) {
-                items.push({
-                    codigo: codigo,
-                    seq: index + 1,  // Sequência começa de 1
-                    quantidade: parseInt(quantidade, 10)
-                });
+              items.push({
+                codigo: codigo,
+                seq: index + 1, // Sequência começa de 1
+                quantidade: parseInt(quantidade, 10)
+              });
             }
-        });
-
-        // Verificar se há itens a enviar
-        if (items.length === 0) {
+          });
+          // Verificar se há itens a enviar
+          if (items.length === 0) {
             swal.fire('Erro', 'Adicione ao menos um item para transferência.', 'error');
             return;
-        }
-
-        // Solicitar confirmação antes de enviar
-        swal.fire({
+          }
+          // Solicitar confirmação antes de enviar
+          swal.fire({
             title: 'Confirmar Transferência?',
             text: 'Você está prestes a realizar a transferência de itens.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, Realizar',
             cancelButtonText: 'Cancelar'
-        }).then(async (result) => {
+          }).then(async (result) => {
             if (result.isConfirmed) {
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'createTransferItems',
-                        token: token,
-                        data: {
-                            system_unit_id: originUnit,
-                            system_unit_id_destino: destinationUnit,
-                            itens: items,
-                            usuario_id: username
-                        }
-                    });
-
-                    if (response.data.success) {
-                        // Exibir a resposta da API
-                        const transferDoc = response.data.transfer_doc;
-                        const nomeUnidadeDestino = response.data.nome_unidade_destino;
-                        const dataHora = response.data.data_hora;
-                        const itens = response.data.itens;
-
-                        // Exibir a mensagem de sucesso
-                        swal.fire({
-                            title: 'Transferência realizada com sucesso!',
-                            text: `Documento de Transferência: ${transferDoc}`,
-                            icon: 'success'
-                        });
-                        
-
-                        // Gerar e exibir o documento para impressão
-                        let itemsList = '';
-                        itens.forEach(item => {
-                            itemsList += `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`;
-                        });
-
-                        const documentContent = `
-                            <html>
-                                <head>
-                                    <title>Documento de Transferência - ${transferDoc}</title>
-                                    <style>
+              try {
+                const response = await axios.post(baseUrl, {
+                  method: 'createTransferItems',
+                  token: token,
+                  data: {
+                    system_unit_id: originUnit,
+                    system_unit_id_destino: destinationUnit,
+                    itens: items,
+                    usuario_id: username
+                  }
+                });
+                if (response.data.success) {
+                  // Exibir a resposta da API
+                  const transferDoc = response.data.transfer_doc;
+                  const nomeUnidadeDestino = response.data.nome_unidade_destino;
+                  const dataHora = response.data.data_hora;
+                  const itens = response.data.itens;
+                  // Exibir a mensagem de sucesso
+                  swal.fire({
+                    title: 'Transferência realizada com sucesso!',
+                    text: `Documento de Transferência: ${transferDoc}`,
+                    icon: 'success'
+                  });
+                  // Gerar e exibir o documento para impressão
+                  let itemsList = '';
+                  itens.forEach(item => {
+                    itemsList += `
+																		<tr>
+																			<td>${item.codigo}</td>
+																			<td>${item.nome_produto}</td>
+																			<td>${item.quantidade}</td>
+																		</tr>`;
+                  });
+                  const documentContent = `
+                            
+																		<html>
+																			<head>
+																				<title>Documento de Transferência - ${transferDoc}</title>
+																				<style>
                                         body { font-family: Arial, sans-serif; }
                                         h1 { text-align: center; }
                                         p, table { margin-top: 20px; }
@@ -387,98 +359,99 @@
                                         .signature-line { border-top: 1px solid #000; width: 200px; margin: 0 auto; text-align: center; }
                                         .signature-label { text-align: center; margin-top: 5px; }
                                     </style>
-                                </head>
-                                <body>
-                                    <h1>Transferência de Itens</h1>
-                                    <p><strong>Documento:</strong> ${transferDoc}</p>
-                                    <p><strong>Unidade Destino:</strong> ${nomeUnidadeDestino}</p>
-                                    <p><strong>Data e Hora:</strong> ${dataHora}</p>
-                                    <table>
-                                        <thead>
-                                            <tr><th>Código</th><th>Produto</th><th>Quantidade</th></tr>
-                                        </thead>
-                                        <tbody>
+																			</head>
+																			<body>
+																				<h1>Transferência de Itens</h1>
+																				<p>
+																					<strong>Documento:</strong> ${transferDoc}
+																				</p>
+																				<p>
+																					<strong>Unidade Destino:</strong> ${nomeUnidadeDestino}
+																				</p>
+																				<p>
+																					<strong>Data e Hora:</strong> ${dataHora}
+																				</p>
+																				<table>
+																					<thead>
+																						<tr>
+																							<th>Código</th>
+																							<th>Produto</th>
+																							<th>Quantidade</th>
+																						</tr>
+																					</thead>
+																					<tbody>
                                             ${itemsList}
                                         </tbody>
-                                    </table>
-                                    <br>
-                                     <div class="signature-section">
-                                        <div class="signature-line"></div>
-                                        <p class="signature-label">Assinatura do Responsável</p>
-                                    </div>
-                                </body>
-                            </html>
+																				</table>
+																				<br>
+																					<div class="signature-section">
+																						<div class="signature-line"></div>
+																						<p class="signature-label">Assinatura do Responsável</p>
+																					</div>
+																				</body>
+																			</html>
                         `;
-
-                        // Abrir uma nova janela para impressão
-                        const printWindow = window.open('', '', 'height=600,width=800');
-                        printWindow.document.write(documentContent);
-                        printWindow.document.close();
-                        printWindow.print();
-                    } else {
-                        swal.fire('Erro', response.data.message, 'error');
-                    }
-                } catch (error) {
-                    console.error(error);
-                    swal.fire('Erro', 'Ocorreu um erro ao enviar os dados para o backend.', 'error');
-                }finally{
-                    location.reload();
+                  // Abrir uma nova janela para impressão
+                  const printWindow = window.open('', '', 'height=600,width=800');
+                  printWindow.document.write(documentContent);
+                  printWindow.document.close();
+                  printWindow.print();
+                } else {
+                  swal.fire('Erro', response.data.message, 'error');
                 }
+              } catch (error) {
+                console.error(error);
+                swal.fire('Erro', 'Ocorreu um erro ao enviar os dados para o backend.', 'error');
+              } finally {
+                location.reload();
+              }
             }
+          });
+        }
+        // Configurar o evento para o botão de realizar a transferência
+        $('#transfer-button').click(function() {
+          sendTransferItems();
         });
-    }
-
-    // Configurar o evento para o botão de realizar a transferência
-    $('#transfer-button').click(function () {
-        sendTransferItems();
-    });
-
-    if (!unit_matriz_id) {
-        swal.fire('Erro', 'unit_matriz_id não encontrado na URL.', 'error');
-        return;
-    }
-
-    // Carregar as unidades
-    loadUnidades();
-
-    // Configurar evento para abrir o modal de itens
-    $('#item-description').click(function () {
-        const unitId = $('#origin-unit').val();
-        loadItems(unitId);
-    });
-
-    // Adicionar item à tabela de transferência
-    $('#add-item').click(function () {
-        const codigo = $('#item-codigo').val();
-        const descricao = $('#item-description').val();
-        const unidade = $('#item-unit').val();
-        const quantidade = $('#item-quantity').val();
-
-        if (!descricao || !quantidade) {
+        if (!unit_matriz_id) {
+          swal.fire('Erro', 'unit_matriz_id não encontrado na URL.', 'error');
+          return;
+        }
+        // Carregar as unidades
+        loadUnidades();
+        // Configurar evento para abrir o modal de itens
+        $('#item-description').click(function() {
+          const unitId = $('#origin-unit').val();
+          loadItems(unitId);
+        });
+        // Adicionar item à tabela de transferência
+        $('#add-item').click(function() {
+          const codigo = $('#item-codigo').val();
+          const descricao = $('#item-description').val();
+          const unidade = $('#item-unit').val();
+          const quantidade = $('#item-quantity').val();
+          if (!descricao || !quantidade) {
             swal.fire('Erro', 'Preencha todos os campos antes de adicionar.', 'error');
             return;
-        }
-
-        const row = `
-            <tr>
-                <td>${codigo}</td>
-                <td>${descricao}</td>
-                <td>${unidade}</td>
-                <td>${quantidade}</td>
-                <td><button class="btn btn-danger remove-item">Remover</button></td>
-            </tr>
+          }
+          const row = `
+            
+																			<tr>
+																				<td>${codigo}</td>
+																				<td>${descricao}</td>
+																				<td>${unidade}</td>
+																				<td>${quantidade}</td>
+																				<td>
+																					<button class="btn btn-danger remove-item">Remover</button>
+																				</td>
+																			</tr>
         `;
-
-        $('#result-table tbody').append(row);
-
-        // Remover item
-        $('.remove-item').click(function () {
+          $('#result-table tbody').append(row);
+          // Remover item
+          $('.remove-item').click(function() {
             $(this).closest('tr').remove();
+          });
         });
-    });
-});
-
-</script>
-
-</body>
+      });
+    </script>
+  </body>
 </html>
