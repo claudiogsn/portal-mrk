@@ -201,6 +201,7 @@
                                                 <!-- Resultados serão preenchidos dinamicamente -->
                                             </tbody>
                                         </table>
+                                        <button id="print-button" class="btn btn-success">Imprimir Tabela</button>
                                     </div>
                                 </section>
                             </div>
@@ -520,6 +521,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
 }
 
+
+
     // Criar a transferência
     async function createTransfer() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -724,6 +727,113 @@ function generatePrintDocument(result, items) {
             console.log("Datas únicas selecionadas:", uniqueDates);
             return uniqueDates;
         }
+
+
+
+        function printTable(event) {
+    event.preventDefault(); // Impede o comportamento padrão (como redirecionar para outra URL)
+
+    // Esconde as colunas indesejadas na tabela
+    const columnsToHide = [2, 3, 4, 6]; // Índices das colunas a serem removidas: Vendas (+), Margem (+), Saldo (-), Aplicar
+
+    // Acesse as células do cabeçalho da tabela (th) e das linhas de dados (td)
+    const table = document.getElementById('result-table');
+    const headerCells = table.getElementsByTagName('th');
+    const rows = table.getElementsByTagName('tr');
+
+    // Itera sobre as colunas que você quer esconder e aplica a mudança para esconder
+    for (let i = 0; i < headerCells.length; i++) {
+        if (columnsToHide.includes(i)) {
+            headerCells[i].style.display = 'none'; // Esconde o cabeçalho da coluna
+        }
+    }
+
+    // Esconde as células nas linhas da tabela
+    for (let i = 1; i < rows.length; i++) { // Começa de 1 para pular o cabeçalho
+        const cells = rows[i].getElementsByTagName('td');
+        for (let j = 0; j < cells.length; j++) {
+            if (columnsToHide.includes(j)) {
+                cells[j].style.display = 'none'; // Esconde as células da coluna
+            }
+        }
+    }
+
+    // Captura os valores atualizados da quantidade nos campos de input
+    // Aqui você pega as células que contêm os campos de entrada (input) da tabela
+    const quantityInputs = table.querySelectorAll('td input');
+    quantityInputs.forEach(input => {
+        const parentCell = input.closest('td');
+        parentCell.innerHTML = input.value; // Atualiza a célula com o valor digitado
+    });
+
+    // Agora, imprime a tabela
+    const printWindow = window.open('', '_blank'); // Abre uma nova janela para a impressão
+    const printContent = `
+        <html>
+        <head>
+            <title>Imprimir Transferência Parcial</title>
+            <style>
+                body { font-family: Arial, sans-serif; }
+                h1 { text-align: center; }
+                .alert { 
+                    background-color: #f8d7da;
+                    color: #721c24;
+                    border: 1px solid #f5c6cb;
+                    padding: 15px;
+                    margin: 20px;
+                    font-size: 16px;
+                    text-align: center;
+                    border-radius: 5px;
+                }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                table, th, td { border: 1px solid #ddd; padding: 8px; }
+                th { background-color: #f2f2f2; text-align: left; }
+                @media print {
+                    body { font-size: 12pt; }
+                    button { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Transferência Parcial</h1>
+            <div class="alert">
+                <strong>Atenção!</strong> Esta transferência é <strong>parcial</strong> e ainda não foi finalizada. Os dados exibidos são preliminares e estão sujeitos a alterações.
+            </div>
+            ${table.outerHTML} <!-- Adiciona a tabela -->
+        </body>
+        </html>
+    `;
+    
+    // Escreve o conteúdo no novo documento da janela
+    printWindow.document.write(printContent);
+    printWindow.document.close(); // Finaliza a escrita do documento
+
+    // Abre a caixa de diálogo de impressão
+    printWindow.print();
+
+    // Após a impressão, retorna a visibilidade das colunas para a página original
+    for (let i = 0; i < headerCells.length; i++) {
+        if (columnsToHide.includes(i)) {
+            headerCells[i].style.display = ''; // Restaura a visibilidade do cabeçalho
+        }
+    }
+
+    // Restaura as células das linhas
+    for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        for (let j = 0; j < cells.length; j++) {
+            if (columnsToHide.includes(j)) {
+                cells[j].style.display = ''; // Restaura as células das colunas
+            }
+        }
+    }
+}
+
+
+
+$('#print-button').click(function (event) {
+        printTable(event); // Chama a função printTable e passa o evento para evitar redirecionamento
+    });
 
 
 
