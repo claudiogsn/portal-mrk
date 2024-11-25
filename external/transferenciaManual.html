@@ -303,6 +303,11 @@
             return;
         }
 
+        if (!originUnit == !destinationUnit) {
+            swal.fire('Erro', 'A unidade de Origem não pode ser igual a unidade de destino', 'error');
+            return;
+        }
+
         // Obter os itens da tabela
         const items = [];
         $('#result-table tbody tr').each(function(index, row) {
