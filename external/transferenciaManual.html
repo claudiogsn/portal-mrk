@@ -188,6 +188,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const unit_matriz_id = urlParams.get('unit_matriz_id');
+    const username = urlParams.get('username');
 
     // Função para carregar unidades
     async function loadUnidades() {
@@ -285,10 +286,129 @@
             swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
         }
     }
+    // Função para enviar os itens de transferência para o backend
+    async function sendTransferItems() {
+        const originUnit = $('#origin-unit').val();
+        const destinationUnit = $('#destination-unit').val();
+        const username = "<?php echo $username; ?>"; // Obtendo o valor do username da variável PHP, ou use qualquer outra forma de obtê-lo.
 
-    // Inicializar a página
+        // Verificar se as unidades de origem e destino foram selecionadas
+        if (!originUnit || !destinationUnit) {
+            swal.fire('Erro', 'Selecione a unidade de origem e destino.', 'error');
+            return;
+        }
+
+        // Obter os itens da tabela
+        const items = [];
+        $('#result-table tbody tr').each(function(index, row) {
+            const codigo = $(row).find('td:eq(0)').text();
+            const quantidade = $(row).find('td:eq(3)').text();
+
+            if (codigo && quantidade) {
+                items.push({
+                    codigo: codigo,
+                    seq: index + 1,  // Sequência começa de 1
+                    quantidade: parseInt(quantidade, 10)
+                });
+            }
+        });
+
+        // Verificar se há itens a enviar
+        if (items.length === 0) {
+            swal.fire('Erro', 'Adicione ao menos um item para transferência.', 'error');
+            return;
+        }
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'createTransferItems',
+                token: token,
+                data: {
+                    system_unit_id: originUnit,
+                    system_unit_id_destino: destinationUnit,
+                    itens: items,
+                    usuario_id: username
+                }
+            });
+
+            if (response.data.success) {
+                // Exibir a resposta da API
+                const transferDoc = response.data.transfer_doc;
+                const nomeUnidadeDestino = response.data.nome_unidade_destino;
+                const dataHora = response.data.data_hora;
+                const itens = response.data.itens;
+
+                // Exibir a mensagem de sucesso
+                swal.fire({
+                    title: 'Transferência realizada com sucesso!',
+                    text: `Documento de Transferência: ${transferDoc}`,
+                    icon: 'success'
+                });
+
+                // Gerar e exibir o documento para impressão
+                let itemsList = '';
+                itens.forEach(item => {
+                    itemsList += `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`;
+                });
+
+                const documentContent = `
+                    <html>
+                        <head>
+                            <title>Documento de Transferência - ${transferDoc}</title>
+                                 <style>
+                                    body { font-family: Arial, sans-serif; }
+                                    h1 { text-align: center; }
+                                    p, table { margin-top: 20px; }
+                                    table { width: 100%; border-collapse: collapse; }
+                                    table, th, td { border: 1px solid #ddd; padding: 8px; }
+                                    th { background-color: #f2f2f2; text-align: left; }
+                                    .signature-section { margin-top: 50px; }
+                                    .signature-line { border-top: 1px solid #000; width: 200px; margin: 0 auto; text-align: center; }
+                                    .signature-label { text-align: center; margin-top: 5px; }
+                                </style>
+                        </head>
+                        <body>
+                            <h1>Transferência de Itens</h1>
+                            <p><strong>Documento:</strong> ${transferDoc}</p>
+                            <p><strong>Unidade Destino:</strong> ${nomeUnidadeDestino}</p>
+                            <p><strong>Data e Hora:</strong> ${dataHora}</p>
+                            <table>
+                                <thead>
+                                    <tr><th>Código</th><th>Produto</th><th>Quantidade</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsList}
+                                </tbody>
+                            </table>
+                            <br>
+                             <div class="signature-section">
+                                <div class="signature-line"></div>
+                                <p class="signature-label">Assinatura do Responsável</p>
+                            </div>
+                        </body>
+                    </html>
+                `;
+
+
+                // Abrir uma nova janela para impressão
+                const printWindow = window.open('', '', 'height=600,width=800');
+                printWindow.document.write(documentContent);
+                printWindow.document.close();
+                printWindow.print();
+            } else {
+                swal.fire('Erro', response.data.message, 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            swal.fire('Erro', 'Ocorreu um erro ao enviar os dados para o backend.', 'error');
+        }
+    }
+
+    // Configurar o evento para o botão de realizar a transferência
+    $('#transfer-button').click(function () {
+        sendTransferItems();
+    });
     
-
         if (!unit_matriz_id) {
             swal.fire('Erro', 'unit_matriz_id não encontrado na URL.', 'error');
             return;
@@ -337,7 +457,8 @@
         $('#transfer-button').click(function () {
             swal.fire('Transferência', 'Simulação de envio realizada com sucesso!', 'success');
         });
-    });
+
+});
 </script>
 
 </body>
