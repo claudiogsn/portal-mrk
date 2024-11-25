@@ -37,6 +37,10 @@
         <action>TransferenciaAssitida</action>
         <icon>fas:arrows-alt-h fa-fw</icon>
       </menuitem>
+      <menuitem label="Aprovação de Movimentações">
+        <action>AprovarMovimentacoes</action>
+        <icon>fas:check-double fa-fw</icon>
+      </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">
