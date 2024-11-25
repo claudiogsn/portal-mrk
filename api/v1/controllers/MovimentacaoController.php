@@ -6,147 +6,45 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class MovimentacaoController {
 
-    // Criação de nova movimentação
-    public static function createMovimentacao($data) {
+    public static function listarMovimentacoesPendentes($systemUnitId){
+
         global $pdo;
 
-        // Campos obrigatórios para a movimentação
-        $requiredFields = ['system_unit_id', 'doc', 'tipo', 'produto', 'seq', 'data', 'quantidade', 'usuario_id'];
+        $query = "
+            SELECT
+                m.system_unit_id,
+                su_origem.name AS nome_unidade_origem,
+                m.system_unit_id_destino,
+                su_destino.name AS nome_unidade_destino,
+                m.doc,
+                CASE
+                    WHEN m.tipo = 'b' THEN 'Balanço'
+                    WHEN m.tipo = 't' THEN 'Transferência'
+                    WHEN m.tipo = 'v' THEN 'Venda'
+                    WHEN m.tipo = 'p' THEN 'Perda'
+                    WHEN m.tipo = 'c' THEN 'Compra'
+                    ELSE 'Outro'
+                END AS tipo_movimentacao,
+                m.data,
+                m.created_at
+            FROM
+                movimentacao m
+            LEFT JOIN
+                system_unit su_origem ON m.system_unit_id = su_origem.id
+            LEFT JOIN
+                system_unit su_destino ON m.system_unit_id_destino = su_destino.id
+            WHERE 
+                m.system_unit_id = :system_unit_id
+                AND m.status = 0
+            GROUP BY
+                m.doc;
+        ";
 
-        // Verifica se todos os campos obrigatórios estão presentes
-        foreach ($requiredFields as $field) {
-            if (!isset($data[$field])) {
-                return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
-            }
-        }
-
-        // Extraindo os dados
-        $system_unit_id = $data['system_unit_id'];
-        $system_unit_id_destino = isset($data['system_unit_id_destino']) ? $data['system_unit_id_destino'] : null;
-        $doc = $data['doc'];
-        $tipo = $data['tipo'];
-        $produto = $data['produto'];
-        $seq = $data['seq'];
-        $data_movimentacao = $data['data'];
-        $valor = isset($data['valor']) ? $data['valor'] : null; // A quantidade que deve ser adicionada ou subtraída
-        $quantidade = $data['quantidade'];
-        $usuario_id = $data['usuario_id'];
-
-        // Inserção no banco de dados
-        $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, valor, quantidade, usuario_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $produto, $seq, $data_movimentacao, $valor, $quantidade, $usuario_id]);
-
-        if ($stmt->rowCount() > 0) {
-            // Atualiza o saldo do estoque após a movimentação
-            $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, $quantidade, $doc);
-            if (!$productResponse['success']) {
-                return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
-            }
-
-            return array('success' => true, 'message' => 'Movimentação criada com sucesso', 'movimentacao_id' => $pdo->lastInsertId());
-        } else {
-            return array('success' => false, 'message' => 'Falha ao criar movimentação');
-        }
-    }
-
-    // Criação de múltiplas movimentações
-    public static function createMovimentacaoMassa($dataArray) {
-        $result = array('success' => true, 'messages' => array());
-
-        foreach ($dataArray as $data) {
-            $response = self::createMovimentacao($data);
-            if (!$response['success']) {
-                $result['success'] = false;
-                $result['messages'][] = $response['message'];
-            } else {
-                $result['messages'][] = $response['message'];
-            }
-        }
-
-        return $result;
-    }
-
-    // Atualização de movimentação
-    public static function updateMovimentacao($id, $data, $system_unit_id) {
-        global $pdo;
-
-        $sql = "UPDATE movimentacao SET ";
-        $values = [];
-        foreach ($data as $key => $value) {
-            $sql .= "$key = :$key, ";
-            $values[":$key"] = $value;
-        }
-        $sql = rtrim($sql, ", ");
-        $sql .= " WHERE id = :id AND system_unit_id = :system_unit_id";
-        $values[':id'] = $id;
-        $values[':system_unit_id'] = $system_unit_id;
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($values);
-
-        if ($stmt->rowCount() > 0) {
-            return array('success' => true, 'message' => 'Movimentação atualizada com sucesso');
-        } else {
-            return array('error' => 'Falha ao atualizar movimentação');
-        }
-    }
-
-    // Obter movimentação por ID
-    public static function getMovimentacaoById($id, $system_unit_id) {
-        global $pdo;
-
-        $stmt = $pdo->prepare("SELECT * FROM movimentacao WHERE id = :id AND system_unit_id = :system_unit_id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    // Obter movimentação por doc
-    public static function getMovimentacaoByDoc($system_unit_id, $doc) {
-        global $pdo;
-
-        $stmt = $pdo->prepare("SELECT * FROM movimentacao WHERE system_unit_id = :system_unit_id AND doc = :doc");
-        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->execute();
-
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    // Deletar movimentação
-    public static function deleteMovimentacao($id, $system_unit_id) {
-        global $pdo;
-
-        $stmt = $pdo->prepare("DELETE FROM movimentacao WHERE id = :id AND system_unit_id = :system_unit_id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->execute();
-
-        if ($stmt->rowCount() > 0) {
-            return array('success' => true, 'message' => 'Movimentação excluída com sucesso');
-        } else {
-            return array('success' => false, 'message' => 'Falha ao excluir movimentação');
-        }
-    }
-
-    // Listar movimentações por unidade do sistema
-    public static function listMovimentacoes($system_unit_id) {
-        try {
-            global $pdo;
-
-            $sql = "SELECT * FROM movimentacao WHERE system_unit_id = :system_unit_id ORDER BY created_at DESC";
-            $stmt = $pdo->prepare($sql);
-            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-            $stmt->execute();
-            $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            return ['success' => true, 'movimentacoes' => $movimentacoes];
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao listar movimentações: ' . $e->getMessage()];
-        }
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Obter última movimentação de determinado tipo

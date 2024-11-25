@@ -617,60 +617,14 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
             // Métodos para ProductController
-            case 'createMovimentacao':
-                $response = MovimentacaoController::createMovimentacao($requestData);
-                break;
-
-            case 'createMovimentacaoMassa':
-                //$response = $requestData;
-                $response = MovimentacaoController::createMovimentacaoMassa($requestData);
-                break;
-
-            case 'updateMovimentacao':
-                if (isset($requestData['id']) && isset($requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::updateMovimentacao($requestData['id'], $requestData, $requestData['system_unit_id']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
-                }
-                break;
-
-            case 'getMovimentacaoById':
-                if (isset($requestData['id']) && isset($requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::getMovimentacaoById($requestData['id'], $requestData['system_unit_id']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
-                }
-                break;
-
-            case 'getMovimentacaoByDoc':
-                if (isset($requestData['doc']) && isset($requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::getMovimentacaoByDoc($requestData['system_unit_id'], $requestData['doc']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro doc ou system_unit_id ausente'];
-                }
-                break;
-
-            case 'deleteMovimentacao':
-                if (isset($requestData['id']) && isset($requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::deleteMovimentacao($requestData['id'], $requestData['system_unit_id']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
-                }
-                break;
-
-            case 'listMovimentacoes':
+            case 'listarMovimentacoesPendentes':
                 if (isset($requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::listMovimentacoes($requestData['system_unit_id']);
+                    $response = MovimentacaoController::listarMovimentacoesPendentes($requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
-
             case 'getLastMov':
                 if (isset($requestData['system_unit_id']) && isset($requestData['tipo'])) {
                     $response = MovimentacaoController::getLastMov($requestData['system_unit_id'], $requestData['tipo']);

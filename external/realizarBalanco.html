@@ -151,7 +151,7 @@
                         <h2 id="pageTitle">Realizar Balanço</h2>
                         <br>
                         <div>
-                            <label for="dateBalance">Data do Balanço</label>
+                            <label for="dateBalance">Contagem do Movimento:</label>
                             <select id="dateBalance" class="form-control" style="width: 200px; margin-right: 10px;">
                                 <!-- As opções serão preenchidas dinamicamente -->
                             </select>
@@ -218,8 +218,8 @@
                 const todayFormatted = today.toLocaleDateString('pt-BR');
                 const yesterdayFormatted = yesterday.toLocaleDateString('pt-BR');
 
-                $('#dateBalance').append(new Option(`Hoje (${todayFormatted})`, today.toISOString().split('T')[0]));
-                $('#dateBalance').append(new Option(`Ontem (${yesterdayFormatted})`, yesterday.toISOString().split('T')[0]));
+                $('#dateBalance').append(new Option(`${todayFormatted}`, today.toISOString().split('T')[0]));
+                $('#dateBalance').append(new Option(`${yesterdayFormatted}`, yesterday.toISOString().split('T')[0]));
             }
 
     
