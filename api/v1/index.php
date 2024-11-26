@@ -106,6 +106,32 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'importMovBySales':
+                if (isset($requestData['system_unit_id'], $requestData['data'])){
+                    $response = MovimentacaoController::importMovBySales($requestData['system_unit_id'], $requestData['data']);
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+
+            case 'calcularDiferencasEstoque':
+                if (isset($requestData['system_unit_id'], $requestData['data'])){
+                    $response = BiController::calcularDiferencasEstoque($requestData['system_unit_id'], $requestData['data']);
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
                     $response = BiController::consolidateSalesByUnit($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim']);

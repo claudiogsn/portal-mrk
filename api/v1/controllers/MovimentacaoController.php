@@ -633,6 +633,86 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         }
     }
 
+    public static function importMovBySales($systemUnitId, $data)
+    {
+        global $pdo;
+
+        try {
+            // Inicia uma transação
+            $pdo->beginTransaction();
+
+            // Busca os dados na tabela _bi_sales
+            $stmt = $pdo->prepare("
+            SELECT 
+                system_unit_id,
+                cod_material AS produto,
+                quantidade AS qtde,
+                data_movimento AS data
+            FROM 
+                _bi_sales
+            WHERE 
+                system_unit_id = :systemUnitId 
+                AND data_movimento = :data
+        ");
+            $stmt->execute([
+                ':systemUnitId' => $systemUnitId,
+                ':data' => $data
+            ]);
+
+            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Se nenhum produto for encontrado, não faz nada
+            if (empty($produtos)) {
+                $pdo->rollBack();
+                return "Nenhuma movimentação encontrada para a unidade e data informadas.";
+            }
+
+            // Prepara o statement para inserir ou atualizar na tabela movimentacao
+            $insertStmt = $pdo->prepare("
+            INSERT INTO movimentacao (
+                system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                status = VALUES(status),
+                data = VALUES(data),
+                quantidade = VALUES(quantidade),
+                usuario_id = VALUES(usuario_id)
+        ");
+
+            $seq = 1;
+            $usuarioId = 5;
+
+            foreach ($produtos as $produto) {
+
+                $doc = "v-" . str_replace("-", "", substr($produto['data'], 0, 10));
+
+                // Insere ou atualiza a movimentação
+                $insertStmt->execute([
+                    $systemUnitId,
+                    1,
+                    $doc,
+                    'v',
+                    'saida',
+                    $produto['produto'],
+                    $seq++,
+                    $produto['data'],
+                    $produto['qtde'],
+                    $usuarioId
+                ]);
+            }
+
+            // Confirma a transação
+            $pdo->commit();
+            return "Movimentações importadas com sucesso.";
+
+        } catch (Exception $e) {
+            // Reverte a transação em caso de erro
+            $pdo->rollBack();
+            return "Erro ao importar movimentações: " . $e->getMessage();
+        }
+    }
+
+
 
 
 
