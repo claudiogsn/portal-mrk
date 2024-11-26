@@ -363,7 +363,7 @@ async function loadItems(unitId) {
             return;
         }
 
-        if (!originUnit == !destinationUnit) {
+        if (originUnit == destinationUnit) {
             swal.fire('Erro', 'A unidade de Origem não pode ser igual a unidade de destino', 'error');
             return;
         }
