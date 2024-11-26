@@ -60,7 +60,7 @@ class NecessidadesController {
     
             // Calcula margem e recomendado
             $insumoConsumption[$insumo_id]['sales'] = ceil( $insumoConsumption[$insumo_id]['sales'] / 4);
-            $insumoConsumption[$insumo_id]['margem'] = ceil($insumoConsumption[$insumo_id]['sales'] * 0.15); // 15% da venda, arredondado para cima
+            $insumoConsumption[$insumo_id]['margem'] = ceil($insumoConsumption[$insumo_id]['sales'] * 0.30); // 15% da venda, arredondado para cima
             $insumoConsumption[$insumo_id]['recomendado'] = ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']);
         }
     
