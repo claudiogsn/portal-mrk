@@ -294,7 +294,7 @@ class BiController {
             WHERE 
                 data = :data
                 AND system_unit_id = :system_unit_id
-                AND status = 0
+                AND status = 1
                 AND tipo = 'b'
             GROUP BY produto
         )

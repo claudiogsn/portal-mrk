@@ -20,7 +20,7 @@ class MovimentacaoController {
         INNER JOIN 
             products 
         ON 
-            movimentacao.produto = products.codigo
+            movimentacao.produto = products.codigo AND movimentacao.system_unit_id = products.system_unit_id
         WHERE 
             movimentacao.system_unit_id = :system_unit_id 
         AND 
@@ -323,6 +323,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
         // Definindo valores fixos
         $tipo = 'b';
+        $tipo_mov = 'balanco';
         $usuario_id = 5;
 
 
@@ -345,9 +346,9 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $quantidade = $item['quantidade'];
 
                 // Inserção no banco de dados
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, produto, seq, data, quantidade, usuario_id) 
-                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $produto, $seq,$date_balance , $quantidade, $usuario_id]);
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov , produto, seq, data, quantidade, usuario_id) 
+                                       VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?, ?)");
+                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $tipo_mov, $produto, $seq,$date_balance , $quantidade, $usuario_id]);
 
                 if ($stmt->rowCount() > 0) {
                     // Atualiza o saldo do estoque após a movimentação
