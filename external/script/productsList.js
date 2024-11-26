@@ -87,20 +87,20 @@ $(document).ready(function () {
         function getIconForTipoMov(tipo) {
             switch (tipo) {
                 case 'entrada':
-                    return 'add';
+                    return 'Entrada';
                 case 'saida':
-                    return 'remove';
+                    return 'Saida';
                 case 'balanco':
-                    return 'balance';
+                    return 'Balanço';
                 default:
-                    return 'check_box_outline_blank';
+                    return 'N/A';
             }
         }
 
         filteredProducts.forEach(product => {
             const movimentacoes = product.atividade_recente.map(mov => `
                 <div class="activity">
-                   <i class="material-icons">${getIconForTipoMov(mov.tipo_mov)}</i>
+                   <div>${getIconForTipoMov(mov.tipo_mov)}<div>
                     ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
                 </div>
             `).join('');
