@@ -355,7 +355,7 @@ async function loadItems(unitId) {
     async function sendTransferItems() {
         const originUnit = $('#origin-unit').val();
         const destinationUnit = $('#destination-unit').val();
-        const username = "<?php echo $username; ?>"; // Obtendo o valor do username da variável PHP, ou use qualquer outra forma de obtê-lo.
+        const username = urlParams.get('username');
 
         // Verificar se as unidades de origem e destino foram selecionadas
         if (!originUnit || !destinationUnit) {
