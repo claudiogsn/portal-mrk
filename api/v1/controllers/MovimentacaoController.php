@@ -641,7 +641,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             // Inicia uma transação
             $pdo->beginTransaction();
 
-            // Busca os dados na tabela _bi_sales
+            // Passo 1: Consulta os produtos vendidos (apenas para identificar os produtos)
             $stmt = $pdo->prepare("
             SELECT 
                 system_unit_id,
@@ -659,15 +659,58 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 ':data' => $data
             ]);
 
-            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Se nenhum produto for encontrado, não faz nada
-            if (empty($produtos)) {
+            if (empty($produtosVendas)) {
                 $pdo->rollBack();
                 return "Nenhuma movimentação encontrada para a unidade e data informadas.";
             }
 
-            // Prepara o statement para inserir ou atualizar na tabela movimentacao
+            // Passo 2: Consulta os insumos relacionados aos produtos vendidos
+            // Buscamos os insumos para cada produto vendido
+            $produtosVendidosIds = array_map(function($produto) {
+                return $produto['produto']; // coleta o código do produto
+            }, $produtosVendas);
+
+            // Gerar os placeholders para o IN
+            $placeholders = implode(',', array_fill(0, count($produtosVendidosIds), '?'));
+
+            // Passagem de parâmetros posicionais, agora usando apenas parâmetros posicionais
+            $stmtInsumos = $pdo->prepare("
+            SELECT product_id, insumo_id, quantity AS quantidade_insumo
+            FROM compositions
+            WHERE system_unit_id = ? 
+            AND product_id IN ($placeholders)
+        ");
+
+            // Passando os parâmetros corretamente
+            $stmtInsumos->execute(array_merge([$systemUnitId], $produtosVendidosIds));
+
+            $insumos = $stmtInsumos->fetchAll(PDO::FETCH_ASSOC);
+
+            // Array para armazenar a quantidade total de cada insumo
+            $insumosTotais = [];
+
+            // Passo 3: Processa os insumos com base nas vendas dos produtos
+            foreach ($produtosVendas as $produtoVenda) {
+                // Para cada produto vendido, consulte os insumos
+                foreach ($insumos as $insumo) {
+                    if ($insumo['product_id'] == $produtoVenda['produto']) {
+                        // Cálculo da quantidade de insumo a ser baixada
+                        $qtdeInsumo = $produtoVenda['qtde'] * $insumo['quantidade_insumo'];
+
+                        // Armazena a quantidade total de cada insumo
+                        if (isset($insumosTotais[$insumo['insumo_id']])) {
+                            $insumosTotais[$insumo['insumo_id']] += $qtdeInsumo;
+                        } else {
+                            $insumosTotais[$insumo['insumo_id']] = $qtdeInsumo;
+                        }
+                    }
+                }
+            }
+
+            // Passo 4: Prepara o statement para inserir ou atualizar a tabela movimentacao
             $insertStmt = $pdo->prepare("
             INSERT INTO movimentacao (
                 system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
@@ -679,38 +722,43 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 usuario_id = VALUES(usuario_id)
         ");
 
-            $seq = 1;
+            // Usuário fictício para inserção
             $usuarioId = 5;
+            $seq = 1;
 
-            foreach ($produtos as $produto) {
+            // Passo 5: Agora, inserimos os insumos agrupados por insumo_id
+            foreach ($insumosTotais as $insumoId => $totalQuantidade) {
+                // Gera o documento
+                $doc = "v-" . str_replace("-", "", $data);
 
-                $doc = "v-" . str_replace("-", "", substr($produto['data'], 0, 10));
-
-                // Insere ou atualiza a movimentação
+                // Insere ou atualiza a movimentação do insumo
                 $insertStmt->execute([
                     $systemUnitId,
-                    1,
-                    $doc,
-                    'v',
-                    'saida',
-                    $produto['produto'],
-                    $seq++,
-                    $produto['data'],
-                    $produto['qtde'],
-                    $usuarioId
+                    1,          // status
+                    $doc,       // documento
+                    'v',         // Tipo "v" de venda
+                    'saida',     // Tipo de movimentação "saida"
+                    $insumoId,   // Insumo ID
+                    $seq++,      // Incrementa o seq
+                    $data,       // Data da movimentação
+                    $totalQuantidade,  // Quantidade total do insumo
+                    $usuarioId   // ID do usuário (ajustar conforme necessário)
                 ]);
             }
 
             // Confirma a transação
             $pdo->commit();
-            return "Movimentações importadas com sucesso.";
+            return "Movimentações de insumos importadas com sucesso.";
 
         } catch (Exception $e) {
             // Reverte a transação em caso de erro
             $pdo->rollBack();
-            return "Erro ao importar movimentações: " . $e->getMessage();
+            return "Erro ao importar movimentações de insumos: " . $e->getMessage();
         }
     }
+
+
+
 
 
 
