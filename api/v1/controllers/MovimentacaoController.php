@@ -407,7 +407,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         // Definindo valores fixos
         $tipo_saida = 'saida';
         $tipo_entrada = 'entrada';
-
+        $tipo = 't';
         try {
             // Inicia a transação
             $pdo->beginTransaction();
@@ -430,7 +430,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 // Inserção no banco de dados para o movimento de saída
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo,tipo_mov produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?,?, ?, ?, NOW(), ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc,'t',$tipo_saida, $produto, $seq, $quantidade, $usuario_id]);
+                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc,$tipo,$tipo_saida, $produto, $seq, $quantidade, $usuario_id]);
             }
 
             // Criação dos movimentos de entrada
@@ -450,7 +450,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 // Inserção no banco de dados para o movimento de entrada
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo,tipo_mov produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?,?,?, NOW(), ?, ?)");
-                $stmt->execute([$system_unit_id_destino, $doc,'t',$tipo_entrada, $produto, $seq, $quantidade, $usuario_id]);
+                $stmt->execute([$system_unit_id_destino, $doc,$tipo,$tipo_entrada, $produto, $seq, $quantidade, $usuario_id]);
 
                 if ($stmt->rowCount() > 0) {
                     // Atualiza o saldo do estoque após a movimentação de entrada com o novo saldo calculado
