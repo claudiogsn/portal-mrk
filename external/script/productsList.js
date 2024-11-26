@@ -84,10 +84,23 @@ $(document).ready(function () {
             return categoryMatch && typeMatch && nameMatch;
         });
 
+        function getIconForTipoMov(tipo) {
+            switch (tipo) {
+                case 'entrada':
+                    return 'add';
+                case 'saida':
+                    return 'remove';
+                case 'balanco':
+                    return 'balance';
+                default:
+                    return 'check_box_outline_blank';
+            }
+        }
+
         filteredProducts.forEach(product => {
             const movimentacoes = product.atividade_recente.map(mov => `
                 <div class="activity">
-                    <i class="material-icons">${mov.tipo_mov === 'entrada' ? 'arrow_forward' : 'arrow_back'}</i>
+                   <i class="material-icons">${getIconForTipoMov(mov.tipo_mov)}</i>
                     ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
                 </div>
             `).join('');
