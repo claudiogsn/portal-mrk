@@ -228,13 +228,42 @@
                     $('#loginModal').modal('show');
                 }
             }
-    
+
+            // Lista de usuários e senhas
+            const users = {
+                "alan.lima": "1",
+                "aline": "2",
+                "ana.cristina": "3",
+                "beatriz.borges": "4",
+                "claudiane.de.jesus": "5",
+                "davi.guedes": "6",
+                "diana.souza.silva": "7",
+                "herbert": "8",
+                "ilmara": "9",
+                "jessica.sena": "10",
+                "johnantan.sales": "11",
+                "liliana.lima": "12",
+                "manuelle.santos": "13",
+                "matheus.hellwig": "14",
+                "robert": "15",
+                "rodrigo.marcio": "16",
+                "suzana": "17",
+                "tatiane.de.jesus": "18",
+                "luciene.portela": "19",
+                "paula.portela": "20",
+                "sulivan.gomes": "21",
+                "edno.alves": "22",
+                "guilherme": "23",
+                "1": "1",
+            };
+
+            // Evento do botão de login
             $('#loginButton').click(function () {
-                const username = $('#loginUsername').val();
+                const username = $('#loginUsername').val().toLowerCase(); // Converter para minúsculas
                 const password = $('#loginPassword').val();
-    
-                // Simulação de autenticação
-                if (username === "admin" && password === "admin") {
+
+                // Verificar autenticação
+                if (users[username] && users[username] === password) {
                     isAuthenticated = true;
                     $('#loginModal').modal('hide');
                     loadItemsByTag();
@@ -242,7 +271,8 @@
                     swal("Erro", "Usuário ou senha inválidos", "error");
                 }
             });
-    
+
+
             function extractSystemUnitId() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const tag = urlParams.get('tag');
