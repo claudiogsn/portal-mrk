@@ -428,7 +428,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $quantidade = $item['quantidade'];
 
                 // Inserção no banco de dados para o movimento de saída
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo,tipo_mov produto, seq, data, quantidade, usuario_id) 
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo,tipo_mov,produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?,?, ?, ?, NOW(), ?, ?)");
                 $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc,$tipo,$tipo_saida, $produto, $seq, $quantidade, $usuario_id]);
             }
@@ -448,7 +448,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $novoSaldo = $saldoAtual + $quantidade;
 
                 // Inserção no banco de dados para o movimento de entrada
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo,tipo_mov produto, seq, data, quantidade, usuario_id) 
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo,tipo_mov,produto, seq, data, quantidade, usuario_id) 
                                    VALUES (?, ?, ?, ?,?,?, NOW(), ?, ?)");
                 $stmt->execute([$system_unit_id_destino, $doc,$tipo,$tipo_entrada, $produto, $seq, $quantidade, $usuario_id]);
 
