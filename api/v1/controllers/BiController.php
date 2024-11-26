@@ -164,17 +164,17 @@ class BiController {
 
             // Loop através dos dados e insira ou atualize na tabela _bi_sales
             foreach ($salesData as $data) {
-                $stmt = $pdo->prepare("
-                INSERT INTO _bi_sales (data_movimento, cod_material, quantidade, valor_bruto, valor_unitario, valor_unitario_liquido, valor_liquido, custom_code, system_unit_id)
-                VALUES (:data_movimento, :cod_material, :quantidade, :valor_bruto, :valor_unitario, :valor_unitario_liquido, :valor_liquido, :custom_code, :system_unit_id)
-                ON DUPLICATE KEY UPDATE
-                    quantidade = :quantidade,
-                    valor_bruto = :valor_bruto,
-                    valor_unitario = :valor_unitario,
-                    valor_unitario_liquido = :valor_unitario_liquido,
-                    valor_liquido = :valor_liquido,
-                    updated_at = NOW()
-            ");
+                    $stmt = $pdo->prepare("
+                    INSERT INTO _bi_sales (data_movimento, cod_material, quantidade, valor_bruto, valor_unitario, valor_unitario_liquido, valor_liquido, custom_code, system_unit_id)
+                    VALUES (:data_movimento, :cod_material, :quantidade, :valor_bruto, :valor_unitario, :valor_unitario_liquido, :valor_liquido, :custom_code, :system_unit_id)
+                    ON DUPLICATE KEY UPDATE
+                        quantidade = :quantidade,
+                        valor_bruto = :valor_bruto,
+                        valor_unitario = :valor_unitario,
+                        valor_unitario_liquido = :valor_unitario_liquido,
+                        valor_liquido = :valor_liquido,
+                        updated_at = NOW()
+                ");
 
                 // Associa os parâmetros
                 $stmt->bindParam(':data_movimento', $data['dtLancamento'], PDO::PARAM_STR);
@@ -190,6 +190,20 @@ class BiController {
                 // Executa a consulta e verifica o sucesso
                 $stmt->execute();
             }
+
+            // Insere na tabela jobs_diference para a unidade atual
+            $stmt = $pdo->prepare("
+            INSERT INTO jobs_diference (system_unit_id, data, status)
+            VALUES (:system_unit_id, :data, :status)
+            ON DUPLICATE KEY UPDATE
+                status = :status
+        ");
+            $status = 0;
+            $stmt->bindParam(':system_unit_id', $unit, PDO::PARAM_STR);
+            $stmt->bindParam(':data', $dt_fim, PDO::PARAM_STR); // Usa a data final como referência
+            $stmt->bindParam(':status', $status, PDO::PARAM_INT);
+            $stmt->execute();
+
         }
 
         return [

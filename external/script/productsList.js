@@ -100,7 +100,7 @@ $(document).ready(function () {
         filteredProducts.forEach(product => {
             const movimentacoes = product.atividade_recente.map(mov => `
                 <div class="activity">
-                   <div>${getIconForTipoMov(mov.tipo_mov)}<div>
+                   <div><strong>${getIconForTipoMov(mov.tipo_mov)}</strong><div>
                     ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
                 </div>
             `).join('');
