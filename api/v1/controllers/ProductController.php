@@ -287,8 +287,7 @@ class ProductController {
                     )
                     FROM movimentacao m 
                     WHERE m.produto = p.codigo AND m.system_unit_id = p.system_unit_id
-                    ORDER BY m.created_at DESC
-                    LIMIT 2
+                    ORDER BY m.data ASC
                 ) AS atividade_recente,
                 (
                     SELECT JSON_ARRAYAGG(

@@ -97,13 +97,27 @@ $(document).ready(function () {
             }
         }
 
+        function formatarData(data) {
+            const dateObj = new Date(data);
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // Mês é baseado em 0
+            const year = dateObj.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+
+
         filteredProducts.forEach(product => {
-            const movimentacoes = product.atividade_recente.map(mov => `
+            const movimentacoes = product.atividade_recente
+                .sort((a, b) => new Date(a.data) - new Date(b.data)) // Ordena as movimentações por data (mais antiga para a mais nova)
+                .slice(-5) // Pega as últimas 5 movimentações
+                .map(mov => `
                 <div class="activity">
-                   <div><strong>${getIconForTipoMov(mov.tipo_mov)}</strong><div>
-                    ${new Date(mov.data).toLocaleDateString('pt-BR')} - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
+                    <div><strong>${getIconForTipoMov(mov.tipo_mov)}</strong></div>
+                    <strong>${formatarData(mov.data)}</strong> - Doc: ${mov.doc} - Quantidade: ${mov.quantidade}
                 </div>
             `).join('');
+
 
             const fichaTecnica = product.ficha_tecnica.map(insumo => `
                 <tr>

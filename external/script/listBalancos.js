@@ -145,7 +145,7 @@ $(document).ready(function () {
         $('#balancoModal').data('doc', balanco.doc);
     }
 
-    // Exportar balanços selecionados para Excel
+
 $// Exportar balanços selecionados para Excel
 $('#btnExportarSelecionados').click(async function () {
     if (selectedDocs.length === 0) {
