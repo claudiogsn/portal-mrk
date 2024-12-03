@@ -694,17 +694,28 @@ function generatePrintDocument(result, items) {
             const startDay = parseInt(document.getElementById('start-day').value); // Ex: Segunda = 1
             const endDay = parseInt(document.getElementById('end-day').value); // Ex: Sexta = 5
 
+            console.log("Dia Inicial:", startDay);
+            console.log("Dia Final:", endDay);
+
             // Função para calcular as últimas 4 datas de um único dia da semana
             function getLastDatesForDay(dayOfWeek) {
+                console.log("Calculando datas para o dia", dayOfWeek);
+    
                 const dates = [];
+                console.log("Data Atual:", today);
                 let currentDate = new Date(today);
                 currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
+                console.log("Data Inicial:", currentDate);
 
                 while (dates.length < 4) {
+                    console.log("Dia da Semana Atual:", currentDate.getDay());
                     if (currentDate.getDay() === dayOfWeek) {
+                        console.log("Data Adicionada:", currentDate);
                         dates.push(new Date(currentDate));
+                        console.log("Datas Atuais:", dates);
                     }
                     currentDate.setDate(currentDate.getDate() - 1);
+                    console.log("Data Atualizada:", currentDate);
                 }
 
                 return dates;
