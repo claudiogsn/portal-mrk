@@ -129,6 +129,50 @@ class MovimentacaoController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+
+    public static function listarMovimentacoesPorData($systemUnitId,$data_inicial , $data_final) {
+
+        global $pdo;
+
+        $query = "
+            SELECT
+                m.system_unit_id,
+                su_origem.name AS nome_unidade_origem,
+                m.system_unit_id_destino,
+                su_destino.name AS nome_unidade_destino,
+                m.doc,
+                CASE
+                    WHEN m.tipo = 'b' THEN 'Balanço'
+                    WHEN m.tipo = 't' THEN 'Transferência'
+                    WHEN m.tipo = 'v' THEN 'Venda'
+                    WHEN m.tipo = 'p' THEN 'Perda'
+                    WHEN m.tipo = 'c' THEN 'Compra'
+                    ELSE 'Outro'
+                END AS tipo_movimentacao,
+                m.data,
+                m.created_at
+            FROM
+                movimentacao m
+            LEFT JOIN
+                system_unit su_origem ON m.system_unit_id = su_origem.id
+            LEFT JOIN
+                system_unit su_destino ON m.system_unit_id_destino = su_destino.id
+            WHERE 
+                m.system_unit_id = :system_unit_id
+                AND m.data BETWEEN :data_inicial AND :data_final
+            GROUP BY
+                m.doc;
+        ";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
+        $stmt->bindParam(':data_inicial', $data_inicial, PDO::PARAM_STR);
+        $stmt->bindParam(':data_final', $data_final, PDO::PARAM_STR);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // Obter última movimentação de determinado tipo
     public static function getLastMov($system_unit_id, $tipo) {
         global $pdo;
@@ -756,6 +800,117 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             return "Erro ao importar movimentações de insumos: " . $e->getMessage();
         }
     }
+
+    public static function importMovBySalesCons($systemUnitId, $data)
+        {
+            global $pdo;
+
+            try {
+                // Inicia uma transação
+                $pdo->beginTransaction();
+
+                // Passo 1: Consulta os produtos vendidos (apenas para identificar os produtos)
+                $stmt = $pdo->prepare("
+                SELECT 
+                    system_unit_id,
+                    cod_material AS produto,
+                    quantidade AS qtde,
+                    data_movimento AS data
+                FROM 
+                    _bi_sales
+                WHERE 
+                    system_unit_id = :systemUnitId 
+                    AND data_movimento = :data
+            ");
+                $stmt->execute([
+                    ':systemUnitId' => $systemUnitId,
+                    ':data' => $data
+                ]);
+
+                $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // Se nenhum produto for encontrado, não faz nada
+                if (empty($produtosVendas)) {
+                    $pdo->rollBack();
+                    return "Nenhuma movimentação encontrada para a unidade e data informadas.";
+                }
+
+                // Passo 2: Obter os IDs dos produtos vendidos
+                $produtosVendidosIds = array_map(function ($produto) {
+                    return $produto['produto']; // coleta o código do produto
+                }, $produtosVendas);
+
+                // Passo 3: Converter os produtos em insumos
+                $placeholders = implode(',', array_fill(0, count($produtosVendidosIds), '?'));
+                $stmtInsumos = $pdo->prepare("
+                SELECT DISTINCT insumo_id 
+                FROM compositions 
+                WHERE system_unit_id = ? 
+                AND product_id IN ($placeholders)
+            ");
+                $stmtInsumos->execute(array_merge([$systemUnitId], $produtosVendidosIds));
+
+                $insumoIds = $stmtInsumos->fetchAll(PDO::FETCH_COLUMN);
+
+                // Se nenhum insumo for encontrado, não faz nada
+                if (empty($insumoIds)) {
+                    $pdo->rollBack();
+                    return "Nenhum insumo relacionado encontrado para os produtos vendidos.";
+                }
+
+                // Passo 4: Chamar a função `getInsumoConsumption` para calcular o consumo dos insumos
+                $consumoInsumos = NecessidadesController::getInsumoConsumption($systemUnitId, [$data], $insumoIds);
+                //print_r($consumoInsumos);
+                //exit;
+
+                // Passo 5: Prepara o statement para inserir ou atualizar a tabela movimentacao
+                $insertStmt = $pdo->prepare("
+                INSERT INTO movimentacao (
+                    system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    status = VALUES(status),
+                    data = VALUES(data),
+                    quantidade = VALUES(quantidade),
+                    usuario_id = VALUES(usuario_id)
+            ");
+
+                // Usuário fictício para inserção
+                $usuarioId = 5;
+                $seq = 1;
+
+                // Passo 6: Agora, insere os insumos com os dados calculados
+                foreach ($consumoInsumos as $insumo) {
+                    // Gera o documento
+                    $doc = "v-" . str_replace("-", "", $data);
+
+                    // Insere ou atualiza a movimentação do insumo
+                    $insertStmt->execute([
+                        $systemUnitId,
+                        1,                   // status
+                        $doc,                // documento
+                        'v',                 // Tipo "v" de venda
+                        'saida',             // Tipo de movimentação "saida"
+                        $insumo['codigo'],   // Insumo ID
+                        $seq++,              // Incrementa o seq
+                        $data,               // Data da movimentação
+                        $insumo['sales'],    // Quantidade calculada
+                        $usuarioId           // ID do usuário
+                    ]);
+                }
+
+                // Confirma a transação
+                $pdo->commit();
+                return "Movimentações de insumos importadas com sucesso.";
+
+            } catch (Exception $e) {
+                // Reverte a transação em caso de erro
+                $pdo->rollBack();
+                return "Erro ao importar movimentações de insumos: " . $e->getMessage();
+            }
+        }
+
+
 
 
 

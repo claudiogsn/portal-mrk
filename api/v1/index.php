@@ -119,6 +119,19 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+                case 'importMovBySalesCons':
+                    if (isset($requestData['system_unit_id'], $requestData['data'])){
+                        $response = MovimentacaoController::importMovBySalesCons($requestData['system_unit_id'], $requestData['data']);
+                        http_response_code(200);
+                    }else{
+                        http_response_code(400);
+                        $response = [
+                            'status' => 'error',
+                            'message' => 'Missing required fields.'
+                        ];
+                    }
+                    break;
+
             case 'calcularDiferencasEstoque':
                 if (isset($requestData['system_unit_id'], $requestData['data'])){
                     $response = BiController::calcularDiferencasEstoque($requestData['system_unit_id'], $requestData['data']);
@@ -659,6 +672,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
+                case 'listarMovimentacoesPorData':
+                    if (isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
+                        $response = MovimentacaoController::listarMovimentacoesPorData($requestData['system_unit_id'],$requestData['data_inicial'],$requestData['data_final']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro system_unit_id, data_inicial ou data_final ausente'];
+                    }
+                    break;
                 case 'getMovimentacao':
                     if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
                         $response = MovimentacaoController::getMovimentacao($requestData['system_unit_id'],$requestData['doc']);

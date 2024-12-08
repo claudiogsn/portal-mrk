@@ -42,13 +42,22 @@
           </menuitem>
         </menu>
       </menuitem>
+       <menuitem label="Movimentações">
+        <icon>fas:arrows-alt-h fa-fw</icon>
+        <menu>
+          <menuitem label="Aprovação de Movimentações">
+            <action>AprovarMovimentacoes</action>
+            <icon>fas:check-double fa-fw</icon>
+          </menuitem>
+          <menuitem label="Consultar Movimentações">
+            <action>ListarMovimentacoes</action>
+            <icon>fas:check-double fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
       <menuitem label="Importar Compras">
         <action>ImportComprasCsv</action>
         <icon>fas:file-excel fa-fw</icon>
-      </menuitem>
-      <menuitem label="Aprovação de Movimentações">
-        <action>AprovarMovimentacoes</action>
-        <icon>fas:check-double fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
