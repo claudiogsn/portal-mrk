@@ -708,10 +708,11 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
                 // Métodos para ConsolidationEstoqueController
             case 'getStatusConsolidationMonth':
-                if (isset($requestData['month']) && isset($requestData['year'])) {
-                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['month'], $requestData['year']);
+                if (isset($requestData['month']) && isset($requestData['year']) && isset($requestData['system_unit_id'])) {
+                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['month'], $requestData['year'],$requestData['system_unit_id']);
                 } else {
-                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth();
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro month, year ou system_unit_id ausente'];
                 }
                 break;
             case 'GetInfoConsolidationEstoque':

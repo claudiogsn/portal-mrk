@@ -11,7 +11,7 @@ require_once __DIR__ . '/../database/db.php';
 
 class ConsolidationEstoqueController {
 
-    public static function getStatusConsolidationMonth($month = null, $year = null)
+    public static function getStatusConsolidationMonth($month = null, $year = null,$system_unit_id)
     {
         global $pdo;
 
@@ -27,7 +27,7 @@ class ConsolidationEstoqueController {
         $sql = "
         SELECT data 
         FROM diferencas_estoque 
-        WHERE system_unit_id = 9 
+        WHERE system_unit_id = :system_unit_id
           AND data BETWEEN :data_inicial AND :data_final 
         GROUP BY data
     ";
