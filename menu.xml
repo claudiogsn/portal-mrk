@@ -8,7 +8,7 @@
         <menu>
           <menuitem label="Cadastro de Produtos">
             <action>ProductsList</action>
-            <icon>fas:clipboard-list fa-fw</icon>
+            <icon>fas:boxes fa-fw</icon>
           </menuitem>
           <menuitem label="Fichas Técnicas">
             <action>CompositionsList</action>
@@ -21,7 +21,7 @@
         <menu>
           <menuitem label="Modelos de Balanço">
             <action>CreateBalanco</action>
-            <icon>fas:clipboard-list fa-fw</icon>
+            <icon>fas:plus-circle fa-fw</icon>
           </menuitem>
           <menuitem label="Relatório de Balanços">
             <action>ListBalanco</action>
@@ -42,8 +42,8 @@
           </menuitem>
         </menu>
       </menuitem>
-       <menuitem label="Movimentações">
-        <icon>fas:arrows-alt-h fa-fw</icon>
+      <menuitem label="Movimentações">
+        <icon>fas:external-link-alt fa-fw</icon>
         <menu>
           <menuitem label="Aprovação de Movimentações">
             <action>AprovarMovimentacoes</action>
@@ -51,7 +51,7 @@
           </menuitem>
           <menuitem label="Consultar Movimentações">
             <action>ListarMovimentacoes</action>
-            <icon>fas:check-double fa-fw</icon>
+            <icon>fas:search fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
