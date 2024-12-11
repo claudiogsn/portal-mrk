@@ -45,24 +45,24 @@ class MovimentacaoController {
                 return ['success' => false, 'message' => 'Nenhuma movimentação encontrada para o documento especificado.'];
             }
 
-            foreach ($movimentacoes as $produto) {
-                $tipo = $produto['tipo'];
-                $quantidade = $produto['quantidade'];
-                $produtoId = $produto['produto'];
-
-                // Verificar tipo de movimentação
-                if ($tipo === 'b') { // Balanço
-                    ProductController::updateStockBalance($systemUnitId, $produtoId, $quantidade, $doc);
-                } elseif (in_array($tipo, ['t', 'c'])) { // Transferência ou Compra
-                    $stockData = NecessidadesController::getProductStock($systemUnitId, $produtoId);
-                    $saldoAtual = $stockData['saldo'] ?? 0;
-                    $novoSaldo = $saldoAtual + $quantidade;
-
-                    ProductController::updateStockBalance($systemUnitId, $produtoId, $novoSaldo, $doc);
-                } else {
-                    throw new Exception("Tipo de movimentação inválido: $tipo");
-                }
-            }
+//            foreach ($movimentacoes as $produto) {
+//                $tipo = $produto['tipo'];
+//                $quantidade = $produto['quantidade'];
+//                $produtoId = $produto['produto'];
+//
+//                // Verificar tipo de movimentação
+//                if ($tipo === 'b') { // Balanço
+//                    ProductController::updateStockBalance($systemUnitId, $produtoId, $quantidade, $doc);
+//                } elseif (in_array($tipo, ['t', 'c'])) { // Transferência ou Compra
+//                    $stockData = NecessidadesController::getProductStock($systemUnitId, $produtoId);
+//                    $saldoAtual = $stockData['saldo'] ?? 0;
+//                    $novoSaldo = $saldoAtual + $quantidade;
+//
+//                    ProductController::updateStockBalance($systemUnitId, $produtoId, $novoSaldo, $doc);
+//                } else {
+//                    throw new Exception("Tipo de movimentação inválido: $tipo");
+//                }
+//            }
 
             // Atualizar o status de todas as movimentações do `doc`
             self::atualizarStatusMovimentacoes($systemUnitId, $doc);
@@ -497,19 +497,19 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                                    VALUES (?, ?, ?, ?,?,?, NOW(), ?, ?)");
                 $stmt->execute([$system_unit_id_destino, $doc,$tipo,$tipo_entrada, $produto, $seq, $quantidade, $usuario_id]);
 
-                if ($stmt->rowCount() > 0) {
-                    // Atualiza o saldo do estoque após a movimentação de entrada com o novo saldo calculado
-                    $productResponse = ProductController::updateStockBalance($system_unit_id_destino, $produto, $novoSaldo, $doc);
-                    if (!$productResponse['success']) {
-                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
-                        $pdo->rollBack();
-                        return array('success' => false, 'message' => 'Movimentação de entrada criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
-                    }
-                } else {
-                    // Se a inserção do item falhar, faz rollback e retorna o erro
-                    $pdo->rollBack();
-                    return array('success' => false, 'message' => 'Falha ao criar movimentação de entrada para o item com código ' . $produto);
-                }
+//                if ($stmt->rowCount() > 0) {
+//                    // Atualiza o saldo do estoque após a movimentação de entrada com o novo saldo calculado
+//                    $productResponse = ProductController::updateStockBalance($system_unit_id_destino, $produto, $novoSaldo, $doc);
+//                    if (!$productResponse['success']) {
+//                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
+//                        $pdo->rollBack();
+//                        return array('success' => false, 'message' => 'Movimentação de entrada criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
+//                    }
+//                } else {
+//                    // Se a inserção do item falhar, faz rollback e retorna o erro
+//                    $pdo->rollBack();
+//                    return array('success' => false, 'message' => 'Falha ao criar movimentação de entrada para o item com código ' . $produto);
+//                }
             }
 
             // Consulta o nome da unidade de destino
@@ -656,15 +656,15 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                     $usuarioId
                 ]);
 
-                // Busca o saldo atual do produto no estoque
-                $stockData = NecessidadesController::getProductStock($systemUnitId, $produto['produto']);
-                $saldoAtual = $stockData['saldo'] ?? 0;
-
-                // Calcula o novo saldo
-                $novoSaldo = $saldoAtual + $produto['qtde'];
+//                // Busca o saldo atual do produto no estoque
+//                $stockData = NecessidadesController::getProductStock($systemUnitId, $produto['produto']);
+//                $saldoAtual = $stockData['saldo'] ?? 0;
+//
+//                // Calcula o novo saldo
+//                $novoSaldo = $saldoAtual + $produto['qtde'];
 
                 // Atualiza o saldo no estoque
-                ProductController::updateStockBalance($systemUnitId, $produto['produto'], $novoSaldo, $produto['doc']);
+//                ProductController::updateStockBalance($systemUnitId, $produto['produto'], $novoSaldo, $produto['doc']);
             }
 
             // Confirma a transação
@@ -859,7 +859,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 }
 
                 // Passo 4: Chamar a função `getInsumoConsumption` para calcular o consumo dos insumos
-                $consumoInsumos = NecessidadesController::getInsumoConsumption($systemUnitId, [$data], $insumoIds);
+                $consumoInsumos = NecessidadesController::getInsumoConsumption($systemUnitId, [$data], $insumoIds,'total');
                 //print_r($consumoInsumos);
                 //exit;
 

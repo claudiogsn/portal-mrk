@@ -59,6 +59,10 @@
         <action>ImportComprasCsv</action>
         <icon>fas:file-excel fa-fw</icon>
       </menuitem>
+      <menuitem label="Diferenças de Estoque">
+        <action>DiferencaEstoque</action>
+        <icon>fas:file-medical-alt fa-fw</icon>
+      </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">

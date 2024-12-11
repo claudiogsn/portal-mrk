@@ -28,6 +28,7 @@ require_once 'controllers/CategoriesController.php';
 require_once 'controllers/MovimentacaoController.php';
 require_once 'controllers/ModeloBalancoController.php';
 require_once 'controllers/BiController.php';
+require_once 'controllers/ConsolidationEstoqueController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -703,6 +704,30 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro tag ausente'];
+                }
+                break;
+                // Métodos para ConsolidationEstoqueController
+            case 'getStatusConsolidationMonth':
+                if (isset($requestData['month']) && isset($requestData['year'])) {
+                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['month'], $requestData['year']);
+                } else {
+                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth();
+                }
+                break;
+            case 'GetInfoConsolidationEstoque':
+                if (isset($requestData['system_unit_id']) && isset($requestData['data'])) {
+                    $response = BiController::GetInfoConsolidationEstoque($requestData['system_unit_id'], $requestData['data']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou data ausente'];
+                }
+                break;
+            case 'persistStockDifferences':
+                if (isset($requestData['system_unit_id']) && isset($requestData['date'])&& isset($requestData['data'])) {
+                    $response = BiController::persistStockDifferences($requestData['system_unit_id'], $requestData['date'], $requestData['data']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou data ausente'];
                 }
                 break;
 

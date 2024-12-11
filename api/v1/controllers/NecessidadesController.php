@@ -4,7 +4,7 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController {
 
-    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds) {
+    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $type = 'media') {
         global $pdo;
 
         // Remove datas duplicadas
@@ -57,11 +57,15 @@ class NecessidadesController {
             // Obtém o saldo atual do insumo
             $stockData = self::getProductStock($system_unit_id, $insumo_id);
             $insumoConsumption[$insumo_id]['saldo'] = number_format($stockData['saldo'] ?? 0, 2, '.', '');
-    
-            // Calcula margem e recomendado
-            $insumoConsumption[$insumo_id]['sales'] = ceil( $insumoConsumption[$insumo_id]['sales'] / 4);
-            $insumoConsumption[$insumo_id]['margem'] = ceil($insumoConsumption[$insumo_id]['sales'] * 0.30); // 15% da venda, arredondado para cima
-            $insumoConsumption[$insumo_id]['recomendado'] = ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']);
+
+
+            if ($type === 'media') {
+                // Calcula margem e recomendado
+                $insumoConsumption[$insumo_id]['sales'] = ceil( $insumoConsumption[$insumo_id]['sales'] / 4);
+                $insumoConsumption[$insumo_id]['margem'] = ceil($insumoConsumption[$insumo_id]['sales'] * 0.30); // 15% da venda, arredondado para cima
+                $insumoConsumption[$insumo_id]['recomendado'] = ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']);
+            }
+
         }
     
         return array_values($insumoConsumption); // Retorna um array indexado

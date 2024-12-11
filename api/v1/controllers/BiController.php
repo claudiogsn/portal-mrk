@@ -288,336 +288,203 @@ class BiController {
             ];
         }
     }
-
-
-
-    public static function criarDiferencasEstoque($system_unit_id, $data) {
+    public static function GetInfoConsolidationEstoque($system_unit_id,$data) {
         global $pdo;
 
-        // Inicializar o array de diferencas
-        $diferencas = [];
-
         try {
-            // Montando o array de diferencas
-            $sql = "SELECT
-            doc,
-            produto,
-            quantidade
-        FROM movimentacao
-        WHERE id IN (
-            SELECT MAX(id)
+            // Consulta para verificar se existe balanço
+            $stmt = $pdo->prepare(
+                "SELECT doc, produto, quantidade AS contagem_realizada
             FROM movimentacao
-            WHERE 
-                data = :data
-                AND system_unit_id = :system_unit_id
-                AND status = 1
-                AND tipo = 'b'
-            GROUP BY produto
-        )
-        ORDER BY id DESC";
-
-            $stmt = $pdo->prepare($sql);
-            $stmt->bindParam(':data', $data);
-            $stmt->bindParam(':system_unit_id', $system_unit_id);
+            WHERE id IN (
+                SELECT MAX(id)
+                FROM movimentacao
+                WHERE data = :data AND system_unit_id = :system_unit_id AND status = 1 AND tipo = 'b'
+                GROUP BY produto
+            )
+            ORDER BY id DESC"
+            );
+            $stmt->bindParam(':data', $data, PDO::PARAM_STR);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
-            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $balances = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Verifica se o resultado está vazio
-            if (empty($result)) {
-                // Se não houver resultados, retorna e encerra a função
-                return ['mensage' => 'Nenhuma movimentação encontrada para a data e unidade especificadas.'] ;
-            }
-
-            // Preenche o array de diferencas com os dados dos balanços
-            foreach ($result as $row) {
-                $diferencas[] = [
+            if (empty($balances)) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhum balanço para o dia encontrado.',
+                    'balances' => $balances,
                     'data' => $data,
-                    'system_unit_id' => $system_unit_id,
-                    'doc' => $row['doc'],
-                    'produto' => $row['produto'],
-                    'nome_produto' => $row['produto'], // Nome do produto, se disponível
-                    'saldo' => 0, // Inicializa com 0, será atualizado depois
-                    'saldo_ideal' => 0,
-                    'vendas' => 0, // Inicializa com 0, será atualizado depois
-                    'balanco' => $row['quantidade'], // O balanço do produto
-                    'diferenca' => 0 // Inicializa com 0, será calculado depois
+                    'system_unit_id' => $system_unit_id
                 ];
             }
 
-            // Monta o array de datas duplicadas (se necessário, pode duplicar a data por produto)
-            $datasDuplicadas = array_fill(0, count($diferencas), $data); // Duplicando a data para cada produto
+            $result = [];
 
-            // Agora, chama a função NecessidadesController::getInsumoConsumption passando o array de datas duplicadas
-            $produtos = array_column($diferencas, 'produto'); // ID dos produtos
+            foreach ($balances as $balance) {
+                $produto = $balance['produto'];
+                $doc = $balance['doc'];
+                $contagem_realizada = $balance['contagem_realizada'];
 
-            // Chama a função e passa o array de datas duplicadas
-            $consumos = NecessidadesController::getInsumoConsumption($system_unit_id, $datasDuplicadas, $produtos);
-
-            // Agora vamos preencher as informações de vendas, saldo e nome no array de diferencas
-            foreach ($diferencas as $key => $diferenca) {
-                foreach ($consumos as $consumo) {
-                    if ($consumo['codigo'] == $diferenca['produto']) {
-                        // Garantir que saldo, vendas e balanco sejam tratados como números
-                        $diferencas[$key]['vendas'] = floatval($consumo['sales']);
-                        $diferencas[$key]['nome_produto'] = $consumo['nome'];
-                        $diferencas[$key]['saldo'] = floatval($consumo['saldo']);
-                        $diferencas[$key]['saldo_ideal'] = floatval(($consumo['saldo'] - $consumo['sales']));
-                        $diferencas[$key]['balanco'] = floatval($diferenca['balanco']);
-                        $diferencas[$key]['diferenca'] = $diferenca['balanco'] - ($consumo['saldo'] - $consumo['sales']);
-                    }
-                }
-            }
-
-            // Persistir as diferenças no banco de dados
-            foreach ($diferencas as $diferenca) {
-                $sqlInsert = "INSERT INTO diferencas_estoque (
-                    data,
-                    system_unit_id,
-                    doc,
-                    produto,
-                    nome_produto,
-                    saldo,
-                    saldo_ideal,
-                    vendas,
-                    balanco,
-                    diferenca
-                ) VALUES (
-                    :data,
-                    :system_unit_id,
-                    :doc,
-                    :produto,
-                    :nome_produto,
-                    :saldo,
-                    :saldo_ideal,
-                    :vendas,
-                    :balanco,
-                    :diferenca
-                ) ON DUPLICATE KEY UPDATE
-                    saldo = VALUES(saldo),
-                    saldo_ideal = VALUES(saldo_ideal),
-                    vendas = VALUES(vendas),
-                    balanco = VALUES(balanco),
-                    diferenca = VALUES(diferenca)";
-
-                $stmt = $pdo->prepare($sqlInsert);
-                $stmt->bindParam(':data', $diferenca['data']);
-                $stmt->bindParam(':system_unit_id', $diferenca['system_unit_id']);
-                $stmt->bindParam(':doc', $diferenca['doc']);
-                $stmt->bindParam(':produto', $diferenca['produto']);
-                $stmt->bindParam(':nome_produto', $diferenca['nome_produto']);
-                $stmt->bindParam(':saldo', $diferenca['saldo']);
-                $stmt->bindParam(':saldo_ideal', $diferenca['saldo_ideal']);
-                $stmt->bindParam(':vendas', $diferenca['vendas']);
-                $stmt->bindParam(':balanco', $diferenca['balanco']);
-                $stmt->bindParam(':diferenca', $diferenca['diferenca']);
+                // Consulta saldo inicial
+                $stmt = $pdo->prepare(
+                    "SELECT codigo AS produto, saldo, nome 
+                FROM products 
+                WHERE system_unit_id = :system_unit_id AND codigo = :produto"
+                );
+                $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
                 $stmt->execute();
+                $saldo_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $saldo_inicial = $saldo_data['saldo'] ?? 0;
+                $nome_produto = $saldo_data['nome'] ?? 'Produto Desconhecido';
+
+                // Consulta entradas
+                $stmt = $pdo->prepare(
+                    "SELECT produto, SUM(quantidade) AS quantidade
+                FROM movimentacao
+                WHERE system_unit_id = :system_unit_id AND status = 1 AND data = :data AND produto = :produto AND tipo_mov = 'entrada'"
+                );
+                $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmt->bindParam(':data', $data, PDO::PARAM_STR);
+                $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
+                $stmt->execute();
+                $entradas_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $entradas = $entradas_data['quantidade'] ?? 0;
+
+                // Consulta saídas
+                $stmt = $pdo->prepare(
+                    "SELECT produto, SUM(quantidade) AS quantidade
+                FROM movimentacao
+                WHERE system_unit_id = :system_unit_id AND status = 1 AND data = :data AND produto = :produto AND tipo_mov = 'saida'"
+                );
+                $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmt->bindParam(':data', $data, PDO::PARAM_STR);
+                $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
+                $stmt->execute();
+                $saidas_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $saidas = $saidas_data['quantidade'] ?? 0;
+
+                // Cálculo de movimentação e diferença
+                $saldo_final = $saldo_inicial + $entradas - $saidas;
+                $saldo_final_formatado = number_format($saldo_final, 2, '.', '');
+                $diferenca =  $contagem_realizada - $saldo_final_formatado;
+
+                // Determina o status da diferença
+                $status_dif = ($diferenca === 0) ? 0 : 1;
+
+                // Adiciona os dados ao resultado
+                $result[] = [
+                    'doc' => $doc,
+                    'produto' => $produto,
+                    'nome_produto' => $nome_produto,
+                    'saldo_anterior' => $saldo_inicial,
+                    'entradas' => $entradas,
+                    'saidas' => $saidas,
+                    'contagem_ideal' => $saldo_final_formatado,
+                    'contagem_realizada' => $contagem_realizada,
+                    'diferenca' => $diferenca,
+                    'status_dif' => $status_dif
+                ];
             }
 
-            return $diferencas;
-
-        } catch (PDOException $e) {
-            // Em caso de erro na execução, captura a exceção e retorna a mensagem de erro
-            return "Erro no banco de dados: " . $e->getMessage();
+            return [
+                'status' => 'success',
+                'data' => $result
+            ];
         } catch (Exception $e) {
-            // Em caso de outro tipo de erro, captura a exceção e retorna a mensagem de erro
-            return "Erro inesperado: " . $e->getMessage();
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao consolidar informações de estoque: ' . $e->getMessage()
+            ];
         }
     }
-
-
-    public static function calcularDiferencasEstoque($systemUnitId, $data)
-    {
+    public static function persistStockDifferences($system_unit_id,$date, $data) {
         global $pdo;
+
+        // Lista de campos obrigatórios
+        $requiredFields = [
+            'produto', 'nome_produto', 'saldo_anterior', 'entradas', 'saidas', 'contagem_ideal', 'contagem_realizada', 'diferenca'
+        ];
+
+        // Verifica se todos os campos obrigatórios estão presentes em cada item do array
+        foreach ($data as $index => $item) {
+            $missingFields = [];
+            foreach ($requiredFields as $field) {
+                if (!isset($item[$field])) {
+                    $missingFields[] = $field;
+                }
+            }
+            if (!empty($missingFields)) {
+                http_response_code(400); // Bad Request
+                return [
+                    'status' => 'error',
+                    'message' => 'Campos obrigatórios ausentes no item ' . ($index + 1) . ': ' . implode(", ", $missingFields)
+                ];
+            }
+        }
 
         try {
             // Inicia a transação
             $pdo->beginTransaction();
 
-            // Passo 1: Busca os produtos e o saldo inicial
-            $stmtProdutos = $pdo->prepare("
-        SELECT codigo AS produto, nome AS nome_produto, saldo AS saldo_anterior
-        FROM products
-        WHERE system_unit_id = :systemUnitId
-        AND insumo = 1
-    ");
-            $stmtProdutos->execute([':systemUnitId' => $systemUnitId]);
-            $produtos = $stmtProdutos->fetchAll(PDO::FETCH_ASSOC);
+            // Prepara a consulta SQL para inserir ou atualizar os dados na tabela diferencas_estoque
+            $stmt = $pdo->prepare("
+                INSERT INTO diferencas_estoque (
+                    data, system_unit_id, doc, produto, nome_produto, saldo_anterior, entradas, saidas, contagem_ideal, contagem_realizada, diferenca
+                ) VALUES (
+                    :data, :system_unit_id, :doc, :produto, :nome_produto, :saldo_anterior, :entradas, :saidas, :contagem_ideal, :contagem_realizada, :diferenca
+                )
+                ON DUPLICATE KEY UPDATE
+                    saldo_anterior = VALUES(saldo_anterior),
+                    entradas = VALUES(entradas),
+                    saidas = VALUES(saidas),
+                    contagem_ideal = VALUES(contagem_ideal),
+                    contagem_realizada = VALUES(contagem_realizada),
+                    diferenca = VALUES(diferenca),
+                    updated_at = CURRENT_TIMESTAMP
+            ");
 
-            if (empty($produtos)) {
-                $pdo->rollBack();
-                return [
-                    'status_code' => 400,
-                    'mensagem' => "Nenhum produto encontrado.",
-                    'diferencas' => []
-                ];
+            foreach ($data as $item) {
+                // Associa os parâmetros
+                $stmt->bindParam(':data', $date, PDO::PARAM_STR);
+                $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmt->bindParam(':doc', $item['doc'], PDO::PARAM_STR);
+                $stmt->bindParam(':produto', $item['produto'], PDO::PARAM_STR);
+                $stmt->bindParam(':nome_produto', $item['nome_produto'], PDO::PARAM_STR);
+                $stmt->bindParam(':saldo_anterior', $item['saldo_anterior'], PDO::PARAM_STR);
+                $stmt->bindParam(':entradas', $item['entradas'], PDO::PARAM_STR);
+                $stmt->bindParam(':saidas', $item['saidas'], PDO::PARAM_STR);
+                $stmt->bindParam(':contagem_ideal', $item['contagem_ideal'], PDO::PARAM_STR);
+                $stmt->bindParam(':contagem_realizada', $item['contagem_realizada'], PDO::PARAM_STR);
+                $stmt->bindParam(':diferenca', $item['diferenca'], PDO::PARAM_STR);
+
+                // Executa a consulta
+                $stmt->execute();
+                // Atualiza o saldo do produto
+                ProductController::updateStockBalance($system_unit_id, $item['produto'], $item['contagem_realizada'],$item['doc']);
             }
 
-            // Cria o array base para cálculos
-            $dadosProdutos = [];
-            foreach ($produtos as $produto) {
-                $dadosProdutos[$produto['produto']] = [
-                    'produto' => $produto['produto'],
-                    'nome_produto' => $produto['nome_produto'],
-                    'saldo_anterior' => $produto['saldo_anterior'],
-                    'entradas' => 0,
-                    'saidas' => 0,
-                    'contagem_ideal' => null,
-                    'contagem_realizada' => 0,
-                    'diferenca' => 0,
-                    'doc' => null,
-                ];
-            }
+            // Confirma a transação
+            $pdo->commit();
 
-            // Passo 2: Soma de saídas
-            $stmtSaidas = $pdo->prepare("
-        SELECT produto, SUM(quantidade) AS quantidade
-        FROM movimentacao
-        WHERE system_unit_id = :systemUnitId AND data = :data AND status = 1 AND tipo_mov = 'saida'
-        GROUP BY produto
-    ");
-            $stmtSaidas->execute([':systemUnitId' => $systemUnitId, ':data' => $data]);
-            $saidas = $stmtSaidas->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($saidas as $saida) {
-                if (isset($dadosProdutos[$saida['produto']])) {
-                    $dadosProdutos[$saida['produto']]['saidas'] = $saida['quantidade'];
-                }
-            }
-
-            // Passo 3: Soma de entradas
-            $stmtEntradas = $pdo->prepare("
-        SELECT produto, SUM(quantidade) AS quantidade
-        FROM movimentacao
-        WHERE system_unit_id = :systemUnitId AND data = :data AND status = 1 AND tipo_mov = 'entrada'
-        GROUP BY produto
-    ");
-            $stmtEntradas->execute([':systemUnitId' => $systemUnitId, ':data' => $data]);
-            $entradas = $stmtEntradas->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($entradas as $entrada) {
-                if (isset($dadosProdutos[$entrada['produto']])) {
-                    $dadosProdutos[$entrada['produto']]['entradas'] = $entrada['quantidade'];
-                }
-            }
-
-            // Passo 4: Balanço do dia
-            $stmtBalanco = $pdo->prepare("
-        SELECT doc, produto, quantidade AS contagem_realizada
-        FROM movimentacao
-        WHERE id IN (
-            SELECT MAX(id)
-            FROM movimentacao
-            WHERE data = :data AND system_unit_id = :systemUnitId AND status = 1 AND tipo = 'b'
-            GROUP BY produto
-        )
-        ORDER BY id DESC
-    ");
-            $stmtBalanco->execute([':systemUnitId' => $systemUnitId, ':data' => $data]);
-            $balancos = $stmtBalanco->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($balancos as $balanco) {
-                if (isset($dadosProdutos[$balanco['produto']])) {
-                    $dadosProdutos[$balanco['produto']]['contagem_realizada'] = $balanco['contagem_realizada'];
-                    // Substitui 'doc' por 'sem-doc' se for null
-                    $dadosProdutos[$balanco['produto']]['doc'] = $balanco['doc'] ?? 'sem-doc';
-                }
-            }
-
-            // Calcula contagem ideal e diferença
-            foreach ($dadosProdutos as &$dadosProduto) {
-                $dadosProduto['contagem_ideal'] = $dadosProduto['saldo_anterior'] + $dadosProduto['entradas'] - $dadosProduto['saidas'];
-                $dadosProduto['diferenca'] = $dadosProduto['contagem_ideal'] - $dadosProduto['contagem_realizada'];
-
-                // Garante que 'doc' nunca será null
-                if ($dadosProduto['doc'] === null) {
-                    $dadosProduto['doc'] = 'sem-doc';
-                }
-            }
-
-            // Remove produtos sem movimentação
-            $dadosProdutos = array_filter($dadosProdutos, function($produto) {
-                return $produto['entradas'] > 0 || $produto['saidas'] > 0 || $produto['contagem_realizada'] > 0;
-            });
-
-            // Insere ou atualiza na tabela diferencas_estoque
-            if (!empty($dadosProdutos)) {
-                $insertStmt = $pdo->prepare("
-            INSERT INTO diferencas_estoque (
-                data, system_unit_id, doc, produto, nome_produto, saldo_anterior, entradas, saidas, 
-                contagem_ideal, contagem_realizada, diferenca
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                saldo_anterior = VALUES(saldo_anterior),
-                entradas = VALUES(entradas),
-                saidas = VALUES(saidas),
-                contagem_ideal = VALUES(contagem_ideal),
-                contagem_realizada = VALUES(contagem_realizada),
-                diferenca = VALUES(diferenca),
-                updated_at = CURRENT_TIMESTAMP
-        ");
-
-                foreach ($dadosProdutos as $dadosProduto) {
-                    // Garante que o 'doc' nunca será null
-                    $insertStmt->execute([
-                        $data,
-                        $systemUnitId,
-                        $dadosProduto['doc'], // Garante que 'doc' não seja null
-                        $dadosProduto['produto'],
-                        $dadosProduto['nome_produto'],
-                        $dadosProduto['saldo_anterior'],
-                        $dadosProduto['entradas'],
-                        $dadosProduto['saidas'],
-                        $dadosProduto['contagem_ideal'],
-                        $dadosProduto['contagem_realizada'],
-                        $dadosProduto['diferenca']
-                    ]);
-                }
-
-                // Confirma a transação
-                $pdo->commit();
-
-                // Retorna a resposta
-                return [
-                    'status_code' => 200,
-                    'mensagem' => 'Diferenças de estoque calculadas e inseridas com sucesso.',
-                    'diferencas' => array_values($dadosProdutos) // Removendo as chaves associativas
-                ];
-            } else {
-                $pdo->rollBack();
-                return [
-                    'status_code' => 400,
-                    'mensagem' => 'Nenhum produto com movimentação relevante.',
-                    'diferencas' => []
-                ];
-            }
-
+            return [
+                'status' => 'success',
+                'message' => 'Diferenças de estoque registradas com sucesso.'
+            ];
         } catch (Exception $e) {
             // Reverte a transação em caso de erro
             $pdo->rollBack();
+
             return [
-                'status_code' => 500,
-                'mensagem' => "Erro ao calcular diferenças de estoque: " . $e->getMessage(),
-                'diferencas' => []
+                'status' => 'error',
+                'message' => 'Erro ao registrar diferenças de estoque: ' . $e->getMessage()
             ];
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }
