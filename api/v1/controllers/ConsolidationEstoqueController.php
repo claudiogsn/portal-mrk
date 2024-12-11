@@ -36,6 +36,7 @@ class ConsolidationEstoqueController {
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':data_inicial', $firstDay);
         $stmt->bindParam(':data_final', $lastDay);
+        $stmt->bindParam(':system_unit_id', $system_unit_id);
         $stmt->execute();
 
         // Obtém os resultados
