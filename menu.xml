@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
+  <menuitem label="Financeiro">
+    <icon>fas:dollar-sign fa-fw</icon>
+    <menu>
+      <menuitem label="Dashboard">
+        <action>SystemAdministrationDashboard</action>
+        <icon>fas:ad fa-fw</icon>
+      </menuitem>
+    </menu>
+  </menuitem>
   <menuitem label="Estoque">
     <icon>fas:warehouse fa-fw</icon>
     <menu>
