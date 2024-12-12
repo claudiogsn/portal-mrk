@@ -5,7 +5,11 @@
     <menu>
       <menuitem label="Dashboard">
         <action>SystemAdministrationDashboard</action>
-        <icon>fas:ad fa-fw</icon>
+        <icon>fas:tachometer-alt fa-fw</icon>
+      </menuitem>
+      <menuitem label="DRE">
+        <action>Dre</action>
+        <icon>fas:book fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
