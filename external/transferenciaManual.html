@@ -97,18 +97,18 @@
                 <div class="body">
                     <form id="transferForm">
                         <div class="row">
-                            <!-- <div class="col-md-4">
-                                <label for="date">Data</label>
-                                <input type="date" id="date" class="form-control" required>
-                            </div> -->
-                            <div class="col-md-6">
+                            <div class="col-md-2">
+                                <label for="transfer-date">Data</label>
+                                <input type="date" id="transfer-date" class="form-control" required>
+                            </div>
+                            <div class="col-md-5">
                                 <label for="origin-unit">Unidade de Origem</label>
                                 <select id="origin-unit" class="form-control" required>
                                     <option value="">Selecione</option>
                                     <!-- Opções carregadas dinamicamente -->
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-5">
                                 <label for="destination-unit">Unidade de Destino</label>
                                 <select id="destination-unit" class="form-control" required>
                                     <option value="">Selecione</option>
@@ -230,6 +230,7 @@
     const token = urlParams.get('token');
     const unit_matriz_id = urlParams.get('unit_matriz_id');
     const username = urlParams.get('username');
+    const transferDateInput = document.getElementById('transfer-date');
 
     // Função para carregar unidades
 async function loadUnidades() {
@@ -349,13 +350,24 @@ async function loadItems(unitId) {
         swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
     }
 }
+    // Definir data mínima e máxima para o campo
+        const today = new Date().toISOString().split('T')[0];
+        transferDateInput.setAttribute('max', today);
+        transferDateInput.setAttribute('value', today);
 
 
     // Função para enviar os itens de transferência para o backend
     async function sendTransferItems() {
+        const transferDate = $('#transfer-date').val();
         const originUnit = $('#origin-unit').val();
         const destinationUnit = $('#destination-unit').val();
         const username = urlParams.get('username');
+
+         // Verificar se a data está preenchida
+         if (!transferDate) {
+            swal.fire('Erro', 'Selecione uma data válida para a transferência.', 'error');
+            return;
+        }
 
         // Verificar se as unidades de origem e destino foram selecionadas
         if (!originUnit || !destinationUnit) {
@@ -406,6 +418,7 @@ async function loadItems(unitId) {
                         data: {
                             system_unit_id: originUnit,
                             system_unit_id_destino: destinationUnit,
+                            transfer_date: transferDate,
                             itens: items,
                             usuario_id: username
                         }

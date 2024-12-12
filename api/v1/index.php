@@ -95,8 +95,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
             case 'importComprasCSV':
-                if (isset($requestData['usuario_id'], $requestData['itens'])){
-                    $response = MovimentacaoController::importComprasCSV($requestData['usuario_id'], $requestData['itens']);
+                if (isset($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao'])){
+                    $response = MovimentacaoController::importComprasCSV($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao']);
                     http_response_code(200);
                 }else{
                     http_response_code(400);

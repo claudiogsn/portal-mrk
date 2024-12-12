@@ -25,6 +25,10 @@
             <div class="col-md-12">
                 <h2>Importação de Compras</h2>
                 <form id="import-form" class="dropzone">
+                    <div class="col-md-12">
+                        <label for="import-date">Data de Importação</label>
+                        <input type="date" id="import-date" class="form-control" required>
+                    </div>
                     <div class="dz-message">
                         <div class="drag-icon-cph">
                             <i class="material-icons">touch_app</i>
@@ -57,6 +61,13 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const usuarioId = urlParams.get('user_id');
+
+        const importDateInput = document.getElementById('import-date');
+
+        // Definir data mínima e máxima para o campo de data
+        const today = new Date().toISOString().split('T')[0];
+        importDateInput.setAttribute('max', today);
+        importDateInput.setAttribute('value', today);
     
         // Função para validar os campos obrigatórios no Excel
         function validateExcelFields(data) {
@@ -86,6 +97,15 @@
     
                     reader.onload = async function (e) {
                         try {
+                            const selectedDate = importDateInput.value;
+                            if (!selectedDate) {
+                                Swal.fire({
+                                    title: 'Erro!',
+                                    text: 'Selecione uma data de importação válida.',
+                                    icon: 'error'
+                                });
+                                return; // Interrompe o fluxo se a data não for válida
+                            }
                             // Lê o arquivo Excel
                             const workbook = XLSX.read(e.target.result, { type: 'binary' });
                             const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -103,7 +123,6 @@
                                 tipo: item['tipo'],
                                 produto: item['produto'],
                                 seq: item['seq'],
-                                data: item['data'],
                                 qtde: item['qtde']
                             }));
     
@@ -112,6 +131,7 @@
                                 token: token,
                                 data: {
                                     usuario_id: usuarioId,
+                                    data_importacao: selectedDate,
                                     itens: itens
                                 }
                             };

@@ -444,6 +444,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         $system_unit_id_destino = $data['system_unit_id_destino'];
         $itens = $data['itens'];
         $usuario_id = $data['usuario_id'];
+        $transferDate = $data['transfer_date'];
 
         // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter um novo valor
         $ultimoDoc = self::getLastMov($system_unit_id, 't');
@@ -474,8 +475,8 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
                 // Inserção no banco de dados para o movimento de saída
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo,tipo_mov,produto, seq, data, quantidade, usuario_id) 
-                                   VALUES (?, ?, ?, ?,?, ?, ?, NOW(), ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc,$tipo,$tipo_saida, $produto, $seq, $quantidade, $usuario_id]);
+                                   VALUES (?, ?, ?, ?,?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc,$tipo,$tipo_saida, $produto, $seq, $transferDate , $quantidade, $usuario_id]);
             }
 
             // Criação dos movimentos de entrada
@@ -494,8 +495,8 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
                 // Inserção no banco de dados para o movimento de entrada
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo,tipo_mov,produto, seq, data, quantidade, usuario_id) 
-                                   VALUES (?, ?, ?, ?,?,?, NOW(), ?, ?)");
-                $stmt->execute([$system_unit_id_destino, $doc,$tipo,$tipo_entrada, $produto, $seq, $quantidade, $usuario_id]);
+                                   VALUES (?, ?, ?, ?,?,?, ?, ?, ?)");
+                $stmt->execute([$system_unit_id_destino, $doc,$tipo,$tipo_entrada, $produto, $seq,$transferDate,$quantidade, $usuario_id]);
 
 //                if ($stmt->rowCount() > 0) {
 //                    // Atualiza o saldo do estoque após a movimentação de entrada com o novo saldo calculado
@@ -543,8 +544,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 ];
             }
 
-            // Data e hora atual
-            $dataHoraAtual = date('d/m/Y H:i:s');
+
 
             // Commit da transação
             $pdo->commit();
@@ -553,7 +553,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 'message' => 'Transferência criada com sucesso',
                 'transfer_doc' => $doc,
                 'nome_unidade_destino' => $nome_unidade_destino,
-                'data_hora' => $dataHoraAtual,
+                'data_hora' => $transferDate,
                 'itens' => $itensComDetalhes
             );
 
@@ -602,7 +602,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
     }
 
 
-    public static function importComprasCSV($usuarioId, $produtos)
+    public static function importComprasCSV($usuarioId, $produtos,$data_importacao)
     {
         global $pdo;
 
@@ -651,7 +651,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                     'entrada', // Tipo de movimento
                     $produto['produto'],
                     $produto['seq'],
-                    $produto['data'],
+                    $data_importacao,
                     $produto['qtde'],
                     $usuarioId
                 ]);

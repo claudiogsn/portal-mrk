@@ -109,9 +109,9 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="detailsModalLabel">Difenças de Estoque</h5>
-                    <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <!-- <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
-                    </button>
+                    </button> -->
                 </div>
                 <div class="modal-body">
                     <div id="modalContentGrid">
@@ -119,8 +119,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button id="confirmDifferences" class="btn btn-success">Confirmar Diferenças</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button id="exportToExcel" class="btn btn-success">Exportar para Excel</button>
+                    <button id="confirmDifferences" class="btn btn-primary">Confirmar Diferenças</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -129,212 +130,276 @@
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function () {
-            const baseUrl = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-                'http://localhost/portal-mrk/api/v1/index.php';
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const unitId = urlParams.get('unit_id');
+        const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const unitId = urlParams.get('unit_id');
 
-            async function loadDays(year, month) {
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'getStatusConsolidationMonth',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            year: String(year),
-                            month: String(month).padStart(2, '0')
-                        }
-                    });
-                    renderDays(response.data);
-                } catch (error) {
-                    console.error('Erro ao carregar dias:', error);
-                }
+        let currentDetails = []; // Variável para armazenar os detalhes carregados no modal
+
+        async function loadDays(year, month) {
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getStatusConsolidationMonth',
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        year: String(year),
+                        month: String(month).padStart(2, '0')
+                    }
+                });
+                renderDays(response.data);
+            } catch (error) {
+                console.error('Erro ao carregar dias:', error);
             }
+        }
 
-            function renderDays(days) {
-                const grid = document.getElementById('dayGrid');
-                grid.innerHTML = '';
+        function renderDays(days) {
+            const grid = document.getElementById('dayGrid');
+            grid.innerHTML = '';
 
-                days.sort((a, b) => new Date(a.date) - new Date(b.date));
+            days.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                days.forEach(day => {
-                    const dayNumber = parseInt(day.date.split('-')[2], 10);
+            days.forEach(day => {
+                const dayNumber = parseInt(day.date.split('-')[2], 10);
 
-                    const card = document.createElement('div');
-                    card.className = `card day-card ${day.status === 'consolidated' ? 'bg-green' : 'bg-orange'}`;
-                    card.dataset.date = day.date;
-                    card.innerHTML = `
-                        <div class="body">
-                            <p>${dayNumber}</p>
-                            <small>${day.status === 'consolidated' ? 'Consolidado' : 'Pendente'}</small>
-                        </div>
-                    `;
+                const card = document.createElement('div');
+                card.className = `card day-card ${day.status === 'consolidated' ? 'bg-green' : 'bg-orange'}`;
+                card.dataset.date = day.date;
+                card.innerHTML = `
+                    <div class="body">
+                        <p>${dayNumber}</p>
+                        <small>${day.status === 'consolidated' ? 'Consolidado' : 'Pendente'}</small>
+                    </div>
+                `;
 
-                    card.addEventListener('click', function () {
-                        openDetailsModal(this.dataset.date);
+                card.addEventListener('click', function () {
+                    openDetailsModal(this.dataset.date);
+                });
+
+                grid.appendChild(card);
+            });
+        }
+
+        async function openDetailsModal(date) {
+            Swal.fire({
+                title: 'Carregando...',
+                text: 'Aguarde enquanto carregamos os detalhes.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'GetInfoConsolidationEstoque',
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        data: date
+                    }
+                });
+
+                Swal.close();
+                if (response.data.status === 'error') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: response.data.message
                     });
+                } else {
+                    currentDetails = response.data.data; // Armazena os detalhes para exportação
+                    renderDetailsGrid(currentDetails);
 
-                    grid.appendChild(card);
+                    document.getElementById('confirmDifferences').onclick = () => {
+                        Swal.fire({
+                            title: 'Confirmar?',
+                            text: 'Você tem certeza que deseja confirmar as diferenças?',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sim, confirmar!',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                confirmDifferences(currentDetails, date);
+                            }
+                        });
+                    };
+
+                    const modalTitle = document.getElementById('detailsModalLabel');
+                    modalTitle.dataset.date = date; // Define a data como atributo do modal
+                    $('#detailsModal').modal('show');
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Erro ao carregar os detalhes, tente novamente.'
                 });
             }
+        }
 
-            async function openDetailsModal(date) {
+        function renderDetailsGrid(details) {
+            const modalContentGrid = document.getElementById('modalContentGrid');
+            modalContentGrid.innerHTML = '';
+
+            if (details && details.length > 0) {
+                const table = document.createElement('table');
+                table.className = 'table table-striped';
+
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Produto</th>
+                        <th>Nome</th>
+                        <th>Saldo Anterior</th>
+                        <th>Entradas</th>
+                        <th>Saídas</th>
+                        <th>Saldo Final</th>
+                        <th>Qtd. Balanço</th>
+                        <th>Diferença</th>
+                        <th>Status</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                details.forEach(detail => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${detail.produto}</td>
+                        <td>${detail.nome_produto}</td>
+                        <td>${detail.saldo_anterior}</td>
+                        <td>${detail.entradas}</td>
+                        <td>${detail.saidas}</td>
+                        <td>${detail.contagem_ideal}</td>
+                        <td>${detail.contagem_realizada}</td>
+                        <td>${detail.diferenca}</td>
+                        <td>${detail.status_dif === 0 ? 'OK' : 'Diferença'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+
+                modalContentGrid.appendChild(table);
+            } else {
+                modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
+            }
+        }
+
+        async function confirmDifferences(details, date) {
+            try {
                 Swal.fire({
-                    title: 'Carregando...',
-                    text: 'Aguarde enquanto carregamos os detalhes.',
+                    title: 'Enviando...',
+                    text: 'Aguarde enquanto confirmamos as diferenças.',
                     allowOutsideClick: false,
                     didOpen: () => Swal.showLoading()
                 });
 
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'GetInfoConsolidationEstoque',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            data: date
-                        }
-                    });
-
-                    Swal.close();
-                    if (response.data.status === 'error') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro',
-                            text: response.data.message
-                        });
-                    } else {
-                        renderDetailsGrid(response.data.data);
-                        document.getElementById('confirmDifferences').onclick = () => {
-                            Swal.fire({
-                                title: 'Confirmar?',
-                                text: 'Você tem certeza que deseja confirmar as diferenças?',
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonText: 'Sim, confirmar!',
-                                cancelButtonText: 'Cancelar'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    confirmDifferences(response.data.data, date);
-                                }
-                            });
-                        };
-                        $('#detailsModal').modal('show');
+                const response = await axios.post(baseUrl, {
+                    method: 'persistStockDifferences',
+                    token: token,
+                    data: {
+                        date: date,
+                        system_unit_id: unitId,
+                        data: details
                     }
-                } catch (error) {
+                });
+
+                if (response.data.status === 'success') {
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Erro ao carregar os detalhes, tente novamente.'
+                        icon: 'success',
+                        title: 'Sucesso',
+                        text: response.data.message
                     });
-                }
-            }
-
-            function renderDetailsGrid(details) {
-                const modalContentGrid = document.getElementById('modalContentGrid');
-                modalContentGrid.innerHTML = '';
-
-                if (details && details.length > 0) {
-                    const table = document.createElement('table');
-                    table.className = 'table table-striped';
-
-                    const thead = document.createElement('thead');
-                    thead.innerHTML = `
-                        <tr>
-                            <th>Produto</th>
-                            <th>Nome</th>
-                            <th>Saldo Anterior</th>
-                            <th>Entradas</th>
-                            <th>Saídas</th>
-                            <th>Saldo Final</th>
-                            <th>Qtd. Balanço</th>
-                            <th>Diferença</th>
-                            <th>Status</th>
-                        </tr>
-                    `;
-                    table.appendChild(thead);
-
-                    const tbody = document.createElement('tbody');
-                    details.forEach(detail => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${detail.produto}</td>
-                            <td>${detail.nome_produto}</td>
-                            <td>${detail.saldo_anterior}</td>
-                            <td>${detail.entradas}</td>
-                            <td>${detail.saidas}</td>
-                            <td>${detail.contagem_ideal}</td>
-                            <td>${detail.contagem_realizada}</td>
-                            <td>${detail.diferenca}</td>
-                            <td>${detail.status_dif === 0 ? 'OK' : 'Diferença'}</td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                    table.appendChild(tbody);
-
-                    modalContentGrid.appendChild(table);
+                    $('#detailsModal').modal('hide');
                 } else {
-                    modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
-                }
-            }
-
-            async function confirmDifferences(details, date) {
-                try {
-                    Swal.fire({
-                        title: 'Enviando...',
-                        text: 'Aguarde enquanto confirmamos as diferenças.',
-                        allowOutsideClick: false,
-                        didOpen: () => Swal.showLoading()
-                    });
-
-                    const response = await axios.post(baseUrl, {
-                        method: 'persistStockDifferences',
-                        token: token,
-                        data: {
-                            date: date,
-                            system_unit_id: unitId,
-                            data: details
-                        }
-                    });
-
-                    if (response.data.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Sucesso',
-                            text: response.data.message
-                        });
-                        $('#detailsModal').modal('hide');
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro',
-                            text: response.data.message
-                        });
-                    }
-                } catch (error) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro',
-                        text: 'Erro ao confirmar diferenças, tente novamente.'
+                        text: response.data.message
                     });
                 }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Erro ao confirmar diferenças, tente novamente.'
+                });
+            }
+        }
+
+        function exportDetailsToExcel(details, date) {
+            if (!details || details.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Aviso',
+                    text: 'Não há dados para exportar.'
+                });
+                return;
             }
 
-            document.getElementById('searchButton').addEventListener('click', function () {
-                const year = document.getElementById('yearSelect').value;
-                const month = document.getElementById('monthSelect').value;
-                loadDays(year, month);
-            });
+            Swal.fire({
+                title: 'Exportar para Excel?',
+                text: 'Você deseja exportar os dados de diferenças para um arquivo Excel?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, exportar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mapeia os dados para uma estrutura plana
+                    const dataToExport = details.map(detail => ({
+                        Produto: detail.produto,
+                        Nome: detail.nome_produto,
+                        'Saldo Anterior': detail.saldo_anterior,
+                        Entradas: detail.entradas,
+                        Saídas: detail.saidas,
+                        'Saldo Final': detail.contagem_ideal,
+                        'Qtd. Balanço': detail.contagem_realizada,
+                        Diferença: detail.diferenca,
+                        Status: detail.status_dif === 0 ? 'OK' : 'Diferença'
+                    }));
 
-            const today = new Date();
-            document.getElementById('yearSelect').value = today.getFullYear();
-            document.getElementById('monthSelect').value = today.getMonth() + 1;
-            loadDays(today.getFullYear(), today.getMonth() + 1);
+                    // Cria uma nova planilha e adiciona os dados
+                    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Diferenças');
+
+                    // Exporta o arquivo
+                    const fileName = `Diferencas_Estoque_${date}.xlsx`;
+                    XLSX.writeFile(workbook, fileName);
+
+                    Swal.fire({
+                        title: 'Exportação Concluída!',
+                        text: 'O arquivo foi exportado com sucesso.',
+                        icon: 'success'
+                    });
+                }
+            });
+        }
+
+        document.getElementById('exportToExcel').addEventListener('click', function () {
+            const date = document.querySelector('#detailsModal .modal-title').dataset.date; // Obtém a data do modal
+            exportDetailsToExcel(currentDetails, date);
         });
+
+        document.getElementById('searchButton').addEventListener('click', function () {
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            loadDays(year, month);
+        });
+
+        const today = new Date();
+        document.getElementById('yearSelect').value = today.getFullYear();
+        document.getElementById('monthSelect').value = today.getMonth() + 1;
+        loadDays(today.getFullYear(), today.getMonth() + 1);
+    });
+
     </script>
 </body>
 </html>
