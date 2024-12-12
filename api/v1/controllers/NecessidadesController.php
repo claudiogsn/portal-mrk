@@ -61,8 +61,8 @@ class NecessidadesController {
 
             if ($type === 'media') {
                 // Calcula margem e recomendado
-                $insumoConsumption[$insumo_id]['sales'] = $insumoConsumption[$insumo_id]['sales'] / 4;
-                $insumoConsumption[$insumo_id]['margem'] = $insumoConsumption[$insumo_id]['sales'] * 0.30; // 30% da venda
+                $insumoConsumption[$insumo_id]['sales'] = number_format($insumoConsumption[$insumo_id]['sales'] / 4, 2, '.', '');
+                $insumoConsumption[$insumo_id]['margem'] = number_format($insumoConsumption[$insumo_id]['sales'] * 0.30, 2, '.', '');
                 $insumoConsumption[$insumo_id]['recomendado'] = ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']);
             }
 
