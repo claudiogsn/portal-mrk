@@ -494,8 +494,6 @@ async function loadItems(unitId) {
                 } catch (error) {
                     console.error(error);
                     swal.fire('Erro', 'Ocorreu um erro ao enviar os dados para o backend.', 'error');
-                }finally{
-                    location.reload();
                 }
             }
         });
