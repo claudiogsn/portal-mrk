@@ -574,7 +574,7 @@ class BiController {
             $cardsQueries = [
                 'ComposicoesCadastradas' => "SELECT COUNT(*) FROM compositions WHERE system_unit_id = :unit_id",
                 'InsumosCadastrados' => "SELECT COUNT(*) FROM products WHERE system_unit_id = :unit_id AND insumo = 1",
-                'ProdutosCadastrados' => "SELECT COUNT(*) FROM compositions WHERE system_unit_id = :unit_id",
+                'ProdutosCadastrados' => "SELECT COUNT(*) FROM products WHERE system_unit_id = :unit_id",
                 'Vendas' => "SELECT CONCAT('R$ ', FORMAT(SUM(valor_liquido), 2, 'pt_BR')) AS valor_formatado FROM _bi_sales 
                 WHERE system_unit_id = :unit_id AND data_movimento BETWEEN :start_date AND :end_date;"
             ];
