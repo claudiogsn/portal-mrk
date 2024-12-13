@@ -591,7 +591,7 @@ class BiController {
 
             // Tables
             // Ultimas Movs
-            $stmt = $pdo->prepare("SELECT id, doc, data, status, tipo_mov, tipo FROM movimentacao WHERE system_unit_id = :unit_id AND data BETWEEN :start_date AND :end_date GROUP BY doc ORDER BY id DESC LIMIT 10;");
+            $stmt = $pdo->prepare("SELECT doc, data, tipo_mov, tipo FROM movimentacao WHERE system_unit_id = :unit_id AND data BETWEEN :start_date AND :end_date GROUP BY doc ORDER BY id DESC LIMIT 10;");
             $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmt->bindParam(':start_date', $start_date, PDO::PARAM_STR);
             $stmt->bindParam(':end_date', $end_date, PDO::PARAM_STR);
