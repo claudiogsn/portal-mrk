@@ -478,14 +478,20 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         $usuario_id = $data['usuario_id'];
         $transferDate = $data['transfer_date'];
 
-        // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter um novo valor
-        $ultimoDoc = self::getLastMov($system_unit_id, 't');
-        $doc = self::incrementDoc($ultimoDoc, 't');
+        // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter novos valores para entrada e saída
+        $ultimoDocSaida = self::getLastMov($system_unit_id, 'ts'); // Tipo para saída
+        $docSaida = self::incrementDoc($ultimoDocSaida, 'ts'); // Incrementa para saída
+
+        $ultimoDocEntrada = self::getLastMov($system_unit_id_destino, 'te'); // Tipo para entrada
+        $docEntrada = self::incrementDoc($ultimoDocEntrada, 'te'); // Incrementa para entrada
+
 
         // Definindo valores fixos
         $tipo_saida = 'saida';
         $tipo_entrada = 'entrada';
-        $tipo = 't';
+        $tipo_saida_doc = 'ts'; // Tipo para saída
+        $tipo_entrada_doc = 'te'; // Tipo para entrada
+
         try {
             // Inicia a transação
             $pdo->beginTransaction();
@@ -506,9 +512,9 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $quantidade = $item['quantidade'];
 
                 // Inserção no banco de dados para o movimento de saída
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo,tipo_mov,produto, seq, data, quantidade, usuario_id) 
-                                   VALUES (?, ?, ?, ?,?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc,$tipo,$tipo_saida, $produto, $seq, $transferDate , $quantidade, $usuario_id]);
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$system_unit_id, $system_unit_id_destino, $docSaida, $tipo_saida_doc, $tipo_saida, $produto, $seq, $transferDate, $quantidade, $usuario_id]);
             }
 
             // Criação dos movimentos de entrada
@@ -526,23 +532,9 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $novoSaldo = $saldoAtual + $quantidade;
 
                 // Inserção no banco de dados para o movimento de entrada
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo,tipo_mov,produto, seq, data, quantidade, usuario_id) 
-                                   VALUES (?, ?, ?, ?,?,?, ?, ?, ?)");
-                $stmt->execute([$system_unit_id_destino, $doc,$tipo,$tipo_entrada, $produto, $seq,$transferDate,$quantidade, $usuario_id]);
-
-//                if ($stmt->rowCount() > 0) {
-//                    // Atualiza o saldo do estoque após a movimentação de entrada com o novo saldo calculado
-//                    $productResponse = ProductController::updateStockBalance($system_unit_id_destino, $produto, $novoSaldo, $doc);
-//                    if (!$productResponse['success']) {
-//                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
-//                        $pdo->rollBack();
-//                        return array('success' => false, 'message' => 'Movimentação de entrada criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
-//                    }
-//                } else {
-//                    // Se a inserção do item falhar, faz rollback e retorna o erro
-//                    $pdo->rollBack();
-//                    return array('success' => false, 'message' => 'Falha ao criar movimentação de entrada para o item com código ' . $produto);
-//                }
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$system_unit_id_destino, $docEntrada, $tipo_entrada_doc, $tipo_entrada, $produto, $seq, $transferDate, $quantidade, $usuario_id]);
             }
 
             // Consulta o nome da unidade de destino
@@ -576,14 +568,12 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 ];
             }
 
-
-
             // Commit da transação
             $pdo->commit();
             return array(
                 'success' => true,
                 'message' => 'Transferência criada com sucesso',
-                'transfer_doc' => $doc,
+                'transfer_doc' => $docEntrada,
                 'nome_unidade_destino' => $nome_unidade_destino,
                 'data_hora' => $transferDate,
                 'itens' => $itensComDetalhes
@@ -595,6 +585,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             return array('success' => false, 'message' => 'Erro ao criar transferência: ' . $e->getMessage());
         }
     }
+
 
 
 

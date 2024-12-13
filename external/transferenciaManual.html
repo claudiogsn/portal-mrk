@@ -436,6 +436,8 @@ async function loadItems(unitId) {
                             title: 'Transferência realizada com sucesso!',
                             text: `Documento de Transferência: ${transferDoc}`,
                             icon: 'success'
+                        }).then(() => {
+                            location.reload();
                         });
                         
 
@@ -541,6 +543,14 @@ async function loadItems(unitId) {
         `;
 
         $('#result-table tbody').append(row);
+
+
+         // Limpar os campos após adicionar ao grid
+        $('#item-codigo').val('');
+        $('#item-description').val('');
+        $('#item-unit').val('');
+        $('#item-quantity').val('');
+
 
         // Remover item
         $('.remove-item').click(function () {
