@@ -560,6 +560,84 @@ class BiController {
         }
     }
 
+    public static function generateDashboardData($system_unit_id, $start_date, $end_date) {
+        global $pdo;
+
+        $data = [
+            'Cards' => [],
+            'Tables' => [],
+            'Status' => []
+        ];
+
+        try {
+            // Cards
+            $cardsQueries = [
+                'ComposicoesCadastradas' => "SELECT COUNT(*) FROM compositions WHERE system_unit_id = :unit_id",
+                'InsumosCadastrados' => "SELECT COUNT(*) FROM products WHERE system_unit_id = :unit_id AND insumo = 1",
+                'ProdutosCadastrados' => "SELECT COUNT(*) FROM compositions WHERE system_unit_id = :unit_id",
+                'Vendas' => "SELECT SUM(valor_liquido) FROM _bi_sales WHERE system_unit_id = :unit_id AND data_movimento BETWEEN :start_date AND :end_date"
+            ];
+
+            foreach ($cardsQueries as $key => $query) {
+                $stmt = $pdo->prepare($query);
+                $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);
+                if ($key === 'Vendas') {
+                    $stmt->bindParam(':start_date', $start_date, PDO::PARAM_STR);
+                    $stmt->bindParam(':end_date', $end_date, PDO::PARAM_STR);
+                }
+                $stmt->execute();
+                $data['Cards'][$key] = $stmt->fetchColumn();
+            }
+
+            // Tables
+            // Ultimas Movs
+            $stmt = $pdo->prepare("SELECT id, doc, data, status, tipo_mov, tipo FROM movimentacao WHERE system_unit_id = :unit_id AND data BETWEEN :start_date AND :end_date GROUP BY doc ORDER BY id DESC LIMIT 10;");
+            $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(':start_date', $start_date, PDO::PARAM_STR);
+            $stmt->bindParam(':end_date', $end_date, PDO::PARAM_STR);
+            $stmt->execute();
+            $data['Tables']['UltimasMovs'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Ranking de Consumo de Produtos
+            $stmt = $pdo->prepare("SELECT s.cod_material AS codigo, p.nome AS nome_produto, SUM(s.quantidade) AS total_quantidade FROM _bi_sales s JOIN products p ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id WHERE s.system_unit_id = :unit_id AND s.data_movimento BETWEEN :start_date AND :end_date GROUP BY s.cod_material ORDER BY total_quantidade DESC LIMIT 10;");
+            $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(':start_date', $start_date, PDO::PARAM_STR);
+            $stmt->bindParam(':end_date', $end_date, PDO::PARAM_STR);
+            $stmt->execute();
+            $data['Tables']['RankingProdutos'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Ranking de Consumo de Insumos
+            $stmt = $pdo->prepare("SELECT m.produto AS codigo, p.nome AS nome_produto, SUM(m.quantidade) AS total_quantidade FROM movimentacao m JOIN products p ON m.produto = p.codigo AND m.system_unit_id = p.system_unit_id WHERE m.system_unit_id = :unit_id AND m.tipo = 'v' AND m.data BETWEEN :start_date AND :end_date GROUP BY m.produto ORDER BY total_quantidade DESC LIMIT 10;");
+            $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(':start_date', $start_date, PDO::PARAM_STR);
+            $stmt->bindParam(':end_date', $end_date, PDO::PARAM_STR);
+            $stmt->execute();
+            $data['Tables']['RankingInsumos'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Status (mocked data for now)
+            $data['Status']['ImportarVendas'] = [
+                ['data' => '2024-12-01', 'hora' => '12:00:00', 'status' => 'success'],
+                ['data' => '2024-12-02', 'hora' => '13:00:00', 'status' => 'pending']
+            ];
+            $data['Status']['ProcessamentoBI'] = [
+                ['data' => '2024-12-01', 'hora' => '14:00:00', 'status' => 'success'],
+                ['data' => '2024-12-02', 'hora' => '15:00:00', 'status' => 'error']
+            ];
+            $data['Status']['GerarDocSaida'] = [
+                ['data' => '2024-12-01', 'hora' => '16:00:00', 'status' => 'success'],
+                ['data' => '2024-12-02', 'hora' => '17:00:00', 'status' => 'pending']
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Failed to generate dashboard data: ' . $e->getMessage()
+            ];
+        }
+
+        return $data;
+    }
+
 
 }
 

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Dashboard</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <div class="container-fluid">
+        <div class="block-header">
+            <h2> </h2>
+        </div>
+
+        <!-- Widgets -->
+        <div class="row clearfix">
+            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box bg-pink hover-expand-effect">
+                    <div class="icon">
+                        <i class="material-icons">library_books</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">COMPOSIÇÕES CADASTRADAS</div>
+                        <div id="composicoesCadastradas" class="number">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box bg-cyan hover-expand-effect">
+                    <div class="icon">
+                        <i class="material-icons">list</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">INSUMOS CADASTRADOS</div>
+                        <div id="insumosCadastrados" class="number">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box bg-light-green hover-expand-effect">
+                    <div class="icon">
+                        <i class="material-icons">category</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">PRODUTOS CADASTRADOS</div>
+                        <div id="produtosCadastrados" class="number">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-3 col-sm-6 col-xs-12">
+                <div class="info-box bg-orange hover-expand-effect">
+                    <div class="icon">
+                        <i class="material-icons">attach_money</i>
+                    </div>
+                    <div class="content">
+                        <div class="text">VENDAS</div>
+                        <div id="vendas" class="number">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- #END# Widgets -->
+
+        <!-- Tables -->
+        <div class="row clearfix">
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                <div class="card">
+                    <div class="header">
+                        <h2>ÚLTIMAS MOVIMENTAÇÕES</h2>
+                    </div>
+                    <div class="body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Documento</th>
+                                        <th>Data</th>
+                                        <th>Tipo de Movimentação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ultimasMovs">
+                                    <!-- Dados dinâmicos -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                <div class="card">
+                    <div class="header">
+                        <h2>RANKING DE PRODUTOS</h2>
+                    </div>
+                    <div class="body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nome</th>
+                                        <th>Total Quantidade</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingProdutos">
+                                    <!-- Dados dinâmicos -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                <div class="card">
+                    <div class="header">
+                        <h2>RANKING DE INSUMOS</h2>
+                    </div>
+                    <div class="body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nome</th>
+                                        <th>Total Quantidade</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingInsumos">
+                                    <!-- Dados dinâmicos -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- #END# Tables -->
+
+        <!-- Status Section -->
+        <div class="row clearfix">
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                <div class="card">
+                    <div class="body bg-pink">
+                        <h4>IMPORTAR VENDAS</h4>
+                        <ul id="importarVendasStatus" class="dashboard-stat-list">
+                            <!-- Status dinâmico -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                <div class="card">
+                    <div class="body bg-cyan">
+                        <h4>PROCESSAMENTO BI</h4>
+                        <ul id="processamentoBIStatus" class="dashboard-stat-list">
+                            <!-- Status dinâmico -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+                <div class="card">
+                    <div class="body bg-orange">
+                        <h4>GERAR DOCUMENTO DE SAÍDA</h4>
+                        <ul id="gerarDocSaidaStatus" class="dashboard-stat-list">
+                            <!-- Status dinâmico -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- #END# Status Section -->
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+    const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const unitId = urlParams.get('unit_id');
+
+        // Função para pegar os últimos 7 dias
+        function getLast7Days() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - 7);
+
+            return {
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0]
+            };
+        }
+
+        // Carregar dados iniciais
+        $(document).ready(function () {
+            const { startDate, endDate } = getLast7Days();
+            loadDashboardData(startDate, endDate);
+        });
+
+        function loadDashboardData(startDate, endDate) {
+            axios.post(baseUrl, {
+                method: 'generateDashboardData',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    start_date: startDate,
+                    end_date: endDate
+                }
+            }).then(response => {
+                const data = response.data;
+
+                // Preencher os widgets
+                $('#composicoesCadastradas').text(data.Cards.ComposicoesCadastradas);
+                $('#insumosCadastrados').text(data.Cards.InsumosCadastrados);
+                $('#produtosCadastrados').text(data.Cards.ProdutosCadastrados);
+                $('#vendas').text(data.Cards.Vendas);
+
+                // Preencher tabelas
+                populateTable('#ultimasMovs', data.Tables.UltimasMovs, ["id", "doc", "data", "status", "tipo_mov"]);
+                populateTable('#rankingProdutos', data.Tables.RankingProdutos, ["codigo", "nome_produto", "total_quantidade"]);
+                populateTable('#rankingInsumos', data.Tables.RankingInsumos, ["codigo", "nome_produto", "total_quantidade"]);
+
+                // Preencher status
+                populateStatus('#importarVendasStatus', data.Status.ImportarVendas);
+                populateStatus('#processamentoBIStatus', data.Status.ProcessamentoBI);
+                populateStatus('#gerarDocSaidaStatus', data.Status.GerarDocSaida);
+            }).catch(error => {
+                console.error('Erro ao carregar dados do dashboard:', error);
+            });
+        }
+
+        function populateTable(selector, data, keys) {
+            const tbody = $(selector);
+            tbody.empty();
+
+            data.forEach(item => {
+                const row = keys.map(key => `<td>${item[key]}</td>`).join('');
+                tbody.append(`<tr>${row}</tr>`);
+            });
+        }
+
+        function populateStatus(selector, statusArray) {
+            const list = $(selector);
+            list.empty();
+
+            statusArray.forEach(item => {
+                list.append(`<li>${item.data} ${item.hora} - ${item.status}</li>`);
+            });
+        }
+    </script>
+</body>
+
+</html>

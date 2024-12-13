@@ -9,37 +9,37 @@
  * @license    https://adiantiframework.com.br/license-template
  */
 class WelcomeView extends TPage
-{
-    /**
-     * Class constructor
-     * Creates the page
-     */
-    function __construct()
     {
-        parent::__construct();
-        
-        $html1 = new THtmlRenderer('app/resources/system_welcome_en.html');
-        $html2 = new THtmlRenderer('app/resources/system_welcome_pt.html');
-        $html3 = new THtmlRenderer('app/resources/system_welcome_es.html');
-
-        // replace the main section variables
-        $html1->enableSection('main', array());
-        $html2->enableSection('main', array());
-        $html3->enableSection('main', array());
-        
-        $panel1 = new TPanelGroup('Welcome!');
-        $panel1->add($html1);
-        
-        $panel2 = new TPanelGroup('Bem-vindo!');
-        $panel2->add($html2);
-		
-        $panel3 = new TPanelGroup('Bienvenido!');
-        $panel3->add($html3);
-        
-        $vbox = TVBox::pack($panel1, $panel2, $panel3);
-        $vbox->style = 'display:block; width: 100%';
-        
-        // add the template to the page
-        parent::add( $vbox );
+        private $form;
+        public function __construct($param)
+        {
+            parent::__construct();
+    
+            $username = TSession::getValue('userid');
+            $token = TSession::getValue('sessionid');
+            $unit_id = TSession::getValue('userunitid');
+    
+    
+            if($_SERVER['SERVER_NAME'] == "localhost"){
+                $link = "http://localhost/portal-mrk/external/Dashboard.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            }else{
+                $link = "https://portal.mrksolucoes.com.br/external/Dashboard.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            }
+    
+            $iframe = new TElement('iframe');
+            $iframe->id = "iframe_external";
+            $iframe->src = $link;
+            $iframe->frameborder = "0";
+            $iframe->scrolling = "yes";
+            $iframe->width = "100%";
+            $iframe->height = "800px";
+    
+            parent::add($iframe);
+        }
+        function onFeed($param){
+            // $id = $param['key'];
+        }
+        function onEdit($param){
+            // $id = $param['key'];
+        }
     }
-}
