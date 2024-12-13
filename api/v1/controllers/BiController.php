@@ -366,12 +366,12 @@ class BiController {
                 $stmt->execute();
                 $saidas_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                $saidas = $saidas_data['quantidade'] ?? 0;
+                $saidas = number_format($saidas_data['quantidade'] ?? 0, 2, '.', '');
 
                 // Cálculo de movimentação e diferença
                 $saldo_final = $saldo_inicial + $entradas - $saidas;
                 $saldo_final_formatado = number_format($saldo_final, 2, '.', '');
-                $diferenca =  $contagem_realizada - $saldo_final_formatado;
+                $diferenca =  number_format($contagem_realizada - $saldo_final_formatado, 2, '.', '');
 
                 // Determina o status da diferença
                 $status_dif = ($diferenca === 0) ? 0 : 1;
@@ -385,7 +385,7 @@ class BiController {
                     'entradas' => $entradas,
                     'saidas' => $saidas,
                     'contagem_ideal' => $saldo_final_formatado,
-                    'contagem_realizada' => $contagem_realizada,
+                    'contagem_realizada' => number_format($contagem_realizada, 2, '.', ''),
                     'diferenca' => $diferenca,
                     'status_dif' => $status_dif
                 ];
