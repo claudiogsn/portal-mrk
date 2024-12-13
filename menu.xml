@@ -76,6 +76,10 @@
         <action>DiferencaEstoque</action>
         <icon>fas:file-medical-alt fa-fw</icon>
       </menuitem>
+      <menuitem label="Vendas Detalhadas">
+        <action>VendasDetalhado</action>
+        <icon>fas:newspaper fa-fw</icon>
+      </menuitem>
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">

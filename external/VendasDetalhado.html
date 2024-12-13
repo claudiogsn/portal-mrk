@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Relatório de Vendas Detalhado</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+     <!-- Google Fonts -->
+     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+     <!-- Bootstrap Core Css -->
+     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+     <!-- Waves Effect Css -->
+     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+     <!-- Animation Css -->
+     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+     <!-- JQuery DataTable Css -->
+     <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+     <!-- SweetAlert Css -->
+     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+     <!-- Custom Css -->
+     <link href="bsb/css/style.css" rel="stylesheet">
+     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <style>
+        .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .table-container {
+            position: relative;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Estilo da linha selecionada */
+        .selected-row {
+            background-color: rgba(0, 123, 255, 0.2); /* Azul com baixa opacidade */
+        }
+
+        .modal-lg {
+            max-width: 90%;
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+
+    <div class="container-fluid">
+        <!-- Filtros e Ações -->
+        <div class="header-card">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" id="filtro" class="form-control" placeholder="Nome ou Código do Insumo/Produto" onkeyup="filterTable()">
+                </div>
+                <div class="col-md-3">
+                    <input type="date" id="dataFiltro" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+                </div>
+                <div class="col-md-3 text-right">
+                    <button id="btnBuscar" class="btn btn-primary">Buscar</button>
+                    <button id="btnExportarTabela" class="btn btn-success">Exportar Tabela</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Relatório -->
+        <div class="card">
+            <div class="header">
+                <h2>Relatório de Vendas Detalhado</h2>
+            </div>
+            <div class="body table-responsive">
+                <div class="table-container">
+                    <table id="relatorioTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Código Insumo</th>
+                                <th>Nome Insumo</th>
+                                <th>Venda Insumos</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Conteúdo Dinâmico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes -->
+    <div id="detalhesModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes do Insumo</h5>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Código Produto</th>
+                                <th>Nome Produto</th>
+                                <th>Quantidade Insumo</th>
+                                <th>Quantidade Vendida</th>
+                                <th>Uso Insumo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalhesProdutos">
+                            <!-- Conteúdo Dinâmico -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnExportarDetalhes" class="btn btn-success">Exportar Detalhes</button>
+                    <button class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jquery Core Js -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+    <script>
+        function hidePageLoader() {
+            $('.page-loader-wrapper').fadeOut();
+        }
+        function filterTable() {
+            const input = document.getElementById('filtro');
+            const filter = input.value.toLowerCase();
+            const rows = document.querySelectorAll('#relatorioTable tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        }
+        $(document).ready(function () {
+            const baseUrl = window.location.hostname !== 'localhost' ?
+                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+                'http://localhost/portal-mrk/api/v1/index.php';
+
+            const token = new URLSearchParams(window.location.search).get('token');
+            const unitId = new URLSearchParams(window.location.search).get('unit_id');
+
+            function showLoader() {
+                Swal.fire({
+                    title: 'Aguarde...',
+                    html: 'Carregando os dados, por favor espere.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
+            function hideLoader() {
+                Swal.close();
+            }
+
+            async function fetchAndRenderData() {
+                const dataFiltro = $('#dataFiltro').val();
+                const filtro = $('#filtro').val();
+
+                showLoader();
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getSalesByInsumos',
+                        token: token,
+                        data: {
+                            system_unit_id: unitId,
+                            data: dataFiltro
+                        }
+                    });
+
+                    if (response.data && Array.isArray(response.data)) {
+                        renderTable(response.data, filtro);
+                        hideLoader();
+                    } else if (response.data && response.data.error) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Aviso',
+                            text: response.data.error
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: 'Erro ao buscar dados.'
+                        });
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar relatório:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Erro inesperado ao buscar dados.'
+                    });
+                }
+            }
+
+            $('#btnBuscar').on('click', fetchAndRenderData);
+
+            function renderTable(data, filtro) {
+                const tbody = $('#relatorioTable tbody');
+                tbody.empty();
+
+                data.forEach(item => {
+                    if (!filtro || JSON.stringify(item).toLowerCase().includes(filtro.toLowerCase())) {
+                        tbody.append(`
+                            <tr>
+                                <td>${item.codigo_insumo}</td>
+                                <td>${item.nome_insumo}</td>
+                                <td>${item.sale_insumos}</td>
+                                <td><button class="btn btn-info btnDetalhes" data-item='${encodeURIComponent(JSON.stringify(item))}'>Detalhes</button></td>
+                            </tr>
+                        `);
+                    }
+                });
+
+                $('.btnDetalhes').on('click', function () {
+                    const item = $(this).data('item');
+                    renderModal(JSON.parse(decodeURIComponent(item)));
+                    $('#detalhesModal').modal('show');
+                });
+            }
+
+            function renderModal(item) {
+                const tbody = $('#detalhesProdutos');
+                tbody.empty();
+
+                item.produtos_vendidos.forEach(prod => {
+                    tbody.append(`
+                        <tr>
+                            <td>${prod.codigo_produto}</td>
+                            <td>${prod.nome_produto}</td>
+                            <td>${prod.quantidade_insumo}</td>
+                            <td>${prod.quantidade_venda_produto}</td>
+                            <td>${prod.uso_insumo}</td>
+                        </tr>
+                    `);
+                });
+
+                $('#btnExportarDetalhes').off('click').on('click', function () {
+                    exportToExcel(item.produtos_vendidos, `Detalhes_${item.nome_insumo}`);
+                });
+            }
+
+            function exportToExcel(data, fileName) {
+                Swal.fire({
+                    title: 'Exportar para Excel?',
+                    text: 'Você deseja exportar os dados para um arquivo Excel?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sim, exportar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, fileName);
+                        XLSX.writeFile(wb, `${fileName}.xlsx`);
+
+                        Swal.fire({
+                            title: 'Exportação Concluída!',
+                            text: 'O arquivo foi exportado com sucesso.',
+                            icon: 'success'
+                        });
+                    }
+                });
+            }
+
+            $('#btnExportarTabela').on('click', function () {
+                const rows = [];
+                $('#relatorioTable tbody tr').each(function () {
+                    const cols = $(this).find('td');
+                    rows.push({
+                        "Código Insumo": $(cols[0]).text(),
+                        "Nome Insumo": $(cols[1]).text(),
+                        "Venda Insumos": $(cols[2]).text()
+                    });
+                });
+                exportToExcel(rows, "Relatorio_Vendas");
+            });
+
+            // Fetch data on load
+            fetchAndRenderData();
+        });
+    </script>
+
+</body>
+
+</html>

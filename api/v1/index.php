@@ -69,6 +69,15 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro group_id ausente'];
                 }
                 break;
+            case 'getSalesByInsumos':
+                if (isset($requestData['system_unit_id'], $requestData['data'])) {
+                    $response = BiController::getSalesByInsumos($requestData['system_unit_id'], $requestData['data']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou data ausentes'];
+                }
+                break;
+
             case 'registerJobExecution':
                 if (isset($requestData['nome_job'], $requestData['system_unit_id'], $requestData['custom_code'], $requestData['inicio'])) {
                     $response = BiController::registerJobExecution($requestData);

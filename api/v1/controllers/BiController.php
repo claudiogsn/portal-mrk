@@ -486,6 +486,80 @@ class BiController {
         }
     }
 
+    public static function getSalesByInsumos ($systemUnitId, $data)
+    {
+        global $pdo;
+
+        try {
+            // Consulta os produtos vendidos
+            $stmt = $pdo->prepare("SELECT system_unit_id, cod_material AS produto, quantidade AS qtde, data_movimento AS data
+                                FROM _bi_sales
+                                WHERE system_unit_id = :systemUnitId AND data_movimento = :data");
+            $stmt->execute([
+                ':systemUnitId' => $systemUnitId,
+                ':data' => $data
+            ]);
+
+            $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (empty($produtosVendas)) {
+                return ["error" => "Nenhuma movimentação encontrada para a unidade e data informadas."];
+            }
+
+            // Obter IDs dos produtos vendidos
+            $produtosVendidosIds = array_map(function ($produto) {
+                return $produto['produto'];
+            }, $produtosVendas);
+
+            // Consulta insumos relacionados aos produtos vendidos
+            $placeholders = implode(',', array_fill(0, count($produtosVendidosIds), '?'));
+
+            $stmtInsumos = $pdo->prepare("SELECT DISTINCT insumo_id, p.nome AS nome_insumo
+                                      FROM compositions c
+                                      JOIN products p ON p.codigo = c.insumo_id AND p.system_unit_id = c.system_unit_id
+                                      WHERE c.system_unit_id = ? AND c.product_id IN ($placeholders)");
+            $stmtInsumos->execute(array_merge([$systemUnitId], $produtosVendidosIds));
+            $insumos = $stmtInsumos->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($insumos)) {
+                return ["error" => "Nenhum insumo relacionado encontrado para os produtos vendidos."];
+            }
+
+            $result = [];
+
+            foreach ($insumos as $insumo) {
+                // Obter detalhes dos produtos vendidos que utilizam o insumo
+                $stmtProdutos = $pdo->prepare("SELECT c.product_id AS codigo_produto, p.nome AS nome_produto, c.quantity AS quantidade_insumo, 
+                                                  s.quantidade AS quantidade_venda_produto, (c.quantity * s.quantidade) AS uso_insumo
+                                           FROM compositions c
+                                           JOIN _bi_sales s ON c.product_id = s.cod_material AND c.system_unit_id = s.system_unit_id
+                                           JOIN products p ON p.codigo = s.cod_material AND p.system_unit_id = s.system_unit_id
+                                           WHERE c.system_unit_id = :systemUnitId AND c.insumo_id = :insumoId AND s.data_movimento = :data");
+                $stmtProdutos->execute([
+                    ':systemUnitId' => $systemUnitId,
+                    ':insumoId' => $insumo['insumo_id'],
+                    ':data' => $data
+                ]);
+
+                $produtosVendidos = $stmtProdutos->fetchAll(PDO::FETCH_ASSOC);
+
+                $totalUsoInsumo = array_reduce($produtosVendidos, function ($carry, $produto) {
+                    return $carry + $produto['uso_insumo'];
+                }, 0);
+
+                $result[] = [
+                    "codigo_insumo" => $insumo['insumo_id'],
+                    "nome_insumo" => $insumo['nome_insumo'],
+                    "sale_insumos" => number_format($totalUsoInsumo, 2, '.', ''),
+                    "produtos_vendidos" => $produtosVendidos
+                ];
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            return ["error" => "Erro ao processar os dados: " . $e->getMessage()];
+        }
+    }
+
 
 }
 
