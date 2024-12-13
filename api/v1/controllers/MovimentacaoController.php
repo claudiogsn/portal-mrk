@@ -34,6 +34,38 @@ class MovimentacaoController {
         return $movimentacao;
     }
 
+    public static function getMovsByProd($unit_id, $data, $produto) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+            m.system_unit_id,
+            COALESCE(m.system_unit_id_destino, 'Destino Não Informado') AS system_unit_id_destino,
+            m.doc,
+            m.tipo,
+            m.tipo_mov,
+            m.produto,
+            p.nome AS nome_produto,
+            ROUND(m.quantidade, 2) AS quantidade
+        FROM 
+            movimentacao m
+        JOIN 
+            products p
+        ON 
+            m.produto = p.codigo
+            AND m.system_unit_id = p.system_unit_id
+        WHERE 
+            m.system_unit_id = :unit_id
+            AND m.data = :data
+            AND m.produto = :produto;");
+
+        $stmt->bindParam(':unit_id', $unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(':data', $data, PDO::PARAM_STR);
+        $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 
     public static function efetivarTransacoes($systemUnitId, $doc)
     {

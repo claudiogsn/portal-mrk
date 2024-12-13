@@ -77,6 +77,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou data ausentes'];
                 }
                 break;
+            case 'getMovsByProd':
+                if (isset($requestData['system_unit_id'], $requestData['data'], $requestData['product'])) {
+                    $response = MovimentacaoController::getMovsByProd($requestData['system_unit_id'], $requestData['data'], $requestData['product']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou data ausentes'];
+                }
+                break;
 
             case 'registerJobExecution':
                 if (isset($requestData['nome_job'], $requestData['system_unit_id'], $requestData['custom_code'], $requestData['inicio'])) {

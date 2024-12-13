@@ -56,6 +56,27 @@
     .bg-orange {
         background-color: #ff9800 !important;
     }
+    .timeline-item {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    .timeline-item.entrada {
+        background-color: #d4edda;
+        border-left: 5px solid #28a745;
+    }
+    .timeline-item.saida {
+        background-color: #f8d7da;
+        border-left: 5px solid #dc3545;
+    }
+    .timeline-item.balanco {
+        background-color: #fefefe;
+        border-left: 5px solid #6c757d;
+    }
+    .timeline-label {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
 </style>
 
 </head>
@@ -109,9 +130,6 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="detailsModalLabel">Difenças de Estoque</h5>
-                    <!-- <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button> -->
                 </div>
                 <div class="modal-body">
                     <div id="modalContentGrid">
@@ -121,6 +139,24 @@
                 <div class="modal-footer">
                     <button id="exportToExcel" class="btn btn-success">Exportar para Excel</button>
                     <button id="confirmDifferences" class="btn btn-primary">Confirmar Diferenças</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="timelineModal" tabindex="-1" aria-labelledby="timelineModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="timelineModalLabel">Linha do Tempo do Produto</h5>
+                </div>
+                <div class="modal-body">
+                    <div id="timelineContent">
+                        <!-- Linha do tempo será carregada aqui -->
+                    </div>
+                </div>
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
                 </div>
             </div>
@@ -213,7 +249,7 @@
                     });
                 } else {
                     currentDetails = response.data.data; // Armazena os detalhes para exportação
-                    renderDetailsGrid(currentDetails);
+                    renderDetailsGrid(currentDetails, date);
 
                     document.getElementById('confirmDifferences').onclick = () => {
                         Swal.fire({
@@ -243,7 +279,7 @@
             }
         }
 
-        function renderDetailsGrid(details) {
+        function renderDetailsGrid(details, date) {
             const modalContentGrid = document.getElementById('modalContentGrid');
             modalContentGrid.innerHTML = '';
 
@@ -262,7 +298,7 @@
                         <th>Saldo Final</th>
                         <th>Qtd. Balanço</th>
                         <th>Diferença</th>
-                        <th>Status</th>
+                        <th>Ações</th>
                     </tr>
                 `;
                 table.appendChild(thead);
@@ -279,7 +315,7 @@
                         <td>${detail.contagem_ideal}</td>
                         <td>${detail.contagem_realizada}</td>
                         <td>${detail.diferenca}</td>
-                        <td>${detail.status_dif === 0 ? 'OK' : 'Diferença'}</td>
+                        <td><button class="btn btn-info btn-sm" onclick="openTimelineModal('${detail.produto}', '${date}')">Detalhes</button></td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -289,6 +325,66 @@
             } else {
                 modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
             }
+        }
+
+        window.openTimelineModal = async function (product, date) {
+            $('#timelineModal').on('hidden.bs.modal', function () {
+            $('body').addClass('modal-open'); // Restaura a classe necessária para manter o modal `detailsModal` funcional
+        });
+            Swal.fire({
+                title: 'Carregando...',
+                text: 'Aguarde enquanto carregamos a linha do tempo.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getMovsByProd',
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        data: date,
+                        product: product
+                    }
+                });
+
+                Swal.close();
+                if (response.data && Array.isArray(response.data)) {
+                    renderTimeline(response.data);
+                    $('#timelineModal').modal('show');
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Erro ao carregar os dados da linha do tempo.'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Erro ao carregar a linha do tempo.'
+                });
+            }
+        };
+
+        function renderTimeline(movements) {
+            const timelineContent = document.getElementById('timelineContent');
+            timelineContent.innerHTML = '';
+
+            movements.forEach(movement => {
+                const listItem = document.createElement('div');
+                listItem.className = `timeline-item ${movement.tipo_mov}`;
+                listItem.innerHTML = `
+                    <div class="timeline-label">${movement.tipo_mov.toUpperCase()}</div>
+                    <div><strong>Produto:</strong> ${movement.nome_produto}</div>
+                    <div><strong>Quantidade:</strong> ${movement.quantidade}</div>
+                    <div><strong>Documento:</strong> ${movement.doc}</div>
+                    <div><strong>Destino:</strong> ${movement.system_unit_id_destino || 'Destino Não Informado'}</div>
+                `;
+                timelineContent.appendChild(listItem);
+            });
         }
 
         async function confirmDifferences(details, date) {
@@ -332,61 +428,6 @@
                 });
             }
         }
-
-        function exportDetailsToExcel(details, date) {
-            if (!details || details.length === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Aviso',
-                    text: 'Não há dados para exportar.'
-                });
-                return;
-            }
-
-            Swal.fire({
-                title: 'Exportar para Excel?',
-                text: 'Você deseja exportar os dados de diferenças para um arquivo Excel?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sim, exportar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Mapeia os dados para uma estrutura plana
-                    const dataToExport = details.map(detail => ({
-                        Produto: detail.produto,
-                        Nome: detail.nome_produto,
-                        'Saldo Anterior': detail.saldo_anterior,
-                        Entradas: detail.entradas,
-                        Saídas: detail.saidas,
-                        'Saldo Final': detail.contagem_ideal,
-                        'Qtd. Balanço': detail.contagem_realizada,
-                        Diferença: detail.diferenca,
-                        Status: detail.status_dif === 0 ? 'OK' : 'Diferença'
-                    }));
-
-                    // Cria uma nova planilha e adiciona os dados
-                    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-                    const workbook = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Diferenças');
-
-                    // Exporta o arquivo
-                    const fileName = `Diferencas_Estoque_${date}.xlsx`;
-                    XLSX.writeFile(workbook, fileName);
-
-                    Swal.fire({
-                        title: 'Exportação Concluída!',
-                        text: 'O arquivo foi exportado com sucesso.',
-                        icon: 'success'
-                    });
-                }
-            });
-        }
-
-        document.getElementById('exportToExcel').addEventListener('click', function () {
-            const date = document.querySelector('#detailsModal .modal-title').dataset.date; // Obtém a data do modal
-            exportDetailsToExcel(currentDetails, date);
-        });
 
         document.getElementById('searchButton').addEventListener('click', function () {
             const year = document.getElementById('yearSelect').value;
