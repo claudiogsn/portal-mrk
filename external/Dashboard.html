@@ -237,7 +237,7 @@
                 $('#vendas').text(data.Cards.Vendas);
 
                 // Preencher tabelas
-                populateTable('#ultimasMovs', data.Tables.UltimasMovs, ["id", "doc", "data", "status", "tipo_mov"]);
+                populateTable('#ultimasMovs', data.Tables.UltimasMovs, ["doc", "data", "tipo_mov"]);
                 populateTable('#rankingProdutos', data.Tables.RankingProdutos, ["codigo", "nome_produto", "total_quantidade"]);
                 populateTable('#rankingInsumos', data.Tables.RankingInsumos, ["codigo", "nome_produto", "total_quantidade"]);
 
