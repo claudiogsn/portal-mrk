@@ -52,14 +52,18 @@ class ModeloBalancoController {
             $modelo_id = $pdo->lastInsertId();
 
             // Inserir os itens associados ao modelo
-            $stmtItem = $pdo->prepare("INSERT INTO modelos_balanco_itens (id_modelo, system_unit_id, id_produto, created_at, updated_at) 
-                                   SELECT ?, ?, id, NOW(), NOW() FROM products WHERE codigo = ? AND system_unit_id = ?");
+            $stmtItem = $pdo->prepare("
+                INSERT INTO modelos_balanco_itens (id_modelo, system_unit_id, id_produto, created_at, updated_at)
+                VALUES (?, ?, ?, NOW(), NOW())
+            ");
+
             foreach ($itens as $item) {
                 if (!isset($item['codigo'])) {
                     self::sendResponse(false, "O campo 'codigo' é obrigatório para cada item.", [], 400);
                 }
                 $codigo_produto = $item['codigo'];
-                $stmtItem->execute([$modelo_id, $system_unit_id, $codigo_produto, $system_unit_id]);
+
+                $stmtItem->execute([$modelo_id, $system_unit_id, $codigo_produto]);
 
                 if ($stmtItem->rowCount() <= 0) {
                     self::sendResponse(false, "Falha ao inserir item no modelo de balanço.", [], 500);
@@ -266,7 +270,7 @@ class ModeloBalancoController {
             $stmtItens = $pdo->prepare("
             SELECT mbi.*, p.nome AS nome_produto, p.und AS und_produto, p.codigo AS codigo_produto, c.nome AS nome_categoria
             FROM modelos_balanco_itens mbi
-            LEFT JOIN products p ON mbi.id_produto = p.id AND mbi.system_unit_id = p.system_unit_id
+            LEFT JOIN products p ON mbi.id_produto = p.codigo AND mbi.system_unit_id = p.system_unit_id
             LEFT JOIN categorias c ON p.categoria = c.codigo AND p.system_unit_id = c.system_unit_id
             WHERE mbi.id_modelo = :modelo_id AND mbi.system_unit_id = :system_unit_id
         ");
