@@ -222,62 +222,79 @@
             });
         }
 
-        async function openDetailsModal(date) {
-            Swal.fire({
-                title: 'Carregando...',
-                text: 'Aguarde enquanto carregamos os detalhes.',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'GetInfoConsolidationEstoque',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        data: date
-                    }
+            async function openDetailsModal(date) {
+                Swal.fire({
+                    title: 'Carregando...',
+                    text: 'Aguarde enquanto carregamos os detalhes.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
                 });
 
-                Swal.close();
-                if (response.data.status === 'error') {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'GetInfoConsolidationEstoque',
+                        token: token,
+                        data: {
+                            system_unit_id: unitId,
+                            data: date
+                        }
+                    });
+
+                    Swal.close();
+
+                    const confirmButton = document.getElementById('confirmDifferences');
+
+                    if (response.data.status === 'error') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: response.data.message
+                        });
+                    } else if (response.data.message === 'Consolidação já realizada para este dia.') {
+                        // Esconde o botão e exibe mensagem
+                        confirmButton.style.display = 'none';
+                        currentDetails = response.data.data; // Armazena os detalhes
+                        renderDetailsGrid(currentDetails, date);
+
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Consolidação Realizada',
+                            text: 'Este dia já foi consolidado!'
+                        });
+
+                        $('#detailsModal').modal('show');
+                    } else {
+                        // Mostra o botão normalmente
+                        confirmButton.style.display = 'inline-block';
+                        currentDetails = response.data.data; // Armazena os detalhes
+                        renderDetailsGrid(currentDetails, date);
+
+                        confirmButton.onclick = () => {
+                            Swal.fire({
+                                title: 'Confirmar?',
+                                text: 'Você tem certeza que deseja confirmar as diferenças?',
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sim, confirmar!',
+                                cancelButtonText: 'Cancelar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    confirmDifferences(currentDetails, date);
+                                }
+                            });
+                        };
+
+                        $('#detailsModal').modal('show');
+                    }
+                } catch (error) {
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro',
-                        text: response.data.message
+                        text: 'Erro ao carregar os detalhes, tente novamente.'
                     });
-                } else {
-                    currentDetails = response.data.data; // Armazena os detalhes para exportação
-                    renderDetailsGrid(currentDetails, date);
-
-                    document.getElementById('confirmDifferences').onclick = () => {
-                        Swal.fire({
-                            title: 'Confirmar?',
-                            text: 'Você tem certeza que deseja confirmar as diferenças?',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Sim, confirmar!',
-                            cancelButtonText: 'Cancelar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                confirmDifferences(currentDetails, date);
-                            }
-                        });
-                    };
-
-                    const modalTitle = document.getElementById('detailsModalLabel');
-                    modalTitle.dataset.date = date; // Define a data como atributo do modal
-                    $('#detailsModal').modal('show');
                 }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Erro ao carregar os detalhes, tente novamente.'
-                });
             }
-        }
+
 
         function renderDetailsGrid(details, date) {
             const modalContentGrid = document.getElementById('modalContentGrid');

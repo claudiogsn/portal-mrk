@@ -288,21 +288,40 @@ class BiController {
             ];
         }
     }
-    public static function GetInfoConsolidationEstoque($system_unit_id,$data) {
+    public static function GetInfoConsolidationEstoque($system_unit_id, $data) {
         global $pdo;
 
         try {
-            // Consulta para verificar se existe balanço
+            // 1. Verifica se ja foi feita a consolidacao para o dia
+            $stmt = $pdo->prepare(
+                "SELECT * FROM diferencas_estoque 
+             WHERE data = :data AND system_unit_id = :system_unit_id"
+            );
+            $stmt->bindParam(':data', $data, PDO::PARAM_STR);
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $consolidated_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 2. Retorna os dados existentes se a consolidacao ja foi feita
+            if (!empty($consolidated_data)) {
+                return [
+                    'status' => 'success',
+                    'message' => 'Consolidação já realizada para este dia.',
+                    'data' => $consolidated_data
+                ];
+            }
+
+            // 3. Continua com a lógica original caso não exista consolidacao
             $stmt = $pdo->prepare(
                 "SELECT doc, produto, quantidade AS contagem_realizada
-            FROM movimentacao
-            WHERE id IN (
-                SELECT MAX(id)
-                FROM movimentacao
-                WHERE data = :data AND system_unit_id = :system_unit_id AND status = 1 AND tipo = 'b'
-                GROUP BY produto
-            )
-            ORDER BY id DESC"
+             FROM movimentacao
+             WHERE id IN (
+                 SELECT MAX(id)
+                 FROM movimentacao
+                 WHERE data = :data AND system_unit_id = :system_unit_id AND status = 1 AND tipo = 'b'
+                 GROUP BY produto
+             )
+             ORDER BY id DESC"
             );
             $stmt->bindParam(':data', $data, PDO::PARAM_STR);
             $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
@@ -329,8 +348,8 @@ class BiController {
                 // Consulta saldo inicial
                 $stmt = $pdo->prepare(
                     "SELECT codigo AS produto, saldo, nome 
-                FROM products 
-                WHERE system_unit_id = :system_unit_id AND codigo = :produto"
+                 FROM products 
+                 WHERE system_unit_id = :system_unit_id AND codigo = :produto"
                 );
                 $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
                 $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
@@ -343,38 +362,34 @@ class BiController {
                 // Consulta entradas
                 $stmt = $pdo->prepare(
                     "SELECT produto, SUM(quantidade) AS quantidade
-                FROM movimentacao
-                WHERE system_unit_id = :system_unit_id AND status = 1 AND data = :data AND produto = :produto AND tipo_mov = 'entrada'"
+                 FROM movimentacao
+                 WHERE system_unit_id = :system_unit_id AND status = 1 AND data = :data AND produto = :produto AND tipo_mov = 'entrada'"
                 );
                 $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
                 $stmt->bindParam(':data', $data, PDO::PARAM_STR);
                 $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
                 $stmt->execute();
                 $entradas_data = $stmt->fetch(PDO::FETCH_ASSOC);
-
                 $entradas = $entradas_data['quantidade'] ?? 0;
 
                 // Consulta saídas
                 $stmt = $pdo->prepare(
                     "SELECT produto, SUM(quantidade) AS quantidade
-                FROM movimentacao
-                WHERE system_unit_id = :system_unit_id AND status = 1 AND data = :data AND produto = :produto AND tipo_mov = 'saida'"
+                 FROM movimentacao
+                 WHERE system_unit_id = :system_unit_id AND status = 1 AND data = :data AND produto = :produto AND tipo_mov = 'saida'"
                 );
                 $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
                 $stmt->bindParam(':data', $data, PDO::PARAM_STR);
                 $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
                 $stmt->execute();
                 $saidas_data = $stmt->fetch(PDO::FETCH_ASSOC);
-
                 $saidas = number_format($saidas_data['quantidade'] ?? 0, 2, '.', '');
 
                 // Cálculo de movimentação e diferença
                 $saldo_final = $saldo_inicial + $entradas - $saidas;
                 $saldo_final_formatado = number_format($saldo_final, 2, '.', '');
-                $diferenca =  number_format($contagem_realizada - $saldo_final_formatado, 2, '.', '');
+                $diferenca = number_format($contagem_realizada - $saldo_final_formatado, 2, '.', '');
 
-                // Determina o status da diferença
-                $status_dif = ($diferenca === 0) ? 0 : 1;
 
                 // Adiciona os dados ao resultado
                 $result[] = [
@@ -386,13 +401,13 @@ class BiController {
                     'saidas' => $saidas,
                     'contagem_ideal' => $saldo_final_formatado,
                     'contagem_realizada' => number_format($contagem_realizada, 2, '.', ''),
-                    'diferenca' => $diferenca,
-                    'status_dif' => $status_dif
+                    'diferenca' => $diferenca
                 ];
             }
 
             return [
                 'status' => 'success',
+                'message' => 'Informações Disponiveis.',
                 'data' => $result
             ];
         } catch (Exception $e) {
@@ -402,6 +417,7 @@ class BiController {
             ];
         }
     }
+
     public static function persistStockDifferences($system_unit_id,$date, $data) {
         global $pdo;
 
