@@ -111,7 +111,7 @@ class FinanceiroContaController {
 
             $estabelecimento = $result['estabelecimento'];
 
-            // Chama o método da API para buscar as contas
+            // Chama o metodo da API para buscar as contas
             $contas = FinanceiroApiMenewController::fetchFinanceiroConta($estabelecimento, 'd');
 
             if (!$contas['success']) {

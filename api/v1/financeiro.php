@@ -75,6 +75,19 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'importarContaApi':
                 $response = FinanceiroContaController::importarContaApi($requestData['system_unit_id']);
                 break;
+            case 'importarRateiosApi':
+                $response = FinanceiroRateioController::importarRateiosApi($requestData['system_unit_id']);
+                break;
+            case 'importarFornecedoresApi':
+                $response = FinanceiroFornecedorController::importarFornecedoresApi($requestData['system_unit_id']);
+                break;
+            case 'importarClientesApi':
+                $response = FinanceiroClienteController::importarClientesApi($requestData['system_unit_id']);
+                break;
+            case 'importarPlanosApi':
+                $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
+                break;
+
 
 
 
