@@ -120,14 +120,14 @@ class FinanceiroFornecedorController {
                 $stmt->execute([
                     $system_unit_id,
                     $fornecedor['codigo'],
-                    $fornecedor['razao'],
-                    $fornecedor['nome'],
-                    $fornecedor['cnpj_cpf'],
-                    $fornecedor['plano_contas'],
-                    $fornecedor['endereco'],
-                    $fornecedor['cep'],
-                    $fornecedor['insc_estadual'],
-                    $fornecedor['fone']
+                    $fornecedor['razao'] ?? '',
+                    $fornecedor['nome'] ?? '',
+                    $fornecedor['cnpj_cpf'] ?? '',
+                    $fornecedor['plano_contas'] ?? '',
+                    $fornecedor['endereco'] ?? '',
+                    $fornecedor['cep'] ?? '',
+                    $fornecedor['insc_estadual'] ?? '',
+                    $fornecedor['fone'] ?? ''
                 ]);
             }
 

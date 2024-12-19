@@ -112,10 +112,10 @@ class FinanceiroClienteController {
                 $stmt->execute([
                     $system_unit_id,
                     $cliente['codigo'], // Código do cliente vindo da API
-                    $cliente['razao'],
-                    $cliente['nome'],
-                    $cliente['cnpj_cpf'],
-                    $cliente['plano_contas']
+                    $cliente['razao'] ?? "",
+                    $cliente['nome'] ?? "",
+                    $cliente['cnpj_cpf'] ?? "",
+                    $cliente['plano_contas'] ?? ""
                 ]);
             }
 
