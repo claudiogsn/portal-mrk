@@ -66,10 +66,10 @@ class FinanceiroPlanoController {
         }
     }
 
-    public static function listPlanos() {
+    public static function listPlanos($system_unit_id) {
         global $pdo;
 
-        $stmt = $pdo->query("SELECT * FROM financeiro_plano");
+        $stmt = $pdo->query("SELECT * FROM financeiro_plano where system_unit_id = $system_unit_id");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

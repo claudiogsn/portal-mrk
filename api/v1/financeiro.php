@@ -87,6 +87,14 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'importarPlanosApi':
                 $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
                 break;
+                case 'listPlanos':
+                    if (isset($requestData['system_unit_id'])) {
+                        $response = FinanceiroPlanoController::listPlanos($requestData['system_unit_id']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'ID do estabelecimento não informado'];
+                    }
+                break;
 
 
 
