@@ -256,7 +256,10 @@ class FinanceiroContaController {
             }
 
             // 4. Agregar valores para categorias pai
-            krsort($somaCategorias); // Ordenar do mais específico para o mais genérico
+            uksort($somaCategorias, function($a, $b) {
+                return strlen($b) <=> strlen($a);
+            });
+
             foreach ($somaCategorias as $plano => $valores) {
                 foreach ($somaCategorias as $potencialPai => $valoresPai) {
                     if ($plano !== $potencialPai && strpos($plano, $potencialPai) === 0) {
