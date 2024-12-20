@@ -130,78 +130,58 @@ class FinanceiroContaController {
                 }
 
                 foreach ($contas['contas'] as $conta) {
-                    $codigo = $conta['id'];
+                    $stmtInsert = $pdo->prepare(
+                        "INSERT INTO financeiro_conta (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+                    ON DUPLICATE KEY UPDATE 
+                    nome = VALUES(nome), 
+                    entidade = VALUES(entidade), 
+                    cgc = VALUES(cgc), 
+                    tipo = VALUES(tipo), 
+                    doc = VALUES(doc), 
+                    emissao = VALUES(emissao), 
+                    vencimento = VALUES(vencimento), 
+                    baixa_dt = VALUES(baixa_dt), 
+                    valor = VALUES(valor), 
+                    plano_contas = VALUES(plano_contas), 
+                    banco = VALUES(banco), 
+                    obs = VALUES(obs), 
+                    inc_ope = VALUES(inc_ope), 
+                    bax_ope = VALUES(bax_ope), 
+                    comp_dt = VALUES(comp_dt), 
+                    adic = VALUES(adic), 
+                    comissao = VALUES(comissao), 
+                    local = VALUES(local), 
+                    cheque = VALUES(cheque), 
+                    dt_cheque = VALUES(dt_cheque), 
+                    segmento = VALUES(segmento)"
+                    );
 
-                    // Verifica se a conta já existe
-                    $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM financeiro_conta WHERE system_unit_id = :system_unit_id AND codigo = :codigo");
-                    $stmtCheck->execute([
-                        ':system_unit_id' => $system_unit_id,
-                        ':codigo' => $codigo
+                    $stmtInsert->execute([
+                        $system_unit_id,
+                        $conta['id'],
+                        $conta['nome'],
+                        $conta['entidade'],
+                        $conta['cgc'] ?? '',
+                        $conta['tipo'],
+                        $conta['doc'],
+                        $conta['emissao'],
+                        $conta['vencimento'],
+                        $conta['baixa_dt'],
+                        $conta['valor'],
+                        $conta['plano_contas'],
+                        $conta['banco'],
+                        $conta['obs'],
+                        $conta['inc_ope'],
+                        $conta['bax_ope'],
+                        $conta['comp_dt'],
+                        $conta['adic'],
+                        $conta['comissao'],
+                        $conta['local'],
+                        $conta['cheque'],
+                        $conta['dt_cheque'],
+                        $conta['segmento']
                     ]);
-
-                    if ($stmtCheck->fetchColumn() > 0) {
-                        // Atualiza a conta existente
-                        $stmtUpdate = $pdo->prepare(
-                            "UPDATE financeiro_conta SET nome = ?, entidade = ?, cgc = ?, tipo = ?, doc = ?, emissao = ?, vencimento = ?, baixa_dt = ?, valor = ?, plano_contas = ?, banco = ?, obs = ?, inc_ope = ?, bax_ope = ?, comp_dt = ?, adic = ?, comissao = ?, local = ?, cheque = ?, dt_cheque = ?, segmento = ? WHERE system_unit_id = ? AND codigo = ?"
-                        );
-
-                        $stmtUpdate->execute([
-                            $conta['nome'],
-                            $conta['entidade'],
-                            $conta['cgc'] ?? '',
-                            $conta['tipo'],
-                            $conta['doc'],
-                            $conta['emissao'],
-                            $conta['vencimento'],
-                            $conta['baixa_dt'],
-                            $conta['valor'],
-                            $conta['plano_contas'],
-                            $conta['banco'],
-                            $conta['obs'],
-                            $conta['inc_ope'],
-                            $conta['bax_ope'],
-                            $conta['comp_dt'],
-                            $conta['adic'],
-                            $conta['comissao'],
-                            $conta['local'],
-                            $conta['cheque'],
-                            $conta['dt_cheque'],
-                            $conta['segmento'],
-                            $system_unit_id,
-                            $codigo
-                        ]);
-                    } else {
-                        // Insere nova conta
-                        $stmtInsert = $pdo->prepare(
-                            "INSERT INTO financeiro_conta (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                        );
-
-                        $stmtInsert->execute([
-                            $system_unit_id,
-                            $codigo,
-                            $conta['nome'],
-                            $conta['entidade'],
-                            $conta['cgc'] ?? '',
-                            $conta['tipo'],
-                            $conta['doc'],
-                            $conta['emissao'],
-                            $conta['vencimento'],
-                            $conta['baixa_dt'],
-                            $conta['valor'],
-                            $conta['plano_contas'],
-                            $conta['banco'],
-                            $conta['obs'],
-                            $conta['inc_ope'],
-                            $conta['bax_ope'],
-                            $conta['comp_dt'],
-                            $conta['adic'],
-                            $conta['comissao'],
-                            $conta['local'],
-                            $conta['cheque'],
-                            $conta['dt_cheque'],
-                            $conta['segmento']
-                        ]);
-                    }
                 }
             }
 
@@ -210,6 +190,7 @@ class FinanceiroContaController {
             return ["success" => false, "message" => $e->getMessage()];
         }
     }
+
 
 
     public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {
