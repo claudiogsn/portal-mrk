@@ -133,7 +133,7 @@ class FinanceiroContaController {
                     $conta['id'], // Usando o ID da API como código
                     $conta['nome'],
                     $conta['entidade'],
-                    $conta['cgc'],
+                    $conta['cgc'] ?? '',
                     $conta['tipo'],
                     $conta['doc'],
                     $conta['emissao'],

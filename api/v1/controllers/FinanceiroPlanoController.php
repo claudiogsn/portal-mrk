@@ -91,7 +91,7 @@ class FinanceiroPlanoController {
 
             // Chama o método da API para buscar os planos
             $planos = FinanceiroApiMenewController::fetchFinanceiroPlano($estabelecimento);
-            
+
             if (!$planos['success']) {
                 throw new Exception("Erro ao buscar planos da API: " . $planos['message']);
             }
