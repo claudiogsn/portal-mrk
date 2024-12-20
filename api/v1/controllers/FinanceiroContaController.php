@@ -255,7 +255,19 @@ class FinanceiroContaController {
                 $somaCategorias[$plano][$mesIndex] += $categoria['valor'];
             }
 
-            // 4. Adicionar descrições das categorias
+            // 4. Agregar valores para categorias pai
+            krsort($somaCategorias); // Ordenar do mais específico para o mais genérico
+            foreach ($somaCategorias as $plano => $valores) {
+                foreach ($somaCategorias as $potencialPai => $valoresPai) {
+                    if ($plano !== $potencialPai && strpos($plano, $potencialPai) === 0) {
+                        foreach ($valores as $mes => $valor) {
+                            $somaCategorias[$potencialPai][$mes] += $valor;
+                        }
+                    }
+                }
+            }
+
+            // 5. Adicionar descrições das categorias
             $stmtPlano = $pdo->prepare("SELECT codigo, descricao FROM financeiro_plano WHERE system_unit_id = :system_unit_id");
             $stmtPlano->execute([':system_unit_id' => $system_unit_id]);
 
