@@ -12,7 +12,10 @@ header("Access-Control-Allow-Origin: *"); // Permitir todas as origens
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Métodos permitidos
 header("Access-Control-Allow-Headers: Content-Type, Authorization"); // Cabeçalhos permitidos
 header("Access-Control-Allow-Origin: http://localhost:3000");
+header('Access-Control-Allow-Origin: http://localhost');
 header('Content-Type: application/json; charset=utf-8');
+
+
 
 
 require_once 'controllers/FinanceiroPlanoController.php';
