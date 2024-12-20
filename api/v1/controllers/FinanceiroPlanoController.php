@@ -91,18 +91,19 @@ class FinanceiroPlanoController {
 
             // Chama o método da API para buscar os planos
             $planos = FinanceiroApiMenewController::fetchFinanceiroPlano($estabelecimento);
-
+            
             if (!$planos['success']) {
                 throw new Exception("Erro ao buscar planos da API: " . $planos['message']);
             }
 
             foreach ($planos['planos'] as $plano) {
-                $stmt = $pdo->prepare("INSERT INTO financeiro_plano (codigo, descricao) 
-                                        VALUES (?, ?) 
+                $stmt = $pdo->prepare("INSERT INTO financeiro_plano (system_unit_id,codigo, descricao) 
+                                        VALUES (?,?, ?) 
                                         ON DUPLICATE KEY UPDATE 
                                             descricao = VALUES(descricao)");
 
                 $stmt->execute([
+                    $system_unit_id,
                     $plano['codigo'],
                     $plano['descricao']
                 ]);
