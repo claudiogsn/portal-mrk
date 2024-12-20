@@ -102,9 +102,11 @@ class FinanceiroPlanoController {
                                         ON DUPLICATE KEY UPDATE 
                                             descricao = VALUES(descricao)");
 
+                $plano_contas = '0'.$plano['codigo'];
+
                 $stmt->execute([
                     $system_unit_id,
-                    $plano['codigo'],
+                    $plano_contas,
                     $plano['descricao']
                 ]);
             }

@@ -157,6 +157,8 @@ class FinanceiroContaController {
                     segmento = VALUES(segmento)"
                     );
 
+                    $plano_contas = '0'.$conta['plano_contas'];
+
                     $stmtInsert->execute([
                         $system_unit_id,
                         $conta['id'],
@@ -169,7 +171,7 @@ class FinanceiroContaController {
                         $conta['vencimento'],
                         $conta['baixa_dt'],
                         $conta['valor'],
-                        $conta['plano_contas'],
+                        $plano_contas,
                         $conta['banco'],
                         $conta['obs'],
                         $conta['inc_ope'],
