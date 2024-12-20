@@ -1,121 +1,165 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planos de Contas</title>
+    <title>DRE Gerencial</title>
+
+    <!-- CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.0/axios.min.js"></script>
+    <style>
+        .table-container {
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .fixed-column {
+            position: sticky;
+            left: 0;
+            background-color: white;
+            z-index: 2;
+        }
+
+        .total-column {
+            position: sticky;
+            right: 0;
+            background-color: white;
+            z-index: 2;
+        }
+    </style>
 </head>
-<body>
-<div class="container my-5">
-    <h1 class="text-center">Planos de Contas</h1>
-    <div id="planos-container" class="mt-4">
-        <!-- Os planos de contas serão carregados aqui -->
+
+<body class="bg-light">
+    <div class="container py-4">
+        <h2 class="mb-4">DRE Gerencial</h2>
+
+        <!-- Filtros -->
+        <div class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="ano" class="form-label">Período</label>
+                    <select id="ano" class="form-select">
+                        <option value="2024" selected>2024</option>
+                        <option value="2023">2023</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="visao" class="form-label">Visão</label>
+                    <select id="visao" class="form-select">
+                        <option value="mensal" selected>Mensal</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="regime" class="form-label">Regime</label>
+                    <select id="regime" class="form-select">
+                        <option value="competencia" selected>Competência</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button id="gerarRelatorio" class="btn btn-success w-100">Gerar Relatório</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">DRE Gerencial</h5>
+                <p class="text-muted">De 01/01/2024 à 31/12/2024 - Visão Mensal - Regime Competência</p>
+            </div>
+            <div class="card-body table-container">
+                <table class="table table-bordered">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="fixed-column">Categoria</th>
+                            <th>Jan</th>
+                            <th>Feb</th>
+                            <th>Mar</th>
+                            <th>Apr</th>
+                            <th>May</th>
+                            <th>Jun</th>
+                            <th>Jul</th>
+                            <th>Aug</th>
+                            <th>Sep</th>
+                            <th>Oct</th>
+                            <th>Nov</th>
+                            <th>Dec</th>
+                            <th class="total-column">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dreTableBody">
+                        <!-- Dados dinâmicos -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        const container = document.getElementById('planos-container');
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.getElementById('gerarRelatorio').addEventListener('click', () => {
+            const year = document.getElementById('ano').value;
 
-        // Função para montar a estrutura hierárquica dos planos de contas
-        function montarArvore(planos) {
-            const mapa = {};
+            const baseUrl = window.location.hostname !== 'localhost' ?
+                'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' :
+                'http://localhost/portal-mrk/api/v1/financeiro.php';
 
-            planos.forEach(plano => {
-                mapa[plano.codigo] = { ...plano, filhos: [] };
-            });
-
-            const raiz = [];
-            planos.forEach(plano => {
-                const parentCode = Math.floor(plano.codigo / 100) || 0;
-                if (mapa[parentCode]) {
-                    mapa[parentCode].filhos.push(mapa[plano.codigo]);
-                } else {
-                    raiz.push(mapa[plano.codigo]);
+            const requestData = {
+                method: 'getDreGerencial',
+                token: '8eb46fac2c82fa6d46a8b7edcfda1eb7',
+                data: {
+                    system_unit_id: 11,
+                    data_inicial: `${year}-01-01`,
+                    data_final: `${year}-12-31`
                 }
-            });
+            };
 
-            return raiz;
-        }
-
-        // Função para renderizar os planos de contas com dropdowns
-        function renderizarPlano(plano) {
-            const li = document.createElement('li');
-            li.className = 'list-group-item';
-
-            const detalhes = document.createElement('div');
-            detalhes.className = 'd-flex justify-content-between align-items-center';
-
-            const descricao = document.createElement('span');
-            descricao.textContent = `${plano.codigo} - ${plano.descricao}`;
-
-            detalhes.appendChild(descricao);
-
-            if (plano.filhos.length > 0) {
-                const button = document.createElement('button');
-                button.className = 'btn btn-sm btn-primary';
-                button.textContent = 'Expandir';
-
-                const ulFilhos = document.createElement('ul');
-                ulFilhos.className = 'list-group mt-2 ms-3';
-                ulFilhos.style.display = 'none';
-
-                plano.filhos.forEach(filho => {
-                    ulFilhos.appendChild(renderizarPlano(filho));
-                });
-
-                button.addEventListener('click', () => {
-                    if (ulFilhos.style.display === 'none') {
-                        ulFilhos.style.display = 'block';
-                        button.textContent = 'Retrair';
+            axios.post(baseUrl, requestData)
+                .then(response => {
+                    if (response.data.success) {
+                        renderTable(response.data.data.categories);
                     } else {
-                        ulFilhos.style.display = 'none';
-                        button.textContent = 'Expandir';
+                        console.error('Erro ao gerar o relatório:', response.data.message);
                     }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                });
+        });
+
+        function renderTable(categories) {
+            const tbody = document.getElementById('dreTableBody');
+            tbody.innerHTML = '';
+
+            categories.forEach(category => {
+                const row = document.createElement('tr');
+
+                // Categoria
+                const categoryCell = document.createElement('td');
+                categoryCell.classList.add('fixed-column');
+                categoryCell.textContent = category.name;
+                row.appendChild(categoryCell);
+
+                // Valores mensais
+                category.monthly_values.forEach(value => {
+                    const cell = document.createElement('td');
+                    cell.textContent = `R$ ${value.toFixed(2)}`;
+                    row.appendChild(cell);
                 });
 
-                detalhes.appendChild(button);
-                li.appendChild(detalhes);
-                li.appendChild(ulFilhos);
-            } else {
-                li.appendChild(detalhes);
-            }
+                // Total
+                const totalCell = document.createElement('td');
+                totalCell.classList.add('total-column');
+                const total = category.monthly_values.reduce((sum, val) => sum + val, 0);
+                totalCell.textContent = `R$ ${total.toFixed(2)}`;
+                row.appendChild(totalCell);
 
-            return li;
+                tbody.appendChild(row);
+            });
         }
-
-        // Função para carregar e exibir os planos de contas
-        async function carregarPlanos() {
-            try {
-                const response = await axios.post('http://localhost/portal-mrk/api/v1/financeiro.php', {
-                    method: 'listPlanos',
-                    token: '8eb46fac2c82fa6d46a8b7edcfda1eb7',
-                    data: {
-                        system_unit_id: '9'
-                    }
-                });
-
-                const planos = response.data; // Substitua pelo campo correto da resposta
-                const arvore = montarArvore(planos);
-
-                const ul = document.createElement('ul');
-                ul.className = 'list-group';
-                arvore.forEach(plano => {
-                    ul.appendChild(renderizarPlano(plano));
-                });
-
-                container.appendChild(ul);
-            } catch (error) {
-                console.error('Erro ao carregar os planos de contas:', error);
-                container.innerHTML = '<div class="alert alert-danger">Erro ao carregar os planos de contas.</div>';
-            }
-        }
-
-        await carregarPlanos();
-    });
-</script>
+    </script>
 </body>
+
 </html>
