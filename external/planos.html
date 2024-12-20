@@ -15,11 +15,19 @@
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
+          .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
         .table-container {
             overflow-x: auto;
             white-space: nowrap;
@@ -42,13 +50,48 @@
         .header-card {
             margin-bottom: 20px;
         }
+
+        .parent-category {
+            font-weight: bold;
+            background-color: #dfe6e9; /* Default pastel color */
+        }
+
+        .parent-category:nth-child(1n) {
+            background-color: #dfe6e9; /* Light gray */
+        }
+
+        .parent-category:nth-child(2n) {
+            background-color: #b2bec3; /* Slightly darker gray */
+        }
+
+        .parent-category:nth-child(3n) {
+            background-color: #74b9ff; /* Light blue */
+        }
+
+        .parent-category:nth-child(4n) {
+            background-color: #81ecec; /* Light cyan */
+        }
     </style>
 </head>
 
 <body class="theme-blue">
 
     <!-- Carregador -->
-   
+    <div class="page-loader-wrapper">
+        <div class="loader">
+            <div class="preloader">
+                <div class="spinner-layer pl-blue">
+                    <div class="circle-clipper left">
+                        <div class="circle"></div>
+                    </div>
+                    <div class="circle-clipper right">
+                        <div class="circle"></div>
+                    </div>
+                </div>
+            </div>
+            <p>Aguarde...</p>
+        </div>
+    </div>
 
     <!-- Conteúdo -->
     <div class="container-fluid">
@@ -62,16 +105,6 @@
                         <option value="2023">2023</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <select id="visao" class="form-control">
-                        <option value="mensal" selected>Mensal</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select id="regime" class="form-control">
-                        <option value="competencia" selected>Competência</option>
-                    </select>
-                </div>
                 <div class="col-md-3 text-right">
                     <button id="btnGerarRelatorio" class="btn btn-success">Gerar Relatório</button>
                 </div>
@@ -82,7 +115,6 @@
         <div class="card">
             <div class="header">
                 <h2>DRE Gerencial</h2>
-                <p>De 01/01/2024 à 31/12/2024 - Visão Mensal - Regime Competência</p>
             </div>
             <div class="body table-responsive">
                 <div class="table-container">
@@ -115,31 +147,38 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="bsb/plugins/sweetalert/sweetalert.min.js"></script>
     <script>
-        $(document).ready(function () {
+        document.addEventListener('DOMContentLoaded', () => {
             const baseUrl = window.location.hostname !== 'localhost' ?
                 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' :
                 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php';
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const unitId = urlParams.get('unit_id');
+            const token = new URLSearchParams(window.location.search).get('token');
+            const unitId = new URLSearchParams(window.location.search).get('unit_id');
 
-            $('#btnGerarRelatorio').on('click', function () {
-                const ano = $('#ano').val();
+            function hidePageLoader() {
+                const loader = document.querySelector('.page-loader-wrapper');
+                if (loader) {
+                    loader.style.display = 'none';
+                }
+            }
+
+            // Ocultar o loader ao carregar a página
+            hidePageLoader();
+
+            document.getElementById('btnGerarRelatorio').addEventListener('click', async () => {
+                const ano = document.getElementById('ano').value;
                 const dataInicial = `${ano}-01-01`;
                 const dataFinal = `${ano}-12-31`;
 
-                swal({
-                    title: "Aguarde...",
-                    text: "Estamos gerando o relatório.",
-                    icon: "info",
-                    buttons: false,
-                    closeOnClickOutside: false
+                Swal.fire({
+                    title: 'Aguarde...',
+                    html: 'Carregando os dados, por favor espere.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
                 });
 
                 const requestData = {
@@ -152,44 +191,62 @@
                     }
                 };
 
-                axios.post(baseUrl, requestData)
-                    .then(response => {
-                        if (response.data.success) {
-                            swal.close();
-                            renderTable(response.data.data.categories);
-                        } else {
-                            swal("Erro", response.data.message, "error");
-                        }
-                    })
-                    .catch(() => {
-                        swal("Erro", "Não foi possível gerar o relatório.", "error");
+                try {
+                    const response = await axios.post(baseUrl, requestData);
+                    if (response.data.success) {
+                        Swal.close();
+                        renderTable(response.data.data.categories);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: response.data.message
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Erro ao buscar os dados.'
                     });
+                }
             });
 
             function renderTable(categories) {
-                const tbody = $('#dreTableBody');
-                tbody.empty();
+                const tbody = document.getElementById('dreTableBody');
+                tbody.innerHTML = '';
 
                 categories.forEach(category => {
-                    const row = $('<tr></tr>');
+                    const row = document.createElement('tr');
 
                     // Categoria
-                    const categoryCell = $('<td class="fixed-column"></td>').text(category.name);
-                    row.append(categoryCell);
+                    const categoryCell = document.createElement('td');
+                    categoryCell.classList.add('fixed-column');
+
+                    // Adicionar estilo especial para categorias principais
+                    if (category.code.length === 2) {
+                        row.classList.add('parent-category');
+                    }
+
+                    categoryCell.textContent = `${category.code} - ${category.name}`;
+                    row.appendChild(categoryCell);
 
                     // Valores mensais
                     const monthlyValues = Array.isArray(category.monthly_values) ? category.monthly_values : Object.values(category.monthly_values);
                     monthlyValues.forEach(value => {
-                        const cell = $('<td></td>').text(`R$ ${value.toFixed(2)}`);
-                        row.append(cell);
+                        const cell = document.createElement('td');
+                        cell.textContent = `R$ ${value.toFixed(2)}`;
+                        row.appendChild(cell);
                     });
 
                     // Total
                     const total = monthlyValues.reduce((sum, val) => sum + val, 0);
-                    const totalCell = $('<td class="total-column"></td>').text(`R$ ${total.toFixed(2)}`);
-                    row.append(totalCell);
+                    const totalCell = document.createElement('td');
+                    totalCell.classList.add('total-column');
+                    totalCell.textContent = `R$ ${total.toFixed(2)}`;
+                    row.appendChild(totalCell);
 
-                    tbody.append(row);
+                    tbody.appendChild(row);
                 });
             }
         });
