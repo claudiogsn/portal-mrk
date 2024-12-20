@@ -1,5 +1,12 @@
 <?php
 
+ini_set('post_max_size', '100M');
+ini_set('upload_max_filesize', '100M');
+ini_set('max_execution_time', '600');
+ini_set('max_input_time', '600');
+ini_set('memory_limit', '512M');
+
+
 require_once __DIR__ . '/../database/db.php';
 
 
@@ -153,4 +160,107 @@ class FinanceiroContaController {
             return ["success" => false, "message" => $e->getMessage()];
         }
     }
+
+    public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {
+        global $pdo;
+
+        try {
+            // 1. Consultar as contas dentro do período
+            $stmt = $pdo->prepare("SELECT codigo, plano_contas, valor, emissao FROM financeiro_conta WHERE system_unit_id = :system_unit_id AND emissao BETWEEN :data_inicial AND :data_final");
+            $stmt->execute([
+                ':system_unit_id' => $system_unit_id,
+                ':data_inicial' => $data_inicial,
+                ':data_final' => $data_final
+            ]);
+
+            $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $categorias = [];
+
+            foreach ($contas as $conta) {
+                // 2. Verificar se existe rateio para a conta
+                $stmtRateio = $pdo->prepare("SELECT idconta AS codigo, plano_contas, valor, emissao FROM financeiro_rateio WHERE system_unit_id = :system_unit_id AND idconta = :conta");
+                $stmtRateio->execute([
+                    ':system_unit_id' => $system_unit_id,
+                    ':conta' => $conta['codigo']
+                ]);
+
+                $rateios = $stmtRateio->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($rateios)) {
+                    // Substituir a conta pelo rateio
+                    foreach ($rateios as $rateio) {
+                        $categorias[] = [
+                            'plano_contas' => $rateio['plano_contas'],
+                            'valor' => $rateio['valor'],
+                            'emissao' => $rateio['emissao']
+                        ];
+                    }
+                } else {
+                    // Adicionar a conta original se não houver rateio
+                    $categorias[] = [
+                        'plano_contas' => $conta['plano_contas'],
+                        'valor' => $conta['valor'],
+                        'emissao' => $conta['emissao']
+                    ];
+                }
+            }
+
+            // 3. Somar valores por categoria e por mês
+            $somaCategorias = [];
+
+            foreach ($categorias as $categoria) {
+                $plano = $categoria['plano_contas'];
+                $mes = date('Y-m', strtotime($categoria['emissao']));
+
+                if (!isset($somaCategorias[$plano])) {
+                    $somaCategorias[$plano] = array_fill_keys(range(1, 12), 0);
+                }
+
+                $mesIndex = (int)date('m', strtotime($categoria['emissao']));
+                $somaCategorias[$plano][$mesIndex] += $categoria['valor'];
+            }
+
+            // 4. Adicionar descrições das categorias
+            $stmtPlano = $pdo->prepare("SELECT codigo, descricao FROM financeiro_plano WHERE system_unit_id = :system_unit_id");
+            $stmtPlano->execute([':system_unit_id' => $system_unit_id]);
+
+            $planos = $stmtPlano->fetchAll(PDO::FETCH_ASSOC);
+
+            $resultadoFinal = [
+                'title' => 'DRE Gerencial',
+                'period' => [
+                    'start' => $data_inicial,
+                    'end' => $data_final,
+                    'view' => 'Mensal',
+                    'regime' => 'Competência'
+                ],
+                'categories' => []
+            ];
+
+            foreach ($planos as $plano) {
+                $codigo = $plano['codigo'];
+                $descricao = $plano['descricao'];
+                $monthlyValues = isset($somaCategorias[$codigo]) ? array_values($somaCategorias[$codigo]) : array_fill(1, 12, 0);
+
+                $resultadoFinal['categories'][] = [
+                    'name' => $descricao,
+                    'code' => $codigo,
+                    'monthly_values' => $monthlyValues
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data' => $resultadoFinal
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+
 }

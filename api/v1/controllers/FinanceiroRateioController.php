@@ -1,5 +1,12 @@
 <?php
 
+ini_set('post_max_size', '100M');
+ini_set('upload_max_filesize', '100M');
+ini_set('max_execution_time', '600');
+ini_set('max_input_time', '600');
+ini_set('memory_limit', '512M');
+
+
 require_once __DIR__ . '/../database/db.php';
 
 

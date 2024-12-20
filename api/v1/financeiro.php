@@ -87,7 +87,7 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'importarPlanosApi':
                 $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
                 break;
-                case 'listPlanos':
+            case 'listPlanos':
                     if (isset($requestData['system_unit_id'])) {
                         $response = FinanceiroPlanoController::listPlanos($requestData['system_unit_id']);
                     } else {
@@ -95,6 +95,15 @@ if (isset($data['method']) && isset($data['data'])) {
                         $response = ['error' => 'ID do estabelecimento não informado'];
                     }
                 break;
+            case 'getDreGerencial':
+               if(isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])){
+                   $response = FinanceiroContaController::getDreGerencial($requestData['system_unit_id'], $requestData['data_inicial'], $requestData['data_final']);
+                }else{
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros inválidos'];
+                }
+               break;
+
 
 
 
