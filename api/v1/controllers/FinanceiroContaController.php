@@ -118,48 +118,99 @@ class FinanceiroContaController {
 
             $estabelecimento = $result['estabelecimento'];
 
-            // Chama o metodo da API para buscar as contas
-            $contas = FinanceiroApiMenewController::fetchFinanceiroConta($estabelecimento, 'd');
+            // Chama o método da API para buscar as contas (Débito e Crédito)
+            $tipos = ['d', 'c'];
+            $contasImportadas = [];
 
-            if (!$contas['success']) {
-                throw new Exception("Erro ao buscar contas da API: " . $contas['message']);
+            foreach ($tipos as $tipo) {
+                $contas = FinanceiroApiMenewController::fetchFinanceiroConta($estabelecimento, $tipo);
+
+                if (!$contas['success']) {
+                    throw new Exception("Erro ao buscar contas da API para tipo $tipo: " . $contas['message']);
+                }
+
+                foreach ($contas['contas'] as $conta) {
+                    $codigo = $conta['id'];
+
+                    // Verifica se a conta já existe
+                    $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM financeiro_conta WHERE system_unit_id = :system_unit_id AND codigo = :codigo");
+                    $stmtCheck->execute([
+                        ':system_unit_id' => $system_unit_id,
+                        ':codigo' => $codigo
+                    ]);
+
+                    if ($stmtCheck->fetchColumn() > 0) {
+                        // Atualiza a conta existente
+                        $stmtUpdate = $pdo->prepare(
+                            "UPDATE financeiro_conta SET nome = ?, entidade = ?, cgc = ?, tipo = ?, doc = ?, emissao = ?, vencimento = ?, baixa_dt = ?, valor = ?, plano_contas = ?, banco = ?, obs = ?, inc_ope = ?, bax_ope = ?, comp_dt = ?, adic = ?, comissao = ?, local = ?, cheque = ?, dt_cheque = ?, segmento = ? WHERE system_unit_id = ? AND codigo = ?"
+                        );
+
+                        $stmtUpdate->execute([
+                            $conta['nome'],
+                            $conta['entidade'],
+                            $conta['cgc'] ?? '',
+                            $conta['tipo'],
+                            $conta['doc'],
+                            $conta['emissao'],
+                            $conta['vencimento'],
+                            $conta['baixa_dt'],
+                            $conta['valor'],
+                            $conta['plano_contas'],
+                            $conta['banco'],
+                            $conta['obs'],
+                            $conta['inc_ope'],
+                            $conta['bax_ope'],
+                            $conta['comp_dt'],
+                            $conta['adic'],
+                            $conta['comissao'],
+                            $conta['local'],
+                            $conta['cheque'],
+                            $conta['dt_cheque'],
+                            $conta['segmento'],
+                            $system_unit_id,
+                            $codigo
+                        ]);
+                    } else {
+                        // Insere nova conta
+                        $stmtInsert = $pdo->prepare(
+                            "INSERT INTO financeiro_conta (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                        );
+
+                        $stmtInsert->execute([
+                            $system_unit_id,
+                            $codigo,
+                            $conta['nome'],
+                            $conta['entidade'],
+                            $conta['cgc'] ?? '',
+                            $conta['tipo'],
+                            $conta['doc'],
+                            $conta['emissao'],
+                            $conta['vencimento'],
+                            $conta['baixa_dt'],
+                            $conta['valor'],
+                            $conta['plano_contas'],
+                            $conta['banco'],
+                            $conta['obs'],
+                            $conta['inc_ope'],
+                            $conta['bax_ope'],
+                            $conta['comp_dt'],
+                            $conta['adic'],
+                            $conta['comissao'],
+                            $conta['local'],
+                            $conta['cheque'],
+                            $conta['dt_cheque'],
+                            $conta['segmento']
+                        ]);
+                    }
+                }
             }
 
-            foreach ($contas['contas'] as $conta) {
-                $stmt = $pdo->prepare("INSERT INTO financeiro_conta (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-                $stmt->execute([
-                    $system_unit_id,
-                    $conta['id'], // Usando o ID da API como código
-                    $conta['nome'],
-                    $conta['entidade'],
-                    $conta['cgc'] ?? '',
-                    $conta['tipo'],
-                    $conta['doc'],
-                    $conta['emissao'],
-                    $conta['vencimento'],
-                    $conta['baixa_dt'],
-                    $conta['valor'],
-                    $conta['plano_contas'],
-                    $conta['banco'],
-                    $conta['obs'],
-                    $conta['inc_ope'],
-                    $conta['bax_ope'],
-                    $conta['comp_dt'],
-                    $conta['adic'],
-                    $conta['comissao'],
-                    $conta['local'],
-                    $conta['cheque'],
-                    $conta['dt_cheque'],
-                    $conta['segmento']
-                ]);
-            }
-
-            return ["success" => true, "message" => "Contas importadas com sucesso"];
+            return ["success" => true, "message" => "Contas importadas ou atualizadas com sucesso"];
         } catch (Exception $e) {
             return ["success" => false, "message" => $e->getMessage()];
         }
     }
+
 
     public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {
         global $pdo;
