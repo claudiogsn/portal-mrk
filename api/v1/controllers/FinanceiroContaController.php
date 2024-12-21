@@ -299,5 +299,74 @@ class FinanceiroContaController {
     }
 
 
+    public static function getContaByMonth($system_unit_id, $month, $year, $plano_contas) {
+        global $pdo;
+
+        try {
+            $data_inicial = date("$year-$month-01");
+            $data_final = date("Y-m-t", strtotime($data_inicial));
+
+            $stmt = $pdo->prepare(
+                "SELECT 
+                fc.codigo, 
+                COALESCE(fc.doc) AS doc,
+                fc.emissao, 
+                fc.vencimento, 
+                fc.baixa_dt, 
+                fc.valor, 
+                COALESCE(fr.plano_contas, fc.plano_contas) AS plano_contas,
+                ff.nome AS nome,
+                fc.entidade,
+                CASE WHEN fr.idconta IS NOT NULL THEN 'rateio' ELSE 'conta' END AS origem
+            FROM financeiro_conta fc
+            LEFT JOIN financeiro_rateio fr ON fc.codigo = fr.idconta AND fc.system_unit_id = fr.system_unit_id
+            LEFT JOIN financeiro_fornecedor ff ON fc.entidade = ff.codigo
+            WHERE fc.system_unit_id = :system_unit_id 
+                AND fc.emissao BETWEEN :data_inicial AND :data_final
+                AND COALESCE(fr.plano_contas, fc.plano_contas) LIKE :plano_contas"
+            );
+
+            $stmt->execute([
+                ':system_unit_id' => $system_unit_id,
+                ':data_inicial' => $data_inicial,
+                ':data_final' => $data_final,
+                ':plano_contas' => $plano_contas . '%'
+            ]);
+
+            $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $resultado = array_map(function ($conta) {
+                return [
+                    'codigo' => $conta['codigo'],
+                    'nome' => $conta['nome'],
+                    'entidade' => $conta['entidade'],
+                    'cgc' => $conta['cgc'] ?? '', // Apenas se for necessário, adicionar campo CGC.
+                    'tipo' => $conta['tipo'] ?? '', // Apenas se for necessário, adicionar campo tipo.
+                    'doc' => $conta['doc'],
+                    'emissao' => $conta['emissao'],
+                    'vencimento' => $conta['vencimento'],
+                    'baixa_dt' => $conta['baixa_dt'],
+                    'valor' => $conta['valor'],
+                    'plano_contas' => $conta['plano_contas'],
+                    'origem' => $conta['origem'],
+                ];
+            }, $contas);
+
+            return [
+                'success' => true,
+                'data' => $resultado
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+
+
+
+
 
 }
