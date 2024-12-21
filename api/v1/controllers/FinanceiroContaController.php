@@ -208,7 +208,6 @@ class FinanceiroContaController {
             ]);
 
             $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
             $categorias = [];
 
             foreach ($contas as $conta) {
@@ -240,42 +239,34 @@ class FinanceiroContaController {
                 }
             }
 
-            // 3. Somar valores por categoria e por mês
-            $somaCategorias = [];
-
-            foreach ($categorias as $categoria) {
-                $plano = $categoria['plano_contas'];
-                $mes = date('Y-m', strtotime($categoria['emissao']));
-
-                if (!isset($somaCategorias[$plano])) {
-                    $somaCategorias[$plano] = array_fill_keys(range(1, 12), 0);
-                }
-
-                $mesIndex = (int)date('m', strtotime($categoria['emissao']));
-                $somaCategorias[$plano][$mesIndex] += $categoria['valor'];
-            }
-
-            // 4. Agregar valores para categorias pai
-            uksort($somaCategorias, function($a, $b) {
-                return strlen($b) <=> strlen($a);
-            });
-
-            foreach ($somaCategorias as $plano => $valores) {
-                foreach ($somaCategorias as $potencialPai => $valoresPai) {
-                    if ($plano !== $potencialPai && strpos($plano, $potencialPai) === 0) {
-                        foreach ($valores as $mes => $valor) {
-                            $somaCategorias[$potencialPai][$mes] += $valor;
-                        }
-                    }
-                }
-            }
-
-            // 5. Adicionar descrições das categorias
+            // 3. Somar valores por plano com base em LIKE
             $stmtPlano = $pdo->prepare("SELECT codigo, descricao FROM financeiro_plano WHERE system_unit_id = :system_unit_id");
             $stmtPlano->execute([':system_unit_id' => $system_unit_id]);
-
             $planos = $stmtPlano->fetchAll(PDO::FETCH_ASSOC);
 
+            $somaCategorias = [];
+
+            foreach ($planos as $plano) {
+                $codigoPlano = $plano['codigo'];
+                $descricaoPlano = $plano['descricao'];
+
+                // Inicializar valores mensais para o plano atual
+                $valoresMensais = array_fill(1, 12, 0);
+
+                foreach ($categorias as $categoria) {
+                    if (strpos($categoria['plano_contas'], $codigoPlano) === 0) {
+                        $mesIndex = (int)date('m', strtotime($categoria['emissao']));
+                        $valoresMensais[$mesIndex] += $categoria['valor'];
+                    }
+                }
+
+                $somaCategorias[$codigoPlano] = [
+                    'descricao' => $descricaoPlano,
+                    'mensal' => $valoresMensais
+                ];
+            }
+
+            // 4. Formatar o retorno final
             $resultadoFinal = [
                 'title' => 'DRE Gerencial',
                 'period' => [
@@ -287,15 +278,11 @@ class FinanceiroContaController {
                 'categories' => []
             ];
 
-            foreach ($planos as $plano) {
-                $codigo = $plano['codigo'];
-                $descricao = $plano['descricao'];
-                $monthlyValues = isset($somaCategorias[$codigo]) ? array_values($somaCategorias[$codigo]) : array_fill(1, 12, 0);
-
+            foreach ($somaCategorias as $codigo => $dados) {
                 $resultadoFinal['categories'][] = [
-                    'name' => $descricao,
+                    'name' => $dados['descricao'],
                     'code' => $codigo,
-                    'monthly_values' => $monthlyValues
+                    'monthly_values' => array_values($dados['mensal'])
                 ];
             }
 
@@ -310,6 +297,7 @@ class FinanceiroContaController {
             ];
         }
     }
+
 
 
 }
