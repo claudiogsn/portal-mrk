@@ -226,11 +226,16 @@
                 if(planoContas === '04') return 'bold';
             }
 
+            function getRowBackground(planoContas) {
+                if (planoContas.startsWith('01')) return '#d9f9d9'; // Verde claro
+                if (planoContas.startsWith('02')) return '#ffe5b4'; // Laranja claro
+                if (planoContas.startsWith('03')) return '#ffcccc'; // Vermelho claro
+                if (planoContas.startsWith('04')) return '#e6e6e6'; // Cinza claro
+                return 'inherit'; // Fundo padrão
+            }
 
 
-
-
-            async function handleCellClick(planoContas, month, year) {
+            async function handleCellClick(planoContas, month, year, category) {
                 Swal.fire({
                     title: 'Aguarde...',
                     html: 'Carregando os dados, por favor espere.',
@@ -259,13 +264,18 @@
                         const contas = response.data.data;
                         let modalHtml = '<table class="table table-bordered"><thead><tr><th>Código</th><th>Nome</th><th>Doc</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Origem</th></tr></thead><tbody>';
 
+                        const formatarData = (data) => {
+                            if (!data) return 'N/A'; // Caso a data seja nula ou indefinida
+                            const [ano, mes, dia] = data.split("-");
+                            return `${dia}/${mes}/${ano}`;
+                        };
+
                         contas.forEach(conta => {
                             modalHtml += `<tr>
-                                <td>${conta.codigo}</td>
-                                <td>${conta.nome}</td>
                                 <td>${conta.doc}</td>
-                                <td>${conta.emissao}</td>
-                                <td>${conta.vencimento}</td>
+                                <td>${conta.nome}</td>
+                                <td>${formatarData(conta.emissao)}</td>
+                                <td>${formatarData(conta.vencimento)}</td>
                                 <td>${formatCurrency(parseFloat(conta.valor))}</td>
                                 <td>${conta.origem}</td>
                             </tr>`;
@@ -274,7 +284,7 @@
                         modalHtml += '</tbody></table>';
 
                         Swal.fire({
-                            title: `Contas do plano ${planoContas} em ${month}/${year}`,
+                            title: `Contas do plano ${planoContas} - ${category} em ${month}/${year}`,
                             html: modalHtml,
                             width: '80%',
                             customClass: {
@@ -306,6 +316,7 @@
                     const row = document.createElement('tr');
                     row.style.color = getRowColor(category.code);
                     row.style.fontWeight = getRowStrong(category.code)
+                    row.style.backgroundColor = getRowBackground(category.code); 
 
                     // Categoria
                     const categoryCell = document.createElement('td');
@@ -322,7 +333,7 @@
 
                         cell.id = `${category.code}-${month}-${year}`;
                         cell.textContent = formatCurrency(value);
-                        cell.addEventListener('click', () => handleCellClick(category.code, month, year));
+                        cell.addEventListener('click', () => handleCellClick(category.code, month, year,category.name));
 
                         row.appendChild(cell);
                     });
