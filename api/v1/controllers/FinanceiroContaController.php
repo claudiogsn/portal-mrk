@@ -315,12 +315,11 @@ class FinanceiroContaController {
                 fc.baixa_dt, 
                 fc.valor, 
                 COALESCE(fr.plano_contas, fc.plano_contas) AS plano_contas,
-                ff.nome AS nome,
+                fc.nome AS nome,
                 fc.entidade,
                 CASE WHEN fr.idconta IS NOT NULL THEN 'rateio' ELSE 'conta' END AS origem
             FROM financeiro_conta fc
             LEFT JOIN financeiro_rateio fr ON fc.codigo = fr.idconta AND fc.system_unit_id = fr.system_unit_id
-            LEFT JOIN financeiro_fornecedor ff ON fc.entidade = ff.codigo
             WHERE fc.system_unit_id = :system_unit_id 
                 AND fc.emissao BETWEEN :data_inicial AND :data_final
                 AND COALESCE(fr.plano_contas, fc.plano_contas) LIKE :plano_contas"
@@ -332,6 +331,10 @@ class FinanceiroContaController {
                 ':data_final' => $data_final,
                 ':plano_contas' => $plano_contas . '%'
             ]);
+
+           // print_r($data_final);
+            //print_r($data_final);
+            //exit();
 
             $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
