@@ -150,6 +150,40 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+
+            const tableContainer = document.querySelector('.table-container');
+
+            let isDragging = false;
+            let startX, scrollLeft;
+
+            if (tableContainer) {
+                tableContainer.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.pageX - tableContainer.offsetLeft;
+                    scrollLeft = tableContainer.scrollLeft;
+                    tableContainer.style.cursor = 'grabbing'; // Cursor para indicar a ação de arrastar
+                });
+
+                tableContainer.addEventListener('mouseleave', () => {
+                    isDragging = false;
+                    tableContainer.style.cursor = 'default';
+                });
+
+                tableContainer.addEventListener('mouseup', () => {
+                    isDragging = false;
+                    tableContainer.style.cursor = 'default';
+                });
+
+                tableContainer.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    const x = e.pageX - tableContainer.offsetLeft;
+                    const walk = (x - startX) * 2; // Velocidade de rolagem
+                    tableContainer.scrollLeft = scrollLeft - walk;
+                });
+            }
+
+           
             const baseUrl = window.location.hostname !== 'localhost' ?
                 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' :
                 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php';
@@ -175,6 +209,17 @@
                 if (planoContas.startsWith('04')) return 'black';
                 return 'inherit';
             }
+
+            function getRowStrong(planoContas) {
+                if(planoContas === '01') return 'bold';
+                if(planoContas === '02') return 'bold';
+                if(planoContas === '03') return 'bold';
+                if(planoContas === '04') return 'bold';
+            }
+
+
+
+
 
             async function handleCellClick(planoContas, month, year) {
                 Swal.fire({
@@ -251,6 +296,7 @@
                 categories.forEach(category => {
                     const row = document.createElement('tr');
                     row.style.color = getRowColor(category.code);
+                    row.style.fontWeight = getRowStrong(category.code)
 
                     // Categoria
                     const categoryCell = document.createElement('td');
