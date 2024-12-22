@@ -22,6 +22,54 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        .selected-row {
+            background-color: #d0ebff !important; /* Fundo azul claro */
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8); /* Brilho externo */
+            z-index: 1; /* Mantém o brilho acima de outros elementos */
+            position: relative; /* Necessário para aplicar o z-index */
+            transition: box-shadow 0.3s ease, background-color 0.3s ease; /* Animação suave */
+            font-weight: bold;
+        }
+
+        .selected-row .fixed-column,
+        .selected-row .total-column {
+            background-color: #d0ebff !important; /* Fundo alinhado com a linha selecionada */
+        }
+
+
+        .row-01 .fixed-column,
+        .row-01 .total-column {
+            background-color: #d9f9d9 !important; /* Remove o fundo das colunas fixadas */
+        }
+        
+        .row-01 {
+            background-color: #d9f9d9 !important; /* Verde claro */
+        }
+
+        .row-02 .fixed-column,
+        .row-02 .total-column {
+            background-color: #ffe5b4 !important; /* Laranja claro */
+        }
+        .row-02 {
+            background-color: #ffe5b4 !important; /* Laranja claro */
+        }
+
+        .row-03 .fixed-column,
+        .row-03 .total-column {
+            background-color: #ffcccc !important; /* Vermelho claro */
+        }
+        .row-03 {
+            background-color: #ffcccc !important; /* Vermelho claro */
+        }
+
+        .row-04 .fixed-column,
+        .row-04 .total-column {
+            background-color: #e6e6e6 !important; /* Cinza claro */
+        }
+        .row-04 {
+            background-color: #e6e6e6 !important; /* Cinza claro */
+        }
+
           .header-card {
             margin-top: 20px;
             padding: 20px;
@@ -29,14 +77,30 @@
             border-radius: 10px;
         }
         .table-container {
-            overflow-x: auto;
-            white-space: nowrap;
-            user-select: none;
+            overflow: auto; /* Habilita rolagem tanto horizontal quanto vertical */
+            max-height: 790px; /* Altura máxima da tabela */
+        }
+
+        thead th {
+            position: sticky;
+            top: 0; /* Fixa a linha no topo */
+            background-color: #f9f9f9; /* Cor de fundo para o cabeçalho */
+            z-index: 3; /* Mantém o cabeçalho acima de outros elementos */
+            text-align: center; /* Centraliza o texto */
+        }
+
+
+        .fixed-header {
+            position: sticky;
+            top: 0; /* Fixa no topo */
+            background-color: #f9f9f9; /* Cor de fundo para o cabeçalho */
+            z-index: 3; /* Certifica que o cabeçalho fica acima das células */
         }
 
         .table-container td, .table-container th {
             user-select: none; 
         }
+
 
         .fixed-column {
             position: sticky;
@@ -127,7 +191,7 @@
             <div class="body table-responsive">
                 <div class="table-container">
                     <table class="table table-bordered table-striped">
-                        <thead>
+                        <thead class="fixed-header">
                             <tr>
                                 <th class="fixed-column">Categoria</th>
                                 <th>Janeiro</th>
@@ -159,6 +223,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+
+             const tbody = document.getElementById('dreTableBody');
+
+            tbody.addEventListener('click', (event) => {
+                // Verifica se o clique foi na primeira coluna
+                const clickedCell = event.target;
+                if (clickedCell && clickedCell.classList.contains('fixed-column')) {
+                    // Remove a seleção de qualquer outra linha
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach(row => row.classList.remove('selected-row'));
+
+                    // Marca a linha clicada
+                    const clickedRow = clickedCell.parentElement;
+                    clickedRow.classList.add('selected-row');
+                }
+            });
 
             const tableContainer = document.querySelector('.table-container');
 
@@ -227,10 +307,10 @@
             }
 
             function getRowBackground(planoContas) {
-                if (planoContas.startsWith('01')) return '#d9f9d9'; // Verde claro
-                if (planoContas.startsWith('02')) return '#ffe5b4'; // Laranja claro
-                if (planoContas.startsWith('03')) return '#ffcccc'; // Vermelho claro
-                if (planoContas.startsWith('04')) return '#e6e6e6'; // Cinza claro
+                if(planoContas === '01') return '#d9f9d9 important!'; // Verde claro
+                if(planoContas === '02') return '#ffe5b4 important!'; // Laranja claro
+                if(planoContas === '03') return '#ffcccc important!'; // Vermelho claro
+                if(planoContas === '04') return '#e6e6e6 important!'; // Cinza claro
                 return 'inherit'; // Fundo padrão
             }
 
@@ -262,7 +342,7 @@
                     if (response.data.success) {
                         Swal.close();
                         const contas = response.data.data;
-                        let modalHtml = '<table class="table table-bordered"><thead><tr><th>Código</th><th>Nome</th><th>Doc</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Origem</th></tr></thead><tbody>';
+                        let modalHtml = '<table class="table table-bordered"><thead><tr><th>Código</th><th>Nome</th><th>Doc</th><th>Emissão</th><th>Vencimento</th><th>Valor</th></tr></thead><tbody>';
 
                         const formatarData = (data) => {
                             if (!data) return 'N/A'; // Caso a data seja nula ou indefinida
@@ -314,6 +394,12 @@
 
                 categories.forEach(category => {
                     const row = document.createElement('tr');
+                    
+                    if (category.code === '01') row.classList.add('row-01');
+                    if (category.code === '02') row.classList.add('row-02');
+                    if (category.code === '03') row.classList.add('row-03');
+                    if (category.code === '04') row.classList.add('row-04');
+                    
                     row.style.color = getRowColor(category.code);
                     row.style.fontWeight = getRowStrong(category.code)
                     row.style.backgroundColor = getRowBackground(category.code); 
@@ -321,6 +407,7 @@
                     // Categoria
                     const categoryCell = document.createElement('td');
                     categoryCell.classList.add('fixed-column');
+                    categoryCell.backgroundColor = getRowBackground(category.code);
                     categoryCell.textContent = `${category.code} - ${category.name}`;
                     row.appendChild(categoryCell);
 
