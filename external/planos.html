@@ -164,6 +164,125 @@
                 }
             }
 
+            function formatCurrency(value) {
+                return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            }
+
+            function getRowColor(planoContas) {
+                if (planoContas.startsWith('01')) return 'green';
+                if (planoContas.startsWith('02')) return 'orange';
+                if (planoContas.startsWith('03')) return 'red';
+                if (planoContas.startsWith('04')) return 'black';
+                return 'inherit';
+            }
+
+            async function handleCellClick(planoContas, month, year) {
+                Swal.fire({
+                    title: 'Aguarde...',
+                    html: 'Carregando os dados, por favor espere.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                const requestData = {
+                    method: 'getContaByMonth',
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        plano_contas: planoContas,
+                        month: month,
+                        year: year
+                    }
+                };
+
+                try {
+                    const response = await axios.post(baseUrl, requestData);
+
+                    if (response.data.success) {
+                        Swal.close();
+                        const contas = response.data.data;
+                        let modalHtml = '<table class="table table-bordered"><thead><tr><th>Código</th><th>Nome</th><th>Doc</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Origem</th></tr></thead><tbody>';
+
+                        contas.forEach(conta => {
+                            modalHtml += `<tr>
+                                <td>${conta.codigo}</td>
+                                <td>${conta.nome}</td>
+                                <td>${conta.doc}</td>
+                                <td>${conta.emissao}</td>
+                                <td>${conta.vencimento}</td>
+                                <td>${formatCurrency(parseFloat(conta.valor))}</td>
+                                <td>${conta.origem}</td>
+                            </tr>`;
+                        });
+
+                        modalHtml += '</tbody></table>';
+
+                        Swal.fire({
+                            title: `Contas do plano ${planoContas} em ${month}/${year}`,
+                            html: modalHtml,
+                            width: '80%',
+                            customClass: {
+                                popup: 'swal-wide'
+                            },
+                            confirmButtonText: 'Fechar'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: response.data.message
+                        });
+                    }
+                } catch (error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Erro ao buscar os dados.'
+                    });
+                }
+            }
+
+            function renderTable(categories) {
+                const tbody = document.getElementById('dreTableBody');
+                tbody.innerHTML = '';
+
+                categories.forEach(category => {
+                    const row = document.createElement('tr');
+                    row.style.color = getRowColor(category.code);
+
+                    // Categoria
+                    const categoryCell = document.createElement('td');
+                    categoryCell.classList.add('fixed-column');
+                    categoryCell.textContent = `${category.code} - ${category.name}`;
+                    row.appendChild(categoryCell);
+
+                    // Valores mensais
+                    const monthlyValues = Array.isArray(category.monthly_values) ? category.monthly_values : Object.values(category.monthly_values);
+                    monthlyValues.forEach((value, index) => {
+                        const cell = document.createElement('td');
+                        const month = (index + 1).toString().padStart(2, '0');
+                        const year = new Date().getFullYear();
+
+                        cell.id = `${category.code}-${month}-${year}`;
+                        cell.textContent = formatCurrency(value);
+                        cell.addEventListener('click', () => handleCellClick(category.code, month, year));
+
+                        row.appendChild(cell);
+                    });
+
+                    // Total
+                    const total = monthlyValues.reduce((sum, val) => sum + val, 0);
+                    const totalCell = document.createElement('td');
+                    totalCell.classList.add('total-column');
+                    totalCell.textContent = formatCurrency(total);
+                    row.appendChild(totalCell);
+
+                    tbody.appendChild(row);
+                });
+            }
+
             // Ocultar o loader ao carregar a página
             hidePageLoader();
 
@@ -211,44 +330,6 @@
                     });
                 }
             });
-
-            function renderTable(categories) {
-                const tbody = document.getElementById('dreTableBody');
-                tbody.innerHTML = '';
-
-                categories.forEach(category => {
-                    const row = document.createElement('tr');
-
-                    // Categoria
-                    const categoryCell = document.createElement('td');
-                    categoryCell.classList.add('fixed-column');
-
-                    // Adicionar estilo especial para categorias principais
-                    if (category.code.length === 2) {
-                        row.classList.add('parent-category');
-                    }
-
-                    categoryCell.textContent = `${category.code} - ${category.name}`;
-                    row.appendChild(categoryCell);
-
-                    // Valores mensais
-                    const monthlyValues = Array.isArray(category.monthly_values) ? category.monthly_values : Object.values(category.monthly_values);
-                    monthlyValues.forEach(value => {
-                        const cell = document.createElement('td');
-                        cell.textContent = `R$ ${value.toFixed(2)}`;
-                        row.appendChild(cell);
-                    });
-
-                    // Total
-                    const total = monthlyValues.reduce((sum, val) => sum + val, 0);
-                    const totalCell = document.createElement('td');
-                    totalCell.classList.add('total-column');
-                    totalCell.textContent = `R$ ${total.toFixed(2)}`;
-                    row.appendChild(totalCell);
-
-                    tbody.appendChild(row);
-                });
-            }
         });
     </script>
 </body>
