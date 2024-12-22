@@ -31,6 +31,11 @@
         .table-container {
             overflow-x: auto;
             white-space: nowrap;
+            user-select: none;
+        }
+
+        .table-container td, .table-container th {
+            user-select: none; 
         }
 
         .fixed-column {
@@ -108,6 +113,9 @@
                 <div class="col-md-3 text-right">
                     <button id="btnGerarRelatorio" class="btn btn-success">Gerar Relatório</button>
                 </div>
+                <div class="col-md-3 text-right">
+                    <button id="btnExportarTabela" class="btn btn-primary">Exportar para Excel</button>
+                </div>
             </div>
         </div>
 
@@ -148,6 +156,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
 
@@ -376,6 +385,60 @@
                     });
                 }
             });
+
+            function exportToExcel(data, fileName) {
+                Swal.fire({
+                    title: 'Exportar para Excel?',
+                    text: 'Você deseja exportar os dados para um arquivo Excel?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sim, exportar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, fileName);
+                        XLSX.writeFile(wb, `${fileName}.xlsx`);
+
+                        Swal.fire({
+                            title: 'Exportação Concluída!',
+                            text: 'O arquivo foi exportado com sucesso.',
+                            icon: 'success'
+                        });
+                    }
+                });
+            }
+
+            document.getElementById('btnExportarTabela').addEventListener('click', function () {
+                const rows = [];
+                const tableRows = document.querySelectorAll('#dreTableBody tr');
+
+                tableRows.forEach(row => {
+                    const cols = row.querySelectorAll('td');
+                    const rowData = {
+                        "Categoria": cols[0]?.innerText || '',
+                        "Janeiro": cols[1]?.innerText || '',
+                        "Fevereiro": cols[2]?.innerText || '',
+                        "Março": cols[3]?.innerText || '',
+                        "Abril": cols[4]?.innerText || '',
+                        "Maio": cols[5]?.innerText || '',
+                        "Junho": cols[6]?.innerText || '',
+                        "Julho": cols[7]?.innerText || '',
+                        "Agosto": cols[8]?.innerText || '',
+                        "Setembro": cols[9]?.innerText || '',
+                        "Outubro": cols[10]?.innerText || '',
+                        "Novembro": cols[11]?.innerText || '',
+                        "Dezembro": cols[12]?.innerText || '',
+                        "Total": cols[13]?.innerText || ''
+                    };
+                    rows.push(rowData);
+                });
+
+                exportToExcel(rows, "DRE_Gerencial");
+            });
+
+            
         });
     </script>
 </body>
