@@ -23,7 +23,7 @@ class Dre extends TPage
         $iframe->frameborder = "0";
         $iframe->scrolling = "no";
         $iframe->width = "100%";
-        $iframe->height = "800px";
+        $iframe->height = "100%";
 
         parent::add($iframe);
     }
