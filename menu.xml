@@ -3,11 +3,11 @@
   <menuitem label="Financeiro">
     <icon>fas:dollar-sign fa-fw</icon>
     <menu>
-      <menuitem label="Dashboard">
-        <action>SystemAdministrationDashboard</action>
-        <icon>fas:tachometer-alt fa-fw</icon>
+      <menuitem label="Importar Dados">
+        <action>ImportFinanceiro</action>
+        <icon>fas:fa-arrow-alt-circle-down</icon>
       </menuitem>
-      <menuitem label="DRE">
+      <menuitem label="DRE Gerencial">
         <action>Dre</action>
         <icon>fas:book fa-fw</icon>
       </menuitem>

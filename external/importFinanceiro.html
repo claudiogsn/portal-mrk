@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importação de Dados - Meraki</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Fonts e Ícones -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- CSS -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="theme-blue">
+    <div class="container-fluid">
+        <div class="block-header">
+            <h2> </h2>
+        </div>
+
+        <!-- Formulário para importação -->
+        <div class="row clearfix">
+            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                <div class="card">
+                    <div class="header">
+                        <h2>Confirme a Importação</h2>
+                    </div>
+                    <div class="body">
+                        <form id="importForm">
+                            <p>Confirme para iniciar o processo de importação de dados.</p>
+                            <button type="submit" class="btn btn-primary waves-effect">Iniciar Importação</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = window.location.hostname !== 'localhost' ? 
+            'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 
+            'https://portal.mrksolucoes.com.br/api/v1/financeiro.php';
+
+        const token = new URLSearchParams(window.location.search).get('token');
+        const unitId = new URLSearchParams(window.location.search).get('unit_id');
+
+        const requests = [
+            { method: "importarRateiosApi", data: { system_unit_id: unitId } },
+            { method: "importarContaApi", data: { system_unit_id: unitId } },
+            { method: "importarPlanosApi", data: { system_unit_id: unitId } },
+            { method: "importarFornecedoresApi", data: { system_unit_id: unitId } },
+            { method: "importarClientesApi", data: { system_unit_id: unitId } }
+        ];
+
+        document.getElementById('importForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            executeRequests(requests)
+                .then(() => Swal.fire('Sucesso', 'Todas as informações foram importadas com sucesso!', 'success'))
+                .catch((error) => Swal.fire('Erro', 'Ocorreu um erro durante a importação: ' + error, 'error'));
+        });
+
+        async function executeRequests(requests) {
+            for (const request of requests) {
+                await importData(request.method, request.data);
+            }
+        }
+
+        function importData(method, data) {
+            return new Promise((resolve, reject) => {
+                Swal.fire({
+                    title: `Executando ${method}...`,
+                    text: 'Aguarde enquanto os dados estão sendo importados.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                axios.post(baseUrl, { method, token, data })
+                    .then(response => {
+                        if (response.data.success === true) {
+                            Swal.close();
+                            resolve();
+                        } else {
+                            reject(response.data.message || 'Erro desconhecido.');
+                        }
+                    })
+                    .catch(error => reject(error.message));
+            });
+        }
+    </script>
+</body>
+</html>
