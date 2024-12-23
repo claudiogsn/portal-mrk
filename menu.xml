@@ -5,7 +5,7 @@
     <menu>
       <menuitem label="Importar Dados">
         <action>ImportFinanceiro</action>
-        <icon>fas:fa-arrow-alt-circle-down</icon>
+        <icon>fas:coins fa-fw</icon>
       </menuitem>
       <menuitem label="DRE Gerencial">
         <action>Dre</action>

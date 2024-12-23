@@ -342,7 +342,7 @@
                     if (response.data.success) {
                         Swal.close();
                         const contas = response.data.data;
-                        let modalHtml = '<table class="table table-bordered"><thead><tr><th>Doc</th><th>Nome</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Valor</th></tr></thead><tbody>';
+                        let modalHtml = '<table class="table table-bordered"><thead><tr><th>Doc</th><th>Nome</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Tipo</th></tr></thead><tbody>';
 
                         const formatarData = (data) => {
                             if (!data) return 'N/A'; // Caso a data seja nula ou indefinida
