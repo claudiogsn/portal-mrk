@@ -558,7 +558,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
             if ($unidade_origem) {
-                $nome_unidade_origem = $unidade_destino['name'];
+                $nome_unidade_origem = $unidade_origem['name'];
             } else {
                 $pdo->rollBack();
                 return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
