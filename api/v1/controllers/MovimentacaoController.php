@@ -477,6 +477,8 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         $itens = $data['itens'];
         $usuario_id = $data['usuario_id'];
         $transferDate = $data['transfer_date'];
+        $date = new DateTime($transferDate);
+        $transferDateNormal = $date->format('d/m/Y');
 
         // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter novos valores para entrada e saída
         $ultimoDocSaida = self::getLastMov($system_unit_id, 'ts'); // Tipo para saída
@@ -550,6 +552,31 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
             }
 
+            $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+            $stmt->execute([$system_unit_id]);
+            $unidade_origem = $stmt->fetch();
+
+            // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
+            if ($unidade_origem) {
+                $nome_unidade_origem = $unidade_destino['name'];
+            } else {
+                $pdo->rollBack();
+                return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
+            }
+
+
+            $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+            $stmt->execute([$usuario_id]);
+            $username = $stmt->fetch();
+
+            // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
+            if ($username) {
+                $nome_user = $username['name'];
+            } else {
+                $pdo->rollBack();
+                return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
+            }
+
             // Cria a estrutura dos itens com nome do produto
             $itensComDetalhes = [];
             foreach ($itens as $item) {
@@ -575,7 +602,9 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 'message' => 'Transferência criada com sucesso',
                 'transfer_doc' => $docEntrada,
                 'nome_unidade_destino' => $nome_unidade_destino,
-                'data_hora' => $transferDate,
+                'nome_unidade_origem' => $nome_unidade_origem,
+                'data_hora' => date('d/m/Y H:i:s'),
+                'usuario' => $nome_user,
                 'itens' => $itensComDetalhes
             );
 

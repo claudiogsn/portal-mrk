@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impressão do Balanço</title>
+  <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1, h2 { margin: 0; padding: 0; }
+    h1 { font-size: 24px; font-weight: bold; }
+    h2 { font-size: 18px; margin-bottom: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; }
+    .header img { max-height: 60px; }
+    hr { border: 1px solid black; margin: 20px 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    table, th, td { border: 1px solid black; }
+    th, td { padding: 10px; text-align: left; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Portal MRK</h1>
+    <h2>Estoque/Contagem</h2>
+  </div>
+  <div>
+    <img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+  </div>
+</div>
+<hr>
+<p><strong>Estabelecimento:</strong> {{ESTABELECIMENTO}}</p>
+<p><strong>Tipo:</strong> {{TIPO_MOV}}</p>
+<p><strong>Doc:</strong> {{DOC_NUMBER}}</p>
+<p><strong>Data do Contagem:</strong> {{DATA_BALANCO}}</p>
+<p><strong>Usuário:</strong> {{USUARIO}}</p>
+<hr>
+<table class="table table-bordered">
+  <thead>
+  <tr>
+    <th>Produto</th>
+    <th>Quantidade</th>
+    <th>Categoria</th>
+  </tr>
+  </thead>
+  <tbody>
+  {{DATA_ITENS}}
+  </tbody>
+</table>
+</body>
+</html>
