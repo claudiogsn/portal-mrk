@@ -455,7 +455,6 @@ async function loadItems(unitId) {
                             printWindow.onload = () => {
                                 printWindow.focus();
                                 printWindow.print();
-                                printWindow.close(); // Opcional, fecha a janela de impressão após o uso
                             };
 
                         swal.fire('Sucesso', 'Transferência realizada com sucesso.', 'success').then(() => location.reload());

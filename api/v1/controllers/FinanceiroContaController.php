@@ -269,7 +269,7 @@ class FinanceiroContaController {
                     'mensal' => $valoresMensais
                 ];
             }
-            
+
 
             // 4. Formatar o retorno final
             $resultadoFinal = [
