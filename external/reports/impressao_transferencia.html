@@ -16,6 +16,17 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table, th, td { border: 1px solid black; }
     th, td { padding: 10px; text-align: left; }
+    .signature-line {
+      margin-top: 50px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .signature-line span {
+      display: inline-block;
+      margin-top: 10px;
+      border-top: 1px solid black;
+      width: 400px;
+    }
   </style>
 </head>
 <body>
@@ -48,5 +59,9 @@
   {{DATA_ITENS}}
   </tbody>
 </table>
+<div class="signature-line">
+  <span>Assinatura do Responsável <br>{{USUARIO}}</span>
+  
+</div>
 </body>
 </html>

@@ -332,10 +332,6 @@ class FinanceiroContaController {
                 ':plano_contas' => $plano_contas . '%'
             ]);
 
-           // print_r($data_final);
-            //print_r($data_final);
-            //exit();
-
             $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $resultado = array_map(function ($conta) {
