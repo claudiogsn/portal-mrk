@@ -338,20 +338,22 @@ class FinanceiroContaController {
             // Consulta para obter os rateios
             $stmtRateios = $pdo->prepare(
                 "SELECT 
-                idconta AS codigo, 
-                nome, 
-                entidade, 
-                cgc, 
-                tipo, 
-                emissao, 
-                vencimento, 
-                baixa_dt, 
-                rateio_valor AS valor, 
-                rateio_plano AS plano_contas
-            FROM financeiro_rateio
-            WHERE system_unit_id = :system_unit_id 
-                AND emissao BETWEEN :data_inicial AND :data_final
-                AND rateio_plano LIKE :plano_contas"
+                r.idconta AS codigo, 
+                r.nome, 
+                r.entidade, 
+                r.cgc, 
+                r.tipo, 
+                c.doc, 
+                r.emissao, 
+                r.vencimento, 
+                r.baixa_dt, 
+                r.rateio_valor AS valor, 
+                r.rateio_plano AS plano_contas
+            FROM financeiro_rateio r
+            INNER JOIN financeiro_conta c ON r.idconta = c.codigo AND r.system_unit_id = c.system_unit_id
+            WHERE r.system_unit_id = :system_unit_id 
+                AND r.emissao BETWEEN :data_inicial AND :data_final
+                AND r.rateio_plano LIKE :plano_contas"
             );
 
             $stmtRateios->execute([
