@@ -220,6 +220,8 @@
 <!-- Adicionar Axios e SweetAlert -->
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
     const baseUrl = window.location.hostname !== 'localhost' ?
@@ -432,10 +434,15 @@ async function loadItems(unitId) {
                         const itens = response.data.itens;
                         const usuario = response.data.usuario;
 
-                        const externalHtmlResponse = await fetch('./reports/impressao_transferencia.html');
+                        const externalHtmlResponse = await fetch('./reports/transferencia.html');
                         let htmlContent = await externalHtmlResponse.text();
 
-                        const itemRows = itens.map(item => `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`).join('');
+                        const itemRows = itens
+                            .map(
+                                (item) =>
+                                    `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`
+                            )
+                            .join('');
 
                         htmlContent = htmlContent
                             .replace('{{ESTABELECIMENTO_ORIGEM}}', nomeUnidadeOrigem)
@@ -446,16 +453,12 @@ async function loadItems(unitId) {
                             .replace('{{USUARIO}}', usuario)
                             .replace('{{DATA_ITENS}}', itemRows);
 
-                            const printWindow = window.open('', '_blank');
-                            printWindow.document.open();
-                            printWindow.document.write(htmlContent);
+                        const newWindow = window.open();
+                        newWindow.document.open();
+                        newWindow.document.write(htmlContent); // htmlContent já contém o HTML completo com os valores substituídos
+                        newWindow.document.close();
 
-                            printWindow.onload = () => {
-                                printWindow.focus();
-                                printWindow.print();
-                            };
 
-                        swal.fire('Sucesso', 'Transferência realizada com sucesso.', 'success').then(() => location.reload());
                     } else {
                         swal.fire('Erro', response.data.message, 'error');
                     }
