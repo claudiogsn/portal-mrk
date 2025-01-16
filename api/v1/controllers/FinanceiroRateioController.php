@@ -134,6 +134,7 @@ class FinanceiroRateioController {
                                                 rateio_valor = VALUES(rateio_valor)");
 
                 $plano_contas = '0'.$rateio['plano_contas'];
+                $rateio_plano = '0'.$rateio['rateio_plano'];
 
                 $stmt->execute([
                     $system_unit_id,
@@ -148,7 +149,7 @@ class FinanceiroRateioController {
                     $rateio['valor'],
                     $plano_contas,
                     $rateio['rateio_doc'],
-                    $rateio['rateio_plano'],
+                    $rateio_plano,
                     $rateio['rateio_valor']
                 ]);
             }
