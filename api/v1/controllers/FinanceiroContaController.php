@@ -200,7 +200,7 @@ class FinanceiroContaController {
 
         try {
             // 1. Consultar as contas dentro do período
-            $stmt = $pdo->prepare("SELECT codigo, plano_contas, valor, emissao FROM financeiro_conta WHERE system_unit_id = :system_unit_id AND emissao BETWEEN :data_inicial AND :data_final");
+            $stmt = $pdo->prepare("SELECT codigo, plano_contas, valor, emissao FROM financeiro_conta WHERE system_unit_id = :system_unit_id AND codigo not in (select idconta from financeiro_rateio r where r.system_unit_id = :system_unit_id  AND r.emissao BETWEEN :data_inicial AND :data_final  ) AND emissao BETWEEN :data_inicial AND :data_final");
             $stmt->execute([
                 ':system_unit_id' => $system_unit_id,
                 ':data_inicial' => $data_inicial,
