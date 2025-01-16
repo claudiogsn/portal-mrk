@@ -322,6 +322,7 @@ class FinanceiroContaController {
                 plano_contas
             FROM financeiro_conta
             WHERE system_unit_id = :system_unit_id 
+                AND codigo not in (select idconta from financeiro_rateio r where r.system_unit_id = :system_unit_id  AND rateio_plano LIKE :plano_contas AND r.emissao BETWEEN :data_inicial AND :data_final  )
                 AND emissao BETWEEN :data_inicial AND :data_final
                 AND plano_contas LIKE :plano_contas"
             );
