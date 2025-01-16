@@ -133,7 +133,8 @@ class MovimentacaoController {
                 m.doc,
                 CASE
                     WHEN m.tipo = 'b' THEN 'Balanço'
-                    WHEN m.tipo = 't' THEN 'Transferência'
+                    WHEN m.tipo = 'te' THEN 'Transferência de Entrada'
+                    WHEN m.tipo = 'ts' THEN 'Transferência de Saida'
                     WHEN m.tipo = 'v' THEN 'Venda'
                     WHEN m.tipo = 'p' THEN 'Perda'
                     WHEN m.tipo = 'c' THEN 'Compra'
@@ -162,6 +163,31 @@ class MovimentacaoController {
     }
 
 
+    public static function rejeitarMovimentacao($systemUnitId, $doc,$usuario_id)
+    {
+        global $pdo;
+
+        try {
+            // Atualiza o status da movimentação para rejeitado
+            $query = "UPDATE movimentacao SET status = 3,usuario_id = :usuario_id WHERE system_unit_id = :system_unit_id AND doc = :doc";
+            $stmt = $pdo->prepare($query);
+            $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
+            $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
+            $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                return ['success' => true, 'message' => 'Movimentação rejeitada com sucesso!'];
+            } else {
+                return ['success' => false, 'message' => 'Nenhuma movimentação encontrada para rejeitar.'];
+            }
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao rejeitar movimentação: ' . $e->getMessage()];
+        }
+    }
+
+
     public static function listarMovimentacoesPorData($systemUnitId,$data_inicial , $data_final) {
 
         global $pdo;
@@ -169,13 +195,20 @@ class MovimentacaoController {
         $query = "
             SELECT
                 m.system_unit_id,
+                case 
+                    when m.status = 0 then 'Pendente'
+                    when m.status = 1 then 'Efetivado'
+                    when m.status = 3 then 'Rejeitado'
+                    else 'Outro'
+                end as status,
                 su_origem.name AS nome_unidade_origem,
                 m.system_unit_id_destino,
                 su_destino.name AS nome_unidade_destino,
                 m.doc,
                 CASE
                     WHEN m.tipo = 'b' THEN 'Balanço'
-                    WHEN m.tipo = 't' THEN 'Transferência'
+                     WHEN m.tipo = 'te' THEN 'Transferência de Entrada'
+                    WHEN m.tipo = 'ts' THEN 'Transferência de Saida'
                     WHEN m.tipo = 'v' THEN 'Venda'
                     WHEN m.tipo = 'p' THEN 'Perda'
                     WHEN m.tipo = 'c' THEN 'Compra'
@@ -191,6 +224,7 @@ class MovimentacaoController {
                 system_unit su_destino ON m.system_unit_id_destino = su_destino.id
             WHERE 
                 m.system_unit_id = :system_unit_id
+                AND m.status <> 3
                 AND m.data BETWEEN :data_inicial AND :data_final
             GROUP BY
                 m.doc;

@@ -69,15 +69,40 @@
     <div class="container-fluid">
               <div class="header-card">
             <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="dataInicial">Data Inicial</label>
                     <input type="date" id="dataInicial" class="form-control" placeholder="Data Inicial">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="dataFinal">Data Final</label>
                     <input type="date" id="dataFinal" class="form-control" placeholder="Data Final">
                 </div>
-                <div class="col-md-3 text-right">
+                <div class="col-md-2">
+                    <label for="filterOrigem">Origem</label>
+                    <select id="filterOrigem" class="form-control">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filterDestino">Destino</label>
+                    <select id="filterDestino" class="form-control">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filterTipo">Tipo</label>
+                    <select id="filterTipo" class="form-control">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="filterStatus">Status</label>
+                    <select id="filterStatus" class="form-control">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-1 text-right">
                     <button id="btnFiltrar" class="btn btn-primary">Buscar</button>
-                    <button id="btnExportarSelecionados" class="btn btn-success">Mostrar Pendentes</button>
                 </div>
             </div>
         </div>
@@ -109,6 +134,7 @@
                                 <th>Tipo</th>
                                 <th>Origem</th>
                                 <th>Destino</th>
+                                <th>Status</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -202,6 +228,7 @@
 
                     if (response.data) {
                         renderMovements(response.data);
+                        populateFilters(response.data); // Preencher filtros
                     } else {
                         Swal.fire("Erro", "Erro ao carregar movimentações.", "error");
                     }
@@ -212,34 +239,45 @@
                 }
             }
 
+            $('#filterTipo, #filterOrigem, #filterDestino, #filterStatus').on('change', applyFilters);
+
+
             // Renderizar movimentações
             function renderMovements(movements) {
                 const tbody = $('#movimentacoesTable tbody');
                 tbody.empty();
 
                 movements.forEach(movement => {
+                    const formatarData = (data) => {
+                        if (!data) return 'N/A';
+                        const [ano, mes, dia] = data.split("-");
+                        return `${dia}/${mes}/${ano}`;
+                    };
                     const row = $(`
-                        <tr>
-                            <td>${movement.doc}</td>
-                            <td>${movement.data}</td>
-                            <td>${movement.tipo_movimentacao}</td>
-                            <td>${movement.nome_unidade_origem || 'N/A'}</td>
-                            <td>${movement.nome_unidade_destino || 'N/A'}</td>
-                            <td>
-                                <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
-                            </td>
-                        </tr>
-                    `);
+            <tr>
+                <td>${movement.doc}</td>
+                <td>${formatarData(movement.data)}</td>
+                <td>${movement.tipo_movimentacao}</td>
+                <td>${movement.nome_unidade_origem || 'N/A'}</td>
+                <td>${movement.nome_unidade_destino || 'N/A'}</td>
+                <td>${movement.status}</td>
+                <td>
+                    <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
+                </td>
+            </tr>
+        `);
 
                     tbody.append(row);
 
-                    // Evento para exibir detalhes
                     row.find('.btnDetalhes').on('click', function () {
                         const doc = $(this).data('doc');
                         loadMovementDetails(doc);
                     });
                 });
+
+                applyFilters(); // Aplicar filtros após renderizar
             }
+
 
             // Carregar detalhes
             async function loadMovementDetails(doc) {
@@ -282,12 +320,6 @@
                 });
             }
 
-            $('#btnExportarSelecionados').on('click', function () {
-                const redirectUrl = `${baseUrlRedirect}?class=AprovarMovimentacoes`;
-                window.location.href = redirectUrl;
-            });
-
-
             // Data padrão de hoje
             const today = new Date().toISOString().split('T')[0];
             $('#dataInicial').val(today);
@@ -300,6 +332,56 @@
                 const dataFinal = $('#dataFinal').val();
                 loadMovements(dataInicial, dataFinal);
             });
+
+            function populateFilters(movements) {
+                const tipos = new Set();
+                const origens = new Set();
+                const destinos = new Set();
+                const status = new Set();
+
+                movements.forEach(movement => {
+                    tipos.add(movement.tipo_movimentacao);
+                    origens.add(movement.nome_unidade_origem || 'N/A');
+                    destinos.add(movement.nome_unidade_destino || 'N/A');
+                    status.add(movement.status);
+                });
+
+                const populateSelect = (selectId, items) => {
+                    const select = $(`#${selectId}`);
+                    select.empty();
+                    select.append('<option value="">Todos</option>');
+                    items.forEach(item => {
+                        select.append(`<option value="${item}">${item}</option>`);
+                    });
+                };
+
+                populateSelect('filterTipo', tipos);
+                populateSelect('filterOrigem', origens);
+                populateSelect('filterDestino', destinos);
+                populateSelect('filterStatus', status);
+            }
+
+            function applyFilters() {
+                const tipo = $('#filterTipo').val();
+                const origem = $('#filterOrigem').val();
+                const destino = $('#filterDestino').val();
+                const status = $('#filterStatus').val();
+
+                $('#movimentacoesTable tbody tr').each(function () {
+                    const row = $(this);
+                    const matchesTipo = !tipo || row.find('td:nth-child(3)').text() === tipo;
+                    const matchesOrigem = !origem || row.find('td:nth-child(4)').text() === origem;
+                    const matchesDestino = !destino || row.find('td:nth-child(5)').text() === destino;
+                    const matchesStatus = !status || row.find('td:nth-child(6)').text() === status;
+
+                    if (matchesTipo && matchesOrigem && matchesDestino && matchesStatus) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+            }
+
         });
     </script>
 </body>

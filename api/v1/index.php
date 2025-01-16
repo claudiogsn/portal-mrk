@@ -698,7 +698,15 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
-                case 'listarMovimentacoesPorData':
+            case 'rejeitarMovimentacao':
+                    if (isset($requestData['system_unit_id']) && isset($requestData['doc']) && isset($requestData['usuario_id'])) {
+                        $response = MovimentacaoController::rejeitarMovimentacao($requestData['system_unit_id'], $requestData['doc'], $requestData['usuario_id']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                    }
+                    break;
+            case 'listarMovimentacoesPorData':
                     if (isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
                         $response = MovimentacaoController::listarMovimentacoesPorData($requestData['system_unit_id'],$requestData['data_inicial'],$requestData['data_final']);
                     } else {
@@ -706,7 +714,7 @@ if (isset($data['method']) && isset($data['data'])) {
                         $response = ['error' => 'Parâmetro system_unit_id, data_inicial ou data_final ausente'];
                     }
                     break;
-                case 'getMovimentacao':
+            case 'getMovimentacao':
                     if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
                         $response = MovimentacaoController::getMovimentacao($requestData['system_unit_id'],$requestData['doc']);
                     } else {

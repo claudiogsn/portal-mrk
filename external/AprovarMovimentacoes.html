@@ -155,6 +155,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const unitId = urlParams.get('unit_id');
+    const username = urlParams.get('username');
 
     function showLoader() {
         $('.page-loader-wrapper').fadeIn();
@@ -209,6 +210,7 @@
                     <td>
                         <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
                         <button class="btn btn-success btnEfetivar" data-doc="${movement.doc}">Efetivar</button>
+                        <button class="btn btn-danger btnRejeitar" data-doc="${movement.doc}">Rejeitar</button>
                     </td>
                 </tr>
             `);
@@ -226,8 +228,76 @@
                 const doc = $(this).data('doc');
                 confirmarEfetivacao(doc);
             });
+
+            // Evento para efetivar transação
+            row.find('.btnRejeitar').on('click', function () {
+                const doc = $(this).data('doc');
+                confirmarRejeicao(doc);
+            });
         });
     }
+
+            // Perguntar antes de rejeitar a transação
+            function confirmarRejeicao(doc) {
+                Swal.fire({
+                    title: 'Confirmar Rejeição',
+                    text: 'Deseja realmente rejeitar esta transação?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sim, efetivar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        rejeitarMovimentacao(doc);
+                    }
+                });
+            }
+
+            // rejeitarMovimentacao
+            async function rejeitarMovimentacao(doc) {
+                showLoader();
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'rejeitarMovimentacao',
+                        token: token,
+                        data: {
+                            system_unit_id: unitId,
+                            doc: doc,
+                            usuario_id: username
+                        }
+                    });
+
+                    if (response.status === 200) {
+                        hideLoader();
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Sucesso!',
+                            text: 'Transação efetivada com sucesso.',
+                            confirmButtonText: 'OK'
+                        });
+
+                        // Recarregar página ao fechar o alerta
+                        location.reload();
+                    } else {
+                        hideLoader();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: 'Falha ao efetivar a transação.',
+                        });
+                    }
+                } catch (error) {
+                    hideLoader();
+                    console.error('Erro ao efetivar transação:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Ocorreu um erro ao tentar efetivar a transação.',
+                    });
+                } finally {
+                    hideLoader();
+                }
+            }
 
     // Perguntar antes de efetivar a transação
     function confirmarEfetivacao(doc) {
@@ -254,7 +324,8 @@
                 token: token,
                 data: {
                     system_unit_id: unitId,
-                    doc: doc
+                    doc: doc,
+                    usuario_id: username
                 }
             });
 

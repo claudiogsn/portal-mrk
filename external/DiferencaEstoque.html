@@ -461,6 +461,43 @@
             }
         }
 
+            document.getElementById('exportToExcel').addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Exportar para Excel?',
+                    text: 'Você tem certeza que deseja exportar os dados para um arquivo Excel?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sim',
+                    cancelButtonText: 'Não'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const table = document.querySelector('#modalContentGrid table');
+                        if (!table) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Aviso',
+                                text: 'Não há dados para exportar!'
+                            });
+                            return;
+                        }
+
+                        const wb = XLSX.utils.book_new();
+                        const ws = XLSX.utils.table_to_sheet(table);
+
+                        XLSX.utils.book_append_sheet(wb, ws, 'Diferenças de Estoque');
+
+                        const filename = 'Diferencas_Estoque.xlsx';
+                        XLSX.writeFile(wb, filename);
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Exportação Concluída',
+                            text: `O arquivo ${filename} foi salvo com sucesso!`
+                        });
+                    }
+                });
+            });
+
         document.getElementById('searchButton').addEventListener('click', function () {
             const year = document.getElementById('yearSelect').value;
             const month = document.getElementById('monthSelect').value;
