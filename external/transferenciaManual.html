@@ -449,9 +449,7 @@ async function loadItems(unitId) {
                             const printWindow = window.open('', '_blank');
                             printWindow.document.open();
                             printWindow.document.write(htmlContent);
-                            printWindow.document.close();
 
-                            // Adicionar um delay para garantir o carregamento antes de imprimir
                             printWindow.onload = () => {
                                 printWindow.focus();
                                 printWindow.print();
