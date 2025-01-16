@@ -210,9 +210,11 @@ class FinanceiroContaController {
             $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $categorias = [];
 
+
+
             foreach ($contas as $conta) {
                 // 2. Verificar se existe rateio para a conta
-                $stmtRateio = $pdo->prepare("SELECT idconta AS codigo, rateio_plano, valor, emissao FROM financeiro_rateio WHERE system_unit_id = :system_unit_id AND idconta = :conta");
+                $stmtRateio = $pdo->prepare("SELECT idconta AS codigo, rateio_plano, rateio_valor, emissao FROM financeiro_rateio WHERE system_unit_id = :system_unit_id AND idconta = :conta");
                 $stmtRateio->execute([
                     ':system_unit_id' => $system_unit_id,
                     ':conta' => $conta['codigo']
@@ -220,12 +222,14 @@ class FinanceiroContaController {
 
                 $rateios = $stmtRateio->fetchAll(PDO::FETCH_ASSOC);
 
+
+
                 if (!empty($rateios)) {
                     // Substituir a conta pelo rateio
                     foreach ($rateios as $rateio) {
                         $categorias[] = [
-                            'plano_contas' => $rateio['plano_contas'],
-                            'valor' => $rateio['valor'],
+                            'plano_contas' => $rateio['rateio_plano'],
+                            'valor' => $rateio['rateio_valor'],
                             'emissao' => $rateio['emissao']
                         ];
                     }
@@ -265,6 +269,7 @@ class FinanceiroContaController {
                     'mensal' => $valoresMensais
                 ];
             }
+            
 
             // 4. Formatar o retorno final
             $resultadoFinal = [
