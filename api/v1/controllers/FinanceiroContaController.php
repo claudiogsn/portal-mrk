@@ -306,50 +306,76 @@ class FinanceiroContaController {
             $data_inicial = date("$year-$month-01");
             $data_final = date("Y-m-t", strtotime($data_inicial));
 
-            $stmt = $pdo->prepare(
+            // Consulta para obter as contas
+            $stmtContas = $pdo->prepare(
                 "SELECT 
-                fc.codigo, 
-                COALESCE(fc.doc) AS doc,
-                fc.emissao, 
-                fc.vencimento, 
-                fc.baixa_dt, 
-                fc.valor, 
-                COALESCE(fr.plano_contas, fc.plano_contas) AS plano_contas,
-                fc.nome AS nome,
-                fc.entidade,
-                CASE WHEN fr.idconta IS NOT NULL THEN 'rateio' ELSE 'conta' END AS origem
-            FROM financeiro_conta fc
-            LEFT JOIN financeiro_rateio fr ON fc.codigo = fr.idconta AND fc.system_unit_id = fr.system_unit_id
-            WHERE fc.system_unit_id = :system_unit_id 
-                AND fc.emissao BETWEEN :data_inicial AND :data_final
-                AND COALESCE(fr.plano_contas, fc.plano_contas) LIKE :plano_contas"
+                codigo, 
+                nome, 
+                entidade, 
+                cgc, 
+                tipo, 
+                doc, 
+                emissao, 
+                vencimento, 
+                baixa_dt, 
+                valor, 
+                plano_contas
+            FROM financeiro_conta
+            WHERE system_unit_id = :system_unit_id 
+                AND emissao BETWEEN :data_inicial AND :data_final
+                AND plano_contas LIKE :plano_contas"
             );
 
-            $stmt->execute([
+            $stmtContas->execute([
                 ':system_unit_id' => $system_unit_id,
                 ':data_inicial' => $data_inicial,
                 ':data_final' => $data_final,
                 ':plano_contas' => $plano_contas . '%'
             ]);
 
-            $contas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $contas = $stmtContas->fetchAll(PDO::FETCH_ASSOC);
 
-            $resultado = array_map(function ($conta) {
-                return [
-                    'codigo' => $conta['codigo'],
-                    'nome' => $conta['nome'],
-                    'entidade' => $conta['entidade'],
-                    'cgc' => $conta['cgc'] ?? '', // Apenas se for necessário, adicionar campo CGC.
-                    'tipo' => $conta['tipo'] ?? '', // Apenas se for necessário, adicionar campo tipo.
-                    'doc' => $conta['doc'],
-                    'emissao' => $conta['emissao'],
-                    'vencimento' => $conta['vencimento'],
-                    'baixa_dt' => $conta['baixa_dt'],
-                    'valor' => $conta['valor'],
-                    'plano_contas' => $conta['plano_contas'],
-                    'origem' => $conta['origem'],
-                ];
+            // Consulta para obter os rateios
+            $stmtRateios = $pdo->prepare(
+                "SELECT 
+                idconta AS codigo, 
+                nome, 
+                entidade, 
+                cgc, 
+                tipo, 
+                emissao, 
+                vencimento, 
+                baixa_dt, 
+                rateio_valor AS valor, 
+                rateio_plano AS plano_contas
+            FROM financeiro_rateio
+            WHERE system_unit_id = :system_unit_id 
+                AND emissao BETWEEN :data_inicial AND :data_final
+                AND rateio_plano LIKE :plano_contas"
+            );
+
+            $stmtRateios->execute([
+                ':system_unit_id' => $system_unit_id,
+                ':data_inicial' => $data_inicial,
+                ':data_final' => $data_final,
+                ':plano_contas' => $plano_contas . '%'
+            ]);
+
+            $rateios = $stmtRateios->fetchAll(PDO::FETCH_ASSOC);
+
+            // Adicionando campo "origem" para distinguir os dados
+            $contas = array_map(function ($conta) {
+                $conta['origem'] = 'conta';
+                return $conta;
             }, $contas);
+
+            $rateios = array_map(function ($rateio) {
+                $rateio['origem'] = 'rateio';
+                return $rateio;
+            }, $rateios);
+
+            // Combina as duas listas
+            $resultado = array_merge($contas, $rateios);
 
             return [
                 'success' => true,
@@ -362,6 +388,7 @@ class FinanceiroContaController {
             ];
         }
     }
+
 
 
 
