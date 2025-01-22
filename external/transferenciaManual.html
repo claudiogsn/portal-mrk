@@ -117,25 +117,23 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-1">
-                                <label for="item-codigo">Código</label>
-                                <input type="text" id="item-codigo" class="form-control" readonly>
-                            </div>
-                            
+
                             <div class="col-md-5">
-                                <label for="item-description">Descrição do Item</label>
-                                <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um item" data-toggle="modal" data-target="#itemModal">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="item-unit">Unidade</label>
-                                <input type="text" id="item-unit" class="form-control" readonly>
+                                <label for="item-description">Produto</label>
+                                <input type="hidden" id="item-codigo" class="form-control" readonly>
+                                <input type="hidden" id="item-unit" class="form-control" readonly>
+                                <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um produto" data-toggle="modal" data-target="#itemModal">
                             </div>
                             <div class="col-md-3">
                                 <label for="item-quantity">Quantidade</label>
-                                <input type="number" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
+                                <input type="number" inputmode="numeric" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
+                            </div>
+                            <div class="col-md-1">
+                                <label for="add-item">&nbsp;</label>
+                                <input type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Adicionar"></input>
                             </div>
                         </div>
-                        <button type="button" id="add-item" class="btn btn-primary waves-effect">Adicionar Item</button>
+
                     </form>
                 </div>
             </div>
@@ -160,8 +158,10 @@
         </div>
     </div>
 </div>
-
-    <button type="button" id="transfer-button" class="btn btn-success waves-effect">Realizar Transferência</button>
+    <center><button type="button" id="transfer-button" class="btn btn-success waves-effect">Realizar Transferência</button></center>
+</div>
+<div>
+   <br><br>
 </div>
 
 <!-- Modal para Seleção de Itens -->
