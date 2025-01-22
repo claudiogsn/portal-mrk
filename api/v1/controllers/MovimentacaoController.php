@@ -214,6 +214,7 @@ class MovimentacaoController {
                     WHEN m.tipo = 'c' THEN 'Compra'
                     ELSE 'Outro'
                 END AS tipo_movimentacao,
+                us.name as username,
                 m.data,
                 m.created_at
             FROM
@@ -222,6 +223,8 @@ class MovimentacaoController {
                 system_unit su_origem ON m.system_unit_id = su_origem.id
             LEFT JOIN
                 system_unit su_destino ON m.system_unit_id_destino = su_destino.id
+            LEFT JOIN
+                system_users us ON m.usuario_id = us.id
             WHERE 
                 m.system_unit_id = :system_unit_id
                 AND m.status <> 3
@@ -565,7 +568,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 $saldoAtual = $stockData['saldo'] ?? 0;
 
                 // Calcula o novo saldo, somando o valor transferido ao saldo atual
-                $novoSaldo = $saldoAtual + $quantidade;
+                //$novoSaldo = $saldoAtual + $quantidade;
 
                 // Inserção no banco de dados para o movimento de entrada
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 

@@ -126,7 +126,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label for="item-quantity">Quantidade</label>
-                                <input type="number" inputmode="numeric" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
+                                <input type="text" inputmode="numeric" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
                             </div>
                             <div class="col-md-1">
                                 <label for="add-item">&nbsp;</label>
@@ -353,6 +353,8 @@ async function loadItems(unitId) {
         transferDateInput.setAttribute('value', today);
 
 
+
+
     // Função para enviar os itens de transferência para o backend
     async function sendTransferItems() {
         const transferDate = $('#transfer-date').val();
@@ -510,6 +512,19 @@ async function loadItems(unitId) {
         const unitId = $('#origin-unit').val();
         loadItems(unitId);
     });
+
+    $('#item-quantity').on('input', function () {
+        const unidade = $('#item-unit').val();
+        if (['KG', 'LT', 'L'].includes(unidade)) {
+            let valor = $(this).val().replace(/[^\d]/g, '');
+            valor = (valor / 1000).toFixed(3);
+            $(this).val(valor.replace('.', ','));
+        } else {
+            // Permitir apenas números inteiros
+            $(this).val($(this).val().replace(/[^\d]/g, ''));
+        }
+    });
+
 
     // Adicionar item à tabela de transferência
     $('#add-item').click(function () {
