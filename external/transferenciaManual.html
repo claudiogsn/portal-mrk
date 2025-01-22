@@ -149,10 +149,9 @@
             <table id="result-table" class="table table-bordered table-hover">
                 <thead>
                     <tr>
-                        <th>Código</th>
+                        <th>Cod.</th>
                         <th>Descrição</th>
-                        <th>Unidade</th>
-                        <th>Quantidade</th>
+                        <th>Quant</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -186,9 +185,8 @@
                 <table id="item-table" class="table table-bordered table-hover">
                     <thead>
                         <tr>
-                            <th>Código</th>
+                            <th>Cod.</th>
                             <th>Descrição</th>
-                            <th>Saldo</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -274,7 +272,7 @@ async function loadUnidades() {
     }
 }
 
-    // Função para carregar itens
+
     // Função para carregar itens
 async function loadItems(unitId) {
     if (!unitId) {
@@ -300,15 +298,13 @@ async function loadItems(unitId) {
                     <tr>
                         <td>${item.codigo}</td>
                         <td>${item.nome}</td>
-                        <td>${item.saldo || 0}</td>
                         <td>
                             <button 
                                 class="btn btn-primary select-item" 
                                 data-codigo="${item.codigo}" 
-                                data-nome="${item.nome}" 
-                                data-saldo="${item.saldo || 0}" 
+                                data-nome="${item.nome}"
                                 data-und="${item.und}">
-                                Selecionar
+                                Inserir
                             </button>
                         </td>
                     </tr>
@@ -336,7 +332,6 @@ async function loadItems(unitId) {
             $('.select-item').click(function () {
                 const codigo = $(this).data('codigo');
                 const nome = $(this).data('nome');
-                const saldo = $(this).data('saldo');
                 const und = $(this).data('und');
 
                 $('#item-codigo').val(codigo);
@@ -386,7 +381,7 @@ async function loadItems(unitId) {
         const items = [];
         $('#result-table tbody tr').each(function(index, row) {
             const codigo = $(row).find('td:eq(0)').text();
-            const quantidade = $(row).find('td:eq(3)').text();
+            const quantidade = $(row).find('td:eq(2)').text();
 
             if (codigo && quantidade) {
                 items.push({
@@ -413,6 +408,17 @@ async function loadItems(unitId) {
             cancelButtonText: 'Cancelar'
         }).then(async (result) => {
             if (result.isConfirmed) {
+
+                swal.fire({
+                    title: 'Processando transferência...',
+                    text: 'Por favor, aguarde enquanto os dados estão sendo enviados.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        swal.showLoading();
+                    }
+                });
+
+
                 try {
                     const response = await axios.post(baseUrl, {
                         method: 'createTransferItems',
@@ -426,6 +432,8 @@ async function loadItems(unitId) {
                         }
                     });
 
+                    swal.close();
+
                     if (response.data.success) {
                         const transferDoc = response.data.transfer_doc;
                         const nomeUnidadeDestino = response.data.nome_unidade_destino;
@@ -434,40 +442,54 @@ async function loadItems(unitId) {
                         const itens = response.data.itens;
                         const usuario = response.data.usuario;
 
-                        const externalHtmlResponse = await fetch('./reports/transferencia.html');
-                        let htmlContent = await externalHtmlResponse.text();
+                        // Exibir confirmação de sucesso antes de abrir a nova aba
+                        swal.fire({
+                            title: 'Transferência realizada com sucesso!',
+                            text: `Número do documento: ${transferDoc}`,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(async () => {
+                            // Após o usuário clicar em "OK", abrir a nova aba
+                            const externalHtmlResponse = await fetch('./reports/transferencia.html');
+                            let htmlContent = await externalHtmlResponse.text();
 
-                        const itemRows = itens
-                            .map(
-                                (item) =>
-                                    `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`
-                            )
-                            .join('');
+                            const itemRows = itens
+                                .map(
+                                    (item) =>
+                                        `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`
+                                )
+                                .join('');
 
-                        htmlContent = htmlContent
-                            .replace('{{ESTABELECIMENTO_ORIGEM}}', nomeUnidadeOrigem)
-                            .replace('{{ESTABELECIMENTO_DESTINO}}', nomeUnidadeDestino)
-                            .replace('{{TIPO_MOV}}', 'Transferência')
-                            .replace('{{DOC_NUMBER}}', transferDoc)
-                            .replace('{{DATA}}', dataHora)
-                            .replace('{{USUARIO}}', usuario)
-                            .replace('{{DATA_ITENS}}', itemRows);
+                            htmlContent = htmlContent
+                                .replace('{{ESTABELECIMENTO_ORIGEM}}', nomeUnidadeOrigem)
+                                .replace('{{ESTABELECIMENTO_DESTINO}}', nomeUnidadeDestino)
+                                .replace('{{TIPO_MOV}}', 'Transferência')
+                                .replace('{{DOC_NUMBER}}', transferDoc)
+                                .replace('{{DATA}}', dataHora)
+                                .replace('{{USUARIO}}', usuario)
+                                .replace('{{DATA_ITENS}}', itemRows);
 
-                        const newWindow = window.open();
-                        newWindow.document.open();
-                        newWindow.document.write(htmlContent);
-                        newWindow.document.close();
+                            const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                            newWindow.document.open();
+                            newWindow.document.write(htmlContent);
+                            newWindow.document.close();
 
-
+                            $('#origin-unit').val('');
+                            $('#destination-unit').val('');
+                            $('#transfer-date').val('');
+                            $('#result-table tbody').empty();
+                        });
                     } else {
                         swal.fire('Erro', response.data.message, 'error');
                     }
                 } catch (error) {
+                    swal.close();
                     console.error(error);
                     swal.fire('Erro', 'Ocorreu um erro ao enviar os dados para o backend.', 'error');
                 }
             }
         });
+
     }
 
     // Configurar o evento para o botão de realizar a transferência
@@ -493,7 +515,6 @@ async function loadItems(unitId) {
     $('#add-item').click(function () {
         const codigo = $('#item-codigo').val();
         const descricao = $('#item-description').val();
-        const unidade = $('#item-unit').val();
         const quantidade = $('#item-quantity').val();
 
         if (!descricao || !quantidade) {
@@ -505,9 +526,8 @@ async function loadItems(unitId) {
             <tr>
                 <td>${codigo}</td>
                 <td>${descricao}</td>
-                <td>${unidade}</td>
                 <td>${quantidade}</td>
-                <td><button class="btn btn-danger remove-item">Remover</button></td>
+                <td><button class="btn btn-danger remove-item">X</button></td>
             </tr>
         `;
 
