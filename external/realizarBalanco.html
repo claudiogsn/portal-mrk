@@ -202,6 +202,7 @@
             let isAuthenticated = false;
 
             let loggedUser = '';
+            let loggedUserId = '';
     
             function showLoader() {
                 $('#pageLoader').fadeIn();
@@ -231,50 +232,51 @@
                 }
             }
 
-            // Lista de usuários e senhas
             const users = {
-                "alan.lima": "1",
-                "aline": "2",
-                "ana.cristina": "3",
-                "beatriz.borges": "4",
-                "claudiane.de.jesus": "5",
-                "davi.guedes": "6",
-                "diana.souza.silva": "7",
-                "herbert": "8",
-                "ilmara": "9",
-                "jessica.sena": "10",
-                "johnantan.sales": "11",
-                "liliana.lima": "12",
-                "manuelle.santos": "13",
-                "matheus.hellwig": "14",
-                "robert": "15",
-                "rodrigo.marcio": "16",
-                "suzana": "17",
-                "tatiane.de.jesus": "18",
-                "luciene.portela": "19",
-                "paula.portela": "20",
-                "sulivan.gomes": "21",
-                "edno.alves": "22",
-                "guilherme": "23",
-                "1": "1",
+                "alan.lima": { user_id: 12, password: "1" },
+                "aline": { user_id: 13, password: "2" },
+                "ana.cristina": { user_id: 14, password: "3" },
+                "beatriz.borges": { user_id: 15, password: "4" },
+                "claudiane.de.jesus": { user_id: 16, password: "5" },
+                "davi.guedes": { user_id: 17, password: "6" },
+                "diana.souza.silva": { user_id: 18, password: "7" },
+                "herbert": { user_id: 19, password: "8" },
+                "ilmara": { user_id: 20, password: "9" },
+                "jessica.sena": { user_id: 21, password: "10" },
+                "johnantan.sales": { user_id: 22, password: "11" },
+                "liliana.lima": { user_id: 23, password: "12" },
+                "manuelle.santos": { user_id: 24, password: "13" },
+                "matheus.hellwig": { user_id: 25, password: "14" },
+                "robert": { user_id: 26, password: "15" },
+                "rodrigo.marcio": { user_id: 27, password: "16" },
+                "suzana": { user_id: 28, password: "17" },
+                "tatiane.de.jesus": { user_id: 29, password: "18" },
+                "luciene.portela": { user_id: 30, password: "19" },
+                "paula.portela": { user_id: 31, password: "20" },
+                "sulivan.gomes": { user_id: 32, password: "21" },
+                "edno.alves": { user_id: 33, password: "22" },
+                "guilherme": { user_id: 34, password: "23" },
+                "1": { user_id: 35, password: "1" }
             };
+
 
             // Evento do botão de login
             $('#loginButton').click(function () {
                 const username = $('#loginUsername').val().toLowerCase(); // Converter para minúsculas
                 const password = $('#loginPassword').val();
 
-
                 // Verificar autenticação
-                if (users[username] && users[username] === password) {
+                if (users[username] && users[username].password === password) {
                     isAuthenticated = true;
                     loggedUser = username;
+                    loggedUserId = users[username].user_id; // Obtém o user_id
                     $('#loginModal').modal('hide');
                     loadItemsByTag();
                 } else {
                     swal("Erro", "Usuário ou senha inválidos", "error");
                 }
             });
+
 
 
             function extractSystemUnitId() {

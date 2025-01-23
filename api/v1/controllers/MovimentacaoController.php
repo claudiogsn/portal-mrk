@@ -439,7 +439,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         // Definindo valores fixos
         $tipo = 'b';
         $tipo_mov = 'balanco';
-        $usuario_id = 5;
+        $usuario_id = $data['user_id'];
 
 
         try {
