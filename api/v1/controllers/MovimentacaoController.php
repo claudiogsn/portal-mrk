@@ -39,7 +39,8 @@ class MovimentacaoController {
 
         $stmt = $pdo->prepare("SELECT 
             m.system_unit_id,
-            COALESCE(m.system_unit_id_destino, 'Destino Não Informado') AS system_unit_id_destino,
+            
+            COALESCE((select name from system_unit where id = m.system_unit_id_destino), 'Destino Não Informado') AS system_unit_id_destino,
             m.doc,
             m.tipo,
             m.tipo_mov,
@@ -55,6 +56,7 @@ class MovimentacaoController {
             AND m.system_unit_id = p.system_unit_id
         WHERE 
             m.system_unit_id = :unit_id
+            AND m.status in (1,2)
             AND m.data = :data
             AND m.produto = :produto;");
 
