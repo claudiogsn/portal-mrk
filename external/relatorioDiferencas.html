@@ -103,7 +103,7 @@
                        
                         <div class="col-md-1">
                             <label for="btnBuscar">&nbsp;</label>
-                            <input type="button" id="btnBuscar" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Buscar">
+                            <input type="button" id="btnBuscar" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Buscar"></input>
                         </div>
                     </div>
             </div>
@@ -132,46 +132,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/i18n/defaults-pt_BR.min.js"></script>
     <script src="bsb/plugins/bootstrap-select/js/bootstrap-select.js"></script>
 
-
     <script>
-         const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
-
+        const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
+    
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const unit_matriz_id = urlParams.get('unit_matriz_id');
         const username = urlParams.get('username');
-
+    
         $(document).ready(function () {
-
-  
-                $('#selectLojas').selectpicker({
-                    noneSelectedText: 'Nenhuma loja selecionada',
-                    noneResultsText: 'Nenhum resultado encontrado {0}',
-                    selectAllText: 'Selecionar tudo',
-                    deselectAllText: 'Desmarcar tudo',
-                    width: 'fit'
-                });
-
-                $('#selectLojas').on('changed.bs.select', function () {
-                    const selected = $(this).val(); // Obtém os valores selecionados
-                    const count = selected ? selected.length : 0; // Conta quantos itens foram selecionados
-
-                    if (count === 0) {
-                        $('.dropdown-toggle .filter-option').text('Nenhuma loja selecionada');
-                    } else if (count === 1) {
-                        $('.dropdown-toggle .filter-option').text('1 loja selecionada');
-                    } else {
-                        $('.dropdown-toggle .filter-option').text(`${count} lojas selecionadas`);
-                    }
-                });
-
-                $('#selectLojas').selectpicker({
-                    noneSelectedText: 'Nenhuma loja selecionada',
-                    countSelectedText: (numSelected) => `${numSelected} lojas selecionadas`,
-                });
-
+    
+            $('#selectLojas').selectpicker({
+                noneSelectedText: 'Nenhuma loja selecionada',
+                noneResultsText: 'Nenhum resultado encontrado {0}',
+                selectAllText: 'Selecionar tudo',
+                deselectAllText: 'Desmarcar tudo',
+                width: 'fit'
+            });
+    
+            $('#selectLojas').on('changed.bs.select', function () {
+                const selected = $(this).val(); // Obtém os valores selecionados
+                const count = selected ? selected.length : 0; // Conta quantos itens foram selecionados
+    
+                if (count === 0) {
+                    $('.dropdown-toggle .filter-option').text('Nenhuma loja selecionada');
+                } else if (count === 1) {
+                    $('.dropdown-toggle .filter-option').text('1 loja selecionada');
+                } else {
+                    $('.dropdown-toggle .filter-option').text(`${count} lojas selecionadas`);
+                }
+            });
+    
+            $('#selectLojas').selectpicker({
+                noneSelectedText: 'Nenhuma loja selecionada',
+                countSelectedText: (numSelected) => `${numSelected} lojas selecionadas`,
+            });
+    
             // Carregar unidades
             async function loadUnidades() {
                 try {
@@ -180,7 +178,7 @@
                         token: token,
                         data: { unit_matriz_id: unit_matriz_id }
                     });
-
+    
                     if (response.data) {
                         const selectLojas = $('#selectLojas');
                         selectLojas.empty(); // Limpa as opções existentes
@@ -195,25 +193,24 @@
                     Swal.fire('Erro', error.message, 'error');
                 }
             }
-
-
+    
             // Buscar relatório
             async function buscarRelatorio() {
                 const dataInicial = $('#dataInicial').val();
                 const dataFinal = $('#dataFinal').val();
                 const lojas = $('#selectLojas').val();
                 const visualizacao = $('#visualizacao').val();
-
+    
                 if (!dataInicial || !dataFinal || new Date(dataInicial) > new Date(dataFinal)) {
                     Swal.fire('Erro', 'Preencha as datas corretamente.', 'error');
                     return;
                 }
-
+    
                 if (!lojas || lojas.length === 0) {
                     Swal.fire('Erro', 'Selecione pelo menos uma loja.', 'error');
                     return;
                 }
-
+    
                 try {
                     const response = await axios.post(baseUrl, {
                         method: 'getDiferencasEstoque',
@@ -224,7 +221,7 @@
                             end_date: dataFinal
                         }
                     });
-
+    
                     if (response.data.status === 'success') {
                         renderRelatorio(response.data.data, visualizacao);
                     } else {
@@ -234,148 +231,216 @@
                     Swal.fire('Erro', error.message, 'error');
                 }
             }
-
+    
             function renderRelatorio(data, visualizacao) {
-    const container = $('#relatorio');
-    container.empty();
-
-    // Agrupando os dados por unidade
-    const unidades = groupBy(data, 'system_unit_id');
-
-    Object.keys(unidades).forEach(unitId => {
-        const unidade = unidades[unitId];
-        const nomeUnidade = unidade[0].nome_unidade;
-
-        // Cabeçalho clicável para expandir/colapsar
-        const header = $(`
-            <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
-                ${nomeUnidade} <span style="float: right;">+</span>
-            </div>
-        `);
-
-        // Tabela para os dados
-        const table = $(`
-            <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
-                <thead>
-                    <tr>
-                        ${visualizacao === 'resumido' ? '<th>Produto</th>' : '<th>Data</th>'}
-                        <th>Nome Produto</th>
-                        <th>Diferença</th>
-                        <th>Preço Custo</th>
-                        <th>Perda Custo</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        `);
-
-        let totalPerdaCusto = 0;
-        let totalDiferenca = 0;
-
-        if (visualizacao === 'resumido') {
-            // Agrupar os itens por código do produto
-            const produtos = groupBy(unidade, 'produto');
-
-            Object.keys(produtos).forEach(produtoId => {
-                const itens = produtos[produtoId];
-                const nomeProduto = itens[0].nome_produto;
-                const precoCusto = itens[0].preco_custo; // Usar o preço do primeiro produto
-
-                // Somar as colunas de Diferença e Perda Custo
-                const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
-                const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
-
-                totalDiferenca += somaDiferenca;
-                totalPerdaCusto += somaPerdaCusto;
-
-                // Adicionar a linha do produto
-                const row = $(`
-                    <tr>
-                        <td>${produtoId}</td>
-                        <td>${nomeProduto}</td>
-                        <td>${formatNumber(- somaDiferenca)}</td>
-                        <td>${formatCurrency(precoCusto)}</td>
-                        <td>${formatCurrency(- somaPerdaCusto)}</td>
-                    </tr>
-                `);
-
-                table.find('tbody').append(row);
-            });
-        } else {
-            // Modo detalhado (sem agrupamento por código de produto)
-            unidade.forEach(item => {
-                totalDiferenca += item.diferenca;
-                totalPerdaCusto += item.perda_custo;
-
-                const row = $(`
-                    <tr>
-                        <td>${formatDate(item.data)}</td>
-                        <td>${item.nome_produto}</td>
-                        <td>${formatNumber(- item.diferenca)}</td>
-                        <td>${formatCurrency(item.preco_custo)}</td>
-                        <td>${formatCurrency(- item.perda_custo)}</td>
-                    </tr>
-                `);
-
-                table.find('tbody').append(row);
-            });
-        }
-
-        // Adiciona o rodapé com os totais
-        const footer = $(`
-            <tr class="total-row">
-                <td colspan="${visualizacao === 'resumido' ? '4' : '4'}" style="font-weight: bold;">Total</td>
-                <td>${formatCurrency(- totalPerdaCusto)}</td>
-            </tr>
-        `);
-
-        table.find('tbody').append(footer);
-
-        // Adiciona o cabeçalho e a tabela ao container
-        container.append(header);
-        container.append(table);
-
-        // Expansão e colapso da tabela com transição
-        header.on('click', function () {
-            const isVisible = table.is(':visible');
-            table.slideToggle(300); // Adiciona efeito de transição
-            $(this).find('span').text(isVisible ? '+' : '-');
-        });
-    });
-}
-
-// Função de agrupamento
-function groupBy(array, key) {
-    return array.reduce((result, currentValue) => {
-        (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
-        return result;
-    }, {});
-}
-
-function formatNumber(value) {
-    return parseFloat(value).toFixed(2).replace('.', ',');
-}
-
-// Função para formatar moeda
-function formatCurrency(value) {
-    return `R$ ${parseFloat(value).toFixed(2).replace('.', ',')}`;
-}
-
-
-// Função para formatar data no formato dd/mm/aaaa
-function formatDate(dateString) {
-    const [year, month, day] = dateString.split('-');
-    return `${day}/${month}/${year}`;
-}
-
-
-
-
-
+                const container = $('#relatorio');
+                container.empty();
+    
+                // Agrupando os dados por unidade
+                const unidades = groupBy(data, 'system_unit_id');
+    
+                Object.keys(unidades).forEach(unitId => {
+                    const unidade = unidades[unitId];
+                    const nomeUnidade = unidade[0].nome_unidade;
+    
+                    // Cabeçalho clicável para expandir/colapsar
+                    const header = $(`  
+                        <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
+                            ${nomeUnidade} <span style="float: right;">+</span>
+                        </div>
+                    `);
+    
+                    // Tabela para os dados
+                    const table = $(`  
+                        <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
+                            <thead>
+                                <tr>
+                                    ${visualizacao === 'resumido' ? '<th>Produto</th>' : '<th>Data</th>'}
+                                    <th>Nome Produto</th>
+                                    <th>Diferença</th>
+                                    <th>Preço Custo</th>
+                                    <th>Perda Custo</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    `);
+    
+                    let totalPerdaCusto = 0;
+                    let totalDiferenca = 0;
+    
+                    if (visualizacao === 'resumido') {
+                        // Agrupar os itens por código do produto
+                        const produtos = groupBy(unidade, 'produto');
+    
+                        Object.keys(produtos).forEach(produtoId => {
+                            const itens = produtos[produtoId];
+                            const nomeProduto = itens[0].nome_produto;
+                            const precoCusto = itens[0].preco_custo; // Usar o preço do primeiro produto
+    
+                            // Somar as colunas de Diferença e Perda Custo
+                            const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
+                            const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
+    
+                            totalDiferenca += somaDiferenca;
+                            totalPerdaCusto += somaPerdaCusto;
+    
+                            // Adicionar a linha do produto
+                            const row = $(`  
+                                <tr>
+                                    <td>${produtoId}</td>
+                                    <td>${nomeProduto}</td>
+                                    <td>- ${formatNumber(somaDiferenca)}</td>
+                                    <td>${formatCurrency(precoCusto)}</td>
+                                    <td>- ${formatCurrency(somaPerdaCusto)}</td>
+                                </tr>
+                            `);
+    
+                            table.find('tbody').append(row);
+                        });
+                    } else {
+                        // Modo detalhado (sem agrupamento por código de produto)
+                        unidade.forEach(item => {
+                            totalDiferenca += item.diferenca;
+                            totalPerdaCusto += item.perda_custo;
+    
+                            const row = $(`  
+                                <tr>
+                                    <td>${formatDate(item.data)}</td>
+                                    <td>${item.nome_produto}</td>
+                                    <td>- ${formatNumber(item.diferenca)}</td>
+                                    <td>${formatCurrency(item.preco_custo)}</td>
+                                    <td>- ${formatCurrency(item.perda_custo)}</td>
+                                </tr>
+                            `);
+    
+                            table.find('tbody').append(row);
+                        });
+                    }
+    
+                    // Adiciona o rodapé com os totais
+                    const footer = $(`  
+                        <tr class="total-row">
+                            <td colspan="${visualizacao === 'resumido' ? '4' : '4'}" style="font-weight: bold;">Total</td>
+                            <td>${formatCurrency(- totalPerdaCusto)}</td>
+                        </tr>
+                    `);
+    
+                    table.find('tbody').append(footer);
+    
+                    // Adiciona o cabeçalho e a tabela ao container
+                    container.append(header);
+                    container.append(table);
+    
+                    // Expansão e colapso da tabela com transição
+                    header.on('click', function () {
+                        const isVisible = table.is(':visible');
+                        table.slideToggle(300); // Adiciona efeito de transição
+                        $(this).find('span').text(isVisible ? '+' : '-');
+                    });
+    
+                    // Ordenação da tabela
+                    setupSortButtons(table, unidade, visualizacao);
+                });
+            }
+    
+            // Função para configurar a ordenação
+            function setupSortButtons(table, unidade, visualizacao) {
+                // Ordenar por Data
+                table.find('button[data-sort="data-asc"]').on('click', function() {
+                    unidade.sort((a, b) => new Date(a.data) - new Date(b.data));
+                    renderTableBody(table, unidade, visualizacao);
+                });
+    
+                table.find('button[data-sort="data-desc"]').on('click', function() {
+                    unidade.sort((a, b) => new Date(b.data) - new Date(a.data));
+                    renderTableBody(table, unidade, visualizacao);
+                });
+    
+                // Ordenar por Nome do Produto
+                table.find('button[data-sort="produto-asc"]').on('click', function() {
+                    unidade.sort((a, b) => a.nome_produto.localeCompare(b.nome_produto));
+                    renderTableBody(table, unidade, visualizacao);
+                });
+    
+                table.find('button[data-sort="produto-desc"]').on('click', function() {
+                    unidade.sort((a, b) => b.nome_produto.localeCompare(a.nome_produto));
+                    renderTableBody(table, unidade, visualizacao);
+                });
+            }
+    
+            // Função para renderizar o corpo da tabela após a ordenação
+            function renderTableBody(table, unidade, visualizacao) {
+                const tbody = table.find('tbody');
+                tbody.empty();
+    
+                if (visualizacao === 'resumido') {
+                    const produtos = groupBy(unidade, 'produto');
+                    Object.keys(produtos).forEach(produtoId => {
+                        const itens = produtos[produtoId];
+                        const nomeProduto = itens[0].nome_produto;
+                        const precoCusto = itens[0].preco_custo;
+                        const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
+                        const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
+    
+                        const row = $(`  
+                            <tr>
+                                <td>${produtoId}</td>
+                                <td>${nomeProduto}</td>
+                                <td>- ${formatNumber(somaDiferenca)}</td>
+                                <td>${formatCurrency(precoCusto)}</td>
+                                <td>- ${formatCurrency(somaPerdaCusto)}</td>
+                            </tr>
+                        `);
+                        tbody.append(row);
+                    });
+                } else {
+                    unidade.forEach(item => {
+                        const row = $(`  
+                            <tr>
+                                <td>${formatDate(item.data)}</td>
+                                <td>${item.nome_produto}</td>
+                                <td>- ${formatNumber(item.diferenca)}</td>
+                                <td>${formatCurrency(item.preco_custo)}</td>
+                                <td>- ${formatCurrency(item.perda_custo)}</td>
+                            </tr>
+                        `);
+                        tbody.append(row);
+                    });
+                }
+            }
+    
+            // Função para agrupar dados por chave
+            function groupBy(array, key) {
+                return array.reduce((result, currentValue) => {
+                    (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+                    return result;
+                }, {});
+            }
+    
+            function formatNumber(value) {
+                return parseFloat(value).toFixed(2).replace('.', ',');
+            }
+    
+            // Função para formatar moeda
+            function formatCurrency(value) {
+                return `R$ ${parseFloat(value).toFixed(2).replace('.', ',')}`;
+            }
+    
+            // Função para formatar data no formato dd/mm/aaaa
+            function formatDate(dateString) {
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            }
+    
             $('#btnBuscar').on('click', buscarRelatorio);
             loadUnidades();
         });
     </script>
+    
+
+
+ 
 </body>
 
 </html>

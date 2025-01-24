@@ -518,6 +518,8 @@ class MovimentacaoController
                 $itemRequiredFields = ["codigo", "seq", "quantidade"];
                 foreach ($itemRequiredFields as $field) {
                     if (!isset($item[$field])) {
+                        // Se algum campo obrigatório faltar, faz rollback e retorna o erro
+                        $pdo->rollBack();
                         return [
                             "success" => false,
                             "message" => "O campo '$field' é obrigatório para cada item.",
@@ -532,7 +534,7 @@ class MovimentacaoController
 
                 // Inserção no banco de dados
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov , produto, seq, data, quantidade, usuario_id) 
-                                       VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?, ?)");
+                                   VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?, ?)");
                 $stmt->execute([
                     $system_unit_id,
                     $system_unit_id_destino,
@@ -546,19 +548,18 @@ class MovimentacaoController
                     $usuario_id,
                 ]);
 
-                if ($stmt->rowCount() > 0) {
-                    $pdo->commit();
-                } else {
+                if ($stmt->rowCount() == 0) {
                     // Se a inserção do item falhar, faz rollback e retorna o erro
                     $pdo->rollBack();
                     return [
                         "success" => false,
-                        "message" =>
-                            "Falha ao criar movimentação para o item com código " .
-                            $produto,
+                        "message" => "Falha ao criar movimentação para o item com código " . $produto,
                     ];
                 }
             }
+
+            // Se todas as inserções forem bem-sucedidas, faz o commit da transação
+            $pdo->commit();
 
             return [
                 "success" => true,
@@ -574,6 +575,7 @@ class MovimentacaoController
             ];
         }
     }
+
 
     // Métodos Específicos para Transferências
 
