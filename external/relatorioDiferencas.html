@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Relatório de Diferenças de Estoque</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Fonts e Ícones -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- CSS -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/css/bootstrap-select.min.css">
+
+
+    <style>
+        .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background-color: #e0e0e0;
+        }
+
+        .unit-header {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .unit-table {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+        .bootstrap-select .dropdown-menu {
+            margin-left: 20px !important;
+            max-width: none;
+            width: auto;
+        }
+
+        .bootstrap-select .dropdown-menu-inner {
+            margin-left: 20px !important;
+            white-space: normal;
+        }
+        .override-bootstrap-select {
+            display: block !important; /* Força a regra sobre o arquivo CSS externo */
+        }
+        .bootstrap-select {
+            width: 100% !important; /* Ajusta o campo para ocupar 100% da largura do contêiner */
+        }
+
+    </style>
+</head>
+
+<body class="theme-blue">
+    <div class="container-fluid">
+            <div class="header-card">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label for="dataInicial">Data Inicial</label>
+                                <input type="date" id="dataInicial" class="form-control">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="dataFinal">Data Final</label>
+                                <input type="date" id="dataFinal" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="selectLojas">Lojas</label>
+                                <select id="selectLojas" style="display: block; width: 100%;" class="form-control selectpicker override-bootstrap-select" data-selected-text-format="count" data-actions-box="true" multiple data-live-search="true" data-width="fit">
+                                    <!-- Preenchido dinamicamente -->
+                                </select>
+                                
+                            </div>
+                            <div class="col-md-3">
+                                <label for="visualizacao">Visualização</label>
+                                <select id="visualizacao" class="form-control">
+                                    <option value="resumido">Resumido</option>
+                                    <option value="detalhado">Detalhado</option>
+                                </select>
+                            </div>
+                        
+                       
+                        <div class="col-md-1">
+                            <label for="btnBuscar">&nbsp;</label>
+                            <input type="button" id="btnBuscar" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Buscar"></input>
+                        </div>
+                    </div>
+            </div>
+
+        <div class="card">
+            <div class="header">
+                <h2>Relatório de Diferenças de Estoque</h2>
+            </div>
+            <!-- Relatório -->
+            <div id="relatorio" class="mt-4">
+                <!-- Conteúdo dinâmico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/js/bootstrap-select.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/i18n/defaults-pt_BR.min.js"></script>
+    <script src="bsb/plugins/bootstrap-select/js/bootstrap-select.js"></script>
+
+
+    <script>
+         const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const unit_matriz_id = urlParams.get('unit_matriz_id');
+        const username = urlParams.get('username');
+
+        $(document).ready(function () {
+
+  
+                $('#selectLojas').selectpicker({
+                    noneSelectedText: 'Nenhuma loja selecionada',
+                    noneResultsText: 'Nenhum resultado encontrado {0}',
+                    selectAllText: 'Selecionar tudo',
+                    deselectAllText: 'Desmarcar tudo',
+                    width: 'fit'
+                });
+
+                $('#selectLojas').on('changed.bs.select', function () {
+                    const selected = $(this).val(); // Obtém os valores selecionados
+                    const count = selected ? selected.length : 0; // Conta quantos itens foram selecionados
+
+                    if (count === 0) {
+                        $('.dropdown-toggle .filter-option').text('Nenhuma loja selecionada');
+                    } else if (count === 1) {
+                        $('.dropdown-toggle .filter-option').text('1 loja selecionada');
+                    } else {
+                        $('.dropdown-toggle .filter-option').text(`${count} lojas selecionadas`);
+                    }
+                });
+
+                $('#selectLojas').selectpicker({
+                    noneSelectedText: 'Nenhuma loja selecionada',
+                    countSelectedText: (numSelected) => `${numSelected} lojas selecionadas`,
+                });
+
+            // Carregar unidades
+            async function loadUnidades() {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getFiliaisByMatriz',
+                        token: token,
+                        data: { unit_matriz_id: unit_matriz_id }
+                    });
+
+                    if (response.data) {
+                        const selectLojas = $('#selectLojas');
+                        selectLojas.empty(); // Limpa as opções existentes
+                        response.data.forEach(filial => {
+                            selectLojas.append(`<option value="${filial.filial_id}">${filial.filial_nome}</option>`);
+                        });
+                        selectLojas.selectpicker('refresh'); // Atualiza o Bootstrap Select
+                    } else {
+                        Swal.fire('Erro', 'Não foi possível carregar as lojas.', 'error');
+                    }
+                } catch (error) {
+                    Swal.fire('Erro', error.message, 'error');
+                }
+            }
+
+
+            // Buscar relatório
+            async function buscarRelatorio() {
+                const dataInicial = $('#dataInicial').val();
+                const dataFinal = $('#dataFinal').val();
+                const lojas = $('#selectLojas').val();
+                const visualizacao = $('#visualizacao').val();
+
+                if (!dataInicial || !dataFinal || new Date(dataInicial) > new Date(dataFinal)) {
+                    Swal.fire('Erro', 'Preencha as datas corretamente.', 'error');
+                    return;
+                }
+
+                if (!lojas || lojas.length === 0) {
+                    Swal.fire('Erro', 'Selecione pelo menos uma loja.', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getDiferencasEstoque',
+                        token: token,
+                        data: {
+                            system_unit_id: lojas,
+                            start_date: dataInicial,
+                            end_date: dataFinal
+                        }
+                    });
+
+                    if (response.data.status === 'success') {
+                        renderRelatorio(response.data.data, visualizacao);
+                    } else {
+                        Swal.fire('Erro', 'Não foi possível carregar o relatório.', 'error');
+                    }
+                } catch (error) {
+                    Swal.fire('Erro', error.message, 'error');
+                }
+            }
+
+            function renderRelatorio(data, visualizacao) {
+    const container = $('#relatorio');
+    container.empty();
+
+    // Agrupando os dados por unidade
+    const unidades = groupBy(data, 'system_unit_id');
+
+    Object.keys(unidades).forEach(unitId => {
+        const unidade = unidades[unitId];
+        const nomeUnidade = unidade[0].nome_unidade;
+
+        // Cabeçalho clicável para expandir/colapsar
+        const header = $(`
+            <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
+                ${nomeUnidade} <span style="float: right;">+</span>
+            </div>
+        `);
+
+        // Tabela para os dados
+        const table = $(`
+            <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
+                <thead>
+                    <tr>
+                        ${visualizacao === 'resumido' ? '<th>Produto</th>' : '<th>Data</th>'}
+                        <th>Nome Produto</th>
+                        <th>Diferença</th>
+                        <th>Preço Custo</th>
+                        <th>Perda Custo</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        `);
+
+        let totalPerdaCusto = 0;
+        let totalDiferenca = 0;
+
+        if (visualizacao === 'resumido') {
+            // Agrupar os itens por código do produto
+            const produtos = groupBy(unidade, 'produto');
+
+            Object.keys(produtos).forEach(produtoId => {
+                const itens = produtos[produtoId];
+                const nomeProduto = itens[0].nome_produto;
+                const precoCusto = itens[0].preco_custo; // Usar o preço do primeiro produto
+
+                // Somar as colunas de Diferença e Perda Custo
+                const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
+                const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
+
+                totalDiferenca += somaDiferenca;
+                totalPerdaCusto += somaPerdaCusto;
+
+                // Adicionar a linha do produto
+                const row = $(`
+                    <tr>
+                        <td>${produtoId}</td>
+                        <td>${nomeProduto}</td>
+                        <td>${formatNumber(- somaDiferenca)}</td>
+                        <td>${formatCurrency(precoCusto)}</td>
+                        <td>${formatCurrency(-somaPerdaCusto)}</td>
+                    </tr>
+                `);
+
+                table.find('tbody').append(row);
+            });
+        } else {
+            // Modo detalhado (sem agrupamento por código de produto)
+            unidade.forEach(item => {
+                totalDiferenca += item.diferenca;
+                totalPerdaCusto += item.perda_custo;
+
+                const row = $(`
+                    <tr>
+                        <td>${formatDate(item.data)}</td>
+                        <td>${item.nome_produto}</td>
+                        <td>${formatNumber(- item.diferenca)}</td>
+                        <td>${formatCurrency(item.preco_custo)}</td>
+                        <td>${formatCurrency(- item.perda_custo)}</td>
+                    </tr>
+                `);
+
+                table.find('tbody').append(row);
+            });
+        }
+
+        // Adiciona o rodapé com os totais
+        const footer = $(`
+            <tr class="total-row">
+                <td colspan="${visualizacao === 'resumido' ? '4' : '4'}" style="font-weight: bold;">Total</td>
+                <td>${formatCurrency(- totalPerdaCusto)}</td>
+            </tr>
+        `);
+
+        table.find('tbody').append(footer);
+
+        // Adiciona o cabeçalho e a tabela ao container
+        container.append(header);
+        container.append(table);
+
+        // Expansão e colapso da tabela com transição
+        header.on('click', function () {
+            const isVisible = table.is(':visible');
+            table.slideToggle(300); // Adiciona efeito de transição
+            $(this).find('span').text(isVisible ? '+' : '-');
+        });
+    });
+}
+
+// Função de agrupamento
+function groupBy(array, key) {
+    return array.reduce((result, currentValue) => {
+        (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+        return result;
+    }, {});
+}
+
+function formatNumber(value) {
+    return parseFloat(value).toFixed(2).replace('.', ',');
+}
+
+// Função para formatar moeda
+function formatCurrency(value) {
+    return `R$ ${parseFloat(value).toFixed(2).replace('.', ',')}`;
+}
+
+
+// Função para formatar data no formato dd/mm/aaaa
+function formatDate(dateString) {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+}
+
+
+
+
+
+            $('#btnBuscar').on('click', buscarRelatorio);
+            loadUnidades();
+        });
+    </script>
+</body>
+
+</html>

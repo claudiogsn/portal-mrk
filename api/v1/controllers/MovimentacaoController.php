@@ -567,7 +567,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 // Extraindo os dados do item
                 $produto = $item['codigo'];
                 $seq = $item['seq'];
-                $quantidade = $item['quantidade'];
+                $quantidade = str_replace(',', '.', $item['quantidade']);
 
                 // Busca o saldo atual do produto no estoque
                 $stockData = NecessidadesController::getProductStock($system_unit_id_destino, $produto);
@@ -1004,6 +1004,75 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 return "Erro ao importar movimentações de insumos: " . $e->getMessage();
             }
         }
+
+
+    public static function getDiferencasEstoque($startDate, $endDate, array $systemUnitIds)
+    {
+        global $pdo;
+
+        $response = [
+            'parameters' => [
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'systemUnitIds' => $systemUnitIds
+            ],
+            'status' => 'success',
+            'data' => []
+        ];
+
+        try {
+            // Query base para buscar as diferenças de estoque com as condições especificadas
+            $sql = "
+            SELECT
+                d.system_unit_id,
+                su.name AS nome_unidade,
+                d.produto,
+                d.nome_produto,
+                (d.diferenca) * -1 AS diferenca,
+                d.data,
+                COALESCE(p.preco_custo, 0) AS preco_custo,
+                ROUND(((d.diferenca * -1) * COALESCE(p.preco_custo, 0)), 2) AS perda_custo
+            FROM
+                diferencas_estoque d
+            JOIN
+                products p
+            ON
+                d.produto = p.codigo AND d.system_unit_id = p.system_unit_id
+            JOIN
+                system_unit su
+            ON
+                d.system_unit_id = su.id
+            WHERE
+                d.diferenca < 0
+                AND d.system_unit_id = ?
+                AND d.data BETWEEN ? AND ?
+        ";
+
+            // Prepara a consulta uma vez, para reutilização
+            $stmt = $pdo->prepare($sql);
+
+            foreach ($systemUnitIds as $systemUnitId) {
+                // Executa a consulta para cada loja (system_unit_id)
+                $stmt->execute([$systemUnitId, $startDate, $endDate]);
+
+                // Adiciona os resultados ao array de dados
+                $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                if (!empty($results)) {
+                    $response['data'] = array_merge($response['data'], $results);
+                }
+            }
+        } catch (Exception $e) {
+            // Define o código de resposta HTTP para erro
+            http_response_code(500);
+
+            // Atualiza o status e adiciona a mensagem de erro no response
+            $response['status'] = 'error';
+            $response['message'] = $e->getMessage();
+        }
+
+        return $response;
+    }
+
 
 
 
