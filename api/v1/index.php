@@ -106,18 +106,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            case 'criarDiferencasEstoque':
-                if (isset($requestData['system_unit_id'], $requestData['data'])){
-                    $response = BiController::criarDiferencasEstoque($requestData['system_unit_id'], $requestData['data']);
-                    http_response_code(200);
-                } else{
-                    http_response_code(400);
-                    $response = [
-                        'status' => 'error',
-                        'message' => 'Missing required fields.'
-                    ];
-                }
-                break;
+
 
             case 'importComprasCSV':
                 if (isset($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao'])){
@@ -161,19 +150,6 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getDiferencasEstoque':
                 if (isset($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id'])) {
                     $response = MovimentacaoController::getDiferencasEstoque($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id']);
-                    http_response_code(200);
-                }else{
-                    http_response_code(400);
-                    $response = [
-                        'status' => 'error',
-                        'message' => 'Missing required fields.'
-                    ];
-                }
-                break;
-
-            case 'calcularDiferencasEstoque':
-                if (isset($requestData['system_unit_id'], $requestData['data'])){
-                    $response = BiController::calcularDiferencasEstoque($requestData['system_unit_id'], $requestData['data']);
                     http_response_code(200);
                 }else{
                     http_response_code(400);
