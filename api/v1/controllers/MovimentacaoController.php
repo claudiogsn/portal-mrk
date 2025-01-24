@@ -1,14 +1,13 @@
 <?php
 
-date_default_timezone_set('America/Recife');
+date_default_timezone_set("America/Recife");
 
-require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
+require_once __DIR__ . "/../database/db.php";
 
-class MovimentacaoController {
-
-
-
-    public static function getMovimentacao($system_unit_id, $doc) {
+class MovimentacaoController
+{
+    public static function getMovimentacao($system_unit_id, $doc): false|array
+    {
         global $pdo;
 
         $stmt = $pdo->prepare("
@@ -26,15 +25,14 @@ class MovimentacaoController {
         AND 
             movimentacao.doc = :doc
     ");
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
+        $stmt->bindParam(":system_unit_id", $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(":doc", $doc);
         $stmt->execute();
-        $movimentacao = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        return $movimentacao;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function getMovsByProd($unit_id, $data, $produto) {
+    public static function getMovsByProd($unit_id, $data, $produto): false|array
+    {
         global $pdo;
 
         $stmt = $pdo->prepare("SELECT 
@@ -60,70 +58,85 @@ class MovimentacaoController {
             AND m.data = :data
             AND m.produto = :produto;");
 
-        $stmt->bindParam(':unit_id', $unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':data', $data, PDO::PARAM_STR);
-        $stmt->bindParam(':produto', $produto, PDO::PARAM_INT);
+        $stmt->bindParam(":unit_id", $unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(":data", $data);
+        $stmt->bindParam(":produto", $produto, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-
-    public static function efetivarTransacoes($systemUnitId, $doc)
+    public static function efetivarTransacoes($systemUnitId, $doc): array
     {
         try {
             // Buscar todas as movimentações associadas ao `doc` e `system_unit_id`
             $movimentacoes = self::getMovimentacao($systemUnitId, $doc);
 
+            // Verificar se as movimentações foram encontradas
             if (empty($movimentacoes)) {
-                return ['success' => false, 'message' => 'Nenhuma movimentação encontrada para o documento especificado.'];
+                return [
+                    "success" => false,
+                    "message" => "Nenhuma movimentação encontrada para o documento especificado.",
+                ];
             }
 
-//            foreach ($movimentacoes as $produto) {
-//                $tipo = $produto['tipo'];
-//                $quantidade = $produto['quantidade'];
-//                $produtoId = $produto['produto'];
-//
-//                // Verificar tipo de movimentação
-//                if ($tipo === 'b') { // Balanço
-//                    ProductController::updateStockBalance($systemUnitId, $produtoId, $quantidade, $doc);
-//                } elseif (in_array($tipo, ['t', 'c'])) { // Transferência ou Compra
-//                    $stockData = NecessidadesController::getProductStock($systemUnitId, $produtoId);
-//                    $saldoAtual = $stockData['saldo'] ?? 0;
-//                    $novoSaldo = $saldoAtual + $quantidade;
-//
-//                    ProductController::updateStockBalance($systemUnitId, $produtoId, $novoSaldo, $doc);
-//                } else {
-//                    throw new Exception("Tipo de movimentação inválido: $tipo");
-//                }
-//            }
-
             // Atualizar o status de todas as movimentações do `doc`
-            self::atualizarStatusMovimentacoes($systemUnitId, $doc);
+            $updateResult = self::atualizarStatusMovimentacoes($systemUnitId, $doc);
 
-            return ['success' => true, 'message' => 'Transações efetivadas com sucesso!'];
+
+            if ($updateResult > 0) {
+                return [
+                    "success" => true,
+                    "message" => "Transações efetivadas com sucesso!",
+                ];
+            } else {
+                return [
+                    "success" => false,
+                    "message" => "Falha ao efetivar transações. Nenhuma movimentação foi atualizada.",
+                ];
+            }
 
         } catch (Exception $e) {
-            // Captura de erros e retorno de mensagem de erro
-            return ['success' => false, 'message' => 'Erro ao efetivar transações: ' . $e->getMessage()];
+            return [
+                "success" => false,
+                "message" => "Erro ao efetivar transações: " . $e->getMessage(),
+            ];
+        }
+    }
+
+    private static function atualizarStatusMovimentacoes($systemUnitId, $doc): array
+    {
+        global $pdo;
+
+        try {
+            $query = "UPDATE movimentacao SET status = 1 WHERE system_unit_id = :system_unit_id AND doc = :doc";
+            $stmt = $pdo->prepare($query);
+            $stmt->bindParam(":system_unit_id", $systemUnitId, PDO::PARAM_INT);
+            $stmt->bindParam(":doc", $doc);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                return [
+                    "success" => true,
+                    "message" => "Movimentação rejeitada com sucesso!",
+                ];
+            } else {
+                return [
+                    "success" => false,
+                    "message" => "Nenhuma movimentação encontrada para rejeitar.",
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                "success" => false,
+                "message" => "Erro ao rejeitar movimentação: " . $e->getMessage(),
+            ];
         }
     }
 
 
-    private static function atualizarStatusMovimentacoes($systemUnitId, $doc)
+    public static function listarMovimentacoesPendentes($systemUnitId): false|array
     {
-        global $pdo;
-
-        $query = "UPDATE movimentacao SET status = 1 WHERE system_unit_id = :system_unit_id AND doc = :doc";
-        $stmt = $pdo->prepare($query);
-        $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
-        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
-        $stmt->execute();
-    }
-
-
-    public static function listarMovimentacoesPendentes($systemUnitId){
-
         global $pdo;
 
         $query = "
@@ -161,40 +174,53 @@ class MovimentacaoController {
         ";
 
         $stmt = $pdo->prepare($query);
-        $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
+        $stmt->bindParam(":system_unit_id", $systemUnitId, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-
-    public static function rejeitarMovimentacao($systemUnitId, $doc,$usuario_id)
+    public static function rejeitarMovimentacao($systemUnitId, $doc, $usuario_id): array
     {
         global $pdo;
 
         try {
             // Atualiza o status da movimentação para rejeitado
-            $query = "UPDATE movimentacao SET status = 3,usuario_id = :usuario_id WHERE system_unit_id = :system_unit_id AND doc = :doc";
+            $query =
+                "UPDATE movimentacao SET status = 3,usuario_id = :usuario_id WHERE system_unit_id = :system_unit_id AND doc = :doc";
             $stmt = $pdo->prepare($query);
-            $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
-            $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
-            $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
+            $stmt->bindParam(":system_unit_id", $systemUnitId, PDO::PARAM_INT);
+            $stmt->bindParam(":usuario_id", $usuario_id, PDO::PARAM_INT);
+            $stmt->bindParam(":doc", $doc);
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
-                return ['success' => true, 'message' => 'Movimentação rejeitada com sucesso!'];
+                return [
+                    "success" => true,
+                    "message" => "Movimentação rejeitada com sucesso!",
+                ];
             } else {
-                return ['success' => false, 'message' => 'Nenhuma movimentação encontrada para rejeitar.'];
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Nenhuma movimentação encontrada para rejeitar.",
+                ];
             }
-
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao rejeitar movimentação: ' . $e->getMessage()];
+            return [
+                "success" => false,
+                "message" =>
+                    "Erro ao rejeitar movimentação: " . $e->getMessage(),
+            ];
         }
     }
 
-
-    public static function listarMovimentacoesPorData($systemUnitId,$data_inicial , $data_final) {
-
+    public static function listarMovimentacoesPorData(
+        $systemUnitId,
+        $data_inicial,
+        $data_final
+    ): false|array
+    {
         global $pdo;
 
         $query = "
@@ -239,52 +265,69 @@ class MovimentacaoController {
         ";
 
         $stmt = $pdo->prepare($query);
-        $stmt->bindParam(':system_unit_id', $systemUnitId, PDO::PARAM_INT);
-        $stmt->bindParam(':data_inicial', $data_inicial, PDO::PARAM_STR);
-        $stmt->bindParam(':data_final', $data_final, PDO::PARAM_STR);
+        $stmt->bindParam(":system_unit_id", $systemUnitId, PDO::PARAM_INT);
+        $stmt->bindParam(":data_inicial", $data_inicial);
+        $stmt->bindParam(":data_final", $data_final);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Obter última movimentação de determinado tipo
-    public static function getLastMov($system_unit_id, $tipo) {
+    public static function getLastMov($system_unit_id, $tipo)
+    {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT * FROM movimentacao WHERE system_unit_id = :system_unit_id AND tipo = :tipo ORDER BY created_at DESC LIMIT 1");
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':tipo', $tipo, PDO::PARAM_STR);
+        $stmt = $pdo->prepare(
+            "SELECT * FROM movimentacao WHERE system_unit_id = :system_unit_id AND tipo = :tipo ORDER BY created_at DESC LIMIT 1"
+        );
+        $stmt->bindParam(":system_unit_id", $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(":tipo", $tipo);
         $stmt->execute();
         $movimentacao = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $movimentacao ? $movimentacao['doc'] : $tipo . '-000000';
+        return $movimentacao ? $movimentacao["doc"] : $tipo . "-000000";
     }
 
     // Função para incrementar o documento (doc)
-    private static function incrementDoc($ultimoDoc, $prefixo) {
+    private static function incrementDoc($ultimoDoc, $prefixo): string
+    {
         // Supondo que o formato do doc seja algo como "t-000001" ou "b-000001"
-        if (preg_match('/^' . $prefixo . '-(\d+)$/', $ultimoDoc, $matches)) {
-            $numero = (int)$matches[1] + 1;
-            return $prefixo . '-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
+        if (preg_match("/^" . $prefixo . '-(\d+)$/', $ultimoDoc, $matches)) {
+            $numero = (int) $matches[1] + 1;
+            return $prefixo . "-" . str_pad($numero, 6, "0", STR_PAD_LEFT);
         }
-        return $prefixo . '-000001';
+        return $prefixo . "-000001";
     }
 
     // Métodos Específicos para Balanço
 
     // Listar balanços agrupados por 'doc' com mais informações e filtro de data
-public static function listBalance($system_unit_id, $data_inicial = null, $data_final = null) {
-    global $pdo;
+    public static function listBalance(
+        $system_unit_id,
+        $data_inicial = null,
+        $data_final = null
+    ): array
+    {
+        global $pdo;
 
-    try {
-        // Validação das datas
-        if (!empty($data_inicial) && !empty($data_final) && $data_inicial > $data_final) {
-            http_response_code(400); // Código HTTP 400 para Bad Request
-            return ['success' => false, 'message' => 'A data inicial não pode ser maior que a data final.'];
-        }
+        try {
+            // Validação das datas
+            if (
+                !empty($data_inicial) &&
+                !empty($data_final) &&
+                $data_inicial > $data_final
+            ) {
+                http_response_code(400); // Código HTTP 400 para Bad Request
+                return [
+                    "success" => false,
+                    "message" =>
+                        "A data inicial não pode ser maior que a data final.",
+                ];
+            }
 
-        // Constrói a base da consulta
-        $query = "
+            // Constrói a base da consulta
+            $query = "
             SELECT 
                 m.doc, 
                 JSON_ARRAYAGG(
@@ -303,56 +346,66 @@ public static function listBalance($system_unit_id, $data_inicial = null, $data_
             WHERE m.system_unit_id = :system_unit_id 
             AND m.tipo = 'b'";
 
-        // Adiciona as condições de data, se fornecidas
-        if (!empty($data_inicial) && !empty($data_final)) {
-            $query .= " AND m.created_at BETWEEN :data_inicial AND :data_final";
-        } elseif (!empty($data_inicial)) {
-            $query .= " AND m.created_at >= :data_inicial";
-        } elseif (!empty($data_final)) {
-            $query .= " AND m.created_at <= :data_final";
+            // Adiciona as condições de data, se fornecidas
+            if (!empty($data_inicial) && !empty($data_final)) {
+                $query .=
+                    " AND m.created_at BETWEEN :data_inicial AND :data_final";
+            } elseif (!empty($data_inicial)) {
+                $query .= " AND m.created_at >= :data_inicial";
+            } elseif (!empty($data_final)) {
+                $query .= " AND m.created_at <= :data_final";
+            }
+
+            $query .= " GROUP BY m.doc ORDER BY MAX(m.created_at) DESC";
+
+            $stmt = $pdo->prepare($query);
+            $stmt->bindParam(
+                ":system_unit_id",
+                $system_unit_id,
+                PDO::PARAM_INT
+            );
+
+            // Bind das datas se fornecidas
+            if (!empty($data_inicial)) {
+                $stmt->bindParam(":data_inicial", $data_inicial);
+            }
+            if (!empty($data_final)) {
+                $stmt->bindParam(":data_final", $data_final);
+            }
+
+            $stmt->execute();
+            $balances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Decodifica os itens de JSON para array/objeto
+            foreach ($balances as &$balance) {
+                $balance["itens"] = json_decode($balance["itens"], true); // Converte o JSON em array associativo
+            }
+
+            return ["success" => true, "balances" => $balances];
+        } catch (Exception $e) {
+            http_response_code(500); // Código HTTP 500 para erro interno
+            return [
+                "success" => false,
+                "message" => "Erro ao listar balanços: " . $e->getMessage(),
+            ];
         }
-
-        $query .= " GROUP BY m.doc ORDER BY MAX(m.created_at) DESC";
-
-        $stmt = $pdo->prepare($query);
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-
-        // Bind das datas se fornecidas
-        if (!empty($data_inicial)) {
-            $stmt->bindParam(':data_inicial', $data_inicial);
-        }
-        if (!empty($data_final)) {
-            $stmt->bindParam(':data_final', $data_final);
-        }
-
-        $stmt->execute();
-        $balances = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // Decodifica os itens de JSON para array/objeto
-        foreach ($balances as &$balance) {
-            $balance['itens'] = json_decode($balance['itens'], true); // Converte o JSON em array associativo
-        }
-
-        return ['success' => true, 'balances' => $balances];
-    } catch (Exception $e) {
-        http_response_code(500); // Código HTTP 500 para erro interno
-        return ['success' => false, 'message' => 'Erro ao listar balanços: ' . $e->getMessage()];
-    }
-}
-
-
-
-public static function getBalanceByDoc($system_unit_id, $doc) {
-    global $pdo;
-
-    // Validação de parâmetros obrigatórios
-    if (!$system_unit_id || !$doc) {
-        return ['success' => false, 'message' => 'Parâmetros obrigatórios ausentes.'];
     }
 
-    try {
-        // Consulta os detalhes do balanço, incluindo nome do produto, categoria e nome do usuário
-        $stmt = $pdo->prepare("
+    public static function getBalanceByDoc($system_unit_id, $doc): array
+    {
+        global $pdo;
+
+        // Validação de parâmetros obrigatórios
+        if (!$system_unit_id || !$doc) {
+            return [
+                "success" => false,
+                "message" => "Parâmetros obrigatórios ausentes.",
+            ];
+        }
+
+        try {
+            // Consulta os detalhes do balanço, incluindo nome do produto, categoria e nome do usuário
+            $stmt = $pdo->prepare("
             SELECT 
                 m.doc,
                 p.codigo as produto_codigo,
@@ -367,84 +420,94 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             LEFT JOIN system_users u ON m.usuario_id = u.id
             WHERE m.system_unit_id = :system_unit_id AND m.doc = :doc
         ");
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
-        $stmt->execute();
+            $stmt->bindParam(
+                ":system_unit_id",
+                $system_unit_id,
+                PDO::PARAM_INT
+            );
+            $stmt->bindParam(":doc", $doc);
+            $stmt->execute();
 
-        $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Verifica se encontrou o balanço
-        if ($movimentacoes) {
-            // Agrupa os dados do balanço e dos itens
-            $response = [
-                'success' => true,
-                'balance' => [
-                    'doc' => $movimentacoes[0]['doc'],
-                    'usuario_nome' => $movimentacoes[0]['usuario_nome'],
-                    'created_at' => $movimentacoes[0]['created_at'],
-                    'itens' => []
-                ]
-            ];
+            // Verifica se encontrou o balanço
+            if ($movimentacoes) {
+                // Agrupa os dados do balanço e dos itens
+                $response = [
+                    "success" => true,
+                    "balance" => [
+                        "doc" => $movimentacoes[0]["doc"],
+                        "usuario_nome" => $movimentacoes[0]["usuario_nome"],
+                        "created_at" => $movimentacoes[0]["created_at"],
+                        "itens" => [],
+                    ],
+                ];
 
-            // Adiciona os itens ao array de itens
-            foreach ($movimentacoes as $movimentacao) {
-                $response['balance']['itens'][] = [
-                    'codigo' => $movimentacao['produto_codigo'],
-                    'produto' => $movimentacao['produto_nome'],
-                    'quantidade' => $movimentacao['quantidade'],
-                    'categoria' => $movimentacao['categoria_nome']
+                // Adiciona os itens ao array de itens
+                foreach ($movimentacoes as $movimentacao) {
+                    $response["balance"]["itens"][] = [
+                        "codigo" => $movimentacao["produto_codigo"],
+                        "produto" => $movimentacao["produto_nome"],
+                        "quantidade" => $movimentacao["quantidade"],
+                        "categoria" => $movimentacao["categoria_nome"],
+                    ];
+                }
+
+                return $response;
+            } else {
+                return [
+                    "success" => false,
+                    "message" => "Balanço não encontrado.",
                 ];
             }
-
-            return $response;
-        } else {
-            return ['success' => false, 'message' => 'Balanço não encontrado.'];
+        } catch (Exception $e) {
+            return [
+                "success" => false,
+                "message" => "Erro ao buscar balanço: " . $e->getMessage(),
+            ];
         }
-    } catch (Exception $e) {
-        return ['success' => false, 'message' => 'Erro ao buscar balanço: ' . $e->getMessage()];
     }
-}
-
-
-
-
-
 
     // Criação de movimentação de balanço (tipo 'b')
-    public static function saveBalanceItems($data) {
+    public static function saveBalanceItems($data): array
+    {
         global $pdo;
 
         // Campos obrigatórios para a movimentação
-        $requiredFields = ['system_unit_id', 'itens'];
+        $requiredFields = ["system_unit_id", "itens"];
 
         // Verifica se todos os campos obrigatórios estão presentes
         foreach ($requiredFields as $field) {
             if (!isset($data[$field])) {
-                return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
+                return [
+                    "success" => false,
+                    "message" => "O campo '$field' é obrigatório.",
+                ];
             }
         }
 
         // Verifica se 'itens' é um array e possui ao menos um item
-        if (!is_array($data['itens']) || count($data['itens']) == 0) {
-            return array('success' => false, 'message' => "É necessário incluir ao menos um item.");
+        if (!is_array($data["itens"]) || count($data["itens"]) == 0) {
+            return [
+                "success" => false,
+                "message" => "É necessário incluir ao menos um item.",
+            ];
         }
 
         // Extraindo os dados
-        $system_unit_id = $data['system_unit_id'];
-        $system_unit_id_destino = isset($data['system_unit_id_destino']) ? $data['system_unit_id_destino'] : null;
-        $itens = $data['itens'];
-        $date_balance = $data['date_balance'];
+        $system_unit_id = $data["system_unit_id"];
+        $system_unit_id_destino = $data["system_unit_id_destino"] ?? null;
+        $itens = $data["itens"];
+        $date_balance = $data["date_balance"];
 
-        // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter um novo valor
-        $ultimoDoc = self::getLastMov($system_unit_id, 'b');
-        $doc = self::incrementDoc($ultimoDoc, 'b');
+        // Gera o valor de 'doc' chamando o metodo getLastMov e incrementa para obter um novo valor
+        $ultimoDoc = self::getLastMov($system_unit_id, "b");
+        $doc = self::incrementDoc($ultimoDoc, "b");
 
         // Definindo valores fixos
-        $tipo = 'b';
-        $tipo_mov = 'balanco';
-        $usuario_id = $data['user'];
-
-
+        $tipo = "b";
+        $tipo_mov = "balanco";
+        $usuario_id = $data["user"];
 
         try {
             // Inicia a transação
@@ -452,90 +515,117 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             foreach ($itens as $item) {
                 // Verifica se cada item possui os campos obrigatórios
-                $itemRequiredFields = ['codigo', 'seq', 'quantidade'];
+                $itemRequiredFields = ["codigo", "seq", "quantidade"];
                 foreach ($itemRequiredFields as $field) {
                     if (!isset($item[$field])) {
-                        return array('success' => false, 'message' => "O campo '$field' é obrigatório para cada item.");
+                        return [
+                            "success" => false,
+                            "message" => "O campo '$field' é obrigatório para cada item.",
+                        ];
                     }
                 }
 
                 // Extraindo os dados do item
-                $produto = $item['codigo'];
-                $seq = $item['seq'];
-                $quantidade = $item['quantidade'];
+                $produto = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = $item["quantidade"];
 
                 // Inserção no banco de dados
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov , produto, seq, data, quantidade, usuario_id) 
                                        VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $doc, $tipo, $tipo_mov, $produto, $seq,$date_balance , $quantidade, $usuario_id]);
+                $stmt->execute([
+                    $system_unit_id,
+                    $system_unit_id_destino,
+                    $doc,
+                    $tipo,
+                    $tipo_mov,
+                    $produto,
+                    $seq,
+                    $date_balance,
+                    $quantidade,
+                    $usuario_id,
+                ]);
 
                 if ($stmt->rowCount() > 0) {
-                    // Atualiza o saldo do estoque após a movimentação
-//                    $productResponse = ProductController::updateStockBalance($system_unit_id, $produto, $quantidade, $doc);
-//                    if (!$productResponse['success']) {
-//                        // Se a atualização do saldo falhar, faz rollback e retorna o erro
-//                        $pdo->rollBack();
-//                        return array('success' => false, 'message' => 'Movimentação criada, mas falha ao atualizar saldo: ' . $productResponse['message']);
-//                    }
+                    $pdo->commit();
                 } else {
                     // Se a inserção do item falhar, faz rollback e retorna o erro
                     $pdo->rollBack();
-                    return array('success' => false, 'message' => 'Falha ao criar movimentação para o item com código ' . $produto);
+                    return [
+                        "success" => false,
+                        "message" =>
+                            "Falha ao criar movimentação para o item com código " .
+                            $produto,
+                    ];
                 }
             }
 
-            // Commit da transação
-            $pdo->commit();
-            return array('success' => true, 'message' => 'Movimentação criada com sucesso', 'balanco' => $doc);
-
+            return [
+                "success" => true,
+                "message" => "Movimentação criada com sucesso",
+                "balanco" => $doc,
+            ];
         } catch (Exception $e) {
             // Rollback em caso de erro
             $pdo->rollBack();
-            return array('success' => false, 'message' => 'Erro ao criar movimentação: ' . $e->getMessage());
+            return [
+                "success" => false,
+                "message" => "Erro ao criar movimentação: " . $e->getMessage(),
+            ];
         }
     }
 
     // Métodos Específicos para Transferências
 
-    // Criação de transferência (tipo 't')
-    public static function createTransferItems($data) {
+    // Criação de transferência
+
+    public static function createTransferItems($data): array
+    {
         global $pdo;
 
         // Verifica se todos os campos obrigatórios estão presentes
-        $requiredFields = ['system_unit_id', 'system_unit_id_destino', 'itens', 'usuario_id'];
+        $requiredFields = [
+            "system_unit_id",
+            "system_unit_id_destino",
+            "itens",
+            "usuario_id",
+        ];
         foreach ($requiredFields as $field) {
             if (!isset($data[$field])) {
-                return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
+                return [
+                    "success" => false,
+                    "message" => "O campo '$field' é obrigatório.",
+                ];
             }
         }
 
         // Verifica se 'itens' é um array e possui ao menos um item
-        if (!is_array($data['itens']) || count($data['itens']) == 0) {
-            return array('success' => false, 'message' => "É necessário incluir ao menos um item.");
+        if (!is_array($data["itens"]) || count($data["itens"]) == 0) {
+            return [
+                "success" => false,
+                "message" => "É necessário incluir ao menos um item.",
+            ];
         }
 
         // Extraindo os dados
-        $system_unit_id = $data['system_unit_id'];
-        $system_unit_id_destino = $data['system_unit_id_destino'];
-        $itens = $data['itens'];
-        $usuario_id = $data['usuario_id'];
-        $transferDate = $data['transfer_date'];
-        $date = new DateTime($transferDate);
-        $transferDateNormal = $date->format('d/m/Y');
+        $system_unit_id = $data["system_unit_id"];
+        $system_unit_id_destino = $data["system_unit_id_destino"];
+        $itens = $data["itens"];
+        $usuario_id = $data["usuario_id"];
+        $transferDate = $data["transfer_date"];
 
-        // Gera o valor de 'doc' chamando o método getLastMov e incrementa para obter novos valores para entrada e saída
-        $ultimoDocSaida = self::getLastMov($system_unit_id, 'ts'); // Tipo para saída
-        $docSaida = self::incrementDoc($ultimoDocSaida, 'ts'); // Incrementa para saída
+        // Gera o valor de 'doc' chamando o metodo getLastMov e incrementa para obter novos valores para entrada e saída
+        $ultimoDocSaida = self::getLastMov($system_unit_id, "ts"); // Tipo para saída
+        $docSaida = self::incrementDoc($ultimoDocSaida, "ts"); // Incrementa para saída
 
-        $ultimoDocEntrada = self::getLastMov($system_unit_id_destino, 'te'); // Tipo para entrada
-        $docEntrada = self::incrementDoc($ultimoDocEntrada, 'te'); // Incrementa para entrada
-
+        $ultimoDocEntrada = self::getLastMov($system_unit_id_destino, "te"); // Tipo para entrada
+        $docEntrada = self::incrementDoc($ultimoDocEntrada, "te"); // Incrementa para entrada
 
         // Definindo valores fixos
-        $tipo_saida = 'saida';
-        $tipo_entrada = 'entrada';
-        $tipo_saida_doc = 'ts'; // Tipo para saída
-        $tipo_entrada_doc = 'te'; // Tipo para entrada
+        $tipo_saida = "saida";
+        $tipo_entrada = "entrada";
+        $tipo_saida_doc = "ts"; // Tipo para saída
+        $tipo_entrada_doc = "te"; // Tipo para entrada
 
         try {
             // Inicia a transação
@@ -544,42 +634,59 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             // Criação dos movimentos de saída
             foreach ($itens as $item) {
                 // Verifica se cada item possui os campos obrigatórios
-                $itemRequiredFields = ['codigo', 'seq', 'quantidade'];
+                $itemRequiredFields = ["codigo", "seq", "quantidade"];
                 foreach ($itemRequiredFields as $field) {
                     if (!isset($item[$field])) {
-                        return array('success' => false, 'message' => "O campo '$field' é obrigatório para cada item.");
+                        return [
+                            "success" => false,
+                            "message" => "O campo '$field' é obrigatório para cada item.",
+                        ];
                     }
                 }
 
                 // Extraindo os dados do item
-                $produto = $item['codigo'];
-                $seq = $item['seq'];
-                $quantidade = $item['quantidade'];
+                $produto = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = str_replace(",", ".", $item["quantidade"]);
 
                 // Inserção no banco de dados para o movimento de saída
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 
                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$system_unit_id, $system_unit_id_destino, $docSaida, $tipo_saida_doc, $tipo_saida, $produto, $seq, $transferDate, $quantidade, $usuario_id]);
+                $stmt->execute([
+                    $system_unit_id,
+                    $system_unit_id_destino,
+                    $docSaida,
+                    $tipo_saida_doc,
+                    $tipo_saida,
+                    $produto,
+                    $seq,
+                    $transferDate,
+                    $quantidade,
+                    $usuario_id,
+                ]);
             }
 
             // Criação dos movimentos de entrada
             foreach ($itens as $item) {
                 // Extraindo os dados do item
-                $produto = $item['codigo'];
-                $seq = $item['seq'];
-                $quantidade = str_replace(',', '.', $item['quantidade']);
-
-                // Busca o saldo atual do produto no estoque
-                $stockData = NecessidadesController::getProductStock($system_unit_id_destino, $produto);
-                $saldoAtual = $stockData['saldo'] ?? 0;
-
-                // Calcula o novo saldo, somando o valor transferido ao saldo atual
-                //$novoSaldo = $saldoAtual + $quantidade;
+                $produto = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = str_replace(",", ".", $item["quantidade"]);
 
                 // Inserção no banco de dados para o movimento de entrada
                 $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 
                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$system_unit_id_destino, $docEntrada, $tipo_entrada_doc, $tipo_entrada, $produto, $seq, $transferDate, $quantidade, $usuario_id]);
+                $stmt->execute([
+                    $system_unit_id_destino,
+                    $docEntrada,
+                    $tipo_entrada_doc,
+                    $tipo_entrada,
+                    $produto,
+                    $seq,
+                    $transferDate,
+                    $quantidade,
+                    $usuario_id,
+                ]);
             }
 
             // Consulta o nome da unidade de destino
@@ -589,10 +696,14 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
             if ($unidade_destino) {
-                $nome_unidade_destino = $unidade_destino['name'];
+                $nome_unidade_destino = $unidade_destino["name"];
             } else {
                 $pdo->rollBack();
-                return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Falha ao recuperar o nome da unidade de destino.",
+                ];
             }
 
             $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
@@ -601,12 +712,15 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
             if ($unidade_origem) {
-                $nome_unidade_origem = $unidade_origem['name'];
+                $nome_unidade_origem = $unidade_origem["name"];
             } else {
                 $pdo->rollBack();
-                return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Falha ao recuperar o nome da unidade de destino.",
+                ];
             }
-
 
             $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
             $stmt->execute([$usuario_id]);
@@ -614,90 +728,65 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
             if ($username) {
-                $nome_user = $username['name'];
+                $nome_user = $username["name"];
             } else {
                 $pdo->rollBack();
-                return array('success' => false, 'message' => 'Falha ao recuperar o nome da unidade de destino.');
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Falha ao recuperar o nome da unidade de destino.",
+                ];
             }
 
             // Cria a estrutura dos itens com nome do produto
             $itensComDetalhes = [];
             foreach ($itens as $item) {
                 // Obter o nome do produto
-                $stmt = $pdo->prepare("SELECT nome as name FROM products WHERE codigo = ?");
-                $stmt->execute([$item['codigo']]);
+                $stmt = $pdo->prepare(
+                    "SELECT nome as name FROM products WHERE codigo = ?"
+                );
+                $stmt->execute([$item["codigo"]]);
                 $produtoData = $stmt->fetch();
-                $nomeProduto = $produtoData ? $produtoData['name'] : 'Desconhecido';
+                $nomeProduto = $produtoData
+                    ? $produtoData["name"]
+                    : "Desconhecido";
 
                 // Adiciona os detalhes do item
                 $itensComDetalhes[] = [
-                    'seq' => $item['seq'],
-                    'codigo' => $item['codigo'],
-                    'nome_produto' => $nomeProduto,
-                    'quantidade' => $item['quantidade']
+                    "seq" => $item["seq"],
+                    "codigo" => $item["codigo"],
+                    "nome_produto" => $nomeProduto,
+                    "quantidade" => $item["quantidade"],
                 ];
             }
 
             // Commit da transação
             $pdo->commit();
-            return array(
-                'success' => true,
-                'message' => 'Transferência criada com sucesso',
-                'transfer_doc' => $docEntrada,
-                'nome_unidade_destino' => $nome_unidade_destino,
-                'nome_unidade_origem' => $nome_unidade_origem,
-                'data_hora' => date('d/m/Y H:i:s'),
-                'usuario' => $nome_user,
-                'itens' => $itensComDetalhes
-            );
-
+            return [
+                "success" => true,
+                "message" => "Transferência criada com sucesso",
+                "transfer_doc" => $docEntrada,
+                "nome_unidade_destino" => $nome_unidade_destino,
+                "nome_unidade_origem" => $nome_unidade_origem,
+                "data_hora" => date("d/m/Y H:i:s"),
+                "usuario" => $nome_user,
+                "itens" => $itensComDetalhes,
+            ];
         } catch (Exception $e) {
             // Rollback em caso de erro
             $pdo->rollBack();
-            return array('success' => false, 'message' => 'Erro ao criar transferência: ' . $e->getMessage());
+            return [
+                "success" => false,
+                "message" => "Erro ao criar transferência: " . $e->getMessage(),
+            ];
         }
     }
 
-
-
-
-
-
-    // Listar transferências
-    public static function listTransfers($system_unit_id) {
-        global $pdo;
-
-        try {
-            $stmt = $pdo->prepare("SELECT * FROM movimentacao WHERE system_unit_id = :system_unit_id AND tipo = 't' ORDER BY created_at DESC");
-            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-            $stmt->execute();
-            $transfers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            return ['success' => true, 'transfers' => $transfers];
-        } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao listar transferências: ' . $e->getMessage()];
-        }
-    }
-
-    // Obter a última transferência
-    public static function getLastTransfer($system_unit_id) {
-        return self::getLastMov($system_unit_id, 't');
-    }
-
-    // Obter transferência por doc
-    public static function getTransferByDoc($system_unit_id, $doc) {
-        global $pdo;
-
-        $stmt = $pdo->prepare("SELECT * FROM movimentacao WHERE system_unit_id = :system_unit_id AND doc = :doc AND tipo = 't'");
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':doc', $doc, PDO::PARAM_STR);
-        $stmt->execute();
-
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-
-    public static function importComprasCSV($usuarioId, $produtos,$data_importacao)
+    public static function importComprasCSV(
+        $usuarioId,
+        $produtos,
+        $data_importacao
+    ): array
     {
         global $pdo;
 
@@ -706,8 +795,11 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             $pdo->beginTransaction();
 
             // Mapeia todos os códigos de estabelecimento para system_unit_id
-            $estabelecimentos = array_column($produtos, 'estabelecimento');
-            $placeholders = rtrim(str_repeat('?,', count($estabelecimentos)), ',');
+            $estabelecimentos = array_column($produtos, "estabelecimento");
+            $placeholders = rtrim(
+                str_repeat("?,", count($estabelecimentos)),
+                ","
+            );
 
             $query = "SELECT custom_code, id as system_unit_id
                   FROM system_unit 
@@ -731,48 +823,43 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             $insertStmt = $pdo->prepare($insertQuery);
 
             foreach ($produtos as $produto) {
-                $systemUnitId = $unitMap[$produto['estabelecimento']] ?? null;
+                $systemUnitId = $unitMap[$produto["estabelecimento"]] ?? null;
 
                 if (!$systemUnitId) {
-                    throw new Exception("Estabelecimento não encontrado: {$produto['estabelecimento']}");
+                    throw new Exception(
+                        "Estabelecimento não encontrado: {$produto["estabelecimento"]}"
+                    );
                 }
 
                 // Insere ou atualiza a movimentação
                 $insertStmt->execute([
                     $systemUnitId,
                     1, // Status = Concluído
-                    $produto['doc'],
-                    $produto['tipo'],
-                    'entrada', // Tipo de movimento
-                    $produto['produto'],
-                    $produto['seq'],
+                    $produto["doc"],
+                    $produto["tipo"],
+                    "entrada", // Tipo de movimento
+                    $produto["produto"],
+                    $produto["seq"],
                     $data_importacao,
-                    $produto['qtde'],
-                    $usuarioId
+                    $produto["qtde"],
+                    $usuarioId,
                 ]);
-
-//                // Busca o saldo atual do produto no estoque
-//                $stockData = NecessidadesController::getProductStock($systemUnitId, $produto['produto']);
-//                $saldoAtual = $stockData['saldo'] ?? 0;
-//
-//                // Calcula o novo saldo
-//                $novoSaldo = $saldoAtual + $produto['qtde'];
-
-                // Atualiza o saldo no estoque
-//                ProductController::updateStockBalance($systemUnitId, $produto['produto'], $novoSaldo, $produto['doc']);
             }
 
             // Confirma a transação
             $pdo->commit();
-            return ['success' => true, 'message' => 'Movimentações salvas e estoque atualizado com sucesso!'];
-
+            return [
+                "success" => true,
+                "message" =>
+                    "Movimentações salvas e estoque atualizado com sucesso!",
+            ];
         } catch (Exception $e) {
             $pdo->rollBack();
-            return ['success' => false, 'message' => $e->getMessage()];
+            return ["success" => false, "message" => $e->getMessage()];
         }
     }
 
-    public static function importMovBySales($systemUnitId, $data)
+    public static function importMovBySales($systemUnitId, $data): string
     {
         global $pdo;
 
@@ -793,10 +880,7 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 system_unit_id = :systemUnitId 
                 AND data_movimento = :data
         ");
-            $stmt->execute([
-                ':systemUnitId' => $systemUnitId,
-                ':data' => $data
-            ]);
+            $stmt->execute([":systemUnitId" => $systemUnitId, ":data" => $data]);
 
             $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -808,12 +892,15 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
 
             // Passo 2: Consulta os insumos relacionados aos produtos vendidos
             // Buscamos os insumos para cada produto vendido
-            $produtosVendidosIds = array_map(function($produto) {
-                return $produto['produto']; // coleta o código do produto
+            $produtosVendidosIds = array_map(function ($produto) {
+                return $produto["produto"]; // coleta o código do produto
             }, $produtosVendas);
 
             // Gerar os placeholders para o IN
-            $placeholders = implode(',', array_fill(0, count($produtosVendidosIds), '?'));
+            $placeholders = implode(
+                ",",
+                array_fill(0, count($produtosVendidosIds), "?")
+            );
 
             // Passagem de parâmetros posicionais, agora usando apenas parâmetros posicionais
             $stmtInsumos = $pdo->prepare("
@@ -824,7 +911,9 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
         ");
 
             // Passando os parâmetros corretamente
-            $stmtInsumos->execute(array_merge([$systemUnitId], $produtosVendidosIds));
+            $stmtInsumos->execute(
+                array_merge([$systemUnitId], $produtosVendidosIds)
+            );
 
             $insumos = $stmtInsumos->fetchAll(PDO::FETCH_ASSOC);
 
@@ -835,15 +924,17 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             foreach ($produtosVendas as $produtoVenda) {
                 // Para cada produto vendido, consulte os insumos
                 foreach ($insumos as $insumo) {
-                    if ($insumo['product_id'] == $produtoVenda['produto']) {
+                    if ($insumo["product_id"] == $produtoVenda["produto"]) {
                         // Cálculo da quantidade de insumo a ser baixada
-                        $qtdeInsumo = $produtoVenda['qtde'] * $insumo['quantidade_insumo'];
+                        $qtdeInsumo =
+                            $produtoVenda["qtde"] *
+                            $insumo["quantidade_insumo"];
 
                         // Armazena a quantidade total de cada insumo
-                        if (isset($insumosTotais[$insumo['insumo_id']])) {
-                            $insumosTotais[$insumo['insumo_id']] += $qtdeInsumo;
+                        if (isset($insumosTotais[$insumo["insumo_id"]])) {
+                            $insumosTotais[$insumo["insumo_id"]] += $qtdeInsumo;
                         } else {
-                            $insumosTotais[$insumo['insumo_id']] = $qtdeInsumo;
+                            $insumosTotais[$insumo["insumo_id"]] = $qtdeInsumo;
                         }
                     }
                 }
@@ -873,39 +964,39 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 // Insere ou atualiza a movimentação do insumo
                 $insertStmt->execute([
                     $systemUnitId,
-                    1,          // status
-                    $doc,       // documento
-                    'v',         // Tipo "v" de venda
-                    'saida',     // Tipo de movimentação "saida"
-                    $insumoId,   // Insumo ID
-                    $seq++,      // Incrementa o seq
-                    $data,       // Data da movimentação
-                    $totalQuantidade,  // Quantidade total do insumo
-                    $usuarioId   // ID do usuário (ajustar conforme necessário)
+                    1, // status
+                    $doc, // documento
+                    "v", // Tipo "v" de venda
+                    "saida", // Tipo de movimentação "saida"
+                    $insumoId, // Insumo ID
+                    $seq++, // Incrementa o seq
+                    $data, // Data da movimentação
+                    $totalQuantidade, // Quantidade total do insumo
+                    $usuarioId, // ID do usuário (ajustar conforme necessário)
                 ]);
             }
 
             // Confirma a transação
             $pdo->commit();
             return "Movimentações de insumos importadas com sucesso.";
-
         } catch (Exception $e) {
             // Reverte a transação em caso de erro
             $pdo->rollBack();
-            return "Erro ao importar movimentações de insumos: " . $e->getMessage();
+            return "Erro ao importar movimentações de insumos: " .
+                $e->getMessage();
         }
     }
 
-    public static function importMovBySalesCons($systemUnitId, $data)
-        {
-            global $pdo;
+    public static function importMovBySalesCons($systemUnitId, $data): string
+    {
+        global $pdo;
 
-            try {
-                // Inicia uma transação
-                $pdo->beginTransaction();
+        try {
+            // Inicia uma transação
+            $pdo->beginTransaction();
 
-                // Passo 1: Consulta os produtos vendidos (apenas para identificar os produtos)
-                $stmt = $pdo->prepare("
+            // Passo 1: Consulta os produtos vendidos (apenas para identificar os produtos)
+            $stmt = $pdo->prepare("
                 SELECT 
                     system_unit_id,
                     cod_material AS produto,
@@ -917,49 +1008,59 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                     system_unit_id = :systemUnitId 
                     AND data_movimento = :data
             ");
-                $stmt->execute([
-                    ':systemUnitId' => $systemUnitId,
-                    ':data' => $data
-                ]);
+            $stmt->execute([
+                ":systemUnitId" => $systemUnitId,
+                ":data" => $data,
+            ]);
 
-                $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                // Se nenhum produto for encontrado, não faz nada
-                if (empty($produtosVendas)) {
-                    $pdo->rollBack();
-                    return "Nenhuma movimentação encontrada para a unidade e data informadas.";
-                }
+            // Se nenhum produto for encontrado, não faz nada
+            if (empty($produtosVendas)) {
+                $pdo->rollBack();
+                return "Nenhuma movimentação encontrada para a unidade e data informadas.";
+            }
 
-                // Passo 2: Obter os IDs dos produtos vendidos
-                $produtosVendidosIds = array_map(function ($produto) {
-                    return $produto['produto']; // coleta o código do produto
-                }, $produtosVendas);
+            // Passo 2: Obter os IDs dos produtos vendidos
+            $produtosVendidosIds = array_map(function ($produto) {
+                return $produto["produto"]; // coleta o código do produto
+            }, $produtosVendas);
 
-                // Passo 3: Converter os produtos em insumos
-                $placeholders = implode(',', array_fill(0, count($produtosVendidosIds), '?'));
-                $stmtInsumos = $pdo->prepare("
+            // Passo 3: Converter os produtos em insumos
+            $placeholders = implode(
+                ",",
+                array_fill(0, count($produtosVendidosIds), "?")
+            );
+            $stmtInsumos = $pdo->prepare("
                 SELECT DISTINCT insumo_id 
                 FROM compositions 
                 WHERE system_unit_id = ? 
                 AND product_id IN ($placeholders)
             ");
-                $stmtInsumos->execute(array_merge([$systemUnitId], $produtosVendidosIds));
+            $stmtInsumos->execute(
+                array_merge([$systemUnitId], $produtosVendidosIds)
+            );
 
-                $insumoIds = $stmtInsumos->fetchAll(PDO::FETCH_COLUMN);
+            $insumoIds = $stmtInsumos->fetchAll(PDO::FETCH_COLUMN);
 
-                // Se nenhum insumo for encontrado, não faz nada
-                if (empty($insumoIds)) {
-                    $pdo->rollBack();
-                    return "Nenhum insumo relacionado encontrado para os produtos vendidos.";
-                }
+            // Se nenhum insumo for encontrado, não faz nada
+            if (empty($insumoIds)) {
+                $pdo->rollBack();
+                return "Nenhum insumo relacionado encontrado para os produtos vendidos.";
+            }
 
-                // Passo 4: Chamar a função `getInsumoConsumption` para calcular o consumo dos insumos
-                $consumoInsumos = NecessidadesController::getInsumoConsumption($systemUnitId, [$data], $insumoIds,'total');
-                //print_r($consumoInsumos);
-                //exit;
+            // Passo 4: Chamar a função `getInsumoConsumption` para calcular o consumo dos insumos
+            $consumoInsumos = NecessidadesController::getInsumoConsumption(
+                $systemUnitId,
+                [$data],
+                $insumoIds,
+                "total"
+            );
+            //print_r($consumoInsumos);
+            //exit;
 
-                // Passo 5: Prepara o statement para inserir ou atualizar a tabela movimentacao
-                $insertStmt = $pdo->prepare("
+            // Passo 5: Prepara o statement para inserir ou atualizar a tabela movimentacao
+            $insertStmt = $pdo->prepare("
                 INSERT INTO movimentacao (
                     system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -970,54 +1071,57 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                     usuario_id = VALUES(usuario_id)
             ");
 
-                // Usuário fictício para inserção
-                $usuarioId = 5;
-                $seq = 1;
+            // Usuário fictício para inserção
+            $usuarioId = 5;
+            $seq = 1;
 
-                // Passo 6: Agora, insere os insumos com os dados calculados
-                foreach ($consumoInsumos as $insumo) {
-                    // Gera o documento
-                    $doc = "v-" . str_replace("-", "", $data);
+            // Passo 6: Agora, insere os insumos com os dados calculados
+            foreach ($consumoInsumos as $insumo) {
+                // Gera o documento
+                $doc = "v-" . str_replace("-", "", $data);
 
-                    // Insere ou atualiza a movimentação do insumo
-                    $insertStmt->execute([
-                        $systemUnitId,
-                        1,                   // status
-                        $doc,                // documento
-                        'v',                 // Tipo "v" de venda
-                        'saida',             // Tipo de movimentação "saida"
-                        $insumo['codigo'],   // Insumo ID
-                        $seq++,              // Incrementa o seq
-                        $data,               // Data da movimentação
-                        $insumo['sales'],    // Quantidade calculada
-                        $usuarioId           // ID do usuário
-                    ]);
-                }
-
-                // Confirma a transação
-                $pdo->commit();
-                return "Movimentações de insumos importadas com sucesso.";
-
-            } catch (Exception $e) {
-                // Reverte a transação em caso de erro
-                $pdo->rollBack();
-                return "Erro ao importar movimentações de insumos: " . $e->getMessage();
+                // Insere ou atualiza a movimentação do insumo
+                $insertStmt->execute([
+                    $systemUnitId,
+                    1, // status
+                    $doc, // documento
+                    "v", // Tipo "v" de venda
+                    "saida", // Tipo de movimentação "saida"
+                    $insumo["codigo"], // Insumo ID
+                    $seq++, // Incrementa o seq
+                    $data, // Data da movimentação
+                    $insumo["sales"], // Quantidade calculada
+                    $usuarioId, // ID do usuário
+                ]);
             }
+
+            // Confirma a transação
+            $pdo->commit();
+            return "Movimentações de insumos importadas com sucesso.";
+        } catch (Exception $e) {
+            // Reverte a transação em caso de erro
+            $pdo->rollBack();
+            return "Erro ao importar movimentações de insumos: " .
+                $e->getMessage();
         }
+    }
 
-
-    public static function getDiferencasEstoque($startDate, $endDate, array $systemUnitIds)
+    public static function getDiferencasEstoque(
+        $startDate,
+        $endDate,
+        array $systemUnitIds
+    ): array
     {
         global $pdo;
 
         $response = [
-            'parameters' => [
-                'startDate' => $startDate,
-                'endDate' => $endDate,
-                'systemUnitIds' => $systemUnitIds
+            "parameters" => [
+                "startDate" => $startDate,
+                "endDate" => $endDate,
+                "systemUnitIds" => $systemUnitIds,
             ],
-            'status' => 'success',
-            'data' => []
+            "status" => "success",
+            "data" => [],
         ];
 
         try {
@@ -1058,7 +1162,10 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
                 // Adiciona os resultados ao array de dados
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 if (!empty($results)) {
-                    $response['data'] = array_merge($response['data'], $results);
+                    $response["data"] = array_merge(
+                        $response["data"],
+                        $results
+                    );
                 }
             }
         } catch (Exception $e) {
@@ -1066,23 +1173,11 @@ public static function getBalanceByDoc($system_unit_id, $doc) {
             http_response_code(500);
 
             // Atualiza o status e adiciona a mensagem de erro no response
-            $response['status'] = 'error';
-            $response['message'] = $e->getMessage();
+            $response["status"] = "error";
+            $response["message"] = $e->getMessage();
         }
 
         return $response;
     }
-
-
-
-
-
-
-
-
-
-
-
-
 }
-?>
+

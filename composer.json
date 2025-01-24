@@ -13,7 +13,9 @@
     "pablodalloglio/spreadsheet_excel_writer": "dev-master",
     "pablodalloglio/fpdf": "dev-master",
     "pablodalloglio/phprtflite": "dev-master",
-    "spomky-labs/otphp": "^10.0"
+    "spomky-labs/otphp": "^10.0",
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*"
   },
   "config": {
     "preferred-install": {
