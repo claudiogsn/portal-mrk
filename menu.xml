@@ -73,8 +73,17 @@
         <icon>fas:file-excel fa-fw</icon>
       </menuitem>
       <menuitem label="Diferenças de Estoque">
-        <action>DiferencaEstoque</action>
-        <icon>fas:file-medical-alt fa-fw</icon>
+        <icon>fas:code fa-fw</icon>
+        <menu>
+          <menuitem label="Relatório de Diferenças">
+            <action>RelatorioDiferencas</action>
+            <icon>fas:clipboard-list fa-fw</icon>
+          </menuitem>
+          <menuitem label="Consolidar Diferenças">
+            <action>DiferencaEstoque</action>
+            <icon>fas:file-medical-alt fa-fw</icon>
+          </menuitem>
+        </menu>
       </menuitem>
       <menuitem label="Vendas Detalhadas">
         <action>VendasDetalhado</action>
