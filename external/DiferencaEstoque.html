@@ -77,6 +77,25 @@
         font-weight: bold;
         margin-bottom: 5px;
     }
+    .saldo-final {
+        background-color: #e0f7ff; /* Azul claro */
+        color: #007bff; /* Texto azul */
+        font-weight: bold;
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.6); /* Glow azul */
+    }
+    .table-container {
+        max-height: 700px; /* Altura máxima da tabela com rolagem */
+        overflow-y: auto; /* Ativa a rolagem vertical */
+        
+    }
+
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #fff; /* Cor de fundo do cabeçalho */
+        z-index: 1; /* Garante que fique acima do conteúdo */
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1); /* Sombra para destacar */
+    }
 </style>
 
 </head>
@@ -311,53 +330,59 @@
             }
 
 
-        function renderDetailsGrid(details, date) {
-            const modalContentGrid = document.getElementById('modalContentGrid');
-            modalContentGrid.innerHTML = '';
+            function renderDetailsGrid(details, date) {
+                const modalContentGrid = document.getElementById('modalContentGrid');
+                modalContentGrid.innerHTML = '';
 
-            if (details && details.length > 0) {
-                const table = document.createElement('table');
-                table.className = 'table table-striped';
+                if (details && details.length > 0) {
+                    // Cria o contêiner com rolagem para a tabela
+                    const container = document.createElement('div');
+                    container.className = 'table-container';
 
-                const thead = document.createElement('thead');
-                thead.innerHTML = `
-                    <tr>
-                        <th>Produto</th>
-                        <th>Nome</th>
-                        <th>Saldo Anterior</th>
-                        <th>Entradas</th>
-                        <th>Saídas</th>
-                        <th>Saldo Final</th>
-                        <th>Qtd. Balanço</th>
-                        <th>Diferença</th>
-                        <th>Ações</th>
-                    </tr>
-                `;
-                table.appendChild(thead);
+                    const table = document.createElement('table');
+                    table.className = 'table table-striped';
 
-                const tbody = document.createElement('tbody');
-                details.forEach(detail => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${detail.produto}</td>
-                        <td>${detail.nome_produto}</td>
-                        <td>${detail.saldo_anterior}</td>
-                        <td>${detail.entradas}</td>
-                        <td>${detail.saidas}</td>
-                        <td>${detail.contagem_ideal}</td>
-                        <td>${detail.contagem_realizada}</td>
-                        <td>${detail.diferenca}</td>
-                        <td><button class="btn btn-info btn-sm" onclick="openTimelineModal('${detail.produto}', '${date}')">Detalhes</button></td>
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = `
+                        <tr>
+                            <th>Produto</th>
+                            <th>Nome</th>
+                            <th>Saldo Anterior</th>
+                            <th>Entradas</th>
+                            <th>Saídas</th>
+                            <th>Saldo Final</th>
+                            <th>Qtd. Balanço</th>
+                            <th>Diferença</th>
+                            <th>Ações</th>
+                        </tr>
                     `;
-                    tbody.appendChild(row);
-                });
-                table.appendChild(tbody);
+                    table.appendChild(thead);
 
-                modalContentGrid.appendChild(table);
-            } else {
-                modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
+                    const tbody = document.createElement('tbody');
+                    details.forEach(detail => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${detail.produto}</td>
+                            <td>${detail.nome_produto}</td>
+                            <td>${detail.saldo_anterior}</td>
+                            <td>${detail.entradas}</td>
+                            <td>${detail.saidas}</td>
+                            <td class="saldo-final">${detail.contagem_ideal}</td>
+                            <td>${detail.contagem_realizada}</td>
+                            <td>${detail.diferenca}</td>
+                            <td><button class="btn btn-info btn-sm" onclick="openTimelineModal('${detail.produto}', '${date}')">Detalhes</button></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    table.appendChild(tbody);
+
+                    container.appendChild(table);
+                    modalContentGrid.appendChild(container);
+                } else {
+                    modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
+                }
             }
-        }
+
 
         window.openTimelineModal = async function (product, date) {
             $('#timelineModal').on('hidden.bs.modal', function () {
