@@ -66,6 +66,14 @@
             <action>ListarMovimentacoes</action>
             <icon>fas:search fa-fw</icon>
           </menuitem>
+          <menuitem label="Ajuste de Saldo">
+            <action>AjusteSaldo</action>
+            <icon>fas:user-edit fa-fw</icon>
+          </menuitem>
+          <menuitem label="Ajuste de Preço de Custo">
+            <action>AjustePrecoCusto</action>
+            <icon>fas:money-bill-wave fa-fw</icon>
+          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Importar Compras">

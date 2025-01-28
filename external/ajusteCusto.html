@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajuste de Preço de Custo</title>
+    
+    <!-- Favicon-->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- JQuery DataTable Css -->
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <!-- JQuery Steps CSS (para o Wizard) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.css">
+
+    <!-- MultiSelect CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
+
+    <style>
+        .form-control {
+            margin-bottom: 10px;
+        }
+        table {
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+        }
+        .modal-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .form-control {
+        display: block;
+        width: 100%;
+        height: 34px;
+        padding: 6px 12px;
+        font-size: 14px;
+        line-height: 1.42857143;
+        color: #555;
+        background-color: #fff;
+        background-image: none;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+                box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+        -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+                transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+        }
+        .form-control:focus {
+        border-color: #66afe9;
+        outline: 0;
+        -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+                box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+        }
+       
+
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Ajuste de Preço de Custo</h2>
+                </div>
+                <div class="body">
+                    <form id="adjustForm">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label for="adjust-date">Data</label>
+                                <input type="date" id="adjust-date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-5">
+                                <label for="item-description">Produto</label>
+                                <input type="hidden" id="item-code" class="form-control" readonly>
+                                <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um produto" data-toggle="modal" data-target="#itemModal">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="current-price">Preço Atual</label>
+                                <input type="text" id="current-price" class="form-control" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="new-price">Novo Preço</label>
+                                <input type="number" id="new-price" class="form-control" placeholder="Digite o Novo Preço">
+                            </div>
+                            <div class="col-md-1">
+                                <label for="add-item">&nbsp;</label>
+                                <button type="button" id="add-item" class="btn btn-primary">Adicionar</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="row">
+            <div class="col-md-12">
+                <table id="result-table" class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Cod.</th>
+                            <th>Descrição</th>
+                            <th>Preço Atual</th>
+                            <th>Novo Preço</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <center>
+        <button type="button" id="submit-adjust" class="btn btn-success">Confirmar Ajuste</button>
+    </center>
+</div>
+
+<!-- Modal de Seleção de Produto -->
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Selecionar Produto</h4>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição">
+                <table id="item-table" class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Cod.</th>
+                            <th>Descrição</th>
+                            <th>Preço Atual</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+ <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
+ <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+ <!-- Bootstrap Core Js -->
+ <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+ <!-- Waves Effect Plugin Js -->
+ <script src="bsb/plugins/node-waves/waves.js"></script>
+ <!-- SweetAlert Plugin Js -->
+ <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+ <!-- jQuery Steps JS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
+ <!-- jQuery Validation JS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+ <!-- jQuery Multi-Select -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
+
+<!-- Adicionar Axios e SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    $(document).ready(function() {
+    // Define base URL and retrieve query parameters
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+    const username = urlParams.get('username');
+
+    // Carregar produtos no modal
+    async function loadItems() {
+
+        Swal.fire({
+            title: 'Carregando itens...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listInsumos',
+                token: token,
+                data: { unit_id: unit_id }
+            });
+
+            Swal.close();
+
+            if (response.data.success) {
+                const items = response.data.insumos;
+                const tbody = $('#item-table tbody');
+                tbody.empty();
+
+                // Renderizar as linhas da tabela
+                items.forEach(item => {
+                    const row = `
+                        <tr>
+                            <td>${item.codigo}</td>
+                            <td>${item.nome}</td>
+                            <td>${item.preco_custo}</td>
+                            <td>
+                                <button 
+                                    class="btn btn-primary select-item" 
+                                    data-codigo="${item.codigo}" 
+                                    data-nome="${item.nome}"
+                                    data-preco="${item.preco_custo}">
+                                    Inserir
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+
+                // Configurar filtro de busca
+                $('#item-search').off('input').on('input', function () {
+                    const searchValue = $(this).val().toLowerCase();
+                    $('#item-table tbody tr').each(function () {
+                        const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
+                        const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+
+                        // Exibir linha se corresponder ao filtro
+                        if (codigo.includes(searchValue) || nome.includes(searchValue)) {
+                            $(this).show();
+                        } else {
+                            $(this).hide();
+                        }
+                    });
+                });
+
+                // Configurar botão para selecionar item
+                $('.select-item').click(function () {
+                    const codigo = $(this).data('codigo');
+                    const nome = $(this).data('nome');
+                    const preco = $(this).data('preco');
+
+                    $('#item-code').val(codigo);
+                    $('#item-description').val(nome);
+                    $('#current-price').val(preco);
+                    $('#itemModal').modal('hide');
+                });
+            } else {
+                Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
+        }
+    }
+
+    // Adicionar item à tabela
+    $('#add-item').click(function() {
+        const codigo = $('#item-code').val();
+        const descricao = $('#item-description').val();
+        const precoAtual = $('#current-price').val();
+        const novoPreco = $('#new-price').val();
+
+        if (!codigo || !novoPreco || !precoAtual) {
+            Swal.fire('Erro', 'Preencha todos os campos!', 'error');
+            return;
+        }
+
+        const isDuplicate = $('#result-table tbody tr').toArray().some(row => {
+            return $(row).find('td:first').text() === codigo;
+        });
+        if (isDuplicate) {
+            Swal.fire('Erro', 'Este produto já foi adicionado!', 'error');
+            return;
+        }
+
+        $('#result-table tbody').append(`
+            <tr>
+                <td>${codigo}</td>
+                <td>${descricao}</td>
+                <td>${precoAtual}</td>
+                <td>${parseFloat(novoPreco).toFixed(2)}</td>
+                <td><button class="btn btn-danger remove-item">Remover</button></td>
+            </tr>
+        `);
+
+        $('#item-code, #item-description, #current-price, #new-price').val('');
+    });
+
+    $('#result-table').on('click', '.remove-item', function() {
+        $(this).closest('tr').remove();
+    });
+
+    // Submeter ajustes
+    $('#submit-adjust').click(async function() {
+        const data = [];
+        $('#result-table tbody tr').each(function() {
+            const row = $(this);
+            data.push({
+                codigo: row.find('td:nth-child(1)').text(),
+                descricao: row.find('td:nth-child(2)').text(),
+                precoAtual: row.find('td:nth-child(3)').text(),
+                novoPreco: row.find('td:nth-child(4)').text(),
+            });
+        });
+
+        if (data.length === 0) {
+            Swal.fire('Erro', 'Nenhum item adicionado!', 'error');
+            return;
+        }
+
+        const adjustDate = $('#adjust-date').val();
+        if (!adjustDate || isNaN(new Date(adjustDate).getTime())) {
+            Swal.fire('Erro', 'Selecione uma data válida.', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Confirmar Ajuste?',
+            text: 'Deseja realmente confirmar o ajuste de preço?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Não'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'createAjusteCusto',
+                        token: token,
+                        data: {
+                            system_unit_id: unit_id,
+                            ajuste_date: adjustDate,
+                            itens: data,
+                            usuario_id: username
+                        }
+                    });
+
+                    if (response.data.status === 'success') {
+                        resDoc = response.data.doc;
+                        Swal.fire('Sucesso', 'Ajuste de preço realizado com sucesso! Documento: ' + resDoc, 'success');
+                        $('#result-table tbody').empty();
+                    } else {
+                        Swal.fire('Erro', response.data.message || 'Erro ao realizar ajuste!', 'error');
+                    }
+                } catch (error) {
+                    Swal.fire('Erro', 'Ocorreu um erro de comunicação com o servidor.', 'error');
+                    console.error(error);
+                }
+            }
+        });
+    });
+
+    $('#item-description').click(function () {
+    console.log('Modal acionado.');
+    loadItems().then(() => {
+        console.log('Itens carregados, abrindo modal...');
+        $('#itemModal').modal('show');
+    });
+});
+
+});
+</script>
+</body>
+</html>
+

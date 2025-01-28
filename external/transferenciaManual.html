@@ -347,7 +347,8 @@ async function loadItems(unitId) {
         swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
     }
 }
-    // Definir data mínima e máxima para o campo
+    
+// Definir data mínima e máxima para o campo
         const today = new Date().toISOString().split('T')[0];
         transferDateInput.setAttribute('max', today);
         transferDateInput.setAttribute('value', today);

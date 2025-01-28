@@ -1181,5 +1181,183 @@ class MovimentacaoController
 
         return $response;
     }
+
+    public static function gerarDocAjustePreco($system_unit_id): string
+    {
+        global $pdo;
+
+        // Prefixo para os documentos
+        $prefixo = 'ap';
+
+        // Consulta o último documento gerado
+        $sql = "SELECT doc FROM ajustes_preco_custo WHERE system_unit_id = :system_unit_id ORDER BY created_at DESC LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $ultimoDoc = $stmt->fetchColumn();
+
+        // Gera o próximo documento
+        if (preg_match("/^" . $prefixo . "-(\d+)$/", $ultimoDoc, $matches)) {
+            $numero = (int) $matches[1] + 1;
+            return $prefixo . "-" . str_pad($numero, 6, "0", STR_PAD_LEFT);
+        }
+
+        // Caso não haja registros anteriores, inicia com o primeiro documento
+        return $prefixo . "-000001";
+    }
+
+    public static function ajustarPrecoCusto($system_unit_id, $ajuste_date, $itens, $usuario_id): array
+    {
+        global $pdo;
+
+        try {
+
+            $pdo->beginTransaction();
+
+            // Gerar o documento de ajuste
+            $doc = self::gerarDocAjustePreco($system_unit_id);
+
+            foreach ($itens as $item) {
+                $codigo = $item['codigo'];
+                $precoAtual = $item['precoAtual'];
+                $novoPreco = $item['novoPreco'];
+
+                $sqlInsert = "INSERT INTO ajustes_preco_custo 
+            (system_unit_id, doc, produto, preco_antigo, preco_atual, usuario_id, data_ajuste) 
+            VALUES (:system_unit_id, :doc, :produto, :preco_antigo, :preco_atual, :usuario_id, :data_ajuste)";
+
+                $stmtInsert = $pdo->prepare($sqlInsert);
+                $stmtInsert->execute([
+                    ':system_unit_id' => $system_unit_id,
+                    ':doc' => $doc,
+                    ':produto' => $codigo,
+                    ':preco_antigo' => $precoAtual,
+                    ':preco_atual' => $novoPreco,
+                    ':usuario_id' => $usuario_id,
+                    ':data_ajuste' => $ajuste_date
+                ]);
+
+                $sqlUpdate = "UPDATE products 
+            SET preco_custo = :preco_atual 
+            WHERE system_unit_id = :system_unit_id AND codigo = :produto";
+
+                $stmtUpdate = $pdo->prepare($sqlUpdate);
+                $stmtUpdate->execute([
+                    ':preco_atual' => $novoPreco,
+                    ':system_unit_id' => $system_unit_id,
+                    ':produto' => $codigo
+                ]);
+            }
+
+            $pdo->commit();
+
+            // Retornar status e o documento gerado
+            return [
+                'status' => 'success',
+                'message' => 'Ajustes de preço realizados com sucesso.',
+                'doc' => $doc
+            ];
+        } catch (Exception $e) {
+
+            $pdo->rollBack();
+
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao realizar ajustes de preço: ' . $e->getMessage()
+            ];
+        }
+    }
+    public static function gerarDocAjusteSaldo($system_unit_id): string
+    {
+        global $pdo;
+
+        // Prefixo para os documentos
+        $prefixo = 'as';
+
+        // Consulta o último documento gerado
+        $sql = "SELECT doc FROM ajustes_saldo WHERE system_unit_id = :system_unit_id ORDER BY created_at DESC LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $ultimoDoc = $stmt->fetchColumn();
+
+        // Gera o próximo documento
+        if (preg_match("/^" . $prefixo . "-(\d+)$/", $ultimoDoc, $matches)) {
+            $numero = (int) $matches[1] + 1;
+            return $prefixo . "-" . str_pad($numero, 6, "0", STR_PAD_LEFT);
+        }
+
+        // Caso não haja registros anteriores, inicia com o primeiro documento
+        return $prefixo . "-000001";
+    }
+
+    public static function ajustarSaldo($system_unit_id, $ajuste_date, $itens, $usuario_id): array
+    {
+        global $pdo;
+
+        try {
+
+            $pdo->beginTransaction();
+
+            // Gerar o documento de ajuste
+            $doc = self::gerarDocAjusteSaldo($system_unit_id);
+
+            foreach ($itens as $item) {
+                $codigo = $item['codigo'];
+                $saldoAtual = $item['saldoAtual'];
+                $novoSaldo = $item['novoSaldo'];
+
+                $sqlInsert = "INSERT INTO ajustes_saldo 
+            (system_unit_id, doc, produto, saldo_antigo, saldo_atual, usuario_id, data_ajuste) 
+            VALUES (:system_unit_id, :doc, :produto, :saldo_antigo, :saldo_atual, :usuario_id, :data_ajuste)";
+
+                $stmtInsert = $pdo->prepare($sqlInsert);
+                $stmtInsert->execute([
+                    ':system_unit_id' => $system_unit_id,
+                    ':doc' => $doc,
+                    ':produto' => $codigo,
+                    ':saldo_antigo' => $saldoAtual,
+                    ':saldo_atual' => $novoSaldo,
+                    ':usuario_id' => $usuario_id,
+                    ':data_ajuste' => $ajuste_date
+                ]);
+
+                $sqlUpdate = "UPDATE products 
+            SET saldo = :saldo_atual, ultimo_doc = :doc
+            WHERE system_unit_id = :system_unit_id AND codigo = :produto";
+
+                $stmtUpdate = $pdo->prepare($sqlUpdate);
+                $stmtUpdate->execute([
+                    ':saldo_atual' => $novoSaldo,
+                    ':doc' => $doc,
+                    ':system_unit_id' => $system_unit_id,
+                    ':produto' => $codigo
+                ]);
+            }
+
+            $pdo->commit();
+
+            // Retornar status e o documento gerado
+            return [
+                'status' => 'success',
+                'message' => 'Ajustes de saldo realizados com sucesso.',
+                'doc' => $doc
+            ];
+        } catch (Exception $e) {
+
+            $pdo->rollBack();
+
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao realizar ajustes de saldo: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
+
 }
 
