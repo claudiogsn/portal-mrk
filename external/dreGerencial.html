@@ -417,7 +417,7 @@
                     monthlyValues.forEach((value, index) => {
                         const cell = document.createElement('td');
                         const month = (index + 1).toString().padStart(2, '0');
-                        const year = new Date().getFullYear();
+                        const year = document.getElementById('ano').value;
 
                         cell.id = `${category.code}-${month}-${year}`;
                         cell.textContent = formatCurrency(value);
