@@ -20,7 +20,7 @@
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
 
     <!-- SweetAlert -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
 
 <style>
@@ -96,6 +96,32 @@
         z-index: 1; /* Garante que fique acima do conteúdo */
         box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1); /* Sombra para destacar */
     }
+    
+    .fix-input {
+        z-index: 99999 !important;
+        pointer-events: auto !important;
+        opacity: 1 !important;
+        position: relative !important;
+    }
+
+    #customContextMenu {
+        border: 1px solid #ccc;
+        background: #fff;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+        padding: 5px 0;
+        border-radius: 4px;
+    }
+    #customContextMenu .dropdown-item {
+        padding: 10px 20px;
+        cursor: pointer;
+    }
+    #customContextMenu .dropdown-item:hover {
+        background: #f8f9fa;
+    }
+
+
+
+
 </style>
 
 </head>
@@ -182,10 +208,45 @@
         </div>
     </div>
 
+    <!-- Modal de Ajuste de Saldo -->
+    <div class="modal fade" id="ajusteSaldoModal" tabindex="-1" aria-labelledby="ajusteSaldoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ajusteSaldoLabel">Ajustar Saldo</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <label for="novoSaldo">Novo Saldo:</label>
+                    <input 
+                        type="text" 
+                        id="novoSaldo" 
+                        class="form-control" 
+                        placeholder="Digite o novo saldo">
+                    <small id="novoSaldoError" class="form-text text-danger" style="display: none;">Por favor, insira um valor válido.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAjusteSaldo">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="customContextMenu" class="dropdown-menu" style="position: absolute; display: none; z-index: 9999;">
+        <button class="dropdown-item" id="adjustSaldoOption">Ajustar Saldo</button>
+    </div>
+    
+
+
+
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function () {
         const baseUrl = window.location.hostname !== 'localhost' ?
@@ -536,67 +597,98 @@
         document.getElementById('monthSelect').value = today.getMonth() + 1;
         loadDays(today.getFullYear(), today.getMonth() + 1);
 
+
         function addSaldoClickEvent(details, date) {
             const tableRows = document.querySelectorAll('#modalContentGrid tbody tr');
-            
+            const contextMenu = document.getElementById('customContextMenu');
+
             tableRows.forEach((row, index) => {
                 const saldoAnteriorCell = row.cells[2]; // Índice da célula "Saldo Anterior"
-                
-                saldoAnteriorCell.style.cursor = 'pointer';
-                saldoAnteriorCell.addEventListener('click', function () {
-                    const item = details[index]; // Dados do item correspondente na linha
-                    Swal.fire({
-                        title: 'Deseja ajustar o saldo?',
-                        text: `Saldo Atual: ${item.saldo_anterior}`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sim, ajustar',
-                        cancelButtonText: 'Cancelar'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            showSaldoAdjustmentModal(item, date);
-                        }
-                    });
+
+                // Evento de CTRL + clique
+                saldoAnteriorCell.addEventListener('click', function (event) {
+                    if (event.ctrlKey) {
+                        const item = details[index]; // Dados do item correspondente na linha
+                        Swal.fire({
+                            title: 'Deseja ajustar o saldo?',
+                            text: `Saldo Atual: ${item.saldo_anterior}`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sim, ajustar',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                showSaldoAdjustmentModal(item, date); // Abre o modal de ajuste
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Ação Bloqueada',
+                            text: 'Solicite permissão para ajustar o saldo.'
+                        });
+                    }
+                });
+
+                // Evento de botão direito (menu de contexto)
+                saldoAnteriorCell.addEventListener('contextmenu', function (event) {
+                    event.preventDefault(); // Previne o menu de contexto padrão
+
+                    // Mostra o menu de contexto personalizado
+                    contextMenu.style.display = 'block';
+                    contextMenu.style.left = `${event.pageX}px`;
+                    contextMenu.style.top = `${event.pageY}px`;
+
+                    // Configura o botão "Ajustar Saldo" do menu
+                    document.getElementById('adjustSaldoOption').onclick = () => {
+                        const item = details[index]; // Dados do item correspondente na linha
+                        showSaldoAdjustmentModal(item, date); // Abre o modal de ajuste
+                        contextMenu.style.display = 'none'; // Fecha o menu
+                    };
                 });
             });
-        }
 
-        function showSaldoAdjustmentModal(item, date) {
-            Swal.fire({
-                title: 'Ajustar Saldo',
-                html: `
-                    <div class="form-group">
-                        <label for="novoSaldo">Novo Saldo para ${item.nome_produto}:</label>
-                        <input 
-                            type="text" 
-                            id="novoSaldo" 
-                            class="form-control" 
-                            placeholder="Digite o novo saldo">
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Confirmar',
-                cancelButtonText: 'Cancelar',
-                preConfirm: () => {
-                    const novoSaldoInput = document.getElementById('novoSaldo').value.trim();
-
-                    // Validação básica para aceitar apenas números e vírgulas
-                    if (!novoSaldoInput || isNaN(novoSaldoInput.replace(',', '.'))) {
-                        Swal.showValidationMessage('Por favor, insira um valor numérico válido.');
-                        return false;
-                    }
-
-                    // Formata o valor final (converte vírgula para ponto e limita a 2 casas decimais)
-                    const novoSaldo = parseFloat(novoSaldoInput.replace(',', '.')).toFixed(2);
-                    return novoSaldo;
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const novoSaldo = result.value;
-                    sendSaldoAdjustmentRequest(item, novoSaldo, date);
-                }
+            // Fecha o menu de contexto se o usuário clicar em qualquer outro lugar
+            document.addEventListener('click', function () {
+                contextMenu.style.display = 'none';
             });
         }
+
+
+
+        function showSaldoAdjustmentModal(item, date) {
+            // Define o título do modal
+            document.getElementById('ajusteSaldoLabel').innerText = `Ajustar Saldo para ${item.nome_produto}`;
+            
+            // Limpa o campo de entrada e mensagens de erro antes de abrir
+            const novoSaldoInput = document.getElementById('novoSaldo');
+            const novoSaldoError = document.getElementById('novoSaldoError');
+            novoSaldoInput.value = "";
+            novoSaldoError.style.display = "none";
+
+            // Abre o modal
+            $('#ajusteSaldoModal').modal('show');
+
+            $('#novoSaldo').each(function () {
+                $(this).on('input', function () {
+                    let valor = $(this).val().replace(/\D/g, '');
+                    valor = (valor / 1000).toFixed(3);
+                    $(this).val(valor.replace('.', ','));
+                });
+            
+            });
+
+            // Configura o botão de confirmar
+            document.getElementById('confirmAjusteSaldo').onclick = function () {
+                const novoSaldo = novoSaldoInput.value.trim();
+                
+                
+                // Fecha o modal e envia o ajuste
+                $('#ajusteSaldoModal').modal('hide');
+                sendSaldoAdjustmentRequest(item, novoSaldo, date);
+            };
+        }
+        
 
 
         async function sendSaldoAdjustmentRequest(item, novoSaldo, date) {
@@ -633,6 +725,7 @@
                         title: 'Sucesso!',
                         text: 'Saldo ajustado com sucesso!'
                     }).then(() => {
+                        // Fecha os modais
                         $('#detailsModal').modal('hide');
                         $('#timelineModal').modal('hide');
                     });
@@ -651,6 +744,7 @@
                 });
             }
         }
+
 
     });
 
