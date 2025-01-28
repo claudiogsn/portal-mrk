@@ -190,10 +190,11 @@
         document.addEventListener('DOMContentLoaded', async function () {
         const baseUrl = window.location.hostname !== 'localhost' ?
             'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-            'http://localhost/portal-mrk/api/v1/index.php';
+            'https://portal.mrksolucoes.com.br/api/v1/index.php';
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const unitId = urlParams.get('unit_id');
+        const username = urlParams.get('username');
 
         let currentDetails = []; // Variável para armazenar os detalhes carregados no modal
 
@@ -378,6 +379,7 @@
 
                     container.appendChild(table);
                     modalContentGrid.appendChild(container);
+                    addSaldoClickEvent(details, date);
                 } else {
                     modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
                 }
@@ -533,6 +535,123 @@
         document.getElementById('yearSelect').value = today.getFullYear();
         document.getElementById('monthSelect').value = today.getMonth() + 1;
         loadDays(today.getFullYear(), today.getMonth() + 1);
+
+        function addSaldoClickEvent(details, date) {
+            const tableRows = document.querySelectorAll('#modalContentGrid tbody tr');
+            
+            tableRows.forEach((row, index) => {
+                const saldoAnteriorCell = row.cells[2]; // Índice da célula "Saldo Anterior"
+                
+                saldoAnteriorCell.style.cursor = 'pointer';
+                saldoAnteriorCell.addEventListener('click', function () {
+                    const item = details[index]; // Dados do item correspondente na linha
+                    Swal.fire({
+                        title: 'Deseja ajustar o saldo?',
+                        text: `Saldo Atual: ${item.saldo_anterior}`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sim, ajustar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            showSaldoAdjustmentModal(item, date);
+                        }
+                    });
+                });
+            });
+        }
+
+        function showSaldoAdjustmentModal(item, date) {
+            Swal.fire({
+                title: 'Ajustar Saldo',
+                html: `
+                    <div class="form-group">
+                        <label for="novoSaldo">Novo Saldo para ${item.nome_produto}:</label>
+                        <input 
+                            type="text" 
+                            id="novoSaldo" 
+                            class="form-control" 
+                            placeholder="Digite o novo saldo">
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const novoSaldoInput = document.getElementById('novoSaldo').value.trim();
+
+                    // Validação básica para aceitar apenas números e vírgulas
+                    if (!novoSaldoInput || isNaN(novoSaldoInput.replace(',', '.'))) {
+                        Swal.showValidationMessage('Por favor, insira um valor numérico válido.');
+                        return false;
+                    }
+
+                    // Formata o valor final (converte vírgula para ponto e limita a 2 casas decimais)
+                    const novoSaldo = parseFloat(novoSaldoInput.replace(',', '.')).toFixed(2);
+                    return novoSaldo;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const novoSaldo = result.value;
+                    sendSaldoAdjustmentRequest(item, novoSaldo, date);
+                }
+            });
+        }
+
+
+        async function sendSaldoAdjustmentRequest(item, novoSaldo, date) {
+            Swal.fire({
+                title: 'Aguarde...',
+                text: 'Enviando ajuste para a API.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const requestData = {
+                method: 'createAjusteSaldo',
+                token: token, 
+                data: {
+                    system_unit_id: unitId,
+                    ajuste_date: date,
+                    itens: [
+                        {
+                            codigo: item.produto,
+                            descricao: item.nome_produto,
+                            saldoAtual: item.saldo_anterior,
+                            novoSaldo: novoSaldo
+                        }
+                    ],
+                    usuario_id: username
+                }
+            };
+
+            try {
+                const response = await axios.post(baseUrl, requestData);
+                if (response.data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: 'Saldo ajustado com sucesso!'
+                    }).then(() => {
+                        $('#detailsModal').modal('hide');
+                        $('#timelineModal').modal('hide');
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: response.data.message || 'Erro ao ajustar saldo.'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Ocorreu um erro ao enviar o ajuste. Tente novamente.'
+                });
+            }
+        }
+
     });
 
     </script>
