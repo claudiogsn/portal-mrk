@@ -992,7 +992,14 @@ class BootstrapFormBuilder implements AdiantiFormInterface
             }
             else if ($field_size && !$object instanceof TRadioGroup AND !$object instanceof TCheckGroup)
             {
-                $field_wrapper->{'style'} .= ( (strpos($field_size, '%') !== FALSE) ? ';width: '.$field_size : ';width: '.$field_size.'px');
+                if (strpos($field_size, '%') !== FALSE) {
+                    if ($field_size === '70%') {
+                        $field_size = '68%'; 
+                    }
+                    $field_wrapper->{'style'} .= ';width: ' . $field_size;
+                } else {
+                    $field_wrapper->{'style'} .= ';width: ' . $field_size . 'px';
+                }
             }
             else if ($field instanceof TArrowStep)
             {
