@@ -228,7 +228,6 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const unit_matriz_id = urlParams.get('unit_matriz_id');
     const username = urlParams.get('username');
     const transferDateInput = document.getElementById('transfer-date');
 
@@ -241,7 +240,7 @@ async function loadUnidades() {
             body: JSON.stringify({
                 method: 'getFiliaisByMatriz',
                 token: token,
-                data: { unit_matriz_id: unit_matriz_id }
+                data: { unit_matriz_id: username }
             })
         });
 
@@ -499,11 +498,6 @@ async function loadItems(unitId) {
     $('#transfer-button').click(function () {
         sendTransferItems();
     });
-
-    if (!unit_matriz_id) {
-        swal.fire('Erro', 'unit_matriz_id não encontrado na URL.', 'error');
-        return;
-    }
 
     // Carregar as unidades
     loadUnidades();

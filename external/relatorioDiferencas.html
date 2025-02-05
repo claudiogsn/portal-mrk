@@ -139,7 +139,6 @@
     
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
-        const unit_matriz_id = urlParams.get('unit_matriz_id');
         const username = urlParams.get('username');
     
         $(document).ready(function () {
@@ -176,7 +175,7 @@
                     const response = await axios.post(baseUrl, {
                         method: 'getFiliaisByMatriz',
                         token: token,
-                        data: { unit_matriz_id: unit_matriz_id }
+                        data: { unit_matriz_id: username }
                     });
     
                     if (response.data) {

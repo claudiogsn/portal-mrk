@@ -119,7 +119,7 @@ class NecessidadesController {
 
 
 
-    public static function getFiliaisByMatriz($unit_matriz_id) {
+    public static function getFiliaisByMatriz($user_id) {
         global $pdo;
 
         $sql = "
@@ -127,15 +127,15 @@ class NecessidadesController {
                 su.id AS filial_id,
                 su.name AS filial_nome
             FROM
-                system_unit_rel sur
+                system_user_unit sur
             JOIN
-                system_unit su ON sur.unit_filial = su.id
+                system_unit su ON sur.system_unit_id = su.id
             WHERE
-                sur.unit_matriz = ?;
+                sur.system_user_id = ?;
         ";
 
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$unit_matriz_id]);
+        $stmt->execute([$user_id]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

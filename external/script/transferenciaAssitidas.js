@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const unitId = urlParams.get('unit_matriz_id');
+    const username = urlParams.get('username');
 
     // Inicializar o Form Wizard
     const form = $("#wizard-form");
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body: JSON.stringify({
                 method: 'getFiliaisByMatriz',
                 token: token,
-                data: { unit_matriz_id: unitId }
+                data: { unit_matriz_id: username }
             })
         });
 

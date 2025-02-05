@@ -12,9 +12,9 @@ class TransferenciaManual extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/transferenciaManual.html?username={$username}&token={$token}&unit_matriz_id=8";
+            $link = "http://localhost/portal-mrk/external/transferenciaManual.html?username={$username}&token={$token}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/transferenciaManual.html?username={$username}&token={$token}&unit_matriz_id=8";
+            $link = "https://portal.mrksolucoes.com.br/external/transferenciaManual.html?username={$username}&token={$token}";
         }
 
         $iframe = new TElement('iframe');
