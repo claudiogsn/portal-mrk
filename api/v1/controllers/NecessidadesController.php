@@ -4,6 +4,102 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController {
 
+    public static function getInsumoConsumptionMatriz($matriz_id, $dates, $insumoIds, $type = 'media') {
+        global $pdo;
+
+        // Passo 1: Obter todas as unidades filiais da matriz
+        $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
+        $stmt->execute([$matriz_id]);
+        $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($filiais)) {
+            return [];
+        }
+
+        // Passo 2: Obter nomes dos insumos da matriz e filiais, priorizando a matriz
+        $all_unit_ids = array_merge([$matriz_id], $filiais);
+        $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
+        $unitPlaceholders = implode(',', array_fill(0, count($all_unit_ids), '?'));
+
+        $stmt = $pdo->prepare("
+        SELECT codigo AS insumo_id, nome, system_unit_id
+        FROM products 
+        WHERE codigo IN ($insumoPlaceholders) 
+        AND system_unit_id IN ($unitPlaceholders)
+        ORDER BY system_unit_id = ? DESC ");
+        $params = array_merge($insumoIds, $all_unit_ids, [$matriz_id]);
+        $stmt->execute($params);
+
+        // Processar produtos para priorizar o nome da matriz
+        $produtos = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $codigo = $row['insumo_id'];
+            if (!isset($produtos[$codigo])) {
+                $produtos[$codigo] = $row;
+            } else {
+                // Substitui apenas se for da matriz
+                if ($row['system_unit_id'] == $matriz_id) {
+                    $produtos[$codigo] = $row;
+                }
+            }
+        }
+
+        // Inicializar consumo dos insumos
+        $insumoConsumption = [];
+        foreach ($insumoIds as $insumo_id) {
+            $nome = isset($produtos[$insumo_id]) ? $produtos[$insumo_id]['nome'] : 'Insumo não encontrado';
+            $insumoConsumption[$insumo_id] = [
+                'codigo' => $insumo_id,
+                'sales' => 0,
+                'margem' => 0,
+                'saldo' => 0,
+                'necessidade' => 0,
+                'nome' => $nome,
+            ];
+        }
+
+        // Passo 3: Calcular consumo para cada filial e agregar
+        foreach ($filiais as $filial_id) {
+            $dadosFilial = self::getInsumoConsumption($filial_id, $dates, $insumoIds, $type);
+
+            foreach ($dadosFilial as $insumo) {
+                $insumo_id = $insumo['codigo'];
+                if (!isset($insumoConsumption[$insumo_id])) continue;
+
+                // Converter valores para float antes de somar
+                $sales = (float)$insumo['sales'];
+                $saldo = (float)$insumo['saldo'];
+
+                $insumoConsumption[$insumo_id]['sales'] += $sales;
+                $insumoConsumption[$insumo_id]['saldo'] += $saldo;
+            }
+        }
+
+        // Passo 4: Calcular margem e recomendado consolidados
+        foreach ($insumoConsumption as &$insumo) {
+            $sales = $insumo['sales'];
+            $saldo = $insumo['saldo'];
+
+            if ($type === 'media') {
+                // Margem baseada na média agregada
+                $margem = 0;
+                $recomendado = max(0, ceil($sales + $margem - $saldo));
+            } else {
+                // Lógica para outros tipos (se necessário)
+                $margem = 0;
+                $recomendado = 0;
+            }
+
+            // Formatar valores
+            $insumo['sales'] = number_format($sales, 2, '.', '');
+            $insumo['margem'] = number_format($margem, 2, '.', '');
+            $insumo['saldo'] = number_format($saldo, 2, '.', '');
+            $insumo['recomendado'] = $recomendado;
+        }
+
+        return array_values($insumoConsumption);
+    }
+
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $type = 'media') {
         global $pdo;
 
@@ -111,6 +207,29 @@ class NecessidadesController {
         $stmt->execute(); // Executa a consulta
     
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todos os resultados
+    }
+
+    public static function getFiliaisProduction($user_id) {
+        global $pdo;
+
+        $sql = "
+            SELECT
+                su.id AS filial_id,
+                su.name AS filial_nome
+            FROM
+                system_user_unit sur
+            JOIN
+                system_unit su ON sur.system_unit_id = su.id
+            WHERE
+                sur.system_user_id = ?
+            AND
+                su.name like '%Produção%';
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
     

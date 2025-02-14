@@ -42,13 +42,22 @@
           </menuitem>
         </menu>
       </menuitem>
-      <menuitem label="Transferências">
-        <icon>fas:arrows-alt-h fa-fw</icon>
+      <menuitem label="Previsão Demanda">
+        <icon>fas:database fa-fw</icon>
         <menu>
-          <menuitem label="Transferência Assitida">
+          <menuitem label="Previsão de Demada - Loja">
             <action>TransferenciaAssitida</action>
             <icon>fas:copy fa-fw</icon>
           </menuitem>
+          <menuitem label="Previsão de Demada - Produção">
+            <action>PrevisaoDemanda</action>
+            <icon>fas:dolly-flatbed fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
+      <menuitem label="Transferências">
+        <icon>fas:arrows-alt-h fa-fw</icon>
+        <menu>
           <menuitem label="Transferência Manual">
             <action>TransferenciaManual</action>
             <icon>fas:dolly-flatbed fa-fw</icon>

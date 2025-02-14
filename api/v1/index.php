@@ -233,8 +233,24 @@ if (isset($data['method']) && isset($data['data'])) {
                         $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
                     }
                     break;
+            case 'getInsumoConsumptionMatriz':
+                if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes'])) {
+                    $response = NecessidadesController::getInsumoConsumptionMatriz($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
+                }
+                break;
 
-                    case 'getFiliaisByMatriz':
+            case 'getFiliaisProduction':
+                if (isset($requestData['username'])) {
+                    $response = NecessidadesController::getFiliaisProduction($requestData['username']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro $unit_matriz_id ausente'];
+                }
+                break;
+            case 'getFiliaisByMatriz':
                         if (isset($requestData['unit_matriz_id'])) {
                             $response = NecessidadesController::getFiliaisByMatriz($requestData['unit_matriz_id']);
                         } else {
