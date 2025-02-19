@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transferência Assistida</title>
+    <title>Previsão Demanda - Loja</title>
 
     <!-- Favicon-->
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
@@ -95,7 +95,7 @@
             <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                 <div class="card">
                     <div class="header">
-                        <h2>Transferência Assistida</h2>
+                        <h2>Previsão Demanda - Loja</h2>
                     </div>
                     <div class="body">
                         <!-- Form Wizard -->
@@ -112,37 +112,29 @@
 
                                 <h2>Período</h2>
                                 <section>
-                                    <h4>Selecione o Período</h4>
-                                    <h4>Esse é o periodo para o qual você deseja enviar os mantimentos</h4>
-                                    <div class="form-group">
-                                        <input type="checkbox" id="use-period" checked>
-                                        <label for="use-period">Usar Período</label>
-                                    </div>
-                                    <div id="period-selection" class="row">
-                                        <div class="col-sm-6">
-                                            <label for="start-day">Dia Inicial</label>
-                                            <select id="start-day" name="start-day" class="form-control" required>
-                                                <option value="0">Domingo</option>
-                                                <option value="1">Segunda-feira</option>
-                                                <option value="2">Terça-feira</option>
-                                                <option value="3">Quarta-feira</option>
-                                                <option value="4">Quinta-feira</option>
-                                                <option value="5">Sexta-feira</option>
-                                                <option value="6">Sábado</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="end-day">Dia Final</label>
-                                            <select id="end-day" name="end-day" class="form-control" required>
-                                                <option value="0">Domingo</option>
-                                                <option value="1">Segunda-feira</option>
-                                                <option value="2">Terça-feira</option>
-                                                <option value="3">Quarta-feira</option>
-                                                <option value="4">Quinta-feira</option>
-                                                <option value="5">Sexta-feira</option>
-                                                <option value="6">Sábado</option>
-                                            </select>
-                                        </div>
+                                    <h4>Selecione os Dias da Semana</h4>
+
+                                    <div class="demo-checkbox">
+                                        <input type="checkbox" id="day_0" class="chk-col-blue"  />
+                                        <label for="day_0">Domingo</label>
+
+                                        <input type="checkbox" id="day_1" class="chk-col-blue"  />
+                                        <label for="day_1">Segunda-feira</label>
+
+                                        <input type="checkbox" id="day_2" class="chk-col-blue"  />
+                                        <label for="day_2">Terça-feira</label>
+
+                                        <input type="checkbox" id="day_3" class="chk-col-blue"  />
+                                        <label for="day_3">Quarta-feira</label>
+
+                                        <input type="checkbox" id="day_4" class="chk-col-blue"  />
+                                        <label for="day_4">Quinta-feira</label>
+
+                                        <input type="checkbox" id="day_5" class="chk-col-blue"  />
+                                        <label for="day_5">Sexta-feira</label>
+
+                                        <input type="checkbox" id="day_6" class="chk-col-blue"  />
+                                        <label for="day_6">Sábado</label>
                                     </div>
                                 </section>
                                 
@@ -190,18 +182,18 @@
                                                     <th>Codigo</th>
                                                     <th>Produto</th>
                                                     <th>Vendas (+)</th>
-                                                    <th>Margem (+)</th>
                                                     <th>Saldo (-)</th>
                                                     <th>Recomendado (=)</th>
-                                                    <th>Aplicar</th>
-                                                    <th>Quantidade</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <!-- Resultados serão preenchidos dinamicamente -->
                                             </tbody>
                                         </table>
-                                        <button id="print-button" class="btn btn-success">Imprimir Tabela</button>
+                                        <div class="text-center" style="margin-top: 20px;">
+                                            <button id="print-filtered-button" class="btn btn-primary">Imprimir Filtrado</button>
+                                            <button id="print-full-button" class="btn btn-secondary">Imprimir Completo</button>
+                                        </div>
                                     </div>
                                 </section>
                             </div>
@@ -231,628 +223,506 @@
 
     <!-- Custom JS -->
      <script>
+        document.addEventListener('DOMContentLoaded', function () {
 
-      function applyRecomendado(codigo, recomendado) {
-        const quantidadeInput = document.getElementById(`quantidade-${codigo}`);
-        if (quantidadeInput) {
-            quantidadeInput.value = recomendado;
-        }
-    }
-document.addEventListener('DOMContentLoaded', function () {
+            const baseUrl = window.location.hostname !== 'localhost' ?
+                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+                'http://localhost/portal-mrk/api/v1/index.php';
 
-    function applyRecomendado(codigo, recomendado) {
-        const quantidadeInput = document.getElementById(`quantidade-${codigo}`);
-        if (quantidadeInput) {
-            quantidadeInput.value = recomendado;
-        }
-    }
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const username = urlParams.get('username');
+            let unitName = '';
+            let userName = '';
 
+            let importedProducts = [];
 
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
+            const form = $("#wizard-form");
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const username = urlParams.get('username');
-
-
-    let importedProducts = []; // Armazenar os produtos importados como objetos {codigo_produto, nome_produto}
-
-    // Inicializar o Form Wizard
-    const form = $("#wizard-form");
-
-    form.validate({
-        errorPlacement: function (error, element) {
-            element.before(error); // Posiciona o erro antes do elemento
-        },
-        rules: {
-            "unit-select": "required",
-            "start-date": "required",
-            "end-date": "required",
-            "product-select": {
-                required: function () {
-                    return $("#product-select option:selected").length > 0 || importedProducts.length > 0;
+            form.validate({
+                errorPlacement: function (error, element) {
+                    element.before(error); // Posiciona o erro antes do elemento
+                },
+                rules: {
+                    "unit-select": "required",
+                    "start-date": "required",
+                    "end-date": "required",
+                    "product-select": {
+                        required: function () {
+                            return $("#product-select option:selected").length > 0 || importedProducts.length > 0;
+                        }
+                    }
                 }
+            });
+
+            $("#wizard").steps({
+                headerTag: "h2",
+                bodyTag: "section",
+                transitionEffect: "slideLeft",
+                labels: {
+                    finish: "Finalizar",
+                    next: "Próximo",
+                    previous: "Anterior"
+                },
+                onStepChanging: function (event, currentIndex, newIndex) {
+                    form.validate().settings.ignore = ":disabled,:hidden";
+
+                    if (newIndex < currentIndex) {
+                        window.location.reload();  // Força o reload da página
+                        return false;
+                    }
+
+                    return form.valid();
+                },
+                onStepChanged: function (event, currentIndex, priorIndex) {
+                    if (currentIndex === 3) {
+                        calcularNecessidades();
+                    } else if (currentIndex === 2) {
+                        const selectedUnitId = document.getElementById('unit-select').value;
+                        if (selectedUnitId) {
+                            loadProdutos(selectedUnitId);
+                            loadModelos(selectedUnitId);  // Carregar modelos de balanço
+                        } else {
+                            Swal.fire({
+                                title: 'Atenção!',
+                                text: "Por favor, selecione uma unidade de destino.",
+                                icon: 'warning',
+                                confirmButtonText: 'Ok'
+                            });
+                        }
+                    }
+                },
+                onFinished: function (event, currentIndex) {
+                    // Chama a função de criar transferência ao finalizar o wizard
+                    createTransfer();
+                }
+            });
+
+            // Exibir Modal de Carregamento
+            function showLoadingModal() {
+                $('#defaultModal').modal('show');
             }
-        }
-    });
 
-    $("#wizard").steps({
-        headerTag: "h2",
-        bodyTag: "section",
-        transitionEffect: "slideLeft",
-        labels: {
-            finish: "Finalizar",
-            next: "Próximo",
-            previous: "Anterior"
-        },
-        onStepChanging: function (event, currentIndex, newIndex) {
-            form.validate().settings.ignore = ":disabled,:hidden";
-
-            if (newIndex < currentIndex) {
-                window.location.reload();  // Força o reload da página
-                return false;
+            function hideLoadingModal() {
+                $('#defaultModal').modal('hide');
             }
 
-            return form.valid(); 
-        },
-        onStepChanged: function (event, currentIndex, priorIndex) {
-            if (currentIndex === 3) {
-                calcularNecessidades();
-            } else if (currentIndex === 2) {
+            async function loadUnidades() {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getFiliaisByMatriz',
+                        token: token,
+                        data: { unit_matriz_id: username }
+                    })
+                });
+
+                const unidades = await response.json();
+                const select = document.getElementById('unit-select');
+                unidades.forEach(filial => {
+                    const option = new Option(filial.filial_nome, filial.filial_id);
+                    select.appendChild(option);
+                });
+            }
+
+            // Carregar Insumos/Produtos
+            async function loadProdutos(unitId) {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getInsumosUsage',
+                        token: token,
+                        data: { system_unit_id: unitId }
+                    })
+                });
+
+                const produtos = await response.json();
+                const select = document.getElementById('product-select');
+                select.innerHTML = ''; // Limpa produtos antigos
+                produtos.forEach(produto => {
+                    const option = new Option(produto.insumo_nome, produto.insumo_id);
+                    select.appendChild(option);
+                });
+                $('#product-select').multiSelect();
+            }
+
+            // Carregar Modelos para "Importar Produtos do Balanço"
+            async function loadModelos(unitId) {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'listModelosWithProducts',
+                        token: token,
+                        data: { unit_id: unitId }
+                    })
+                });
+
+                const data = await response.json();
+                const select = document.getElementById('modelos-select');
+                select.innerHTML = ''; // Limpa opções antigas
+
+                // Adiciona a opção padrão
+                const defaultOption = new Option('Selecione um modelo', '');
+                select.appendChild(defaultOption);
+
+                data.modelos.forEach(modelo => {
+                    const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
+                    select.appendChild(option);
+                });
+
+                select.addEventListener('change', function () {
+                    const tagSelecionada = this.value;
+                    loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
+                });
+            }
+
+            // Carregar Produtos do Modelo ao selecionar uma tag
+            async function loadProdutosDoModelo(tag) {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getModelByTag',
+                        data: { tag: tag }
+                    })
+                });
+
+                const data = await response.json();
+                const produtosModelo = data.itens;
+                const selectProdutos = document.getElementById('product-select');
+                selectProdutos.innerHTML = ''; // Limpa produtos anteriores
+
+                importedProducts = []; // Limpa a variável de produtos importados
+
+                for (const categoria in produtosModelo) {
+                    produtosModelo[categoria].forEach(item => {
+                        const option = new Option(item.nome_produto, item.codigo_produto); // Usar código do produto
+                        selectProdutos.appendChild(option);
+
+                        // Adicionar os produtos importados como objetos
+                        importedProducts.push({
+                            codigo_produto: item.codigo_produto,
+                            nome_produto: item.nome_produto
+                        });
+                    });
+                }
+
+                $('#product-select').multiSelect('refresh');
+            }
+
+            // Alternar entre "Importar Produtos" e "Selecionar Manualmente"
+            document.querySelectorAll('input[name="product-option"]').forEach(option => {
+                option.addEventListener('change', function () {
+                    const importar = document.getElementById('importar-balance');
+                    const manual = document.getElementById('manual-select');
+                    if (this.value === 'importar') {
+                        importar.style.display = 'block';
+                        manual.style.display = 'none';
+                    } else {
+                        importar.style.display = 'none';
+                        manual.style.display = 'block';
+                    }
+                });
+            });
+
+            // Calcular necessidades após o envio de datas e produtos
+            async function calcularNecessidades() {
                 const selectedUnitId = document.getElementById('unit-select').value;
-                if (selectedUnitId) {
-                    loadProdutos(selectedUnitId);
-                    loadModelos(selectedUnitId);  // Carregar modelos de balanço
-                } else {
+                const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
+
+                // Concatenar os produtos selecionados manualmente com os produtos importados
+                const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
+
+                const dates = calcularUltimas4DatasPorSemana();
+
+                showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
+
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getInsumoConsumption',
+                        token: token,
+                        data: {
+                            system_unit_id: selectedUnitId,
+                            dates: dates,
+                            productCodes: allSelectedProducts,
+                            username: username// Enviando todos os produtos selecionados
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                const consumos = data.consumos;
+                unitName = data.unidade;
+                userName = data.usuario;
+
+                if (!Array.isArray(consumos)) {
+                    console.error('Esperado um array, mas recebeu:', consumos);
                     Swal.fire({
-                        title: 'Atenção!',
-                        text: "Por favor, selecione uma unidade de destino.",
-                        icon: 'warning',
+                        title: 'Erro!',
+                        text: 'Não foi possível calcular as demandas. A resposta da API não é válida.',
+                        icon: 'error',
                         confirmButtonText: 'Ok'
+                    });
+                    hideLoadingModal(); // Ocultar o modal
+                    return; // Interrompe a função se a resposta não for válida
+                }
+
+                // Agrupar os produtos por categoria
+                const produtosAgrupados = consumos.reduce((acc, produto) => {
+                    if (!acc[produto.categoria]) {
+                        acc[produto.categoria] = [];
+                    }
+                    acc[produto.categoria].push(produto);
+                    return acc;
+                }, {});
+
+                // Renderizar os dados na tabela agrupados por categoria
+                renderItensByCategory(produtosAgrupados);
+
+                hideLoadingModal(); // Ocultar o modal
+                document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
+            }
+
+            function renderItensByCategory(itens) {
+                const tbody = $('#result-table tbody');
+                tbody.empty();
+
+                for (const categoria in itens) {
+                    tbody.append(`
+                    <tr class="category-header">
+                        <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+                    </tr>
+                `);
+
+                    itens[categoria].forEach(produto => {
+                        tbody.append(`
+                        <tr>
+                            <td>${produto.codigo}</td>
+                            <td>${produto.nome || 'Produto não encontrado'}</td>
+                            <td>${produto.sales}</td>
+                            <td>${produto.saldo}</td>
+                            <td>${produto.recomendado}</td>
+                        </tr>
+                    `);
                     });
                 }
             }
-        },
-        onFinished: function (event, currentIndex) {
-            // Chama a função de criar transferência ao finalizar o wizard
-            createTransfer();
-        }
-    });
 
-    // Exibir Modal de Carregamento
-    function showLoadingModal() {
-        $('#defaultModal').modal('show');
-    }
+            // Função para calcular as últimas 4 datas por semana
+            function calcularUltimas4DatasPorSemana() {
+                const today = new Date();
+                const diasSelecionados = [];
 
-    function hideLoadingModal() {
-        $('#defaultModal').modal('hide');
-    }
-
-    async function loadUnidades() {
-        const response = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                method: 'getFiliaisByMatriz',
-                token: token,
-                data: { unit_matriz_id: username }
-            })
-        });
-
-        const unidades = await response.json();
-        const select = document.getElementById('unit-select');
-        unidades.forEach(filial => {
-            const option = new Option(filial.filial_nome, filial.filial_id);
-            select.appendChild(option);
-        });
-    }
-
-    // Carregar Insumos/Produtos
-    async function loadProdutos(unitId) {
-        const response = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                method: 'getInsumosUsage',
-                token: token,
-                data: { system_unit_id: unitId }
-            })
-        });
-
-        const produtos = await response.json();
-        const select = document.getElementById('product-select');
-        select.innerHTML = ''; // Limpa produtos antigos
-        produtos.forEach(produto => {
-            const option = new Option(produto.insumo_nome, produto.insumo_id);
-            select.appendChild(option);
-        });
-        $('#product-select').multiSelect();
-    }
-
-    // Carregar Modelos para "Importar Produtos do Balanço"
-    async function loadModelos(unitId) {
-    const response = await fetch(baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            method: 'listModelosWithProducts',
-            token: token,
-            data: { unit_id: unitId }
-        })
-    });
-
-    const data = await response.json();
-    const select = document.getElementById('modelos-select');
-    select.innerHTML = ''; // Limpa opções antigas
-
-    // Adiciona a opção padrão
-    const defaultOption = new Option('Selecione um modelo', '');
-    select.appendChild(defaultOption);
-
-    data.modelos.forEach(modelo => {
-        const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
-        select.appendChild(option);
-    });
-
-    select.addEventListener('change', function () {
-        const tagSelecionada = this.value;
-        loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
-    });
-}
-
-
-    // Carregar Produtos do Modelo ao selecionar uma tag
-    async function loadProdutosDoModelo(tag) {
-        const response = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                method: 'getModelByTag',
-                data: { tag: tag }
-            })
-        });
-
-        const data = await response.json();
-        const produtosModelo = data.itens;
-        const selectProdutos = document.getElementById('product-select');
-        selectProdutos.innerHTML = ''; // Limpa produtos anteriores
-
-        importedProducts = []; // Limpa a variável de produtos importados
-
-        for (const categoria in produtosModelo) {
-            produtosModelo[categoria].forEach(item => {
-                const option = new Option(item.nome_produto, item.codigo_produto); // Usar código do produto
-                selectProdutos.appendChild(option);
-
-                // Adicionar os produtos importados como objetos
-                importedProducts.push({
-                    codigo_produto: item.codigo_produto,
-                    nome_produto: item.nome_produto
-                });
-            });
-        }
-
-        $('#product-select').multiSelect('refresh');
-    }
-
-    // Alternar entre "Importar Produtos" e "Selecionar Manualmente"
-    document.querySelectorAll('input[name="product-option"]').forEach(option => {
-        option.addEventListener('change', function () {
-            const importar = document.getElementById('importar-balance');
-            const manual = document.getElementById('manual-select');
-            if (this.value === 'importar') {
-                importar.style.display = 'block';
-                manual.style.display = 'none';
-            } else {
-                importar.style.display = 'none';
-                manual.style.display = 'block';
-            }
-        });
-    });
-
-    // Calcular necessidades após o envio de datas e produtos
-    async function calcularNecessidades() {
-    const selectedUnitId = document.getElementById('unit-select').value;
-    const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
-
-    // Concatenar os produtos selecionados manualmente com os produtos importados
-    const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
-
-    
-
-    const dates = calcularUltimas4DatasPorSemana();
-    console.log("Últimas 4 datas calculadas:", dates);
-
-    showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
-
-    const response = await fetch(baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            method: 'getInsumoConsumption',
-            token: token,
-            data: {
-                system_unit_id: selectedUnitId,
-                dates: dates,
-                productCodes: allSelectedProducts  // Enviando todos os produtos selecionados
-            }
-        })
-    });
-
-    const consumos = await response.json();
-
-    // Verifique se a resposta da API é um array e log da resposta
-    console.log("Resposta da API:", consumos);
-    
-    if (!Array.isArray(consumos)) {
-        console.error('Esperado um array, mas recebeu:', consumos);
-        Swal.fire({
-            title: 'Erro!',
-            text: 'Não foi possível calcular as necessidades. A resposta da API não é válida.',
-            icon: 'error',
-            confirmButtonText: 'Ok'
-        });
-        hideLoadingModal(); // Ocultar o modal
-        return; // Interrompe a função se a resposta não for válida
-    }
-
-    // Exibir os dados no grid
-    const grid = document.getElementById('result-table').querySelector('tbody');
-    grid.innerHTML = ''; // Limpa o grid
-
-    consumos.forEach(consumo => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td>${consumo.codigo}</td>
-        <td>${consumo.nome || 'Produto não encontrado'}</td>
-        <td>${consumo.sales}</td>
-        <td>${consumo.margem}</td>
-        <td>${consumo.saldo}</td>
-        <td>${consumo.recomendado}</td>
-        <td>
-            <button type="button" class="btn btn-primary waves-effect apply-button" onclick="applyRecomendado('${consumo.codigo}', ${consumo.recomendado})">Aplicar</button>
-        </td>
-        <td><input type="number" id="quantidade-${consumo.codigo}" min="0" value="0"></td>
-    `;
-    grid.appendChild(row);
-});
-    hideLoadingModal(); // Ocultar o modal
-    document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
-}
-
-
-
-    // Criar a transferência
-    async function createTransfer() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const user_id = urlParams.get('username');
-    const sourceUnitId = unitId;
-    const destinoUnitId = document.getElementById('unit-select').value;
-    const destinoUnitName = document.getElementById('unit-select').textContent;
-    const transferItems = [];
-    const rows = document.querySelectorAll('#result-table tbody tr');
-
-    rows.forEach(row => {
-        const codigo = row.cells[0].innerText;
-        const quantidadeInput = row.querySelector(`#quantidade-${codigo}`);
-        const quantidade = quantidadeInput ? parseInt(quantidadeInput.value) : 0;
-        if (quantidade > 0) {
-            transferItems.push({
-                codigo: codigo,
-                seq: transferItems.length + 1,
-                quantidade: quantidade
-            });
-        }
-    });
-
-    if (transferItems.length === 0) {
-        Swal.fire({
-            title: 'Atenção!',
-            text: "Nenhum produto foi selecionado para a transferência.",
-            icon: 'warning',
-            confirmButtonText: 'Ok'
-        });
-        return;
-    }
-
-    const transferData = {
-        method: "createTransferItems",
-        token: token,
-        data: {
-            system_unit_id: sourceUnitId,
-            system_unit_id_destino: destinoUnitId,
-            itens: transferItems,
-            usuario_id: user_id
-        }
-    };
-
-    const confirmation = await Swal.fire({
-        title: 'Confirmação',
-        text: "Você deseja realizar a transferência?",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sim',
-        cancelButtonText: 'Não'
-    });
-
-    if (confirmation.isConfirmed) {
-        showLoadingModal();
-
-        try {
-            const response = await fetch(baseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transferData)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                Swal.fire({
-                    title: 'Sucesso!',
-                    text: `Transferência realizada com sucesso. Documento: ${result.transfer_doc}`,
-                    icon: 'success',
-                    confirmButtonText: 'Ok'
-                }).then(() => {
-                    generatePrintDocument(result, transferItems);
-                    location.reload();
-                });
-
-
-            } else {
-                Swal.fire({
-                    title: 'Erro!',
-                    text: `Não foi possível realizar a transferência: ${result.message}`,
-                    icon: 'error',
-                    confirmButtonText: 'Ok'
-                });
-            }
-        } catch (error) {
-            console.error('Erro ao realizar a transferência:', error);
-            Swal.fire({
-                title: 'Erro!',
-                text: 'Ocorreu um erro ao tentar realizar a transferência.',
-                icon: 'error',
-                confirmButtonText: 'Ok'
-            });
-        } finally {
-            hideLoadingModal();
-        }
-    }
-}
-
-function generatePrintDocument(result, items) {
-
-    const printWindow = window.open('', '_blank');
-
-    items = result.itens;
-    const printContent = `
-        <html>
-        <head>
-            <title>Documento de Transferência</title>
-            <style>
-                body { font-family: Arial, sans-serif; }
-                h1 { text-align: center; }
-                p, table { margin-top: 20px; }
-                table { width: 100%; border-collapse: collapse; }
-                table, th, td { border: 1px solid #ddd; padding: 8px; }
-                th { background-color: #f2f2f2; text-align: left; }
-                .signature-section { margin-top: 50px; }
-                .signature-line { border-top: 1px solid #000; width: 200px; margin: 0 auto; text-align: center; }
-                .signature-label { text-align: center; margin-top: 5px; }
-            </style>
-        </head>
-        <body>
-            <h1>Documento de Transferência</h1>
-            <br>
-            <br>
-            <p><strong>Unidade:</strong> ${result.nome_unidade_destino}</p>
-            <p><strong>Documento:</strong> ${result.transfer_doc}</p>
-            <p><strong>Data e Hora:</strong> ${result.data_hora}</p>
-            
-            <table>
-                <thead>
-                    <tr>
-                        <th>Seq</th>
-                        <th>Código</th>
-                        <th>Nome do Produto</th>
-                        <th>Quantidade</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${items.map(item => `
-                        <tr>
-                            <td>${item.seq}</td>
-                            <td>${item.codigo}</td>
-                            <td>${item.nome_produto}</td>
-                            <td>${item.quantidade}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-
-            <div class="signature-section">
-                <div class="signature-line"></div>
-                <p class="signature-label">Assinatura do Responsável</p>
-            </div>
-        </body>
-        </html>
-    `;
-
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.print();
-}
-
-
-
-
-    // Função para calcular as últimas 4 datas por semana
-        function calcularUltimas4DatasPorSemana() {
-            const today = new Date();
-            const startDay = parseInt(document.getElementById('start-day').value); // Ex: Segunda = 1
-            const endDay = parseInt(document.getElementById('end-day').value); // Ex: Sexta = 5
-
-            console.log("Dia Inicial:", startDay);
-            console.log("Dia Final:", endDay);
-
-            // Função para calcular as últimas 4 datas de um único dia da semana
-            function getLastDatesForDay(dayOfWeek) {
-                console.log("Calculando datas para o dia", dayOfWeek);
-    
-                const dates = [];
-                console.log("Data Atual:", today);
-                let currentDate = new Date(today);
-                currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
-                console.log("Data Inicial:", currentDate);
-
-                while (dates.length < 4) {
-                    console.log("Dia da Semana Atual:", currentDate.getDay());
-                    if (currentDate.getDay() === dayOfWeek) {
-                        console.log("Data Adicionada:", currentDate);
-                        dates.push(new Date(currentDate));
-                        console.log("Datas Atuais:", dates);
+                // Obtém os dias selecionados
+                for (let i = 0; i <= 6; i++) {
+                    if (document.getElementById(`day_${i}`).checked) {
+                        diasSelecionados.push(i);
                     }
-                    currentDate.setDate(currentDate.getDate() - 1);
-                    console.log("Data Atualizada:", currentDate);
                 }
 
-                return dates;
-            }
-
-            // Itera por todos os dias no intervalo [startDay, endDay]
-            const allDates = [];
-            for (let day = startDay; day <= endDay; day++) {
-                const datesForDay = getLastDatesForDay(day % 7); // Garante dias entre 0 (Domingo) e 6 (Sábado)
-                allDates.push(...datesForDay);
-                //console.log("Datas para o dia", day, ":", datesForDay);
-            }
-           // console.log("Todas as datas selecionadas:", allDates);
-
-
-            // Remove duplicatas e ordena as datas
-            const uniqueDates = Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0])))
-                .sort();
-
-            console.log("Datas únicas selecionadas:", uniqueDates);
-            return uniqueDates;
-        }
-
-
-
-        function printTable(event) {
-    event.preventDefault(); // Impede o comportamento padrão (como redirecionar para outra URL)
-
-    // Esconde as colunas indesejadas na tabela
-    const columnsToHide = [2, 3, 4, 6]; // Índices das colunas a serem removidas: Vendas (+), Margem (+), Saldo (-), Aplicar
-
-    // Acesse as células do cabeçalho da tabela (th) e das linhas de dados (td)
-    const table = document.getElementById('result-table');
-    const headerCells = table.getElementsByTagName('th');
-    const rows = table.getElementsByTagName('tr');
-
-    // Itera sobre as colunas que você quer esconder e aplica a mudança para esconder
-    for (let i = 0; i < headerCells.length; i++) {
-        if (columnsToHide.includes(i)) {
-            headerCells[i].style.display = 'none'; // Esconde o cabeçalho da coluna
-        }
-    }
-
-    // Esconde as células nas linhas da tabela
-    for (let i = 1; i < rows.length; i++) { // Começa de 1 para pular o cabeçalho
-        const cells = rows[i].getElementsByTagName('td');
-        for (let j = 0; j < cells.length; j++) {
-            if (columnsToHide.includes(j)) {
-                cells[j].style.display = 'none'; // Esconde as células da coluna
-            }
-        }
-    }
-
-    // Captura os valores atualizados da quantidade nos campos de input
-    // Aqui você pega as células que contêm os campos de entrada (input) da tabela
-    const quantityInputs = table.querySelectorAll('td input');
-    quantityInputs.forEach(input => {
-        const parentCell = input.closest('td');
-        parentCell.innerHTML = input.value; // Atualiza a célula com o valor digitado
-    });
-
-    // Agora, imprime a tabela
-    const printWindow = window.open('', '_blank'); // Abre uma nova janela para a impressão
-    const printContent = `
-        <html>
-        <head>
-            <title>Imprimir Transferência Parcial</title>
-            <style>
-                body { font-family: Arial, sans-serif; }
-                h1 { text-align: center; }
-                .alert { 
-                    background-color: #f8d7da;
-                    color: #721c24;
-                    border: 1px solid #f5c6cb;
-                    padding: 15px;
-                    margin: 20px;
-                    font-size: 16px;
-                    text-align: center;
-                    border-radius: 5px;
+                // Verificação: Garante que pelo menos um dia foi selecionado
+                if (diasSelecionados.length === 0) {
+                    Swal.fire({
+                        title: 'Atenção!',
+                        text: 'Você deve selecionar pelo menos um dia da semana.',
+                        icon: 'warning',
+                        confirmButtonText: 'Ok'
+                    });
+                    return [];
                 }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                table, th, td { border: 1px solid #ddd; padding: 8px; }
-                th { background-color: #f2f2f2; text-align: left; }
-                @media print {
-                    body { font-size: 12pt; }
-                    button { display: none; }
+
+                function getLastDatesForDay(dayOfWeek) {
+                    const dates = [];
+                    let currentDate = new Date(today);
+                    currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
+
+                    while (dates.length < 4) {
+                        if (currentDate.getDay() === dayOfWeek) {
+                            dates.push(new Date(currentDate));
+                        }
+                        currentDate.setDate(currentDate.getDate() - 1);
+                    }
+                    return dates;
                 }
-            </style>
-        </head>
-        <body>
-            <h1>Transferência Parcial</h1>
-            <div class="alert">
-                <strong>Atenção!</strong> Esta transferência é <strong>parcial</strong> e ainda não foi finalizada. Os dados exibidos são preliminares e estão sujeitos a alterações.
-            </div>
-            ${table.outerHTML} <!-- Adiciona a tabela -->
-        </body>
-        </html>
-    `;
-    
-    // Escreve o conteúdo no novo documento da janela
-    printWindow.document.write(printContent);
-    printWindow.document.close(); // Finaliza a escrita do documento
 
-    // Abre a caixa de diálogo de impressão
-    printWindow.print();
+                // Obtém as últimas 4 ocorrências de cada dia selecionado
+                const allDates = [];
+                diasSelecionados.forEach(day => {
+                    allDates.push(...getLastDatesForDay(day));
+                });
 
-    // Após a impressão, retorna a visibilidade das colunas para a página original
-    for (let i = 0; i < headerCells.length; i++) {
-        if (columnsToHide.includes(i)) {
-            headerCells[i].style.display = ''; // Restaura a visibilidade do cabeçalho
-        }
-    }
+                // Remove duplicatas e ordena as datas
+                const uniqueDates = Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0])))
+                    .sort();
 
-    // Restaura as células das linhas
-    for (let i = 1; i < rows.length; i++) {
-        const cells = rows[i].getElementsByTagName('td');
-        for (let j = 0; j < cells.length; j++) {
-            if (columnsToHide.includes(j)) {
-                cells[j].style.display = ''; // Restaura as células das colunas
+                return uniqueDates;
             }
-        }
-    }
-}
 
+            // Função para imprimir apenas os produtos com "Recomendado > 0"
+            function printFilteredTable(event) {
+                event.preventDefault(); // Evita comportamento padrão
 
+                const rows = Array.from(document.getElementById('result-table').getElementsByTagName('tr'));
 
-$('#print-button').click(function (event) {
-        printTable(event); // Chama a função printTable e passa o evento para evitar redirecionamento
-    });
+                // Oculta produtos cujo "Recomendado" seja 0
+                rows.forEach(row => {
+                    const cells = row.getElementsByTagName('td');
 
+                    // Verifica se há pelo menos 5 colunas antes de acessar cells[4]
+                    if (cells.length >= 5) {
+                        const recomendado = parseFloat(cells[4].innerText.trim()) || 0;
+                        if (recomendado === 0) {
+                            row.style.display = 'none'; // Oculta a linha antes da impressão
+                        }
+                    }
+                });
 
+                printTable(event); // Chama a função de impressão principal
 
+                // Restaura a visibilidade após a impressão
+                rows.forEach(row => row.style.display = '');
+            }
 
-    // Inicializa as unidades e produtos ao carregar a página
-    loadUnidades();
-});
+            // Função para imprimir a tabela completa (sem filtros)
+            function printFullTable(event) {
+                event.preventDefault(); // Evita comportamento padrão
+                printTable(event); // Chama a função de impressão sem filtros
+            }
+
+            // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
+            function printTable(event) {
+                event.preventDefault();
+
+                const columnsToHide = [2, 3]; // Índices das colunas a ocultar
+                const table = document.getElementById('result-table');
+                const headerCells = table.getElementsByTagName('th');
+                const rows = Array.from(table.getElementsByTagName('tr'));
+
+                // Criar uma classe CSS temporária para esconder colunas
+                const style = document.createElement("style");
+                style.innerHTML = `
+                    .hide-print { display: none !important; }
+                `;
+                document.head.appendChild(style);
+
+                // Esconde as colunas adicionando uma classe CSS temporária
+                for (let i = 0; i < headerCells.length; i++) {
+                    if (columnsToHide.includes(i)) {
+                        headerCells[i].classList.add("hide-print");
+                    }
+                }
+
+                for (let i = 1; i < rows.length; i++) {
+                    const cells = rows[i].getElementsByTagName('td');
+                    for (let j = 0; j < cells.length; j++) {
+                        if (columnsToHide.includes(j)) {
+                            cells[j].classList.add("hide-print");
+                        }
+                    }
+                }
+
+                // Atualiza os valores dos inputs na tabela antes da impressão
+                const quantityInputs = table.querySelectorAll('td input');
+                quantityInputs.forEach(input => {
+                    const parentCell = input.closest('td');
+                    parentCell.innerHTML = input.value;
+                });
+
+                // Obtém data e hora atual
+                const currentDateTime = new Date().toLocaleString('pt-BR');
+
+                // Conteúdo para impressão
+                const printContent = `
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Previsão de Demanda</title>
+                        <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; }
+                            h1, h2 { margin: 0; padding: 0; }
+                            h1 { font-size: 24px; font-weight: bold; }
+                            h2 { font-size: 18px; margin-bottom: 20px; }
+                            .header { display: flex; justify-content: space-between; align-items: center; }
+                            .header img { max-height: 60px; }
+                            hr { border: 1px solid black; margin: 20px 0; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                            table, th, td { border: 1px solid black; }
+                            th, td { padding: 10px; text-align: left; }
+                            .signature-line {
+                                margin-top: 50px;
+                                text-align: center;
+                                font-size: 14px;
+                            }
+                            .signature-line span {
+                                display: inline-block;
+                                margin-top: 10px;
+                                border-top: 1px solid black;
+                                width: 400px;
+                            }
+                            .hide-print { display: none !important; } /* Mantém as colunas ocultas na impressão */
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <div>
+                                <h1>Portal MRK</h1>
+                                <h2>Estoque/Previsão de Demanda - Loja</h2>
+                            </div>
+                            <div>
+                                <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+                             </div>
+                        </div>
+                        <p><strong>Unidade:</strong> ${unitName}</p>
+                        <p><strong>Usuário:</strong> ${userName}</p>
+                        <p><strong>Data:</strong> ${currentDateTime}</p>
+                        <hr>
+                        ${table.outerHTML}
+                        <div class="signature-line">
+                            <span>Assinatura do Responsável</span>
+                        </div>
+                    </body>
+                    </html>
+                `;
+
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(printContent);
+                printWindow.document.close();
+
+                const logoImg = printWindow.document.getElementById('logo-img');
+                if (logoImg) {
+                    logoImg.onload = function () {
+                        printWindow.print();
+                    };
+                } else {
+                    printWindow.print();
+                }
+
+                // Restaura a visibilidade das colunas ocultas
+                setTimeout(() => {
+                    document.querySelectorAll(".hide-print").forEach(el => el.classList.remove("hide-print"));
+                    document.head.removeChild(style);
+                }, 500);
+            }
+
+            // Conectar os botões às funções
+            document.getElementById('print-filtered-button').addEventListener('click', printFilteredTable);
+            document.getElementById('print-full-button').addEventListener('click', printFullTable);
+
+            $('#print-button').click(function (event) {
+                printTable(event); // Chama a função printTable e passa o evento para evitar redirecionamento
+            });
+
+            // Inicializa as unidades e produtos ao carregar a página
+            loadUnidades();
+        });
 
        
 

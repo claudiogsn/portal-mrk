@@ -117,18 +117,29 @@ class NecessidadesController {
     }
 
 
-    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $type = 'media') {
+    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds,$user_id, $type = 'media') {
         global $pdo;
+
+        // Busca o nome da unidade
+        $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+        $stmt->execute([$system_unit_id]);
+        $unitName = $stmt->fetchColumn() ?: '';
+
+        // Busca o nome da unidade
+        $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $userName = $stmt->fetchColumn() ?: '';
 
         // Remove datas duplicadas
         $dates = array_unique($dates);
-    
+
         // Busca os nomes de todos os insumos independentemente do consumo
         $stmt = $pdo->prepare("
-            SELECT codigo AS insumo_id, nome 
-            FROM products 
-            WHERE codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
-            AND system_unit_id = ?
+            SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria
+            FROM products p
+            INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
+            WHERE p.codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
+            AND p.system_unit_id = ?
         ");
         
         // Prepara os parâmetros dos insumos
@@ -145,7 +156,8 @@ class NecessidadesController {
                 'margem' => 0,
                 'saldo' => 0,
                 'necessidade' => 0,
-                'nome' => $row['nome'], // Adiciona o nome do insumo
+                'nome' => $row['nome'],
+                'categoria' => $row['categoria'],
             ];
         }
     
@@ -175,13 +187,15 @@ class NecessidadesController {
             if ($type === 'media') {
                 // Calcula margem e recomendado
                 $insumoConsumption[$insumo_id]['sales'] = number_format($insumoConsumption[$insumo_id]['sales'] / 4, 2, '.', '');
-                $insumoConsumption[$insumo_id]['margem'] = number_format($insumoConsumption[$insumo_id]['sales'] * 0.30, 2, '.', '');
-                $insumoConsumption[$insumo_id]['recomendado'] = ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']);
+                $insumoConsumption[$insumo_id]['recomendado'] = max(0,ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']));
             }
-
         }
-    
-        return array_values($insumoConsumption); // Retorna um array indexado
+
+        return [
+            'unidade' => $unitName,
+            'usuario' => $userName,
+            'consumos' => array_values($insumoConsumption) // Retorna um array indexado
+        ]; // Retorna um array indexado
     }
     
     private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date) {

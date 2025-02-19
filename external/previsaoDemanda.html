@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Previsão Demanda</title>
+  <title>Previsão Demanda - Produção</title>
 
   <!-- Favicon-->
   <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
@@ -95,7 +95,7 @@
     <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
       <div class="card">
         <div class="header">
-          <h2>Previsão de Demanda</h2>
+          <h2>Previsão de Demanda - Produção</h2>
         </div>
         <div class="body">
           <!-- Form Wizard -->
@@ -513,8 +513,6 @@
       }
     }
 
-
-
     // Função para calcular as últimas 4 datas por semana
     function calcularUltimas4DatasPorSemana() {
       const today = new Date();
@@ -590,25 +588,32 @@
       rows.forEach(row => row.style.display = '');
     }
 
-// Função para imprimir a tabela completa (sem filtros)
+    // Função para imprimir a tabela completa (sem filtros)
     function printFullTable(event) {
       event.preventDefault(); // Evita comportamento padrão
       printTable(event); // Chama a função de impressão sem filtros
     }
 
-// Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
+    // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
     function printTable(event) {
       event.preventDefault();
 
-      const columnsToHide = [2, 3, 4];
+      const columnsToHide = [2, 3, 4]; // Índices das colunas a ocultar
       const table = document.getElementById('result-table');
       const headerCells = table.getElementsByTagName('th');
       const rows = Array.from(table.getElementsByTagName('tr'));
 
-      // Esconde as colunas indesejadas
+      // Criar uma classe CSS temporária para esconder colunas
+      const style = document.createElement("style");
+      style.innerHTML = `
+        .hide-print { display: none !important; }
+    `;
+      document.head.appendChild(style);
+
+      // Esconde as colunas temporariamente adicionando uma classe CSS
       for (let i = 0; i < headerCells.length; i++) {
         if (columnsToHide.includes(i)) {
-          headerCells[i].style.display = 'none';
+          headerCells[i].classList.add("hide-print");
         }
       }
 
@@ -616,12 +621,12 @@
         const cells = rows[i].getElementsByTagName('td');
         for (let j = 0; j < cells.length; j++) {
           if (columnsToHide.includes(j)) {
-            cells[j].style.display = 'none';
+            cells[j].classList.add("hide-print");
           }
         }
       }
 
-      // Atualiza valores dos inputs na tabela
+      // Atualiza os valores dos inputs na tabela antes da impressão
       const quantityInputs = table.querySelectorAll('td input');
       quantityInputs.forEach(input => {
         const parentCell = input.closest('td');
@@ -638,7 +643,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Previsão de Demanda</title>
+        <title>Previsão de Demanda - Produção</title>
         <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
         <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
@@ -662,13 +667,14 @@
                 border-top: 1px solid black;
                 width: 400px;
             }
+            .hide-print { display: none !important; } /* Mantém as colunas ocultas na impressão */
         </style>
     </head>
     <body>
         <div class="header">
             <div>
                 <h1>Portal MRK</h1>
-                <h2>Estoque/Previsão de Demanda</h2>
+                <h2>Estoque/Previsão de Demanda - Produção</h2>
             </div>
             <div>
                 <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
@@ -697,31 +703,20 @@
         printWindow.print();
       }
 
-      // Restaura a visibilidade das colunas e linhas ocultas
-      for (let i = 0; i < headerCells.length; i++) {
-        if (columnsToHide.includes(i)) {
-          headerCells[i].style.display = '';
-        }
-      }
-
-      rows.forEach(row => {
-        row.style.display = ''; // Restaura a visibilidade
-      });
+      // Restaura a visibilidade das colunas ocultas após a impressão
+      setTimeout(() => {
+        document.querySelectorAll(".hide-print").forEach(el => el.classList.remove("hide-print"));
+        document.head.removeChild(style); // Remove o estilo temporário
+      }, 500);
     }
 
-// Conectar os botões às funções
+    // Conectar os botões às funções
     document.getElementById('print-filtered-button').addEventListener('click', printFilteredTable);
     document.getElementById('print-full-button').addEventListener('click', printFullTable);
-
-
-
 
     $('#print-button').click(function (event) {
       printTable(event); // Chama a função printTable e passa o evento para evitar redirecionamento
     });
-
-
-
 
     // Inicializa as unidades e produtos ao carregar a página
     loadUnidades();

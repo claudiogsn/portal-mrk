@@ -226,8 +226,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
                 case 'getInsumoConsumption':
-                    if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes'])) {
-                        $response = NecessidadesController::getInsumoConsumption($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes']);
+                    if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes']) && isset($requestData['username'])) {
+                        $response = NecessidadesController::getInsumoConsumption($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
                     } else {
                         http_response_code(400);
                         $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
