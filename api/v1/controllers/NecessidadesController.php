@@ -63,7 +63,7 @@ class NecessidadesController {
                 'saldo_lojas' => 0,
                 'necessidade' => 0,
                 'saldo_matriz' => $saldo_matriz,
-                'saldo_total' => 0, // Inicializando o campo
+                'saldo_total' => 0,
                 'nome' => $nome,
                 'categoria' => $categoria,
             ];
@@ -73,13 +73,24 @@ class NecessidadesController {
         foreach ($filiais as $filial_id) {
             $dadosFilial = self::getInsumoConsumption($filial_id, $dates, $insumoIds, $type);
 
-            foreach ($dadosFilial as $insumo) {
-                $insumo_id = $insumo['codigo'];
-                if (!isset($insumoConsumption[$insumo_id])) continue;
+            if (!isset($dadosFilial['consumos']) || !is_array($dadosFilial['consumos'])) {
+                continue;
+            }
 
-                // Converter valores para float antes de somar
-                $sales = (float)$insumo['sales'];
-                $saldo = (float)$insumo['saldo'];
+            foreach ($dadosFilial['consumos'] as $insumo) {
+
+                if (!isset($insumo['codigo'])) {
+                    continue;
+                }
+
+                $insumo_id = $insumo['codigo'];
+
+                if (!isset($insumoConsumption[$insumo_id])) {
+                    continue;
+                }
+                
+                $sales = (float) $insumo['sales'];
+                $saldo = (float) $insumo['saldo'];
 
                 $insumoConsumption[$insumo_id]['sales'] += $sales;
                 $insumoConsumption[$insumo_id]['saldo_lojas'] += $saldo;

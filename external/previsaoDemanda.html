@@ -582,7 +582,9 @@
         }
       });
 
-      printTable(event); // Chama a função de impressão principal
+      const columnsToHide = [2,3,4];
+
+      printTable(event,columnsToHide); // Chama a função de impressão principal
 
       // Restaura a visibilidade após a impressão
       rows.forEach(row => row.style.display = '');
@@ -590,15 +592,15 @@
 
     // Função para imprimir a tabela completa (sem filtros)
     function printFullTable(event) {
-      event.preventDefault(); // Evita comportamento padrão
-      printTable(event); // Chama a função de impressão sem filtros
+      const columnsToHide = [];
+      printTable(event,columnsToHide); // Chama a função de impressão sem filtros
     }
 
     // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
-    function printTable(event) {
+    function printTable(event,columnsToHide) {
       event.preventDefault();
 
-      const columnsToHide = [2, 3, 4]; // Índices das colunas a ocultar
+      //const columnsToHide = [2, 3, 4]; // Índices das colunas a ocultar
       const table = document.getElementById('result-table');
       const headerCells = table.getElementsByTagName('th');
       const rows = Array.from(table.getElementsByTagName('tr'));
@@ -715,7 +717,8 @@
     document.getElementById('print-full-button').addEventListener('click', printFullTable);
 
     $('#print-button').click(function (event) {
-      printTable(event); // Chama a função printTable e passa o evento para evitar redirecionamento
+      const columnsToHide = [];
+      printTable(event,columnsToHide); // Chama a função printTable e passa o evento para evitar redirecionamento
     });
 
     // Inicializa as unidades e produtos ao carregar a página
