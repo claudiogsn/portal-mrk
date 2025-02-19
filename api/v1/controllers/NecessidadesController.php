@@ -22,11 +22,13 @@ class NecessidadesController {
         $unitPlaceholders = implode(',', array_fill(0, count($all_unit_ids), '?'));
 
         $stmt = $pdo->prepare("
-        SELECT codigo AS insumo_id, nome, system_unit_id
-        FROM products 
-        WHERE codigo IN ($insumoPlaceholders) 
-        AND system_unit_id IN ($unitPlaceholders)
-        ORDER BY system_unit_id = ? DESC ");
+        SELECT p.codigo AS insumo_id, p.nome as nome, p.system_unit_id as system_unit_id, cc.nome as categoria
+        FROM products p
+        INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
+        WHERE p.codigo IN ($insumoPlaceholders) 
+        AND p.system_unit_id IN ($unitPlaceholders)
+        ORDER BY p.system_unit_id = ? DESC");
+
         $params = array_merge($insumoIds, $all_unit_ids, [$matriz_id]);
         $stmt->execute($params);
 
@@ -48,13 +50,22 @@ class NecessidadesController {
         $insumoConsumption = [];
         foreach ($insumoIds as $insumo_id) {
             $nome = isset($produtos[$insumo_id]) ? $produtos[$insumo_id]['nome'] : 'Insumo não encontrado';
+            $categoria = isset($produtos[$insumo_id]) ? $produtos[$insumo_id]['categoria'] : 'Categoria não encontrada';
+
+            // Obter saldo da matriz
+            $saldo_matriz_data = self::getProductStock($matriz_id, $insumo_id);
+            $saldo_matriz = $saldo_matriz_data['saldo'] ?? 0;
+
             $insumoConsumption[$insumo_id] = [
                 'codigo' => $insumo_id,
                 'sales' => 0,
                 'margem' => 0,
-                'saldo' => 0,
+                'saldo_lojas' => 0,
                 'necessidade' => 0,
+                'saldo_matriz' => $saldo_matriz,
+                'saldo_total' => 0, // Inicializando o campo
                 'nome' => $nome,
+                'categoria' => $categoria,
             ];
         }
 
@@ -71,19 +82,23 @@ class NecessidadesController {
                 $saldo = (float)$insumo['saldo'];
 
                 $insumoConsumption[$insumo_id]['sales'] += $sales;
-                $insumoConsumption[$insumo_id]['saldo'] += $saldo;
+                $insumoConsumption[$insumo_id]['saldo_lojas'] += $saldo;
             }
         }
 
-        // Passo 4: Calcular margem e recomendado consolidados
+        // Passo 4: Calcular margem, recomendado e saldo total consolidados
         foreach ($insumoConsumption as &$insumo) {
             $sales = $insumo['sales'];
-            $saldo = $insumo['saldo'];
+            $saldo = $insumo['saldo_lojas'];
+            $saldo_matriz = $insumo['saldo_matriz'];
+
+            // Calcular saldo total (saldo lojas + saldo matriz)
+            $saldo_total = $saldo + $saldo_matriz;
+            $insumo['saldo_total'] = number_format($saldo_total, 2, '.', '');
 
             if ($type === 'media') {
-                // Margem baseada na média agregada
                 $margem = 0;
-                $recomendado = max(0, ceil($sales + $margem - $saldo));
+                $recomendado = max(0, ceil($sales - $saldo_total));
             } else {
                 // Lógica para outros tipos (se necessário)
                 $margem = 0;
@@ -93,12 +108,14 @@ class NecessidadesController {
             // Formatar valores
             $insumo['sales'] = number_format($sales, 2, '.', '');
             $insumo['margem'] = number_format($margem, 2, '.', '');
-            $insumo['saldo'] = number_format($saldo, 2, '.', '');
+            $insumo['saldo_lojas'] = number_format($saldo, 2, '.', '');
+            $insumo['saldo_matriz'] = number_format($saldo_matriz, 2, '.', '');
             $insumo['recomendado'] = $recomendado;
         }
 
         return array_values($insumoConsumption);
     }
+
 
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $type = 'media') {
         global $pdo;

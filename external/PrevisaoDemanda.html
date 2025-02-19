@@ -112,40 +112,32 @@
 
                                 <h2>Período</h2>
                                 <section>
-                                    <h4>Selecione o Período</h4>
-                                    <h4>Esse é o periodo para o qual você deseja previsionar demanda</h4>
-                                    <div class="form-group">
-                                        <input type="checkbox" id="use-period" checked>
-                                        <label for="use-period">Usar Período</label>
-                                    </div>
-                                    <div id="period-selection" class="row">
-                                        <div class="col-sm-6">
-                                            <label for="start-day">Dia Inicial</label>
-                                            <select id="start-day" name="start-day" class="form-control" required>
-                                                <option value="0">Domingo</option>
-                                                <option value="1">Segunda-feira</option>
-                                                <option value="2">Terça-feira</option>
-                                                <option value="3">Quarta-feira</option>
-                                                <option value="4">Quinta-feira</option>
-                                                <option value="5">Sexta-feira</option>
-                                                <option value="6">Sábado</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <label for="end-day">Dia Final</label>
-                                            <select id="end-day" name="end-day" class="form-control" required>
-                                                <option value="0">Domingo</option>
-                                                <option value="1">Segunda-feira</option>
-                                                <option value="2">Terça-feira</option>
-                                                <option value="3">Quarta-feira</option>
-                                                <option value="4">Quinta-feira</option>
-                                                <option value="5">Sexta-feira</option>
-                                                <option value="6">Sábado</option>
-                                            </select>
-                                        </div>
+                                    <h4>Selecione os Dias da Semana</h4>
+
+                                    <div class="demo-checkbox">
+                                        <input type="checkbox" id="day_0" class="chk-col-blue"  />
+                                        <label for="day_0">Domingo</label>
+
+                                        <input type="checkbox" id="day_1" class="chk-col-blue"  />
+                                        <label for="day_1">Segunda-feira</label>
+
+                                        <input type="checkbox" id="day_2" class="chk-col-blue"  />
+                                        <label for="day_2">Terça-feira</label>
+
+                                        <input type="checkbox" id="day_3" class="chk-col-blue"  />
+                                        <label for="day_3">Quarta-feira</label>
+
+                                        <input type="checkbox" id="day_4" class="chk-col-blue"  />
+                                        <label for="day_4">Quinta-feira</label>
+
+                                        <input type="checkbox" id="day_5" class="chk-col-blue"  />
+                                        <label for="day_5">Sexta-feira</label>
+
+                                        <input type="checkbox" id="day_6" class="chk-col-blue"  />
+                                        <label for="day_6">Sábado</label>
                                     </div>
                                 </section>
-                                
+
 
                                 <h2>Produtos</h2>
                                 <section>
@@ -190,7 +182,8 @@
                                                     <th>Codigo</th>
                                                     <th>Produto</th>
                                                     <th>Vendas (+)</th>
-                                                    <th>Saldo (-)</th>
+                                                    <th>Saldo Lojas (-)</th>
+                                                    <th>Saldo Produção (-)</th>
                                                     <th>Recomendado (=)</th>
                                                 </tr>
                                             </thead>
@@ -198,6 +191,10 @@
                                                 <!-- Resultados serão preenchidos dinamicamente -->
                                             </tbody>
                                         </table>
+                                        <div class="text-center" style="margin-top: 20px;">
+                                            <button id="print-filtered-button" class="btn btn-primary">Imprimir Filtrado</button>
+                                            <button id="print-full-button" class="btn btn-secondary">Imprimir Completo</button>
+                                        </div>
                                     </div>
                                 </section>
                             </div>
@@ -436,130 +433,177 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Calcular necessidades após o envio de datas e produtos
     async function calcularNecessidades() {
-    const selectedUnitId = document.getElementById('unit-select').value;
-    const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
+        const selectedUnitId = document.getElementById('unit-select').value;
+        const selectedProductsManual = $('#product-select').val() || []; // Produtos selecionados manualmente
 
-    // Concatenar os produtos selecionados manualmente com os produtos importados
-    const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
+        // Concatenar os produtos selecionados manualmente com os produtos importados
+        const allSelectedProducts = [...new Set([...selectedProductsManual, ...importedProducts.map(p => p.codigo_produto)])];
 
-    
+        const dates = calcularUltimas4DatasPorSemana();
 
-    const dates = calcularUltimas4DatasPorSemana();
-    //console.log("Últimas 4 datas calculadas:", dates);
+        showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
 
-    showLoadingModal(); // Exibir o modal enquanto os dados estão sendo carregados
-
-    const response = await fetch(baseUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            method: 'getInsumoConsumptionMatriz',
-            token: token,
-            data: {
-                system_unit_id: selectedUnitId,
-                dates: dates,
-                productCodes: allSelectedProducts  // Enviando todos os produtos selecionados
-            }
-        })
-    });
-
-    const consumos = await response.json();
-
-    // Verifique se a resposta da API é um array e log da resposta
-    //console.log("Resposta da API:", consumos);
-    
-    if (!Array.isArray(consumos)) {
-        console.error('Esperado um array, mas recebeu:', consumos);
-        Swal.fire({
-            title: 'Erro!',
-            text: 'Não foi possível calcular as demandas. A resposta da API não é válida.',
-            icon: 'error',
-            confirmButtonText: 'Ok'
+        const response = await fetch(baseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                method: 'getInsumoConsumptionMatriz',
+                token: token,
+                data: {
+                    system_unit_id: selectedUnitId,
+                    dates: dates,
+                    productCodes: allSelectedProducts // Enviando todos os produtos selecionados
+                }
+            })
         });
+
+        const consumos = await response.json();
+
+        if (!Array.isArray(consumos)) {
+            console.error('Esperado um array, mas recebeu:', consumos);
+            Swal.fire({
+                title: 'Erro!',
+                text: 'Não foi possível calcular as demandas. A resposta da API não é válida.',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            });
+            hideLoadingModal(); // Ocultar o modal
+            return; // Interrompe a função se a resposta não for válida
+        }
+
+        // Agrupar os produtos por categoria
+        const produtosAgrupados = consumos.reduce((acc, produto) => {
+            if (!acc[produto.categoria]) {
+                acc[produto.categoria] = [];
+            }
+            acc[produto.categoria].push(produto);
+            return acc;
+        }, {});
+
+        // Renderizar os dados na tabela agrupados por categoria
+        renderItensByCategory(produtosAgrupados);
+
         hideLoadingModal(); // Ocultar o modal
-        return; // Interrompe a função se a resposta não for válida
+        document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
     }
 
-    // Exibir os dados no grid
-    const grid = document.getElementById('result-table').querySelector('tbody');
-    grid.innerHTML = ''; // Limpa o grid
+    function renderItensByCategory(itens) {
+        const tbody = $('#result-table tbody');
+        tbody.empty();
 
-    consumos.forEach(consumo => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td>${consumo.codigo}</td>
-        <td>${consumo.nome || 'Produto não encontrado'}</td>
-        <td>${consumo.sales}</td>
-        <td>${consumo.saldo}</td>
-        <td>${consumo.recomendado}</td>
-    `;
-    grid.appendChild(row);
-});
-    hideLoadingModal(); // Ocultar o modal
-    document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
-}
+        for (const categoria in itens) {
+            tbody.append(`
+            <tr class="category-header">
+                <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+            </tr>
+        `);
+
+            itens[categoria].forEach(produto => {
+                tbody.append(`
+                <tr>
+                    <td>${produto.codigo}</td>
+                    <td>${produto.nome || 'Produto não encontrado'}</td>
+                    <td>${produto.sales}</td>
+                    <td>${produto.saldo_lojas}</td>
+                    <td>${produto.saldo_matriz}</td>
+                    <td>${produto.recomendado}</td>
+                </tr>
+            `);
+            });
+        }
+    }
+
 
 
     // Função para calcular as últimas 4 datas por semana
-        function calcularUltimas4DatasPorSemana() {
-            const today = new Date();
-            const startDay = parseInt(document.getElementById('start-day').value); // Ex: Segunda = 1
-            const endDay = parseInt(document.getElementById('end-day').value); // Ex: Sexta = 5
+    function calcularUltimas4DatasPorSemana() {
+        const today = new Date();
+        const diasSelecionados = [];
 
-            //console.log("Dia Inicial:", startDay);
-            //console.log("Dia Final:", endDay);
-
-            // Função para calcular as últimas 4 datas de um único dia da semana
-            function getLastDatesForDay(dayOfWeek) {
-                //console.log("Calculando datas para o dia", dayOfWeek);
-    
-                const dates = [];
-                //console.log("Data Atual:", today);
-                let currentDate = new Date(today);
-                currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
-                //console.log("Data Inicial:", currentDate);
-
-                while (dates.length < 4) {
-                    //console.log("Dia da Semana Atual:", currentDate.getDay());
-                    if (currentDate.getDay() === dayOfWeek) {
-                        //console.log("Data Adicionada:", currentDate);
-                        dates.push(new Date(currentDate));
-                        //console.log("Datas Atuais:", dates);
-                    }
-                    currentDate.setDate(currentDate.getDate() - 1);
-                    //console.log("Data Atualizada:", currentDate);
-                }
-
-                return dates;
+        // Obtém os dias selecionados
+        for (let i = 0; i <= 6; i++) {
+            if (document.getElementById(`day_${i}`).checked) {
+                diasSelecionados.push(i);
             }
-
-            // Itera por todos os dias no intervalo [startDay, endDay]
-            const allDates = [];
-            for (let day = startDay; day <= endDay; day++) {
-                const datesForDay = getLastDatesForDay(day % 7); // Garante dias entre 0 (Domingo) e 6 (Sábado)
-                allDates.push(...datesForDay);
-                //console.log("Datas para o dia", day, ":", datesForDay);
-            }
-           // console.log("Todas as datas selecionadas:", allDates);
-
-
-            // Remove duplicatas e ordena as datas
-            const uniqueDates = Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0])))
-                .sort();
-
-            //("Datas únicas selecionadas:", uniqueDates);
-            return uniqueDates;
         }
 
+        // Verificação: Garante que pelo menos um dia foi selecionado
+        if (diasSelecionados.length === 0) {
+            Swal.fire({
+                title: 'Atenção!',
+                text: 'Você deve selecionar pelo menos um dia da semana.',
+                icon: 'warning',
+                confirmButtonText: 'Ok'
+            });
+            return [];
+        }
 
+        function getLastDatesForDay(dayOfWeek) {
+            const dates = [];
+            let currentDate = new Date(today);
+            currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
 
+            while (dates.length < 4) {
+                if (currentDate.getDay() === dayOfWeek) {
+                    dates.push(new Date(currentDate));
+                }
+                currentDate.setDate(currentDate.getDate() - 1);
+            }
+            return dates;
+        }
+
+        // Obtém as últimas 4 ocorrências de cada dia selecionado
+        const allDates = [];
+        diasSelecionados.forEach(day => {
+            allDates.push(...getLastDatesForDay(day));
+        });
+
+        // Remove duplicatas e ordena as datas
+        const uniqueDates = Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0])))
+            .sort();
+
+        return uniqueDates;
+    }
+
+    // Função para imprimir apenas os produtos com "Recomendado > 0"
+    function printFilteredTable(event) {
+        event.preventDefault(); // Evita comportamento padrão
+
+        const rows = Array.from(document.getElementById('result-table').getElementsByTagName('tr'));
+
+        // Oculta produtos cujo "Recomendado" seja 0
+        rows.forEach(row => {
+            const cells = row.getElementsByTagName('td');
+
+            // Verifica se há pelo menos 5 colunas antes de acessar cells[4]
+            if (cells.length >= 5) {
+                const recomendado = parseFloat(cells[5].innerText.trim()) || 0;
+                if (recomendado === 0) {
+                    row.style.display = 'none'; // Oculta a linha antes da impressão
+                }
+            }
+        });
+
+        printTable(event); // Chama a função de impressão principal
+
+        // Restaura a visibilidade após a impressão
+        rows.forEach(row => row.style.display = '');
+    }
+
+// Função para imprimir a tabela completa (sem filtros)
+    function printFullTable(event) {
+        event.preventDefault(); // Evita comportamento padrão
+        printTable(event); // Chama a função de impressão sem filtros
+    }
+
+// Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
     function printTable(event) {
-        event.preventDefault(); // Impede o comportamento padrão
+        event.preventDefault();
 
-        const columnsToHide = [2, 3];
+        const columnsToHide = [2, 3, 4];
         const table = document.getElementById('result-table');
         const headerCells = table.getElementsByTagName('th');
-        const rows = table.getElementsByTagName('tr');
+        const rows = Array.from(table.getElementsByTagName('tr'));
 
         // Esconde as colunas indesejadas
         for (let i = 0; i < headerCells.length; i++) {
@@ -640,12 +684,10 @@ document.addEventListener('DOMContentLoaded', function () {
     </html>
     `;
 
-        // Abre janela para impressão
         const printWindow = window.open('', '_blank');
         printWindow.document.write(printContent);
         printWindow.document.close();
 
-        // Espera a imagem carregar antes de imprimir
         const logoImg = printWindow.document.getElementById('logo-img');
         if (logoImg) {
             logoImg.onload = function () {
@@ -655,23 +697,21 @@ document.addEventListener('DOMContentLoaded', function () {
             printWindow.print();
         }
 
-        // Restaura a visibilidade das colunas
+        // Restaura a visibilidade das colunas e linhas ocultas
         for (let i = 0; i < headerCells.length; i++) {
             if (columnsToHide.includes(i)) {
                 headerCells[i].style.display = '';
             }
         }
 
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].getElementsByTagName('td');
-            for (let j = 0; j < cells.length; j++) {
-                if (columnsToHide.includes(j)) {
-                    cells[j].style.display = '';
-                }
-            }
-        }
+        rows.forEach(row => {
+            row.style.display = ''; // Restaura a visibilidade
+        });
     }
 
+// Conectar os botões às funções
+    document.getElementById('print-filtered-button').addEventListener('click', printFilteredTable);
+    document.getElementById('print-full-button').addEventListener('click', printFullTable);
 
 
 
