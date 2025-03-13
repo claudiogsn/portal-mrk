@@ -494,21 +494,23 @@
 
                 for (const categoria in itens) {
                     tbody.append(`
-                    <tr class="category-header">
-                        <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
-                    </tr>
-                `);
+                        <tr class="category-header">
+                            <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+                        </tr>
+                    `);
 
                     itens[categoria].forEach(produto => {
                         tbody.append(`
-                        <tr>
-                            <td>${produto.codigo}</td>
-                            <td>${produto.nome || 'Produto não encontrado'}</td>
-                            <td>${produto.sales}</td>
-                            <td>${produto.saldo}</td>
-                            <td>${produto.recomendado}</td>
-                        </tr>
-                    `);
+                            <tr>
+                                <td>${produto.codigo}</td>
+                                <td>${produto.nome || 'Produto não encontrado'}</td>
+                                <td>${produto.sales}</td>
+                                <td>${produto.saldo}</td>
+                                <td>
+                                    <input type="number" class="form-control recomendado-input" value="${produto.recomendado}" />
+                                </td>
+                            </tr>
+                        `);
                     });
                 }
             }
@@ -569,6 +571,13 @@
 
                 const rows = Array.from(document.getElementById('result-table').getElementsByTagName('tr'));
 
+                // Atualiza os valores dos inputs na tabela antes da impressão
+                const quantityInputs = document.querySelectorAll('.recomendado-input');
+                quantityInputs.forEach(input => {
+                    const parentCell = input.closest('td');
+                    parentCell.innerHTML = input.value; // Atualiza o valor da célula com o valor do input
+                });
+
                 // Oculta produtos cujo "Recomendado" seja 0
                 rows.forEach(row => {
                     const cells = row.getElementsByTagName('td');
@@ -581,9 +590,10 @@
                         }
                     }
                 });
-                const columnsToHide = [2,3];
 
-                printTable(event,columnsToHide); // Chama a função de impressão principal
+                const columnsToHide = [2, 3];
+
+                printTable(event, columnsToHide); // Chama a função de impressão principal
 
                 // Restaura a visibilidade após a impressão
                 rows.forEach(row => row.style.display = '');
@@ -597,10 +607,9 @@
             }
 
             // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
-            function printTable(event,columnsToHide) {
+            function printTable(event, columnsToHide) {
                 event.preventDefault();
 
-                //const columnsToHide = []; // Índices das colunas a ocultar
                 const table = document.getElementById('result-table');
                 const headerCells = table.getElementsByTagName('th');
                 const rows = Array.from(table.getElementsByTagName('tr'));
@@ -680,7 +689,7 @@
                             </div>
                             <div>
                                 <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
-                             </div>
+                            </div>
                         </div>
                         <p><strong>Unidade:</strong> ${unitName}</p>
                         <p><strong>Usuário:</strong> ${userName}</p>

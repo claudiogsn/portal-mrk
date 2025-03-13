@@ -493,22 +493,22 @@
 
       for (const categoria in itens) {
         tbody.append(`
-            <tr class="category-header">
-                <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
-            </tr>
+          <tr class="category-header">
+            <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+          </tr>
         `);
 
         itens[categoria].forEach(produto => {
           tbody.append(`
-                <tr>
-                    <td>${produto.codigo}</td>
-                    <td>${produto.nome || 'Produto não encontrado'}</td>
-                    <td>${produto.sales}</td>
-                    <td>${produto.saldo_lojas}</td>
-                    <td>${produto.saldo_matriz}</td>
-                    <td>${produto.recomendado}</td>
-                </tr>
-            `);
+            <tr>
+              <td>${produto.codigo}</td>
+              <td>${produto.nome || 'Produto não encontrado'}</td>
+              <td>${produto.sales}</td>
+              <td>${produto.saldo_lojas}</td>
+              <td>${produto.saldo_matriz}</td>
+              <td><input type="number" class="form-control" value="${produto.recomendado}" data-produto-id="${produto.codigo_produto}" /></td>
+            </tr>
+          `);
         });
       }
     }
@@ -573,9 +573,10 @@
       rows.forEach(row => {
         const cells = row.getElementsByTagName('td');
 
-        // Verifica se há pelo menos 5 colunas antes de acessar cells[4]
+        // Verifica se há pelo menos 5 colunas antes de acessar cells[5]
         if (cells.length >= 5) {
-          const recomendado = parseFloat(cells[5].innerText.trim()) || 0;
+          const recomendadoInput = cells[5].querySelector('input');
+          const recomendado = parseFloat(recomendadoInput ? recomendadoInput.value : 0) || 0;
           if (recomendado === 0) {
             row.style.display = 'none'; // Oculta a linha antes da impressão
           }
@@ -584,7 +585,7 @@
 
       const columnsToHide = [2,3,4];
 
-      printTable(event,columnsToHide); // Chama a função de impressão principal
+      printTable(event, columnsToHide); // Chama a função de impressão principal
 
       // Restaura a visibilidade após a impressão
       rows.forEach(row => row.style.display = '');
@@ -597,10 +598,9 @@
     }
 
     // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
-    function printTable(event,columnsToHide) {
+    function printTable(event, columnsToHide) {
       event.preventDefault();
 
-      //const columnsToHide = [2, 3, 4]; // Índices das colunas a ocultar
       const table = document.getElementById('result-table');
       const headerCells = table.getElementsByTagName('th');
       const rows = Array.from(table.getElementsByTagName('tr'));
@@ -609,7 +609,7 @@
       const style = document.createElement("style");
       style.innerHTML = `
         .hide-print { display: none !important; }
-    `;
+      `;
       document.head.appendChild(style);
 
       // Esconde as colunas temporariamente adicionando uma classe CSS
@@ -632,7 +632,7 @@
       const quantityInputs = table.querySelectorAll('td input');
       quantityInputs.forEach(input => {
         const parentCell = input.closest('td');
-        parentCell.innerHTML = input.value;
+        parentCell.innerHTML = input.value; // Substitui o input pelo valor editado
       });
 
       // Obtém data e hora atual
@@ -640,57 +640,57 @@
 
       // Conteúdo para impressão
       const printContent = `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Previsão de Demanda - Produção</title>
-        <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1, h2 { margin: 0; padding: 0; }
-            h1 { font-size: 24px; font-weight: bold; }
-            h2 { font-size: 18px; margin-bottom: 20px; }
-            .header { display: flex; justify-content: space-between; align-items: center; }
-            .header img { max-height: 60px; }
-            hr { border: 1px solid black; margin: 20px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            table, th, td { border: 1px solid black; }
-            th, td { padding: 10px; text-align: left; }
-            .signature-line {
-                margin-top: 50px;
-                text-align: center;
-                font-size: 14px;
-            }
-            .signature-line span {
-                display: inline-block;
-                margin-top: 10px;
-                border-top: 1px solid black;
-                width: 400px;
-            }
-            .hide-print { display: none !important; } /* Mantém as colunas ocultas na impressão */
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <div>
-                <h1>Portal MRK</h1>
-                <h2>Estoque/Previsão de Demanda - Produção</h2>
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Previsão de Demanda - Produção</title>
+            <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1, h2 { margin: 0; padding: 0; }
+                h1 { font-size: 24px; font-weight: bold; }
+                h2 { font-size: 18px; margin-bottom: 20px; }
+                .header { display: flex; justify-content: space-between; align-items: center; }
+                .header img { max-height: 60px; }
+                hr { border: 1px solid black; margin: 20px 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                table, th, td { border: 1px solid black; }
+                th, td { padding: 10px; text-align: left; }
+                .signature-line {
+                    margin-top: 50px;
+                    text-align: center;
+                    font-size: 14px;
+                }
+                .signature-line span {
+                    display: inline-block;
+                    margin-top: 10px;
+                    border-top: 1px solid black;
+                    width: 400px;
+                }
+                .hide-print { display: none !important; } /* Mantém as colunas ocultas na impressão */
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <h1>Portal MRK</h1>
+                    <h2>Estoque/Previsão de Demanda - Produção</h2>
+                </div>
+                <div>
+                    <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+                </div>
             </div>
-            <div>
-                <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
-             </div>
-        </div>
-        <p><strong>Data:</strong> ${currentDateTime}</p>
-        <hr>
-        ${table.outerHTML}
-        <div class="signature-line">
-            <span>Assinatura do Responsável</span>
-        </div>
-    </body>
-    </html>
-    `;
+            <p><strong>Data:</strong> ${currentDateTime}</p>
+            <hr>
+            ${table.outerHTML}
+            <div class="signature-line">
+                <span>Assinatura do Responsável</span>
+            </div>
+        </body>
+        </html>
+      `;
 
       const printWindow = window.open('', '_blank');
       printWindow.document.write(printContent);
