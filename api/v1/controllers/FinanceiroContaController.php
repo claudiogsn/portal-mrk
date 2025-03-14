@@ -244,7 +244,7 @@ class FinanceiroContaController {
             }
 
             // 3. Somar valores por plano com base em LIKE
-            $stmtPlano = $pdo->prepare("SELECT codigo, descricao FROM financeiro_plano WHERE system_unit_id = :system_unit_id");
+            $stmtPlano = $pdo->prepare("SELECT codigo, descricao FROM financeiro_plano WHERE system_unit_id = :system_unit_id and descricao not like '%INATIVO%'");
             $stmtPlano->execute([':system_unit_id' => $system_unit_id]);
             $planos = $stmtPlano->fetchAll(PDO::FETCH_ASSOC);
 
