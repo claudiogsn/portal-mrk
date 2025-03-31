@@ -381,8 +381,8 @@ class NecessidadesController {
         // Passo 2: Calcular a necessidade de produção (venda - saldo)
         $necessidades = [];
         foreach ($vendas as $item) {
-            $produto = $item['codigo'];
-            $quantidadeVendas = floatval($item['sales']);
+            $produto = $item['insumo_id'];
+            $quantidadeVendas = floatval($item['compras']);
 
             $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
             $saldoAtual = floatval($saldoData['quantidade']);
