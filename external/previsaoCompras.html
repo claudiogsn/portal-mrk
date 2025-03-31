@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previsão de Compras</title>
+    
+    <!-- Favicon-->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- JQuery DataTable Css -->
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <!-- JQuery Steps CSS (para o Wizard) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.css">
+
+    <!-- MultiSelect CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
+
+    <style>
+        .form-control {
+            margin-bottom: 10px;
+        }
+        table {
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+        }
+        .modal-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .form-control {
+        display: block;
+        width: 100%;
+        height: 34px;
+        padding: 6px 12px;
+        font-size: 14px;
+        line-height: 1.42857143;
+        color: #555;
+        background-color: #fff;
+        background-image: none;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+                box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+        -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+                transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+        }
+        .form-control:focus {
+        border-color: #66afe9;
+        outline: 0;
+        -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+                box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+        }
+       
+
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="block-header">
+        <h2> </h2>
+        <br>
+    </div>
+
+    <!-- Formulário de Transferência -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Previsão de Compras</h2>
+                </div>
+                <div class="body">
+                    <form id="transferForm">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label for="quant-days">Quantidade Dias</label>
+                                <input type="text" inputmode="numeric" id="quant-days" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="unit-select">Unidade de Produção</label>
+                                <select id="unit-select" class="form-control" required>
+                                    <option value="">Selecione</option>
+                                    <!-- Opções carregadas dinamicamente -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="modelos-select">Selecione o Balanço:</label>
+                                <select id="modelos-select" name="modelos-select" class="form-control">
+                                    <!-- Modelos serão preenchidos dinamicamente -->
+                                </select>
+                                <select id="product-select" multiple="multiple" class="form-control" style="display: none;"></select>
+
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-1">
+                                <label for="add-item">&nbsp;</label>
+                                <input type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Consultar">
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Itens -->
+     <div class="card">
+    <div class="row">
+        <div class="col-md-12">
+            <table id="result-table" class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Cod.</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+    <center><button type="button" id="transfer-button" class="btn btn-danger waves-effect">Imprimir</button></center>
+</div>
+<div>
+   <br><br>
+</div>
+
+ <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
+ <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+ <!-- Bootstrap Core Js -->
+ <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+ <!-- Waves Effect Plugin Js -->
+ <script src="bsb/plugins/node-waves/waves.js"></script>
+ <!-- SweetAlert Plugin Js -->
+ <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+ <!-- jQuery Steps JS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
+ <!-- jQuery Validation JS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+ <!-- jQuery Multi-Select -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
+
+<!-- Adicionar Axios e SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const username = urlParams.get('username');
+    let importedProducts = []; // Armazenar os produtos importados como objetos {codigo_produto, nome_produto}
+
+
+        async function calcularNecessidades() {
+            const selectedUnitId = document.getElementById('unit-select').value;
+            const allSelectedProducts = importedProducts.map(p => p.codigo_produto);
+            const dates = document.getElementById('quant-days').value;
+
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'getConsumptionBuy',
+                    token: token,
+                    data: {
+                        matriz_id: selectedUnitId,
+                        dias: dates,
+                        insumoIds: allSelectedProducts
+                    }
+                })
+            });
+
+            const consumos = await response.json();
+
+            calcularCompras(consumos);
+
+        }
+
+        async function calcularCompras(params){
+
+            const selectedUnitId = document.getElementById('unit-select').value;
+
+
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'getProductsToBuy',
+                    token: token,
+                    data: {
+                        matriz_id: selectedUnitId,
+                        vendas: params
+                    }
+                })
+            });
+
+            const consumos = await response.json();
+
+            // Agrupar os produtos por categoria
+            const produtosAgrupados = consumos.reduce((acc, produto) => {
+                if (!acc[produto.categoria]) {
+                    acc[produto.categoria] = [];
+                }
+                acc[produto.categoria].push(produto);
+                return acc;
+            }, {});
+
+            // Renderizar os dados na tabela agrupados por categoria
+            renderItensByCategory(produtosAgrupados);
+
+        }
+
+        function renderItensByCategory(itens) {
+            const tbody = $('#result-table tbody');
+            tbody.empty();
+
+            for (const categoria in itens) {
+                tbody.append(`
+          <tr class="category-header">
+            <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+          </tr>
+        `);
+
+                itens[categoria].forEach(produto => {
+                    tbody.append(`
+            <tr>
+              <td>${produto.codigo}</td>
+              <td>${produto.nome || 'Produto não encontrado'}</td>
+              <td>${produto.sales}</td>
+              <td>${produto.saldo_lojas}</td>
+              <td>${produto.saldo_matriz}</td>
+              <td><input type="number" class="form-control" value="${produto.recomendado}" data-produto-id="${produto.codigo_produto}" /></td>
+            </tr>
+          `);
+                });
+            }
+        }
+
+    // Função para carregar unidades
+        async function loadUnidades() {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'getFiliaisProduction',
+                    token: token,
+                    data: { username: username }
+                })
+            });
+
+            const unidades = await response.json();
+            const select = document.getElementById('unit-select');
+            unidades.forEach(filial => {
+                const option = new Option(filial.filial_nome, filial.filial_id);
+                select.appendChild(option);
+            });
+        }
+
+
+    // Função para carregar itens
+        async function loadModelos(unitId) {
+            const select = document.getElementById('modelos-select');
+
+            // Mostra "Carregando..." enquanto busca os modelos
+            select.innerHTML = '';
+            const loadingOption = new Option('Carregando...', '');
+            loadingOption.disabled = true;
+            loadingOption.selected = true;
+            select.appendChild(loadingOption);
+
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'listModelosWithProducts',
+                        token: token,
+                        data: { unit_id: unitId }
+                    })
+                });
+
+                const data = await response.json();
+
+                // Limpa opções e adiciona a opção padrão
+                select.innerHTML = '';
+                const defaultOption = new Option('Selecione um modelo', '');
+                select.appendChild(defaultOption);
+
+                data.modelos.forEach(modelo => {
+                    const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
+                    select.appendChild(option);
+                });
+
+                // Adiciona o evento de mudança (caso ainda não esteja)
+                select.addEventListener('change', function () {
+                    const tagSelecionada = this.value;
+                    loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
+                });
+
+            } catch (error) {
+                // Em caso de erro, mostra uma opção informando
+                select.innerHTML = '';
+                const errorOption = new Option('Erro ao carregar modelos', '');
+                errorOption.disabled = true;
+                errorOption.selected = true;
+                select.appendChild(errorOption);
+                console.error('Erro ao carregar modelos:', error);
+            }
+        }
+
+        async function loadProdutosDoModelo(tag) {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'getModelByTag',
+                    data: { tag: tag }
+                })
+            });
+
+            const data = await response.json();
+            const produtosModelo = data.itens;
+            const selectProdutos = document.getElementById('product-select');
+            selectProdutos.innerHTML = ''; // Limpa produtos anteriores
+
+            importedProducts = []; // Limpa a variável de produtos importados
+
+            for (const categoria in produtosModelo) {
+                produtosModelo[categoria].forEach(item => {
+                    const option = new Option(item.nome_produto, item.codigo_produto); // Usar código do produto
+                    selectProdutos.appendChild(option);
+
+                    // Adicionar os produtos importados como objetos
+                    importedProducts.push({
+                        codigo_produto: item.codigo_produto,
+                        nome_produto: item.nome_produto
+                    });
+                });
+            }
+
+            $('#product-select').multiSelect('refresh');
+        }
+
+        async function loadWeekDays() {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'ultimasQuatroDatasPorDiaSemana',
+                    token: token,
+                    data: {}
+                })
+            });
+            const weekDays = await response.json();
+        }
+
+        document.getElementById('unit-select').addEventListener('change', function () {
+            const selectedUnitId = this.value;
+
+            // Se tiver uma unidade selecionada, carrega os modelos
+            if (selectedUnitId) {
+                loadModelos(selectedUnitId);
+            } else {
+                // Limpa o select de modelos se nenhuma unidade for selecionada
+                const modelosSelect = document.getElementById('modelos-select');
+                modelosSelect.innerHTML = '';
+                modelosSelect.appendChild(new Option('Selecione um modelo', ''));
+            }
+        });
+    
+
+
+    // Carregar as unidades
+    loadUnidades();
+    document.getElementById('add-item').addEventListener('click', calcularNecessidades);
+
+    });
+
+</script>
+
+</body>
+</html>

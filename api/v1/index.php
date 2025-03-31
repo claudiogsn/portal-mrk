@@ -380,9 +380,53 @@ if (isset($data['method']) && isset($data['data'])) {
                         $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
                     }
                     break;
-                case 'createTransferItems':
+                case 'getLastBalance':
+                        if (isset($requestData['system_unit_id']) && isset($requestData['produto'])) {
+                            $response = MovimentacaoController::getLastBalance($requestData['system_unit_id'], $requestData['produto']);
+                        } else {
+                            http_response_code(400);
+                            $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                        }
+                    break;
+                case 'getLastBalanceByMatriz':
+                        if (isset($requestData['matriz_id']) && isset($requestData['produto'])) {
+                            $response = MovimentacaoController::getLastBalanceByMatriz($requestData['matriz_id'], $requestData['produto']);
+                        } else {
+                            http_response_code(400);
+                            $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                        }
+                    break;
+                case 'getProductsToBuy':
+                    if (isset($requestData['matriz_id']) && isset($requestData['vendas'])) {
+                        $response = NecessidadesController::getProductsToBuys($requestData['matriz_id'], $requestData['vendas']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                    }
+                    break;
+            case 'getConsumptionBuy':
+                if (isset($requestData['matriz_id']) && isset($requestData['insumoIds']) && isset($requestData['dias'])) {
+                    $response = NecessidadesController::getConsumptionBuy(
+                        $requestData['matriz_id'],
+                        $requestData['insumoIds'],
+                        $requestData['dias']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro matriz_id, insumoIds ou dias ausente'];
+                }
+                break;
+
+
+            case 'createTransferItems':
                     $response = MovimentacaoController::createTransferItems($requestData);
                     break;
+            case 'contarDiasSemana':
+                $response = NecessidadesController::contarDiasSemana($requestData['dias']);
+                break;
+            case 'ultimasQuatroDatasPorDiaSemana':
+                $response = NecessidadesController::ultimasQuatroDatasPorDiaSemana();
+                break;
 
 
 

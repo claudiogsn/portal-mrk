@@ -4,6 +4,48 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController {
 
+
+    public static function getConsumptionBuy($matriz_id, $insumoIds, $dias)
+    {
+        global $pdo;
+
+        $DatasSemana = self::ultimasQuatroDatasPorDiaSemana(); // últimas 4 datas de cada dia da semana
+        $QuantidadeDiasSemana = self::contarDiasSemana($dias); // quantas vezes cada dia aparece no período
+
+        $resultadoFinal = [];
+
+        foreach ($DatasSemana as $dia => $datas) {
+
+            // Busca consumo do insumo nas 4 últimas datas desse dia
+            $consumo = self::getInsumoConsumptionMatriz($matriz_id, $datas, $insumoIds);
+
+            // Multiplica média de consumo por quantidade de vezes que o dia aparece no período
+            $consumo = array_map(function ($item) use ($QuantidadeDiasSemana, $dia) {
+                $item['compras'] = $item['sales'] * $QuantidadeDiasSemana[$dia];
+                return $item;
+            }, $consumo);
+
+            // Remove itens com 0 consumo
+            $consumo = array_filter($consumo, fn($item) => $item['compras'] > 0);
+
+            // Agrupa por insumo_id somando
+            foreach ($consumo as $item) {
+                $id = $item['codigo'];
+                if (!isset($resultadoFinal[$id])) {
+                    $resultadoFinal[$id] = [
+                        'insumo_id' => $id,
+                        'compras' => 0
+                    ];
+                }
+                $resultadoFinal[$id]['compras'] += $item['compras'];
+            }
+        }
+
+        // Reorganiza o array para ter índice numérico
+        return array_values($resultadoFinal);
+    }
+
+
     public static function getInsumoConsumptionMatriz($matriz_id, $dates, $insumoIds, $type = 'media') {
         global $pdo;
 
@@ -322,6 +364,183 @@ class NecessidadesController {
             return ['success' => false, 'message' => 'Produto não encontrado ou saldo indisponível.'];
         }
     }
+
+    public static function getProductsToBuys($matriz_id, $vendas)
+    {
+        global $pdo;
+
+        // Passo 1: Obter todas as unidades filiais da matriz
+        $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
+        $stmt->execute([$matriz_id]);
+        $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($filiais)) {
+            return [];
+        }
+
+        // Passo 2: Calcular a necessidade de produção (venda - saldo)
+        $necessidades = [];
+        foreach ($vendas as $item) {
+            $produto = $item['codigo'];
+            $quantidadeVendas = floatval($item['sales']);
+
+            $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
+            $saldoAtual = floatval($saldoData['quantidade']);
+
+            $necessario = $quantidadeVendas - $saldoAtual;
+            if ($necessario < 0) {
+                $necessario = 0;
+            }
+
+            $necessidades[$produto] = $necessario;
+        }
+
+        // Passo 3: Consultar ficha técnica (productions) e calcular insumos necessários
+        $compras = [];
+        $insumoIds = [];
+
+        foreach ($necessidades as $produto => $necessario) {
+            if ($necessario <= 0) continue;
+
+            $stmt = $pdo->prepare("SELECT product_id, insumo_id, quantity, rendimento FROM productions WHERE product_id = :product_id");
+            $stmt->bindParam(":product_id", $produto, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $fichas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+
+            foreach ($fichas as $ficha) {
+                $insumo_id = $ficha['insumo_id'];
+                $qtd_ficha = floatval($ficha['quantity']);
+                $rendimento = floatval($ficha['rendimento']) ?: 1;
+
+                $qtd_compra = ($qtd_ficha * $necessario) / $rendimento;
+
+                if (!isset($compras[$insumo_id])) {
+                    $compras[$insumo_id] = 0;
+                }
+                $compras[$insumo_id] += $qtd_compra;
+                $insumoIds[$insumo_id] = $insumo_id;
+            }
+        }
+        // Passo 4: Consultar nomes, categorias e montar o array final
+        if (empty($insumoIds)) {
+            return [];
+        }
+
+        $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
+        $stmt = $pdo->prepare("
+        SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria
+        FROM products p
+        INNER JOIN categorias cc ON p.categoria = cc.codigo AND cc.system_unit_id = p.system_unit_id
+        WHERE p.codigo IN ($insumoPlaceholders)
+        AND p.system_unit_id = ?
+        ORDER BY p.system_unit_id = ? DESC
+    ");
+
+        $params = array_merge(array_values($insumoIds), [$matriz_id, $matriz_id]);
+        $stmt->execute($params);
+        $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $resultado = [];
+        foreach ($produtosInfo as $produto) {
+            $id = $produto['insumo_id'];
+            $resultado[] = [
+                'insumo_id' => $id,
+                'nome' => $produto['nome'],
+                'categoria' => $produto['categoria'],
+                'compras' => round($compras[$id], 2)
+            ];
+        }
+
+        return $resultado;
+    }
+
+    public static function contarDiasSemana($dias)
+    {
+        $diasSemana = [
+            'segunda' => 0,
+            'terca' => 0,
+            'quarta' => 0,
+            'quinta' => 0,
+            'sexta' => 0,
+            'sabado' => 0,
+            'domingo' => 0
+        ];
+
+        $mapaSemana = [
+            1 => 'segunda',
+            2 => 'terca',
+            3 => 'quarta',
+            4 => 'quinta',
+            5 => 'sexta',
+            6 => 'sabado',
+            0 => 'domingo'
+        ];
+
+        $hoje = new DateTime();
+
+        for ($i = 1; $i <= $dias; $i++) { // começa do dia 1 (amanhã)
+            $data = clone $hoje;
+            $data->modify("+$i day");
+            $diaSemana = (int)$data->format('w'); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+            $nomeDia = $mapaSemana[$diaSemana];
+            $diasSemana[$nomeDia]++;
+        }
+
+        return $diasSemana;
+    }
+
+    public static function ultimasQuatroDatasPorDiaSemana()
+    {
+        $diasSemana = [
+            'segunda' => [],
+            'terca' => [],
+            'quarta' => [],
+            'quinta' => [],
+            'sexta' => [],
+            'sabado' => [],
+            'domingo' => []
+        ];
+
+        $mapaSemana = [
+            1 => 'segunda',
+            2 => 'terca',
+            3 => 'quarta',
+            4 => 'quinta',
+            5 => 'sexta',
+            6 => 'sabado',
+            0 => 'domingo'
+        ];
+
+        $hoje = new DateTime();
+
+        for ($i = 0; $i < 90; $i++) { // olha até 90 dias para trás
+            $data = clone $hoje;
+            $data->modify("-$i days");
+
+            $diaSemana = (int)$data->format('w'); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+            $nomeDia = $mapaSemana[$diaSemana];
+
+            if (count($diasSemana[$nomeDia]) < 4) {
+                $diasSemana[$nomeDia][] = $data->format('Y-m-d');
+            }
+
+            // Se todos os dias da semana tiverem 4 datas, pode parar o loop
+            $completos = array_filter($diasSemana, fn($d) => count($d) >= 4);
+            if (count($completos) === 7) {
+                break;
+            }
+        }
+
+        return $diasSemana;
+    }
+
+
+
+
+
+
 
 
 

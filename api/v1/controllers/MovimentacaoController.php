@@ -391,6 +391,80 @@ class MovimentacaoController
         }
     }
 
+    public static function getLastBalance($system_unit_id, $produto)
+    {
+        global $pdo;
+
+        $stmt = $pdo->prepare(
+            "SELECT doc, produto, quantidade 
+         FROM movimentacao 
+         WHERE system_unit_id = :system_unit_id 
+         AND tipo = 'b' 
+         AND status = 1 
+         AND produto = :produto 
+         ORDER BY doc DESC 
+         LIMIT 1"
+        );
+        $stmt->bindParam(":system_unit_id", $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindParam(":produto", $produto, PDO::PARAM_STR);
+        $stmt->execute();
+        $movimentacao = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $movimentacao ?: [
+            "doc" => "b-000000",
+            "produto" => $produto,
+            "quantidade" => 0
+        ];
+    }
+
+    public static function getLastBalanceByMatriz($matriz_id, $produto)
+    {
+        global $pdo;
+
+        // Passo 1: Obter todas as unidades filiais da matriz
+        $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
+        $stmt->execute([$matriz_id]);
+        $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($filiais)) {
+            return [
+                "produto" => $produto,
+                "quantidade" => 0
+            ];
+        }
+
+        $quantidadeTotal = 0;
+
+        // Passo 2: Buscar o último saldo de cada filial e somar
+        foreach ($filiais as $system_unit_id) {
+            $stmt = $pdo->prepare(
+                "SELECT quantidade 
+             FROM movimentacao 
+             WHERE system_unit_id = :system_unit_id 
+             AND tipo = 'b' 
+             AND status = 1 
+             AND produto = :produto 
+             ORDER BY doc DESC 
+             LIMIT 1"
+            );
+            $stmt->bindParam(":system_unit_id", $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindParam(":produto", $produto, PDO::PARAM_STR);
+            $stmt->execute();
+            $mov = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $quantidade = $mov ? floatval($mov["quantidade"]) : 0;
+            $quantidadeTotal += $quantidade;
+        }
+
+        return [
+            "produto" => $produto,
+            "quantidade" => $quantidadeTotal
+        ];
+    }
+
+
+
+
     public static function getBalanceByDoc($system_unit_id, $doc): array
     {
         global $pdo;
