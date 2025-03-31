@@ -113,17 +113,12 @@
                                 <select id="modelos-select" name="modelos-select" class="form-control">
                                     <!-- Modelos serão preenchidos dinamicamente -->
                                 </select>
-                                <select id="product-select" multiple="multiple" class="form-control" style="display: none;"></select>
-
                             </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-1">
                                 <label for="add-item">&nbsp;</label>
                                 <input type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Consultar">
                             </div>
                         </div>
-
                     </form>
                 </div>
             </div>
@@ -137,7 +132,7 @@
             <table id="result-table" class="table table-bordered table-hover">
                 <thead>
                     <tr>
-                        <th>Cod.</th>
+                        <th>Codigo</th>
                         <th>Descrição</th>
                         <th>Quantidade</th>
                     </tr>
@@ -147,7 +142,7 @@
         </div>
     </div>
 </div>
-    <center><button type="button" id="transfer-button" class="btn btn-danger waves-effect">Imprimir</button></center>
+    <center><button type="button" id="print-button" class="btn btn-danger waves-effect">Imprimir</button></center>
 </div>
 <div>
    <br><br>
@@ -177,71 +172,105 @@
     document.addEventListener('DOMContentLoaded', () => {
     const baseUrl = window.location.hostname !== 'localhost' ?
         'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
+        'https://portal.mrksolucoes.com.br/api/v1/index.php';
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const username = urlParams.get('username');
-    let importedProducts = []; // Armazenar os produtos importados como objetos {codigo_produto, nome_produto}
-
+    let importedProductCodes = [];
 
         async function calcularNecessidades() {
             const selectedUnitId = document.getElementById('unit-select').value;
-            const allSelectedProducts = importedProducts.map(p => p.codigo_produto);
+            const allSelectedProducts = importedProductCodes;
             const dates = document.getElementById('quant-days').value;
 
-            const response = await fetch(baseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    method: 'getConsumptionBuy',
-                    token: token,
-                    data: {
-                        matriz_id: selectedUnitId,
-                        dias: dates,
-                        insumoIds: allSelectedProducts
-                    }
-                })
+            if (!selectedUnitId || !dates || allSelectedProducts.length === 0) {
+                Swal.fire('Atenção', 'Preencha todos os campos e selecione um modelo com produtos.', 'warning');
+                return;
+            }
+
+            // 👉 Loader 1: enquanto calcula consumo
+            Swal.fire({
+                title: 'Calculando consumo...',
+                html: 'Aguarde um momento',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
             });
 
-            const consumos = await response.json();
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getConsumptionBuy',
+                        token: token,
+                        data: {
+                            matriz_id: selectedUnitId,
+                            dias: dates,
+                            insumoIds: allSelectedProducts
+                        }
+                    })
+                });
 
-            calcularCompras(consumos);
+                const consumos = await response.json();
 
+                // fecha o primeiro loader antes de chamar o próximo
+                Swal.close();
+
+                // agora chama a próxima função com novo loader
+                calcularCompras(consumos);
+
+            } catch (error) {
+                Swal.fire('Erro', 'Falha ao calcular consumo.', 'error');
+            }
         }
 
-        async function calcularCompras(params){
-
+        async function calcularCompras(params) {
             const selectedUnitId = document.getElementById('unit-select').value;
 
-
-            const response = await fetch(baseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    method: 'getProductsToBuy',
-                    token: token,
-                    data: {
-                        matriz_id: selectedUnitId,
-                        vendas: params
-                    }
-                })
+            // 👉 Loader 2: enquanto calcula compras
+            Swal.fire({
+                title: 'Calculando compras...',
+                html: 'Processando previsões...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
             });
 
-            const consumos = await response.json();
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getProductsToBuy',
+                        token: token,
+                        data: {
+                            matriz_id: selectedUnitId,
+                            vendas: params
+                        }
+                    })
+                });
 
-            // Agrupar os produtos por categoria
-            const produtosAgrupados = consumos.reduce((acc, produto) => {
-                if (!acc[produto.categoria]) {
-                    acc[produto.categoria] = [];
-                }
-                acc[produto.categoria].push(produto);
-                return acc;
-            }, {});
+                const consumos = await response.json();
+                Swal.close(); // fecha o loader
 
-            // Renderizar os dados na tabela agrupados por categoria
-            renderItensByCategory(produtosAgrupados);
+                // Agrupar os produtos por categoria
+                const produtosAgrupados = consumos.reduce((acc, produto) => {
+                    if (!acc[produto.categoria]) {
+                        acc[produto.categoria] = [];
+                    }
+                    acc[produto.categoria].push(produto);
+                    return acc;
+                }, {});
 
+                renderItensByCategory(produtosAgrupados);
+
+            } catch (error) {
+                Swal.fire('Erro', 'Falha ao calcular compras.', 'error');
+            }
         }
 
         function renderItensByCategory(itens) {
@@ -258,12 +287,9 @@
                 itens[categoria].forEach(produto => {
                     tbody.append(`
             <tr>
-              <td>${produto.codigo}</td>
+              <td>${produto.insumo_id}</td>
               <td>${produto.nome || 'Produto não encontrado'}</td>
-              <td>${produto.sales}</td>
-              <td>${produto.saldo_lojas}</td>
-              <td>${produto.saldo_matriz}</td>
-              <td><input type="number" class="form-control" value="${produto.recomendado}" data-produto-id="${produto.codigo_produto}" /></td>
+              <td>${produto.compras}</td>
             </tr>
           `);
                 });
@@ -325,12 +351,6 @@
                     select.appendChild(option);
                 });
 
-                // Adiciona o evento de mudança (caso ainda não esteja)
-                select.addEventListener('change', function () {
-                    const tagSelecionada = this.value;
-                    loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
-                });
-
             } catch (error) {
                 // Em caso de erro, mostra uma opção informando
                 select.innerHTML = '';
@@ -341,6 +361,13 @@
                 console.error('Erro ao carregar modelos:', error);
             }
         }
+
+        document.getElementById('modelos-select').addEventListener('change', function () {
+            const tagSelecionada = this.value;
+            if (tagSelecionada) {
+                loadProdutosDoModelo(tagSelecionada);
+            }
+        });
 
         async function loadProdutosDoModelo(tag) {
             const response = await fetch(baseUrl, {
@@ -354,39 +381,19 @@
 
             const data = await response.json();
             const produtosModelo = data.itens;
-            const selectProdutos = document.getElementById('product-select');
-            selectProdutos.innerHTML = ''; // Limpa produtos anteriores
 
-            importedProducts = []; // Limpa a variável de produtos importados
+            importedProductCodes = []; // Limpa o array global
 
             for (const categoria in produtosModelo) {
                 produtosModelo[categoria].forEach(item => {
-                    const option = new Option(item.nome_produto, item.codigo_produto); // Usar código do produto
-                    selectProdutos.appendChild(option);
-
-                    // Adicionar os produtos importados como objetos
-                    importedProducts.push({
-                        codigo_produto: item.codigo_produto,
-                        nome_produto: item.nome_produto
-                    });
+                    // Armazena apenas o código do produto
+                    importedProductCodes.push(item.codigo_produto);
                 });
             }
 
-            $('#product-select').multiSelect('refresh');
+            console.log("Produtos carregados:", importedProductCodes);
         }
 
-        async function loadWeekDays() {
-            const response = await fetch(baseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    method: 'ultimasQuatroDatasPorDiaSemana',
-                    token: token,
-                    data: {}
-                })
-            });
-            const weekDays = await response.json();
-        }
 
         document.getElementById('unit-select').addEventListener('change', function () {
             const selectedUnitId = this.value;
@@ -401,10 +408,127 @@
                 modelosSelect.appendChild(new Option('Selecione um modelo', ''));
             }
         });
-    
+
+        function printTable(event, columnsToHide) {
+            event.preventDefault();
+
+            const table = document.getElementById('result-table');
+            const headerCells = table.getElementsByTagName('th');
+            const rows = Array.from(table.getElementsByTagName('tr'));
+
+            // 👈 Captura a quantidade de dias informada no formulário
+            const quantDays = document.getElementById('quant-days').value || 'N/A';
+
+            // Criar uma classe CSS temporária para esconder colunas
+            const style = document.createElement("style");
+            style.innerHTML = `.hide-print { display: none !important; }`;
+            document.head.appendChild(style);
+
+            for (let i = 0; i < headerCells.length; i++) {
+                if (columnsToHide.includes(i)) {
+                    headerCells[i].classList.add("hide-print");
+                }
+            }
+
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                for (let j = 0; j < cells.length; j++) {
+                    if (columnsToHide.includes(j)) {
+                        cells[j].classList.add("hide-print");
+                    }
+                }
+            }
+
+            // Atualiza os valores dos inputs na tabela antes da impressão
+            const quantityInputs = table.querySelectorAll('td input');
+            quantityInputs.forEach(input => {
+                const parentCell = input.closest('td');
+                parentCell.innerHTML = input.value;
+            });
+
+            const currentDateTime = new Date().toLocaleString('pt-BR');
+
+            // 👇 Conteúdo HTML para impressão, incluindo os dias
+            const printContent = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Previsão de Demanda - Produção</title>
+        <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1, h2 { margin: 0; padding: 0; }
+            h1 { font-size: 24px; font-weight: bold; }
+            h2 { font-size: 18px; margin-bottom: 20px; }
+            .header { display: flex; justify-content: space-between; align-items: center; }
+            .header img { max-height: 60px; }
+            hr { border: 1px solid black; margin: 20px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            table, th, td { border: 1px solid black; }
+            th, td { padding: 10px; text-align: left; }
+            .signature-line {
+                margin-top: 50px;
+                text-align: center;
+                font-size: 14px;
+            }
+            .signature-line span {
+                display: inline-block;
+                margin-top: 10px;
+                border-top: 1px solid black;
+                width: 400px;
+            }
+            .hide-print { display: none !important; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div>
+                <h1>Portal MRK</h1>
+                <h2>Estoque/Previsão de Compras</h2>
+            </div>
+            <div>
+                <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+            </div>
+        </div>
+        <p><strong>Data:</strong> ${currentDateTime}</p>
+        <p><strong>Período Previsto:</strong> ${quantDays} dias</p>
+        <hr>
+        ${table.outerHTML}
+        <div class="signature-line">
+            <span>Assinatura do Responsável</span>
+        </div>
+    </body>
+    </html>
+  `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+
+            const logoImg = printWindow.document.getElementById('logo-img');
+            if (logoImg) {
+                logoImg.onload = function () {
+                    printWindow.print();
+                };
+            } else {
+                printWindow.print();
+            }
+
+            setTimeout(() => {
+                document.querySelectorAll(".hide-print").forEach(el => el.classList.remove("hide-print"));
+                document.head.removeChild(style);
+            }, 500);
+        }
+
+        $('#print-button').click(function (event) {
+            const columnsToHide = [];
+            printTable(event,columnsToHide); // Chama a função printTable e passa o evento para evitar redirecionamento
+        });
 
 
-    // Carregar as unidades
+        // Carregar as unidades
     loadUnidades();
     document.getElementById('add-item').addEventListener('click', calcularNecessidades);
 
