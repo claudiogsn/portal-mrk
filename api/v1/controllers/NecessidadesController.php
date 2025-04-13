@@ -378,36 +378,46 @@ class NecessidadesController {
             return [];
         }
 
-        // Passo 2: Calcular a necessidade de produção (venda - saldo)
         $necessidades = [];
+        $compras = [];
+        $insumoIds = [];
+
         foreach ($vendas as $item) {
             $produto = $item['insumo_id'];
             $quantidadeVendas = floatval($item['compras']);
 
+            // Verifica se é produto de produção
+            $stmtProd = $pdo->prepare("SELECT producao FROM products WHERE codigo = ? AND system_unit_id = ?");
+            $stmtProd->execute([$produto, $matriz_id]);
+            $producao = $stmtProd->fetchColumn();
+
+            if ($producao === false) {
+                continue; // Produto não encontrado, ignora
+            }
+
+            if ((int)$producao === 0) {
+                // Produto comprado pronto: já adiciona diretamente
+                $compras[$produto] = $quantidadeVendas;
+                $insumoIds[$produto] = $produto;
+                continue;
+            }
+
+            // Produto de produção: calcular necessidade com base no saldo
             $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
             $saldoAtual = floatval($saldoData['quantidade']);
-
             $necessario = $quantidadeVendas - $saldoAtual;
             if ($necessario < 0) {
                 $necessario = 0;
             }
 
-            $necessidades[$produto] = $necessario;
-        }
-
-        // Passo 3: Consultar ficha técnica (productions) e calcular insumos necessários
-        $compras = [];
-        $insumoIds = [];
-
-        foreach ($necessidades as $produto => $necessario) {
             if ($necessario <= 0) continue;
 
-            $stmt = $pdo->prepare("SELECT product_id, insumo_id, quantity, rendimento FROM productions WHERE product_id = :product_id");
-            $stmt->bindParam(":product_id", $produto, PDO::PARAM_INT);
-            $stmt->execute();
-
-            $fichas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+            // Consultar ficha técnica
+            $stmtFicha = $pdo->prepare("SELECT product_id, insumo_id, quantity, rendimento FROM productions WHERE system_unit_id = :matriz_id and product_id = :product_id");
+            $stmtFicha->bindParam(":product_id", $produto, PDO::PARAM_INT);
+            $stmtFicha->bindParam(":matriz_id", $matriz_id, PDO::PARAM_INT);
+            $stmtFicha->execute();
+            $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($fichas as $ficha) {
                 $insumo_id = $ficha['insumo_id'];
@@ -423,6 +433,7 @@ class NecessidadesController {
                 $insumoIds[$insumo_id] = $insumo_id;
             }
         }
+
         // Passo 4: Consultar nomes, categorias e montar o array final
         if (empty($insumoIds)) {
             return [];
@@ -455,6 +466,7 @@ class NecessidadesController {
 
         return $resultado;
     }
+
 
     public static function contarDiasSemana($dias)
     {
