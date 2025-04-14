@@ -175,19 +175,29 @@
                                         <small>https://portal.mrksolucoes.com.br/balanco/${modelo.tag}</small>
                                     </h2>
                                     <ul class="header-dropdown m-r--5">
+                                    <li class="dropdown">
+                                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                                        <i class="material-icons">more_vert</i>
+                                    </a>
+                                    <ul class="dropdown-menu pull-right">
                                         <li>
                                             <a href="javascript:void(0);" class="btn-toggle-status action-icon" data-tag="${modelo.tag}" data-status="${modelo.ativo ? 0 : 1}">
-                                                <i class="material-icons">toggle_${modelo.ativo ? 'off' : 'on'}</i>
+                                                <i class="material-icons">toggle_${modelo.ativo ? 'off' : 'on'}</i> ${modelo.ativo ? 'Desativar' : 'Ativar'}
                                             </a>
                                         </li>
                                         <li>
                                             <a href="https://wa.me/?text=${encodeURIComponent('Confira o modelo de balanço: https://portal.mrksolucoes.com.br/balanco/' + modelo.tag)}" target="_blank" class="action-icon">
-                                                <i class="material-icons">share</i>
+                                                <i class="material-icons">share</i> Compartilhar
                                             </a>
                                         </li>
                                         <li>
                                             <a href="${baseUrlRedirect}/balanco/${modelo.tag}" target="_blank" class="action-icon">
-                                                <i class="material-icons">assignment_turned_in</i> <!-- Ícone para Realizar Balanço -->
+                                                <i class="material-icons">assignment_turned_in</i> Realizar Balanço
+                                            </a>
+                                        </li>
+                                       <li>
+                                            <a href="${baseUrlRedirect}/external/editBalanco.html?username=${username}&token=${token}&unit_id=${unitId}&tag=${modelo.tag}" target="_parent" class="edit-icon">
+                                                <i class="material-icons">assignment_turned_in</i> Editar Balanço
                                             </a>
                                         </li>
                                     </ul>
@@ -264,7 +274,6 @@
                     Swal.fire("Erro", "Erro ao carregar detalhes. Tente novamente.", "error");
                 }
             }
-
 
             // Alterar o status de um modelo (ativar/desativar)
             $(document).on('click', '.btn-toggle-status', async function (e) {

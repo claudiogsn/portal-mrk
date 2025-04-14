@@ -77,7 +77,7 @@
     <div class="col-md-12">
       <div class="card">
         <div class="header">
-          <h2>Modelo de Balanço</h2>
+          <h2>Editar Modelo de Balanço</h2>
         </div>
         <div class="body">
           <div class="row">
@@ -212,10 +212,77 @@
         const token = urlParams.get('token');
         const unitId = urlParams.get('unit_id');
         const username = urlParams.get('username');
+        const tagFromUrl = urlParams.get('tag');
+        let modelTag = '';
+        let modelName = '';
+        if (tagFromUrl) {
+          loadModeloEdicao(tagFromUrl);
+        }
 
         let categories = [];
         let productsInBalance = [];
 
+        async function loadModeloEdicao(tag) {
+          try {
+            Swal.fire({
+              title: 'Carregando...',
+              text: 'Buscando modelo para edição.',
+              allowOutsideClick: false,
+              allowEscapeKey: false,
+              didOpen: () => Swal.showLoading()
+            });
+
+            const response = await axios.post(baseUrl, {
+              method: 'getModelByTag',
+              token: token,
+              data: { tag }
+            });
+
+            if (response.data.success) {
+              const modelo = response.data.modelo;
+              const itens = response.data.itens;
+
+              $('#modelName').replaceWith(`<label class="form-control">${modelo.nome}</label>`);
+              $('#modelTag').replaceWith(`<label class="form-control">${modelo.tag}</label>`);
+              $('#modelUrl').replaceWith(`<label class="form-control">${baseUrlRedirect}/balanco/${modelo.tag}</label>`);
+              $('#finalizarLancamento').text('Editar Modelo');
+
+              modelTag = modelo.tag;
+              modelName = modelo.nome;
+
+
+
+              // Popular grid
+              for (const categoria in itens) {
+                itens[categoria].forEach(item => {
+                  if (!productsInBalance.some(p => p.codigo === item.codigo_produto)) {
+                    productsInBalance.push({
+                      codigo: item.codigo_produto,
+                      nome: item.nome_produto,
+                      und: item.und_produto
+                    });
+                    $('#balancoTable tbody').append(`
+              <tr>
+                <td>${item.codigo_produto}</td>
+                <td>${item.nome_produto}</td>
+                <td>${item.und_produto}</td>
+                <td><button class="btn btn-danger remove-product" data-codigo="${item.codigo_produto}">Remover</button></td>
+              </tr>
+            `);
+                  }
+                });
+              }
+
+              $('#finalizarLancamento').prop('disabled', false);
+              Swal.close();
+            } else {
+              throw new Error('Modelo não encontrado');
+            }
+          } catch (error) {
+            console.error('Erro ao carregar modelo:', error);
+            Swal.fire('Erro!', 'Não foi possível carregar o modelo para edição.', 'error');
+          }
+        }
         async function loadCategories() {
           try {
             const response = await axios.post(baseUrl, {
@@ -405,10 +472,10 @@
             return;
           }
 
-          const modelName = $('#modelName').val();
-          const modelTag = $('#modelTag').val();
-
           if (!modelName || !modelTag) {
+            console.log('Model name or tag is empty');
+            console.log('Model name:', modelName);
+            console.log('Model tag:', modelTag);
             Swal.fire('Aviso', 'Preencha o nome do modelo e gere a tag.', 'warning');
             return;
           }
@@ -438,7 +505,7 @@
 
           try {
             const response = await axios.post(baseUrl, {
-              method: 'createModelo',
+              method: 'editModelo',
               token: token,
               data: {
                 system_unit_id: unitId,

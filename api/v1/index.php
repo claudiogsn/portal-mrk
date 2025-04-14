@@ -304,6 +304,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros obrigatórios ausentes: nome, usuario_id ou itens'];
                 }
                 break;
+            case 'editModelo':
+                if (isset($requestData['nome']) && isset($requestData['usuario_id']) && isset($requestData['itens'])) {
+                    $response = ModeloBalancoController::editModelo($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes: nome, usuario_id ou itens'];
+                }
+                break;
             case 'updateModelo':
                 if (isset($requestData['id'])) {
                     $response = ModeloBalancoController::updateModelo($requestData['id'], $requestData);

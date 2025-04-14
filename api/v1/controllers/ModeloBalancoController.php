@@ -83,6 +83,81 @@ class ModeloBalancoController {
         }
     }
 
+    public static function editModelo($data)
+    {
+        global $pdo;
+
+        try {
+            // Inicia a transação
+            $pdo->beginTransaction();
+
+            // Verificar campos obrigatórios
+            $requiredFields = ['nome', 'usuario_id', 'system_unit_id', 'itens'];
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field])) {
+                    self::sendResponse(false, "O campo '$field' é obrigatório.", [], 400);
+                }
+            }
+
+            // Extrair dados
+            $nome = $data['nome'];
+            $usuario_id = $data['usuario_id'];
+            $system_unit_id = $data['system_unit_id'];
+            $tag = isset($data['tag']) ? $data['tag'] : null;
+            $itens = $data['itens'];
+
+            // Validar ID do modelo (por tag ou outro campo, adapte se precisar)
+            $stmt = $pdo->prepare("SELECT id FROM modelos_balanco WHERE tag = ? AND system_unit_id = ?");
+            $stmt->execute([$tag, $system_unit_id]);
+            $modelo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$modelo) {
+                self::sendResponse(false, "Modelo de balanço não encontrado.", [], 404);
+            }
+
+            $modelo_id = $modelo['id'];
+
+            // Atualizar o modelo
+            $stmtUpdate = $pdo->prepare("UPDATE modelos_balanco SET nome = ?, usuario_id = ?, tag = ?, updated_at = NOW() WHERE id = ?");
+            $stmtUpdate->execute([$nome, $usuario_id, $tag, $modelo_id]);
+
+            if ($stmtUpdate->rowCount() < 0) {
+                self::sendResponse(false, "Falha ao atualizar o modelo de balanço.", [], 500);
+            }
+
+            // Apagar todos os itens antigos do modelo
+            $stmtDelete = $pdo->prepare("DELETE FROM modelos_balanco_itens WHERE id_modelo = ?");
+            $stmtDelete->execute([$modelo_id]);
+
+            // Inserir os novos itens
+            $stmtItem = $pdo->prepare("
+            INSERT INTO modelos_balanco_itens (id_modelo, system_unit_id, id_produto, created_at, updated_at)
+            VALUES (?, ?, ?, NOW(), NOW())
+        ");
+
+            foreach ($itens as $item) {
+                if (!isset($item['codigo'])) {
+                    self::sendResponse(false, "O campo 'codigo' é obrigatório para cada item.", [], 400);
+                }
+                $codigo_produto = $item['codigo'];
+
+                $stmtItem->execute([$modelo_id, $system_unit_id, $codigo_produto]);
+
+                if ($stmtItem->rowCount() <= 0) {
+                    self::sendResponse(false, "Falha ao inserir item no modelo de balanço.", [], 500);
+                }
+            }
+
+            // Finaliza a transação
+            $pdo->commit();
+
+            self::sendResponse(true, 'Modelo de balanço editado com sucesso.', ['modelo_id' => $modelo_id], 200);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            self::sendResponse(false, 'Erro ao editar modelo de balanço: ' . $e->getMessage(), [], 500);
+        }
+    }
+
 
 
     // Listar todos os modelos de balanço
@@ -295,6 +370,7 @@ class ModeloBalancoController {
                 'modelo' => [
                     'id' => $modelo['id'],
                     'tag' => $modelo['tag'],
+                    'nome' => $modelo['nome'],
                     'system_unit_id' => $modelo['system_unit_id'],
                     'system_unit_name' => $modelo['system_unit_name'],
                     // Adicione outros campos relevantes do modelo, se necessário
