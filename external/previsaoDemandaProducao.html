@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Previsão Demanda - Produção</title>
+    
+    <!-- Favicon-->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- JQuery DataTable Css -->
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <!-- JQuery Steps CSS (para o Wizard) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.css">
+
+    <!-- MultiSelect CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
+
+    <style>
+        .form-control {
+            margin-bottom: 10px;
+        }
+        table {
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+        }
+        .modal-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .form-control {
+        display: block;
+        width: 100%;
+        height: 34px;
+        padding: 6px 12px;
+        font-size: 14px;
+        line-height: 1.42857143;
+        color: #555;
+        background-color: #fff;
+        background-image: none;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+                box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+        -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+                transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+        }
+        .form-control:focus {
+        border-color: #66afe9;
+        outline: 0;
+        -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+                box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+        }
+       
+
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="block-header">
+        <h2> </h2>
+        <br>
+    </div>
+
+    <!-- Formulário de Transferência -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Previsão Demanda - Produção</h2>
+                </div>
+                <div class="body">
+                    <form id="transferForm">
+                        <div>
+                            <h5>Período</h5>
+                                    <div class="demo-checkbox">
+                                        <input type="checkbox" id="day_0" class="chk-col-blue"  />
+                                        <label for="day_0">Domingo</label>
+
+                                        <input type="checkbox" id="day_1" class="chk-col-blue"  />
+                                        <label for="day_1">Segunda-feira</label>
+
+                                        <input type="checkbox" id="day_2" class="chk-col-blue"  />
+                                        <label for="day_2">Terça-feira</label>
+
+                                        <input type="checkbox" id="day_3" class="chk-col-blue"  />
+                                        <label for="day_3">Quarta-feira</label>
+
+                                        <input type="checkbox" id="day_4" class="chk-col-blue"  />
+                                        <label for="day_4">Quinta-feira</label>
+
+                                        <input type="checkbox" id="day_5" class="chk-col-blue"  />
+                                        <label for="day_5">Sexta-feira</label>
+
+                                        <input type="checkbox" id="day_6" class="chk-col-blue"  />
+                                        <label for="day_6">Sábado</label>
+                                    </div>
+                        </div>
+                        <br>
+                        <br>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="unit-select">Unidade de Produção</label>
+                                <select id="unit-select" class="form-control" required>
+                                    <option value="">Selecione</option>
+                                    <!-- Opções carregadas dinamicamente -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="modelos-select">Modelo de Balanço:</label>
+                                <select id="modelos-select" name="modelos-select" class="form-control">
+                                    <!-- Modelos serão preenchidos dinamicamente -->
+                                </select>
+                            </div>
+                            <div class="col-md-1">
+                                <label for="add-item">&nbsp;</label>
+                                <input type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Consultar">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Itens -->
+     <div class="card">
+    <div class="row">
+        <div class="col-md-12">
+            <table id="result-table" class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Codigo</th>
+                        <th>Produto</th>
+                        <th>Vendas (+)</th>
+                        <th>Saldo Lojas (-)</th>
+                        <th>Saldo Produção (-)</th>
+                        <th>Recomendado (=)</th>
+                      </tr>
+                </thead>
+                <tbody>
+                    <!-- Resultados serão preenchidos dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+    <center>
+        <div class="text-center" style="margin-top: 20px;">
+            <button id="print-filtered-button" class="btn btn-primary">Imprimir Filtrado</button>
+            <button id="print-full-button" class="btn btn-secondary">Imprimir Completo</button>
+        </div>
+    </center>
+</div>
+<div>
+   <br><br>
+</div>
+
+ <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
+ <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+ <!-- Bootstrap Core Js -->
+ <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+ <!-- Waves Effect Plugin Js -->
+ <script src="bsb/plugins/node-waves/waves.js"></script>
+ <!-- SweetAlert Plugin Js -->
+ <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+ <!-- jQuery Steps JS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
+ <!-- jQuery Validation JS -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+ <!-- jQuery Multi-Select -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
+
+<!-- Adicionar Axios e SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'https://portal.mrksolucoes.com.br/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const username = urlParams.get('username');
+    let importedProductCodes = [];
+    let unitName = '';
+    let userName = '';
+
+                // Função para calcular as últimas 4 datas por semana
+    function calcularUltimas4DatasPorSemana() {
+        const today = new Date();
+        const diasSelecionados = [];
+
+        // Obtém os dias selecionados
+        for (let i = 0; i <= 6; i++) {
+            if (document.getElementById(`day_${i}`).checked) {
+                diasSelecionados.push(i);
+            }
+        }
+
+        // Verificação: Garante que pelo menos um dia foi selecionado
+        if (diasSelecionados.length === 0) {
+            Swal.fire({
+                title: 'Atenção!',
+                text: 'Você deve selecionar pelo menos um dia da semana.',
+                icon: 'warning',
+                confirmButtonText: 'Ok'
+            });
+            return [];
+        }
+
+        function getLastDatesForDay(dayOfWeek) {
+            const dates = [];
+            let currentDate = new Date(today);
+            currentDate.setDate(currentDate.getDate() - 1); // Começa no dia anterior ao atual
+
+            while (dates.length < 4) {
+                if (currentDate.getDay() === dayOfWeek) {
+                    dates.push(new Date(currentDate));
+                }
+                currentDate.setDate(currentDate.getDate() - 1);
+            }
+            return dates;
+        }
+
+        // Obtém as últimas 4 ocorrências de cada dia selecionado
+        const allDates = [];
+        diasSelecionados.forEach(day => {
+            allDates.push(...getLastDatesForDay(day));
+        });
+
+        // Remove duplicatas e ordena as datas
+        const uniqueDates = Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0])))
+            .sort();
+
+        return uniqueDates;
+    }
+
+    async function calcularNecessidades() {
+        const selectedUnitId = document.getElementById('unit-select').value;
+        const allSelectedProducts = importedProductCodes;
+        const dates = calcularUltimas4DatasPorSemana();
+
+        if (!selectedUnitId || !dates || allSelectedProducts.length === 0) {
+            Swal.fire('Atenção', 'Preencha todos os campos e selecione um modelo com produtos.', 'warning');
+            return;
+        }
+
+        // 👉 Loader 1: enquanto calcula consumo
+        Swal.fire({
+            title: 'Calculando consumo...',
+            html: 'Aguarde um momento',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                method: 'getInsumoConsumptionMatriz',
+                token: token,
+                data: {
+                    system_unit_id: selectedUnitId,
+                    dates: dates,
+                    productCodes: allSelectedProducts 
+                }
+                })
+            });
+
+            const consumos = await response.json();
+
+            // Verifica se a propriedade consumos existe e é um array
+            if (!Array.isArray(consumos)) {
+                console.error('Esperado um array, mas recebeu:', consumos);
+                Swal.fire({
+                title: 'Erro!',
+                text: 'Não foi possível calcular as demandas. A resposta da API não é válida.',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+                });
+                hideLoadingModal(); // Ocultar o modal
+                return; // Interrompe a função se a resposta não for válida
+            }
+
+
+            Swal.close(); // fecha o loader
+
+            // Agrupar os produtos por categoria
+            const produtosAgrupados = consumos.reduce((acc, produto) => {
+                if (!acc[produto.categoria]) {
+                    acc[produto.categoria] = [];
+                }
+                acc[produto.categoria].push(produto);
+                return acc;
+            }, {});
+
+            renderItensByCategory(produtosAgrupados);
+
+        } catch (error) {
+            console.error('Erro ao calcular necessidades:', error);
+            Swal.fire('Erro', 'Falha ao calcular compras.', 'error');
+        }
+    }
+
+    function renderItensByCategory(itens) {
+      const tbody = $('#result-table tbody');
+      tbody.empty();
+
+      for (const categoria in itens) {
+        tbody.append(`
+          <tr class="category-header">
+            <td colspan="6" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+          </tr>
+        `);
+
+        itens[categoria].forEach(produto => {
+          tbody.append(`
+            <tr>
+              <td>${produto.codigo}</td>
+              <td>${produto.nome || 'Produto não encontrado'}</td>
+              <td>${produto.sales}</td>
+              <td>${produto.saldo_lojas}</td>
+              <td>${produto.saldo_matriz}</td>
+              <td><input type="number" class="form-control" value="${produto.recomendado}" data-produto-id="${produto.codigo_produto}" /></td>
+            </tr>
+          `);
+        });
+      }
+    }
+
+    async function loadUnidades() {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'getFiliaisProduction',
+                    token: token,
+                    data: { username: username }
+                })
+            });
+
+            const unidades = await response.json();
+            const select = document.getElementById('unit-select');
+            unidades.forEach(filial => {
+                const option = new Option(filial.filial_nome, filial.filial_id);
+                select.appendChild(option);
+            });
+    }
+
+    async function loadModelos(unitId) {
+        const select = document.getElementById('modelos-select');
+
+        // Mostra "Carregando..." enquanto busca os modelos
+        select.innerHTML = '';
+        const loadingOption = new Option('Carregando...', '');
+        loadingOption.disabled = true;
+        loadingOption.selected = true;
+        select.appendChild(loadingOption);
+
+        try {
+            const response = await fetch(baseUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: 'listModelosWithProducts',
+                    token: token,
+                    data: { unit_id: unitId }
+                })
+            });
+
+            const data = await response.json();
+
+            // Limpa opções e adiciona a opção padrão
+            select.innerHTML = '';
+            const defaultOption = new Option('Selecione um modelo', '');
+            select.appendChild(defaultOption);
+
+            data.modelos.forEach(modelo => {
+                const option = new Option(modelo.nome, modelo.tag); // Usar `tag` como valor
+                select.appendChild(option);
+            });
+
+        } catch (error) {
+            // Em caso de erro, mostra uma opção informando
+            select.innerHTML = '';
+            const errorOption = new Option('Erro ao carregar modelos', '');
+            errorOption.disabled = true;
+            errorOption.selected = true;
+            select.appendChild(errorOption);
+            console.error('Erro ao carregar modelos:', error);
+        }
+    }
+
+    document.getElementById('modelos-select').addEventListener('change', function () {
+        const tagSelecionada = this.value;
+        if (tagSelecionada) {
+            loadProdutosDoModelo(tagSelecionada);
+        }
+    });
+
+    async function loadProdutosDoModelo(tag) {
+        const response = await fetch(baseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                method: 'getModelByTag',
+                data: { tag: tag }
+            })
+        });
+
+        const data = await response.json();
+        const produtosModelo = data.itens;
+
+        importedProductCodes = []; // Limpa o array global
+
+        for (const categoria in produtosModelo) {
+            produtosModelo[categoria].forEach(item => {
+                // Armazena apenas o código do produto
+                importedProductCodes.push(item.codigo_produto);
+            });
+        }
+
+        console.log("Produtos carregados:", importedProductCodes);
+    }
+
+    document.getElementById('unit-select').addEventListener('change', function () {
+        const selectedUnitId = this.value;
+
+        // Se tiver uma unidade selecionada, carrega os modelos
+        if (selectedUnitId) {
+            loadModelos(selectedUnitId);
+        } else {
+            // Limpa o select de modelos se nenhuma unidade for selecionada
+            const modelosSelect = document.getElementById('modelos-select');
+            modelosSelect.innerHTML = '';
+            modelosSelect.appendChild(new Option('Selecione um modelo', ''));
+        }
+    });
+
+        function printFilteredTable(event) {
+            event.preventDefault(); // Evita comportamento padrão
+
+            const rows = Array.from(document.getElementById('result-table').getElementsByTagName('tr'));
+
+            // Oculta produtos cujo "Recomendado" seja 0
+            rows.forEach(row => {
+                const cells = row.getElementsByTagName('td');
+
+                // Verifica se há pelo menos 5 colunas antes de acessar cells[5]
+                if (cells.length >= 5) {
+                    const recomendadoInput = cells[5].querySelector('input');
+                    const recomendado = parseFloat(recomendadoInput ? recomendadoInput.value : 0) || 0;
+                    if (recomendado === 0) {
+                        row.style.display = 'none'; // Oculta a linha antes da impressão
+                    }
+                }
+            });
+
+            const columnsToHide = [2,3,4];
+
+            printTable(event, columnsToHide); // Chama a função de impressão principal
+
+            // Restaura a visibilidade após a impressão
+            rows.forEach(row => row.style.display = '');
+        }
+        // Função para imprimir a tabela completa (sem filtros)
+        function printFullTable(event) {
+            const columnsToHide = [];
+            printTable(event,columnsToHide); // Chama a função de impressão sem filtros
+        }
+        // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
+        function printTable(event, columnsToHide) {
+            event.preventDefault();
+
+            const table = document.getElementById('result-table');
+            const headerCells = table.getElementsByTagName('th');
+            const rows = Array.from(table.getElementsByTagName('tr'));
+
+            // Criar uma classe CSS temporária para esconder colunas
+            const style = document.createElement("style");
+            style.innerHTML = `
+        .hide-print { display: none !important; }
+      `;
+            document.head.appendChild(style);
+
+            // Esconde as colunas temporariamente adicionando uma classe CSS
+            for (let i = 0; i < headerCells.length; i++) {
+                if (columnsToHide.includes(i)) {
+                    headerCells[i].classList.add("hide-print");
+                }
+            }
+
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                for (let j = 0; j < cells.length; j++) {
+                    if (columnsToHide.includes(j)) {
+                        cells[j].classList.add("hide-print");
+                    }
+                }
+            }
+
+            // Atualiza os valores dos inputs na tabela antes da impressão
+            const quantityInputs = table.querySelectorAll('td input');
+            quantityInputs.forEach(input => {
+                const parentCell = input.closest('td');
+                parentCell.innerHTML = input.value; // Substitui o input pelo valor editado
+            });
+
+            // Obtém data e hora atual
+            const currentDateTime = new Date().toLocaleString('pt-BR');
+
+            // Conteúdo para impressão
+            const printContent = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Previsão de Demanda - Produção</title>
+            <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1, h2 { margin: 0; padding: 0; }
+                h1 { font-size: 24px; font-weight: bold; }
+                h2 { font-size: 18px; margin-bottom: 20px; }
+                .header { display: flex; justify-content: space-between; align-items: center; }
+                .header img { max-height: 60px; }
+                hr { border: 1px solid black; margin: 20px 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                table, th, td { border: 1px solid black; }
+                th, td { padding: 10px; text-align: left; }
+                .signature-line {
+                    margin-top: 50px;
+                    text-align: center;
+                    font-size: 14px;
+                }
+                .signature-line span {
+                    display: inline-block;
+                    margin-top: 10px;
+                    border-top: 1px solid black;
+                    width: 400px;
+                }
+                .hide-print { display: none !important; } /* Mantém as colunas ocultas na impressão */
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <h1>Portal MRK</h1>
+                    <h2>Estoque/Previsão de Demanda - Produção</h2>
+                </div>
+                <div>
+                    <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+                </div>
+            </div>
+            <p><strong>Data:</strong> ${currentDateTime}</p>
+            <hr>
+            ${table.outerHTML}
+            <div class="signature-line">
+                <span>Assinatura do Responsável</span>
+            </div>
+        </body>
+        </html>
+      `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+
+            const logoImg = printWindow.document.getElementById('logo-img');
+            if (logoImg) {
+                logoImg.onload = function () {
+                    printWindow.print();
+                };
+            } else {
+                printWindow.print();
+            }
+
+            // Restaura a visibilidade das colunas ocultas após a impressão
+            setTimeout(() => {
+                document.querySelectorAll(".hide-print").forEach(el => el.classList.remove("hide-print"));
+                document.head.removeChild(style); // Remove o estilo temporário
+            }, 500);
+        }
+
+    document.getElementById('print-filtered-button').addEventListener('click', printFilteredTable);
+
+    document.getElementById('print-full-button').addEventListener('click', printFullTable);
+
+    $('#print-button').click(function (event) {
+        const columnsToHide = [];
+        printTable(event,columnsToHide); // Chama a função printTable e passa o evento para evitar redirecionamento
+    });
+
+    loadUnidades();
+
+    document.getElementById('add-item').addEventListener('click', calcularNecessidades);
+
+    });
+
+</script>
+
+</body>
+</html>

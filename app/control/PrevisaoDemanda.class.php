@@ -11,9 +11,9 @@ class PrevisaoDemanda extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/previsaoDemanda.html?username={$username}&token={$token}";
+            $link = "http://localhost/portal-mrk/external/previsaoDemandaProducao.html?username={$username}&token={$token}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/previsaoDemanda.html?username={$username}&token={$token}";
+            $link = "https://portal.mrksolucoes.com.br/external/previsaoDemandaProducao.html?username={$username}&token={$token}";
         }
 
         $iframe = new TElement('iframe');

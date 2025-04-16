@@ -486,7 +486,6 @@
       hideLoadingModal(); // Ocultar o modal
       document.getElementById('result-section').style.display = 'block'; // Exibe a seção de resultados
     }
-
     function renderItensByCategory(itens) {
       const tbody = $('#result-table tbody');
       tbody.empty();
@@ -512,7 +511,6 @@
         });
       }
     }
-
     // Função para calcular as últimas 4 datas por semana
     function calcularUltimas4DatasPorSemana() {
       const today = new Date();
@@ -535,7 +533,6 @@
         });
         return [];
       }
-
       function getLastDatesForDay(dayOfWeek) {
         const dates = [];
         let currentDate = new Date(today);
@@ -549,7 +546,6 @@
         }
         return dates;
       }
-
       // Obtém as últimas 4 ocorrências de cada dia selecionado
       const allDates = [];
       diasSelecionados.forEach(day => {
@@ -562,7 +558,6 @@
 
       return uniqueDates;
     }
-
     // Função para imprimir apenas os produtos com "Recomendado > 0"
     function printFilteredTable(event) {
       event.preventDefault(); // Evita comportamento padrão
@@ -590,13 +585,11 @@
       // Restaura a visibilidade após a impressão
       rows.forEach(row => row.style.display = '');
     }
-
     // Função para imprimir a tabela completa (sem filtros)
     function printFullTable(event) {
       const columnsToHide = [];
       printTable(event,columnsToHide); // Chama a função de impressão sem filtros
     }
-
     // Função principal de impressão (mantendo a ocultação das colunas 2 e 3)
     function printTable(event, columnsToHide) {
       event.preventDefault();
@@ -711,7 +704,6 @@
         document.head.removeChild(style); // Remove o estilo temporário
       }, 500);
     }
-
     // Conectar os botões às funções
     document.getElementById('print-filtered-button').addEventListener('click', printFilteredTable);
     document.getElementById('print-full-button').addEventListener('click', printFullTable);
