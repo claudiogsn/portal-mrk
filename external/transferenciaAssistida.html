@@ -302,11 +302,9 @@
             function showLoadingModal() {
                 $('#defaultModal').modal('show');
             }
-
             function hideLoadingModal() {
                 $('#defaultModal').modal('hide');
             }
-
             async function loadUnidades() {
                 const response = await fetch(baseUrl, {
                     method: 'POST',
@@ -325,7 +323,6 @@
                     select.appendChild(option);
                 });
             }
-
             // Carregar Insumos/Produtos
             async function loadProdutos(unitId) {
                 const response = await fetch(baseUrl, {
@@ -347,7 +344,6 @@
                 });
                 $('#product-select').multiSelect();
             }
-
             // Carregar Modelos para "Importar Produtos do Balanço"
             async function loadModelos(unitId) {
                 const response = await fetch(baseUrl, {
@@ -378,7 +374,6 @@
                     loadProdutosDoModelo(tagSelecionada); // Carrega os produtos do modelo ao selecionar a tag
                 });
             }
-
             // Carregar Produtos do Modelo ao selecionar uma tag
             async function loadProdutosDoModelo(tag) {
                 const response = await fetch(baseUrl, {
@@ -412,7 +407,6 @@
 
                 $('#product-select').multiSelect('refresh');
             }
-
             // Alternar entre "Importar Produtos" e "Selecionar Manualmente"
             document.querySelectorAll('input[name="product-option"]').forEach(option => {
                 option.addEventListener('change', function () {
@@ -427,7 +421,6 @@
                     }
                 });
             });
-
             // Calcular necessidades após o envio de datas e produtos
             async function calcularNecessidades() {
                 const selectedUnitId = document.getElementById('unit-select').value;

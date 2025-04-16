@@ -2,7 +2,6 @@
 <module type="WEB_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/lib" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/adianti/pdfdesigner" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/adianti/plugins" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bacon/bacon-qr-code" />
