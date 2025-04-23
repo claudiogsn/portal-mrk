@@ -187,6 +187,31 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'getDatesByDoc':
+                if ($requestData['system_unit_id'] && $requestData['doc']){
+                    $response = MovimentacaoController::getDatesByDoc($requestData['system_unit_id'], $requestData['doc']);
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+
+            case 'updateDataByDoc':
+                if ($requestData['system_unit_id'] && $requestData['doc'] && $requestData['data']){
+                    $response = MovimentacaoController::updateDataByDoc($requestData['system_unit_id'], $requestData['doc'], $requestData['data']);
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
 
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {

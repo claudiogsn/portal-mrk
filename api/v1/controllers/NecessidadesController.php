@@ -4,11 +4,11 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController {
 
-
-    public static function getConsumptionBuy($matriz_id, $insumoIds, $dias)
+    /**
+     * @throws DateMalformedStringException
+     */
+    public static function getConsumptionBuy($matriz_id, $insumoIds, $dias): array
     {
-        global $pdo;
-
         $DatasSemana = self::ultimasQuatroDatasPorDiaSemana(); // últimas 4 datas de cada dia da semana
         $QuantidadeDiasSemana = self::contarDiasSemana($dias); // quantas vezes cada dia aparece no período
 
@@ -45,8 +45,8 @@ class NecessidadesController {
         return array_values($resultadoFinal);
     }
 
-
-    public static function getInsumoConsumptionMatriz($matriz_id, $dates, $insumoIds, $type = 'media') {
+    public static function getInsumoConsumptionMatriz($matriz_id, $dates, $insumoIds, $type = 'media'): array
+    {
         global $pdo;
 
         // Passo 1: Obter todas as unidades filiais da matriz
@@ -149,12 +149,11 @@ class NecessidadesController {
             $saldo_total = $saldo + $saldo_matriz;
             $insumo['saldo_total'] = number_format($saldo_total, 2, '.', '');
 
+            $margem = 0;
             if ($type === 'media') {
-                $margem = 0;
                 $recomendado = max(0, ceil($sales - $saldo_total));
             } else {
                 // Lógica para outros tipos (se necessário)
-                $margem = 0;
                 $recomendado = 0;
             }
 
@@ -169,8 +168,8 @@ class NecessidadesController {
         return array_values($insumoConsumption);
     }
 
-
-    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds,$user_id, $type = 'media') {
+    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds,$user_id, $type = 'media'): array
+    {
         global $pdo;
 
         // Busca o nome da unidade
@@ -251,7 +250,8 @@ class NecessidadesController {
         ]; // Retorna um array indexado
     }
     
-    private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date) {
+    private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date): array
+    {
         global $pdo;
     
         // Cria uma string de placeholders nomeados para os insumos
@@ -281,7 +281,7 @@ class NecessidadesController {
     
         // Bind dos parâmetros para system_unit_id e date
         $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->bindParam(':date', $date, PDO::PARAM_STR);
+        $stmt->bindParam(':date', $date);
     
         // Bind dos parâmetros dos insumos
         foreach ($insumoIds as $insumo_id) {
@@ -293,7 +293,8 @@ class NecessidadesController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todos os resultados
     }
 
-    public static function getFiliaisProduction($user_id) {
+    public static function getFiliaisProduction($user_id): array
+    {
         global $pdo;
 
         $sql = "
@@ -315,14 +316,9 @@ class NecessidadesController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
-    
 
-
-
-
-
-    public static function getFiliaisByMatriz($user_id) {
+    public static function getFiliaisByMatriz($user_id): array
+    {
         global $pdo;
 
         $sql = "
@@ -343,7 +339,8 @@ class NecessidadesController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function getProductStock($system_unit_id, $codigo) {
+    public static function getProductStock($system_unit_id, $codigo): array
+    {
         global $pdo;
 
         $stmt = $pdo->prepare("
@@ -365,7 +362,7 @@ class NecessidadesController {
         }
     }
 
-    public static function getProductsToBuys($matriz_id, $vendas)
+    public static function getProductsToBuys($matriz_id, $vendas): array
     {
         global $pdo;
 
@@ -378,7 +375,6 @@ class NecessidadesController {
             return [];
         }
 
-        $necessidades = [];
         $compras = [];
         $insumoIds = [];
 
@@ -467,8 +463,10 @@ class NecessidadesController {
         return $resultado;
     }
 
-
-    public static function contarDiasSemana($dias)
+    /**
+     * @throws DateMalformedStringException
+     */
+    public static function contarDiasSemana($dias): array
     {
         $diasSemana = [
             'segunda' => 0,
@@ -503,7 +501,10 @@ class NecessidadesController {
         return $diasSemana;
     }
 
-    public static function ultimasQuatroDatasPorDiaSemana()
+    /**
+     * @throws DateMalformedStringException
+     */
+    public static function ultimasQuatroDatasPorDiaSemana(): array
     {
         $diasSemana = [
             'segunda' => [],

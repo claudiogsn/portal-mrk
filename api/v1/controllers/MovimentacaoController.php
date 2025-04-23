@@ -134,7 +134,6 @@ class MovimentacaoController
         }
     }
 
-
     public static function listarMovimentacoesPendentes($systemUnitId): false|array
     {
         global $pdo;
@@ -273,7 +272,6 @@ class MovimentacaoController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Obter última movimentação de determinado tipo
     public static function getLastMov($system_unit_id, $tipo)
     {
         global $pdo;
@@ -289,7 +287,6 @@ class MovimentacaoController
         return $movimentacao ? $movimentacao["doc"] : $tipo . "-000000";
     }
 
-    // Função para incrementar o documento (doc)
     private static function incrementDoc($ultimoDoc, $prefixo): string
     {
         // Supondo que o formato do doc seja algo como "t-000001" ou "b-000001"
@@ -301,8 +298,6 @@ class MovimentacaoController
     }
 
     // Métodos Específicos para Balanço
-
-    // Listar balanços agrupados por 'doc' com mais informações e filtro de data
     public static function listBalance(
         $system_unit_id,
         $data_inicial = null,
@@ -417,7 +412,7 @@ class MovimentacaoController
         ];
     }
 
-    public static function getLastBalanceByMatriz($matriz_id, $produto)
+    public static function getLastBalanceByMatriz($matriz_id, $produto): array
     {
         global $pdo;
 
@@ -461,9 +456,6 @@ class MovimentacaoController
             "quantidade" => $quantidadeTotal
         ];
     }
-
-
-
 
     public static function getBalanceByDoc($system_unit_id, $doc): array
     {
@@ -542,7 +534,6 @@ class MovimentacaoController
         }
     }
 
-    // Criação de movimentação de balanço (tipo 'b')
     public static function saveBalanceItems($data): array
     {
         global $pdo;
@@ -607,8 +598,8 @@ class MovimentacaoController
                 $quantidade = $item["quantidade"];
 
                 // Inserção no banco de dados
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov , produto, seq, data, quantidade, usuario_id) 
-                                   VALUES (?, ?, ?, ?, ?, ? , ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov , produto, seq, data,data_original, quantidade, usuario_id) 
+                                   VALUES (?, ?, ?, ?, ?, ?, ? , ?, ?, ?, ?)");
                 $stmt->execute([
                     $system_unit_id,
                     $system_unit_id_destino,
@@ -617,6 +608,7 @@ class MovimentacaoController
                     $tipo_mov,
                     $produto,
                     $seq,
+                    $date_balance,
                     $date_balance,
                     $quantidade,
                     $usuario_id,
@@ -650,11 +642,7 @@ class MovimentacaoController
         }
     }
 
-
     // Métodos Específicos para Transferências
-
-    // Criação de transferência
-
     public static function createTransferItems($data): array
     {
         global $pdo;
@@ -726,8 +714,8 @@ class MovimentacaoController
                 $quantidade = str_replace(",", ".", $item["quantidade"]);
 
                 // Inserção no banco de dados para o movimento de saída
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov, produto, seq, data,data_original, quantidade, usuario_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $stmt->execute([
                     $system_unit_id,
                     $system_unit_id_destino,
@@ -736,6 +724,7 @@ class MovimentacaoController
                     $tipo_saida,
                     $produto,
                     $seq,
+                    $transferDate,
                     $transferDate,
                     $quantidade,
                     $usuario_id,
@@ -750,8 +739,8 @@ class MovimentacaoController
                 $quantidade = str_replace(",", ".", $item["quantidade"]);
 
                 // Inserção no banco de dados para o movimento de entrada
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, tipo_mov, produto, seq, data,data_original, quantidade, usuario_id) 
+                               VALUES (?, ?, ?, ?,?, ?, ?, ?, ?, ?)");
                 $stmt->execute([
                     $system_unit_id_destino,
                     $docEntrada,
@@ -759,6 +748,7 @@ class MovimentacaoController
                     $tipo_entrada,
                     $produto,
                     $seq,
+                    $transferDate,
                     $transferDate,
                     $quantidade,
                     $usuario_id,
@@ -1342,6 +1332,7 @@ class MovimentacaoController
             ];
         }
     }
+
     public static function gerarDocAjusteSaldo($system_unit_id): string
     {
         global $pdo;
@@ -1430,7 +1421,70 @@ class MovimentacaoController
         }
     }
 
+    /**
+     * @throws DateMalformedStringException
+     */
+    public static function getDatesByDoc($system_unit_id, $doc): array
+    {
+        global $pdo;
 
+        $sql = "SELECT data_original 
+            FROM movimentacao
+            WHERE system_unit_id = :system_unit_id 
+              AND doc = :id 
+            GROUP BY doc";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':system_unit_id', $system_unit_id);
+        $stmt->bindParam(':id', $doc);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && isset($row['data_original'])) {
+            $dataOriginal = $row['data_original'];
+            $date = DateTime::createFromFormat('Y-m-d', $dataOriginal);
+
+            if ($date) {
+                $antes = clone $date;
+                $depois = clone $date;
+
+                $antes->modify('-1 day');
+                $depois->modify('+1 day');
+
+                return [
+                    $antes->format('d/m/Y'),
+                    $date->format('d/m/Y'),
+                    $depois->format('d/m/Y'),
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    public static function updateDataByDoc($system_unit_id, $doc, $data): bool
+    {
+        global $pdo;
+
+        $dateObj = DateTime::createFromFormat('d/m/Y', $data);
+        if (!$dateObj) {
+            return false; // Data inválida
+        }
+        $dataFormatada = $dateObj->format('Y-m-d');
+
+        $sql = "UPDATE movimentacao 
+            SET data = :data 
+            WHERE system_unit_id = :system_unit_id 
+              AND doc = :doc";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':data', $dataFormatada);
+        $stmt->bindParam(':system_unit_id', $system_unit_id);
+        $stmt->bindParam(':doc', $doc);
+
+        return $stmt->execute();
+    }
 
 
 }

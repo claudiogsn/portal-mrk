@@ -134,6 +134,29 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Alterara DAta -->
+    <div id="dataModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alterar Data</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="dataAlteracao">Nova Data:</label>
+                        <select id="dataAlteracao" class="form-control">
+                            <!-- As opções serão preenchidas dinamicamente -->
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
+                    <button id="btnAlterDataModal" class="btn btn-success">Alterar</button>
+                </div>
+            </div>
+        </div>
+    </div>
     
 
     <!-- Scripts -->
@@ -207,12 +230,13 @@
                     <td>${formatarData(movement.data)}</td>
                     <td>${movement.tipo_movimentacao}</td>
                     <td>${movement.username}</td>
-                    <td>${movement.nome_unidade_origem || 'N/A'}</td>
-                    <td>${movement.nome_unidade_destino || 'N/A'}</td>
+                    <td>${movement.nome_unidade_origem || 'NA'}</td>
+                    <td>${movement.nome_unidade_destino || 'NA'}</td>
                     <td>
                         <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
                         <button class="btn btn-success btnEfetivar" data-doc="${movement.doc}">Efetivar</button>
                         <button class="btn btn-danger btnRejeitar" data-doc="${movement.doc}">Rejeitar</button>
+                        <button class="btn btn-warning btnEditar" data-doc="${movement.doc}">Editar</button>
                     </td>
                 </tr>
             `);
@@ -236,70 +260,203 @@
                 const doc = $(this).data('doc');
                 confirmarRejeicao(doc);
             });
+
+            // Evento para efetivar transação
+            row.find('.btnEditar').on('click', function () {
+                const doc = $(this).data('doc');
+                alterarData(doc);
+            });
         });
     }
-
-            // Perguntar antes de rejeitar a transação
-            function confirmarRejeicao(doc) {
+    // Alterar Data
+            // Alterar Data
+            async function alterarData(doc) {
                 Swal.fire({
-                    title: 'Confirmar Rejeição',
-                    text: 'Deseja realmente rejeitar esta transação?',
+                    title: 'Carregando...',
+                    html: 'Buscando datas disponíveis...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getDatesByDoc',
+                        token: token,
+                        data: {
+                            system_unit_id: unitId,
+                            doc: doc
+                        }
+                    });
+
+                    if (response.data) {
+                        Swal.close(); // Fecha o loading
+                        renderDataModal(response.data, doc);
+                        $('#dataModal').modal('show');
+                    } else {
+                        Swal.close();
+                        Swal.fire("Erro", "Erro ao carregar detalhes da movimentação.", "error");
+                    }
+                } catch (error) {
+                    Swal.close();
+                    console.error('Erro ao carregar detalhes:', error);
+                    Swal.fire("Erro", "Erro ao carregar os dados da movimentação.", "error");
+                }
+            }
+
+            function renderDataModal(datas, doc) {
+                const select = $('#dataAlteracao');
+                select.empty();
+
+                if (Array.isArray(datas)) {
+                    $('#dataModal .modal-title').text(`Alterando data do balanço: ${doc}`);
+                    $('#btnAlterDataModal').data('doc', doc); // Armazena o `doc` no botão Alterar
+
+                    datas.forEach(item => {
+                        const option = $(`<option value="${item}">${item}</option>`);
+                        select.append(option);
+                    });
+
+                    // Evento de click no botão Alterar
+                    $('#btnAlterDataModal').off('click').on('click', function () {
+                        const doc = $(this).data('doc');
+                        const novaData = select.val();
+                        confirmarAlteracaoData(doc, novaData);
+                    });
+                } else {
+                    console.error('Estrutura de dados inesperada:', datas);
+                    Swal.fire("Erro", "Formato de dados inesperado para os detalhes.", "error");
+                }
+            }
+
+            function confirmarAlteracaoData(doc, novaData) {
+                Swal.fire({
+                    title: 'Confirmar Alteração de Data',
+                    text: `Deseja realmente alterar a data para ${novaData}?`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Sim, efetivar',
+                    confirmButtonText: 'Sim, alterar',
                     cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        rejeitarMovimentacao(doc);
+                        efetivarAlteracaoData(doc, novaData);
                     }
                 });
             }
 
-            // rejeitarMovimentacao
-            async function rejeitarMovimentacao(doc) {
-                showLoader();
+// Efetivar alteração de data
+            async function efetivarAlteracaoData(doc, novaData) {
+                Swal.fire({
+                    title: 'Salvando...',
+                    html: 'Aguarde enquanto alteramos a data...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
                 try {
                     const response = await axios.post(baseUrl, {
-                        method: 'rejeitarMovimentacao',
+                        method: 'updateDataByDoc',
                         token: token,
                         data: {
                             system_unit_id: unitId,
                             doc: doc,
-                            usuario_id: username
+                            data: novaData,
                         }
                     });
 
+                    Swal.close();
+
                     if (response.status === 200) {
-                        hideLoader();
-                        await Swal.fire({
+                        Swal.fire({
                             icon: 'success',
                             title: 'Sucesso!',
-                            text: 'Transação efetivada com sucesso.',
+                            text: 'Data alterada com sucesso.',
                             confirmButtonText: 'OK'
+                        }).then(() => {
+                            location.reload();
                         });
-
-                        // Recarregar página ao fechar o alerta
-                        location.reload();
                     } else {
-                        hideLoader();
                         Swal.fire({
                             icon: 'error',
                             title: 'Erro',
-                            text: 'Falha ao efetivar a transação.',
+                            text: 'Falha ao alterar a data.',
                         });
                     }
                 } catch (error) {
-                    hideLoader();
-                    console.error('Erro ao efetivar transação:', error);
+                    Swal.close();
+                    console.error('Erro ao alterar data:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro',
-                        text: 'Ocorreu um erro ao tentar efetivar a transação.',
+                        text: 'Ocorreu um erro ao tentar alterar a data.',
                     });
-                } finally {
-                    hideLoader();
                 }
             }
+
+            // Perguntar antes de rejeitar a transação
+    function confirmarRejeicao(doc) {
+        Swal.fire({
+            title: 'Confirmar Rejeição',
+            text: 'Deseja realmente rejeitar esta transação?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, efetivar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                rejeitarMovimentacao(doc);
+            }
+        });
+    }
+
+    // rejeitarMovimentacao
+    async function rejeitarMovimentacao(doc) {
+        showLoader();
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'rejeitarMovimentacao',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    doc: doc,
+                    usuario_id: username
+                }
+            });
+
+            if (response.status === 200) {
+                hideLoader();
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: 'Transação efetivada com sucesso.',
+                    confirmButtonText: 'OK'
+                });
+
+                // Recarregar página ao fechar o alerta
+                location.reload();
+            } else {
+                hideLoader();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: 'Falha ao efetivar a transação.',
+                });
+            }
+        } catch (error) {
+            hideLoader();
+            console.error('Erro ao efetivar transação:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro',
+                text: 'Ocorreu um erro ao tentar efetivar a transação.',
+            });
+        } finally {
+            hideLoader();
+        }
+    }
 
     // Perguntar antes de efetivar a transação
     function confirmarEfetivacao(doc) {
@@ -390,35 +547,35 @@
     }
 
     function renderDetailsModal(movements) {
-    const tbody = $('#detalhesMovimentacao');
-    tbody.empty();
+        const tbody = $('#detalhesMovimentacao');
+        tbody.empty();
 
-    if (Array.isArray(movements)) {
-        const doc = movements[0].doc; // Assumindo que `doc` está no primeiro item do array
+        if (Array.isArray(movements)) {
+            const doc = movements[0].doc; // Assumindo que `doc` está no primeiro item do array
 
-        $('#movimentacaoModal .modal-title').text(`Detalhes da Movimentação - Doc: ${doc}`);
-        $('#btnEfetivarModal').data('doc', doc); // Armazena o `doc` no botão Efetivar
+            $('#movimentacaoModal .modal-title').text(`Detalhes da Movimentação - Doc: ${doc}`);
+            $('#btnEfetivarModal').data('doc', doc); // Armazena o `doc` no botão Efetivar
 
-        movements.forEach(item => {
-            const row = $(` 
-                <tr>
-                    <td>${item.produto} - ${item.product_name}</td>
-                    <td>${item.quantidade}</td>
-                </tr>
-            `);
-            tbody.append(row);
-        });
+            movements.forEach(item => {
+                const row = $(` 
+                    <tr>
+                        <td>${item.produto} - ${item.product_name}</td>
+                        <td>${item.quantidade}</td>
+                    </tr>
+                `);
+                tbody.append(row);
+            });
 
-        // Adiciona o evento de click ao botão Efetivar
-        $('#btnEfetivarModal').off('click').on('click', function () {
-            const doc = $(this).data('doc');
-            confirmarEfetivacao(doc);
-        });
-    } else {
-        console.error('Estrutura de dados inesperada:', movements);
-        swal("Erro", "Formato de dados inesperado para os detalhes.", "error");
+            // Adiciona o evento de click ao botão Efetivar
+            $('#btnEfetivarModal').off('click').on('click', function () {
+                const doc = $(this).data('doc');
+                confirmarEfetivacao(doc);
+            });
+        } else {
+            console.error('Estrutura de dados inesperada:', movements);
+            swal("Erro", "Formato de dados inesperado para os detalhes.", "error");
+        }
     }
-}
 
 
     loadMovements();
