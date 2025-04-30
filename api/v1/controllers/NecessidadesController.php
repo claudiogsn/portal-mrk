@@ -239,7 +239,12 @@ class NecessidadesController {
             if ($type === 'media') {
                 // Calcula margem e recomendado
                 $insumoConsumption[$insumo_id]['sales'] = number_format($insumoConsumption[$insumo_id]['sales'] / 4, 2, '.', '');
-                $insumoConsumption[$insumo_id]['recomendado'] = max(0,ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']));
+                $insumoConsumption[$insumo_id]['recomendado'] = max(0, round(
+                    $insumoConsumption[$insumo_id]['sales'] +
+                    $insumoConsumption[$insumo_id]['margem'] -
+                    $insumoConsumption[$insumo_id]['saldo'],
+                    2
+                ));
             }
         }
 
