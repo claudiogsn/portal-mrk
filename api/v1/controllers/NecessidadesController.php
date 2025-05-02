@@ -187,7 +187,7 @@ class NecessidadesController {
 
         // Busca os nomes de todos os insumos independentemente do consumo
         $stmt = $pdo->prepare("
-            SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria
+            SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria, und as unidade
             FROM products p
             INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
             WHERE p.codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
@@ -208,6 +208,7 @@ class NecessidadesController {
                 'margem' => 0,
                 'saldo' => 0,
                 'necessidade' => 0,
+                'unidade' => $row['unidade'],
                 'nome' => $row['nome'],
                 'categoria' => $row['categoria'],
             ];
@@ -239,12 +240,16 @@ class NecessidadesController {
             if ($type === 'media') {
                 // Calcula margem e recomendado
                 $insumoConsumption[$insumo_id]['sales'] = number_format($insumoConsumption[$insumo_id]['sales'] / 4, 2, '.', '');
-                $insumoConsumption[$insumo_id]['recomendado'] = max(0, round(
-                    $insumoConsumption[$insumo_id]['sales'] +
-                    $insumoConsumption[$insumo_id]['margem'] -
-                    $insumoConsumption[$insumo_id]['saldo'],
-                    2
-                ));
+                if ($insumoConsumption[$insumo_id]['unidade'] === 'UND') {
+                    $insumoConsumption[$insumo_id]['recomendado'] = max(0,ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']));
+                }else {
+                    $insumoConsumption[$insumo_id]['recomendado'] = max(0, round(
+                        $insumoConsumption[$insumo_id]['sales'] +
+                        $insumoConsumption[$insumo_id]['margem'] -
+                        $insumoConsumption[$insumo_id]['saldo'],
+                        2
+                    ));
+                }
             }
         }
 
