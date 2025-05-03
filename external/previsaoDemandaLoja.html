@@ -491,6 +491,28 @@
                     }
                 });
 
+                // Oculta categorias sem produtos visíveis
+                rows.forEach((row, index) => {
+                    if (row.classList.contains('category-header')) {
+                        let nextRows = rows.slice(index + 1);
+                        let hasVisibleProduct = false;
+
+                        for (const nextRow of nextRows) {
+                            if (nextRow.classList.contains('category-header')) break;
+
+                            if (nextRow.style.display !== 'none') {
+                                hasVisibleProduct = true;
+                                break;
+                            }
+                        }
+
+                        if (!hasVisibleProduct) {
+                            row.style.display = 'none'; // Oculta a categoria vazia
+                        }
+                    }
+                });
+
+
                 const columnsToHide = [2, 3];
 
                 printTable(event, columnsToHide); // Chama a função de impressão principal

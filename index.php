@@ -1,5 +1,8 @@
 <?php
 require_once 'init.php';
+ini_set('session.gc_maxlifetime', 21600);
+session_set_cookie_params(21600);
+session_start();
 $theme  = $ini['general']['theme'];
 $class  = isset($_REQUEST['class']) ? $_REQUEST['class'] : '';
 $public = in_array($class, $ini['permission']['public_classes']);
