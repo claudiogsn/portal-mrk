@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <title>Fichas de Produção</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <style>
+        .insumo-produzido {
+            background-color: #fff3e0;
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+    <div class="container-fluid">
+        <div class="block-header">
+            <h2>Fichas de Produção</h2>
+        </div>
+
+        <div class="row clearfix">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="header">
+                        <h2>Filtro</h2>
+                    </div>
+                    <div class="body">
+                        <input type="text" id="filterInput" class="form-control" placeholder="Filtrar por nome do produto ou insumo...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row clearfix" id="fichasContainer">
+            <!-- Cards serão inseridos aqui via JS -->
+        </div>
+    </div>
+
+    <!-- Modal Detalhes da Ficha -->
+    <div class="modal fade" id="modalFicha" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Detalhes da Ficha</h4>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fichaDetalhesBody">
+                            <!-- Populado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function () {
+            const baseUrl = window.location.hostname !== 'localhost'
+                ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+                : 'http://localhost/portal-mrk/api/v1/index.php';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const unitId = urlParams.get('unit_id');
+            let fichasCache = [];
+            let produtosProduzidos = new Set();
+
+            async function loadFichas() {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'listProducoes',
+                        token: token,
+                        data: { unit_id: unitId }
+                    });
+
+                    if (response.data.success) {
+                        fichasCache = response.data.producoes;
+                        produtosProduzidos = new Set(fichasCache.map(f => f.produto));
+                        renderFichas(fichasCache);
+                    } else {
+                        Swal.fire("Erro", response.data.message, "error");
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar fichas:', error);
+                    Swal.fire("Erro", "Falha na requisição. Tente novamente.", "error");
+                }
+            }
+
+            function renderFichas(fichas) {
+                const container = $('#fichasContainer');
+                container.empty();
+
+                fichas.forEach(ficha => {
+                    const contemProduzido = ficha.insumos.some(ins => produtosProduzidos.has(ins.insumo_id));
+                    const buttonClass = contemProduzido ? 'btn-warning' : 'btn-info';
+
+                    const card = `
+                        <div class="col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                            <div class="card">
+                                <div class="header">
+                                    <h2>${ficha.nome}</h2>
+                                </div>
+                                <div class="body">
+                                    <p><strong>Produto ID:</strong> ${ficha.produto}</p>
+                                    <button class="btn ${buttonClass} btnVerDetalhes" data-id="${ficha.produto}">Ver Detalhes</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    container.append(card);
+                });
+            }
+
+            $(document).on('click', '.btnVerDetalhes', function () {
+                const id = $(this).data('id');
+                const ficha = fichasCache.find(f => f.produto == id);
+                const tbody = $('#fichaDetalhesBody');
+                tbody.empty();
+
+                if (ficha && ficha.insumos.length) {
+                    ficha.insumos.forEach(ins => {
+                        const isProduzido = produtosProduzidos.has(ins.insumo_id);
+                        const rowClass = isProduzido ? 'insumo-produzido' : '';
+                        tbody.append(`<tr class="${rowClass}"><td>${ins.nome}</td><td>${ins.quantity}</td></tr>`);
+                    });
+                } else {
+                    tbody.append('<tr><td colspan="2">Sem insumos</td></tr>');
+                }
+
+                $('#modalFicha').modal('show');
+            });
+
+            $('#filterInput').on('input', function () {
+                const term = $(this).val().toLowerCase();
+                const filtradas = fichasCache.filter(f =>
+                    f.nome.toLowerCase().includes(term) ||
+                    f.insumos.some(i => i.nome.toLowerCase().includes(term))
+                );
+                renderFichas(filtradas);
+            });
+
+            loadFichas();
+        });
+    </script>
+</body>
+
+</html>
