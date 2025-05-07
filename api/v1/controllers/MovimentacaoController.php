@@ -1053,7 +1053,7 @@ class MovimentacaoController
         }
     }
 
-    public static function importMovBySalesCons($systemUnitId, $data): string
+    public static function importMovBySalesCons($systemUnitId, $data)
     {
         global $pdo;
 
@@ -1142,7 +1142,7 @@ class MovimentacaoController
             $seq = 1;
 
             // Passo 6: Agora, insere os insumos com os dados calculados
-            foreach ($consumoInsumos as $insumo) {
+            foreach ($consumoInsumos['consumos']  as $insumo) {
                 // Gera o documento
                 $doc = "v-" . str_replace("-", "", $data);
 
