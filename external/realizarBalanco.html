@@ -322,29 +322,34 @@
                     hideLoader();
                 }
             }
-    
+
             function renderItensByCategory(itens) {
                 const tbody = $('#itensTable tbody');
                 tbody.empty();
-    
+
                 for (const categoria in itens) {
                     tbody.append(`
-                        <tr class="category-header">
-                            <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
-                        </tr>
-                    `);
-    
-                    itens[categoria].forEach((item, index) => {
+            <tr class="category-header">
+                <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+            </tr>
+        `);
+
+                    // Ordena os itens da categoria pelo nome do produto
+                    const itensOrdenados = itens[categoria].sort((a, b) => {
+                        return a.nome_produto.localeCompare(b.nome_produto, 'pt-BR', { sensitivity: 'base' });
+                    });
+
+                    itensOrdenados.forEach((item, index) => {
                         tbody.append(`
-                            <tr>
-                                <td>${item.nome_produto}</td>
-                                <td>${item.und_produto}</td>
-                                <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
-                            </tr>
-                        `);
+                <tr>
+                    <td>${item.nome_produto}</td>
+                    <td>${item.und_produto}</td>
+                    <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
+                </tr>
+            `);
                     });
                 }
-    
+
                 $('.quantidade').each(function () {
                     const unidade = $(this).closest('tr').find('td:nth-child(2)').text();
                     if (['KG', 'LT', 'L'].includes(unidade)) {
@@ -360,7 +365,8 @@
                     }
                 });
             }
-    
+
+
             $('#btnEnviar').click(async function () {
                 // Atribui "0" a todos os campos vazios
                 $('.quantidade').each(function () {
