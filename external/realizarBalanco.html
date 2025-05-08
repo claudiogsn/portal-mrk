@@ -173,6 +173,9 @@
                     </div>
                     <div class="footer">
                         <button id="btnEnviar" class="btn btn-primary waves-effect btnEnviar">Enviar</button>
+                        <br>
+                        <br>
+                        <br>
                     </div>
                 </div>
             </div>
@@ -327,34 +330,53 @@
                 const tbody = $('#itensTable tbody');
                 tbody.empty();
 
-                // Ordenar as categorias alfabeticamente
                 const categoriasOrdenadas = Object.keys(itens).sort((a, b) =>
                     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
                 );
 
-                categoriasOrdenadas.forEach(categoria => {
-                    tbody.append(`
-                        <tr class="category-header">
-                            <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
-                        </tr>
-                    `);
+                categoriasOrdenadas.forEach((categoria, categoriaIndex) => {
+                    const categoriaId = `categoria-${categoriaIndex}`;
 
-                    // Ordenar os itens dentro da categoria
+                    // Linha da categoria com botão de recolher
+                    tbody.append(`
+            <tr class="category-header" data-categoria="${categoriaId}" style="cursor: pointer;">
+                <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">
+                    <span class="toggle-icon" style="margin-right: 10px;">➖</span>${categoria}
+                </td>
+            </tr>
+        `);
+
                     const itensOrdenados = itens[categoria].sort((a, b) =>
                         a.nome_produto.localeCompare(b.nome_produto, 'pt-BR', { sensitivity: 'base' })
                     );
 
                     itensOrdenados.forEach((item, index) => {
                         tbody.append(`
-                                <tr>
-                                    <td>${item.nome_produto}</td>
-                                    <td>${item.und_produto}</td>
-                                    <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
-                                </tr>
-                            `);
-                        });
+                <tr class="item-row" data-parent="${categoriaId}">
+                    <td>${item.nome_produto}</td>
+                    <td>${item.und_produto}</td>
+                    <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
+                </tr>
+            `);
                     });
+                });
 
+                // Lógica de recolher/expandir
+                $('.category-header').on('click', function () {
+                    const categoriaId = $(this).data('categoria');
+                    const icon = $(this).find('.toggle-icon');
+                    const isOpen = icon.text() === '➖';
+
+                    if (isOpen) {
+                        icon.text('➕');
+                        $(`tr[data-parent="${categoriaId}"]`).hide();
+                    } else {
+                        icon.text('➖');
+                        $(`tr[data-parent="${categoriaId}"]`).show();
+                    }
+                });
+
+                // Lógica para formatação dos inputs
                 $('.quantidade').each(function () {
                     const unidade = $(this).closest('tr').find('td:nth-child(2)').text();
                     if (['KG', 'LT', 'L'].includes(unidade)) {
@@ -370,6 +392,7 @@
                     }
                 });
             }
+
 
 
 
