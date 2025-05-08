@@ -327,28 +327,33 @@
                 const tbody = $('#itensTable tbody');
                 tbody.empty();
 
-                for (const categoria in itens) {
-                    tbody.append(`
-            <tr class="category-header">
-                <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
-            </tr>
-        `);
+                // Ordenar as categorias alfabeticamente
+                const categoriasOrdenadas = Object.keys(itens).sort((a, b) =>
+                    a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+                );
 
-                    // Ordena os itens da categoria pelo nome do produto
-                    const itensOrdenados = itens[categoria].sort((a, b) => {
-                        return a.nome_produto.localeCompare(b.nome_produto, 'pt-BR', { sensitivity: 'base' });
-                    });
+                categoriasOrdenadas.forEach(categoria => {
+                    tbody.append(`
+                        <tr class="category-header">
+                            <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">${categoria}</td>
+                        </tr>
+                    `);
+
+                    // Ordenar os itens dentro da categoria
+                    const itensOrdenados = itens[categoria].sort((a, b) =>
+                        a.nome_produto.localeCompare(b.nome_produto, 'pt-BR', { sensitivity: 'base' })
+                    );
 
                     itensOrdenados.forEach((item, index) => {
                         tbody.append(`
-                <tr>
-                    <td>${item.nome_produto}</td>
-                    <td>${item.und_produto}</td>
-                    <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
-                </tr>
-            `);
+                                <tr>
+                                    <td>${item.nome_produto}</td>
+                                    <td>${item.und_produto}</td>
+                                    <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
+                                </tr>
+                            `);
+                        });
                     });
-                }
 
                 $('.quantidade').each(function () {
                     const unidade = $(this).closest('tr').find('td:nth-child(2)').text();
@@ -365,6 +370,7 @@
                     }
                 });
             }
+
 
 
             $('#btnEnviar').click(async function () {
