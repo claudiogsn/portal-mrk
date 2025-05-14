@@ -226,50 +226,54 @@ class MovimentacaoController
         $systemUnitId,
         $data_inicial,
         $data_final
-    ): false|array
-    {
+    ): false|array {
         global $pdo;
 
         $query = "
+        WITH ranked_movs AS (
             SELECT
-                m.system_unit_id,
-                case 
-                    when m.status = 0 then 'Pendente'
-                    when m.status = 1 then 'Efetivado'
-                    when m.status = 3 then 'Rejeitado'
-                    else 'Outro'
-                end as status,
+                m.*,
                 su_origem.name AS nome_unidade_origem,
-                m.system_unit_id_destino,
                 su_destino.name AS nome_unidade_destino,
-                m.doc,
-                CASE
-                    WHEN m.tipo = 'b' THEN 'Balanço'
-                     WHEN m.tipo = 'te' THEN 'Transferência de Entrada'
-                    WHEN m.tipo = 'ts' THEN 'Transferência de Saida'
-                    WHEN m.tipo = 'v' THEN 'Venda'
-                    WHEN m.tipo = 'p' THEN 'Perda'
-                    WHEN m.tipo = 'c' THEN 'Compra'
-                    ELSE 'Outro'
-                END AS tipo_movimentacao,
-                us.name as username,
-                m.data,
-                m.created_at
-            FROM
-                movimentacao m
-            LEFT JOIN
-                system_unit su_origem ON m.system_unit_id = su_origem.id
-            LEFT JOIN
-                system_unit su_destino ON m.system_unit_id_destino = su_destino.id
-           LEFT JOIN
-                system_users us ON m.usuario_id = us.id
+                us.name AS username,
+                ROW_NUMBER() OVER (PARTITION BY m.doc ORDER BY m.created_at DESC) AS rn
+            FROM movimentacao m
+            LEFT JOIN system_unit su_origem ON m.system_unit_id = su_origem.id
+            LEFT JOIN system_unit su_destino ON m.system_unit_id_destino = su_destino.id
+            LEFT JOIN system_users us ON m.usuario_id = us.id
             WHERE 
                 m.system_unit_id = :system_unit_id
                 AND m.status <> 3
                 AND m.data BETWEEN :data_inicial AND :data_final
-            GROUP BY
-                m.doc;
-        ";
+        )
+        SELECT
+            system_unit_id,
+            CASE 
+                WHEN status = 0 THEN 'Pendente'
+                WHEN status = 1 THEN 'Efetivado'
+                WHEN status = 3 THEN 'Rejeitado'
+                ELSE 'Outro'
+            END AS status,
+            nome_unidade_origem,
+            system_unit_id_destino,
+            nome_unidade_destino,
+            doc,
+            CASE
+                WHEN tipo = 'b' THEN 'Balanço'
+                WHEN tipo = 'te' THEN 'Transferência de Entrada'
+                WHEN tipo = 'ts' THEN 'Transferência de Saida'
+                WHEN tipo = 'v' THEN 'Venda'
+                WHEN tipo = 'p' THEN 'Perda'
+                WHEN tipo = 'c' THEN 'Compra'
+                ELSE 'Outro'
+            END AS tipo_movimentacao,
+            username,
+            data,
+            created_at
+        FROM ranked_movs
+        WHERE rn = 1
+        ORDER BY created_at DESC
+    ";
 
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(":system_unit_id", $systemUnitId, PDO::PARAM_INT);
@@ -279,6 +283,7 @@ class MovimentacaoController
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function getLastMov($system_unit_id, $tipo)
     {
