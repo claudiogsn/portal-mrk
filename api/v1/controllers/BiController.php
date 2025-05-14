@@ -143,18 +143,19 @@ class BiController {
         // Consolida os dados para todas as unidades do grupo
         foreach ($units as $unit) {
             $stmt = $pdo->prepare("
-            SELECT dtLancamento, codMaterial, 
-                   SUM(quantidade) AS total_quantidade,
-                   SUM(valorBruto) AS total_valor_bruto, 
-                   SUM(valorUnitario) AS total_valor_unitario,
-                   SUM(valorUnitarioLiquido) AS total_valor_unitario_liquido, 
-                   SUM(valorLiquido) AS total_valor_liquido,
-                   custom_code
-            FROM sales
-            WHERE system_unit_id = :system_unit_id
-              AND dtLancamento BETWEEN :dt_inicio AND :dt_fim
-            GROUP BY dtLancamento, codMaterial
-        ");
+                SELECT dtLancamento, codMaterial, 
+                       SUM(quantidade) AS total_quantidade,
+                       SUM(valorBruto) AS total_valor_bruto, 
+                       SUM(valorUnitario) AS total_valor_unitario,
+                       SUM(valorUnitarioLiquido) AS total_valor_unitario_liquido, 
+                       SUM(valorLiquido) AS total_valor_liquido,
+                       MAX(custom_code) AS custom_code
+                FROM sales
+                WHERE system_unit_id = :system_unit_id
+                  AND dtLancamento BETWEEN :dt_inicio AND :dt_fim
+                GROUP BY dtLancamento, codMaterial
+            ");
+
 
             // Associa os parâmetros
             $stmt->bindParam(':system_unit_id', $unit, PDO::PARAM_INT);
