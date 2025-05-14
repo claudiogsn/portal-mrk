@@ -1392,7 +1392,7 @@ class MovimentacaoController
             FROM movimentacao
             WHERE system_unit_id = :system_unit_id 
               AND doc = :id 
-            GROUP BY doc";
+            LIMIT 1";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':system_unit_id', $system_unit_id);
@@ -1422,6 +1422,7 @@ class MovimentacaoController
 
         return [];
     }
+
 
     public static function updateDataByDoc($system_unit_id, $doc, $data): bool
     {
