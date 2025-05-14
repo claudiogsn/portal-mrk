@@ -169,7 +169,15 @@ class MovimentacaoController
                 m.system_unit_id = :system_unit_id
                 AND m.status = 0
             GROUP BY
-                m.doc;
+                m.system_unit_id,
+                su_origem.name,
+                m.system_unit_id_destino,
+                su_destino.name,
+                m.doc,
+                m.tipo,
+                us.name,
+                m.data,
+                m.created_at
         ";
 
         $stmt = $pdo->prepare($query);
