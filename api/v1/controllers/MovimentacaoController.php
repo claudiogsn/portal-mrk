@@ -1053,7 +1053,7 @@ class MovimentacaoController
         }
     }
 
-    public static function importMovBySalesCons($systemUnitId, $data)
+    public static function importMovBySalesCons($systemUnitId, $data): array|string
     {
         global $pdo;
 
@@ -1128,11 +1128,12 @@ class MovimentacaoController
             // Passo 5: Prepara o statement para inserir ou atualizar a tabela movimentacao
             $insertStmt = $pdo->prepare("
                 INSERT INTO movimentacao (
-                    system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE 
                     status = VALUES(status),
                     data = VALUES(data),
+                    data_original = VALUES(data_original),
                     quantidade = VALUES(quantidade),
                     usuario_id = VALUES(usuario_id)
             ");
@@ -1154,21 +1155,29 @@ class MovimentacaoController
                     "v", // Tipo "v" de venda
                     "saida", // Tipo de movimentação "saida"
                     $insumo["codigo"], // Insumo ID
-                    $seq++, // Incrementa o seq
-                    $data, // Data da movimentação
-                    $insumo["sales"], // Quantidade calculada
-                    $usuarioId, // ID do usuário
+                    $seq++, // seq
+                    $data, // data
+                    $data, // data_original — ou outra lógica se desejar
+                    $insumo["sales"], // quantidade
+                    $usuarioId, // usuário
                 ]);
             }
 
+            $response = [
+                "success" => true,
+                "message" => "Movimentações de insumos importadas com sucesso.",
+            ];
+
             // Confirma a transação
             $pdo->commit();
-            return "Movimentações de insumos importadas com sucesso.";
+            return $response;
         } catch (Exception $e) {
             // Reverte a transação em caso de erro
             $pdo->rollBack();
-            return "Erro ao importar movimentações de insumos: " .
-                $e->getMessage();
+            return [
+                "success" => false,
+                "message" => "Erro ao importar movimentações de insumos: " . $e->getMessage(),
+            ];
         }
     }
 
