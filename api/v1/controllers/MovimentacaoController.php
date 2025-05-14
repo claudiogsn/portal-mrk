@@ -1059,121 +1059,57 @@ class MovimentacaoController
         global $pdo;
 
         try {
-            // Inicia uma transação
             $pdo->beginTransaction();
 
-            // Passo 1: Consulta os produtos vendidos (apenas para identificar os produtos)
-            $stmt = $pdo->prepare("
-                SELECT 
-                    system_unit_id,
-                    cod_material AS produto,
-                    quantidade AS qtde,
-                    data_movimento AS data
-                FROM 
-                    _bi_sales
-                WHERE 
-                    system_unit_id = :systemUnitId 
-                    AND data_movimento = :data
-            ");
-            $stmt->execute([
-                ":systemUnitId" => $systemUnitId,
-                ":data" => $data,
-            ]);
+            // Passo 1: Obtem dados de consumo por insumo via método já existente
+            $consumos = BiController::getSalesByInsumos($systemUnitId, $data);
 
-            $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Se nenhum produto for encontrado, não faz nada
-            if (empty($produtosVendas)) {
+            if (isset($consumos['error'])) {
                 $pdo->rollBack();
-                return "Nenhuma movimentação encontrada para a unidade e data informadas.";
+                return $consumos['error'];
             }
 
-            // Passo 2: Obter os IDs dos produtos vendidos
-            $produtosVendidosIds = array_map(function ($produto) {
-                return $produto["produto"]; // coleta o código do produto
-            }, $produtosVendas);
-
-            // Passo 3: Converter os produtos em insumos
-            $placeholders = implode(
-                ",",
-                array_fill(0, count($produtosVendidosIds), "?")
-            );
-            $stmtInsumos = $pdo->prepare("
-                SELECT DISTINCT insumo_id 
-                FROM compositions 
-                WHERE system_unit_id = ? 
-                AND product_id IN ($placeholders)
-            ");
-            $stmtInsumos->execute(
-                array_merge([$systemUnitId], $produtosVendidosIds)
-            );
-
-            $insumoIds = $stmtInsumos->fetchAll(PDO::FETCH_COLUMN);
-
-            // Se nenhum insumo for encontrado, não faz nada
-            if (empty($insumoIds)) {
-                $pdo->rollBack();
-                return "Nenhum insumo relacionado encontrado para os produtos vendidos.";
-            }
-
-            // Passo 4: Chamar a função `getInsumoConsumption` para calcular o consumo dos insumos
-            $consumoInsumos = NecessidadesController::getInsumoConsumption(
-                $systemUnitId,
-                [$data],
-                $insumoIds,
-                "total"
-            );
-            //print_r($consumoInsumos);
-            //exit;
-
-            // Passo 5: Prepara o statement para inserir ou atualizar a tabela movimentacao
+            // Passo 2: Prepara o insert/update
             $insertStmt = $pdo->prepare("
-                INSERT INTO movimentacao (
-                    system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                    status = VALUES(status),
-                    data = VALUES(data),
-                    data_original = VALUES(data_original),
-                    quantidade = VALUES(quantidade),
-                    usuario_id = VALUES(usuario_id)
-            ");
+            INSERT INTO movimentacao (
+                system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                status = VALUES(status),
+                data = VALUES(data),
+                data_original = VALUES(data_original),
+                quantidade = VALUES(quantidade),
+                usuario_id = VALUES(usuario_id)
+        ");
 
-            // Usuário fictício para inserção
             $usuarioId = 5;
             $seq = 1;
+            $doc = "v-" . str_replace("-", "", $data);
 
-            // Passo 6: Agora, insere os insumos com os dados calculados
-            foreach ($consumoInsumos['consumos']  as $insumo) {
-                // Gera o documento
-                $doc = "v-" . str_replace("-", "", $data);
-
-                // Insere ou atualiza a movimentação do insumo
+            // Passo 3: Insere os dados de movimentação com base no consumo
+            foreach ($consumos as $insumo) {
                 $insertStmt->execute([
                     $systemUnitId,
                     1, // status
-                    $doc, // documento
-                    "v", // Tipo "v" de venda
-                    "saida", // Tipo de movimentação "saida"
-                    $insumo["codigo"], // Insumo ID
-                    $seq++, // seq
-                    $data, // data
-                    $data, // data_original — ou outra lógica se desejar
-                    $insumo["sales"], // quantidade
-                    $usuarioId, // usuário
+                    $doc,
+                    "v", // tipo
+                    "saida", // tipo_mov
+                    $insumo["codigo_insumo"],
+                    $seq++,
+                    $data,
+                    $data,
+                    $insumo["sale_insumos"], // quantidade
+                    $usuarioId,
                 ]);
             }
 
-            $response = [
+            $pdo->commit();
+
+            return [
                 "status" => "success",
                 "message" => "Movimentações de insumos importadas com sucesso.",
             ];
-
-            // Confirma a transação
-            $pdo->commit();
-            return $response;
         } catch (Exception $e) {
-            // Reverte a transação em caso de erro
             $pdo->rollBack();
             return [
                 "status" => "erro",
@@ -1181,6 +1117,7 @@ class MovimentacaoController
             ];
         }
     }
+
 
     public static function getDiferencasEstoque(
         $startDate,
