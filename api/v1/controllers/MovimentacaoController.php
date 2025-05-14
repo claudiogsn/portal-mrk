@@ -926,6 +926,7 @@ class MovimentacaoController
     }
 
     public static function importMovBySales($systemUnitId, $data): string
+    // NÃO USADA
     {
         global $pdo;
 
@@ -1164,7 +1165,7 @@ class MovimentacaoController
             }
 
             $response = [
-                "success" => true,
+                "status" => "success",
                 "message" => "Movimentações de insumos importadas com sucesso.",
             ];
 
@@ -1175,7 +1176,7 @@ class MovimentacaoController
             // Reverte a transação em caso de erro
             $pdo->rollBack();
             return [
-                "success" => false,
+                "status" => "erro",
                 "message" => "Erro ao importar movimentações de insumos: " . $e->getMessage(),
             ];
         }
