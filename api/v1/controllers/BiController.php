@@ -122,6 +122,7 @@ class BiController {
 }
 
     public static function consolidateSalesByGroup($group_id, $dt_inicio, $dt_fim) {
+        // pega as vendas dentro de sales
         global $pdo;
 
         // Primeiro, obtém todos os system_unit_id do grupo
