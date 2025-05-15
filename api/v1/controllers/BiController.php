@@ -310,23 +310,55 @@ class BiController {
 
             $stmtMovimento = $pdo->prepare("
             INSERT INTO movimento_caixa (
-                id, num_controle, lojaId, nomeAtendente, vlTotalReceber, vlTotalRecebido,
-                modoVenda, dataAbertura, dataFechamento, dataContabil, cancelado
+                id, num_controle, redeId, rede, lojaId, loja, modoVenda, idModoVenda, hora,
+                idAtendente, codAtendente, nomeAtendente, vlDesconto, vlAcrescimo, vlTotalReceber,
+                vlTotalRecebido, vlServicoRecebido, vlTrocoFormasPagto, vlRepique, vlTaxaEntrega,
+                numPessoas, operacaoId, maquinaId, nomeMaquina, maquinaCod, maquinaPortaFiscal,
+                periodoId, periodoCod, periodoNome, cancelado, modoVenda2, dataAbertura,
+                dataFechamento, dataContabil
             )
             VALUES (
-                :id, :num_controle, :lojaId, :nomeAtendente, :vlTotalReceber, :vlTotalRecebido,
-                :modoVenda, :dataAbertura, :dataFechamento, :dataContabil, :cancelado
+                :id, :num_controle, :redeId, :rede, :lojaId, :loja, :modoVenda, :idModoVenda, :hora,
+                :idAtendente, :codAtendente, :nomeAtendente, :vlDesconto, :vlAcrescimo, :vlTotalReceber,
+                :vlTotalRecebido, :vlServicoRecebido, :vlTrocoFormasPagto, :vlRepique, :vlTaxaEntrega,
+                :numPessoas, :operacaoId, :maquinaId, :nomeMaquina, :maquinaCod, :maquinaPortaFiscal,
+                :periodoId, :periodoCod, :periodoNome, :cancelado, :modoVenda2, :dataAbertura,
+                :dataFechamento, :dataContabil
             )
             ON DUPLICATE KEY UPDATE
+                redeId = VALUES(redeId),
+                rede = VALUES(rede),
+                loja = VALUES(loja),
+                modoVenda = VALUES(modoVenda),
+                idModoVenda = VALUES(idModoVenda),
+                hora = VALUES(hora),
+                idAtendente = VALUES(idAtendente),
+                codAtendente = VALUES(codAtendente),
                 nomeAtendente = VALUES(nomeAtendente),
+                vlDesconto = VALUES(vlDesconto),
+                vlAcrescimo = VALUES(vlAcrescimo),
                 vlTotalReceber = VALUES(vlTotalReceber),
                 vlTotalRecebido = VALUES(vlTotalRecebido),
-                modoVenda = VALUES(modoVenda),
+                vlServicoRecebido = VALUES(vlServicoRecebido),
+                vlTrocoFormasPagto = VALUES(vlTrocoFormasPagto),
+                vlRepique = VALUES(vlRepique),
+                vlTaxaEntrega = VALUES(vlTaxaEntrega),
+                numPessoas = VALUES(numPessoas),
+                operacaoId = VALUES(operacaoId),
+                maquinaId = VALUES(maquinaId),
+                nomeMaquina = VALUES(nomeMaquina),
+                maquinaCod = VALUES(maquinaCod),
+                maquinaPortaFiscal = VALUES(maquinaPortaFiscal),
+                periodoId = VALUES(periodoId),
+                periodoCod = VALUES(periodoCod),
+                periodoNome = VALUES(periodoNome),
+                cancelado = VALUES(cancelado),
+                modoVenda2 = VALUES(modoVenda2),
                 dataAbertura = VALUES(dataAbertura),
                 dataFechamento = VALUES(dataFechamento),
                 dataContabil = VALUES(dataContabil),
-                cancelado = VALUES(cancelado)
-            ");
+                updated_at = CURRENT_TIMESTAMP
+        ");
 
             $stmtDeleteMeios = $pdo->prepare("DELETE FROM meios_pagamento WHERE num_controle = :num_controle AND lojaId = :lojaId");
             $stmtInsertMeios = $pdo->prepare("
@@ -341,19 +373,41 @@ class BiController {
         ");
 
             foreach ($movimentos as $mov) {
-                // Movimento principal
                 $stmtMovimento->execute([
                     ':id' => $mov['id'],
                     ':num_controle' => $mov['num_controle'],
+                    ':redeId' => $mov['redeId'],
+                    ':rede' => $mov['rede'],
                     ':lojaId' => $mov['lojaId'],
+                    ':loja' => $mov['loja'],
+                    ':modoVenda' => $mov['modoVenda'],
+                    ':idModoVenda' => $mov['idModoVenda'],
+                    ':hora' => $mov['hora'],
+                    ':idAtendente' => $mov['idAtendente'],
+                    ':codAtendente' => $mov['codAtendente'],
                     ':nomeAtendente' => $mov['nomeAtendente'],
+                    ':vlDesconto' => $mov['vlDesconto'],
+                    ':vlAcrescimo' => $mov['vlAcrescimo'],
                     ':vlTotalReceber' => $mov['vlTotalReceber'],
                     ':vlTotalRecebido' => $mov['vlTotalRecebido'],
-                    ':modoVenda' => $mov['modoVenda'],
+                    ':vlServicoRecebido' => $mov['vlServicoRecebido'],
+                    ':vlTrocoFormasPagto' => $mov['vlTrocoFormasPagto'],
+                    ':vlRepique' => $mov['vlRepique'],
+                    ':vlTaxaEntrega' => $mov['vlTaxaEntrega'],
+                    ':numPessoas' => $mov['numPessoas'],
+                    ':operacaoId' => $mov['operacaoId'],
+                    ':maquinaId' => $mov['maquinaId'],
+                    ':nomeMaquina' => $mov['nomeMaquina'],
+                    ':maquinaCod' => $mov['maquinaCod'],
+                    ':maquinaPortaFiscal' => $mov['maquinaPortaFiscal'],
+                    ':periodoId' => $mov['periodoId'],
+                    ':periodoCod' => $mov['periodoCod'],
+                    ':periodoNome' => $mov['periodoNome'],
+                    ':cancelado' => $mov['cancelado'],
+                    ':modoVenda2' => $mov['modoVenda2'],
                     ':dataAbertura' => $mov['dataAbertura'],
                     ':dataFechamento' => $mov['dataFechamento'],
-                    ':dataContabil' => $mov['dataContabil'],
-                    ':cancelado' => $mov['cancelado']
+                    ':dataContabil' => $mov['dataContabil']
                 ]);
 
                 // Meios de pagamento
@@ -397,6 +451,7 @@ class BiController {
             return ['status' => 'error', 'message' => 'Erro ao persistir movimentos: ' . $e->getMessage()];
         }
     }
+
 
 
     public static function GetInfoConsolidationEstoque($system_unit_id, $data) {
