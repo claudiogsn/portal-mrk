@@ -521,6 +521,10 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros dt_inicio e dt_fim são obrigatórios.'];
                 }
                 break;
+            case 'ListMov':
+                $response = DashboardController::ListMov($requestData['dt_inicio'],$requestData['dt_fim']);
+                break;
+
             case 'generateResumoFinanceiroPorLoja':
                 if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::generateResumoFinanceiroPorLoja(

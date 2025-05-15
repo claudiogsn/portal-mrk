@@ -351,22 +351,22 @@ class DashboardController {
             // Ordena por quantidade (descendente)
             $produtosQtd = $produtos;
             usort($produtosQtd, fn($a, $b) => $b['total_quantidade'] <=> $a['total_quantidade']);
-            $maisVendidosQtd = array_slice($produtosQtd, 0, 5);
+            $maisVendidosQtd = array_slice($produtosQtd, 0, 10);
 
             // Ordena por valor (descendente)
             $produtosValor = $produtos;
             usort($produtosValor, fn($a, $b) => $b['total_valor'] <=> $a['total_valor']);
-            $maisVendidosValor = array_slice($produtosValor, 0, 5);
+            $maisVendidosValor = array_slice($produtosValor, 0, 10);
 
             // Ordena por quantidade (ascendente, exclui zeros)
             $produtosQtdAsc = array_filter($produtos, fn($p) => $p['total_quantidade'] > 0);
             usort($produtosQtdAsc, fn($a, $b) => $a['total_quantidade'] <=> $b['total_quantidade']);
-            $menosVendidosQtd = array_slice($produtosQtdAsc, 0, 5);
+            $menosVendidosQtd = array_slice($produtosQtdAsc, 0, 10);
 
             // Ordena por valor (ascendente, exclui zeros)
             $produtosValorAsc = array_filter($produtos, fn($p) => $p['total_valor'] > 0);
             usort($produtosValorAsc, fn($a, $b) => $a['total_valor'] <=> $b['total_valor']);
-            $menosVendidosValor = array_slice($produtosValorAsc, 0, 5);
+            $menosVendidosValor = array_slice($produtosValorAsc, 0, 10);
 
             $filtrar = fn($item) => !in_array((int) $item['cod_material'], [9000, 9600]);
 
@@ -387,6 +387,19 @@ class DashboardController {
                 'message' => 'Erro ao consultar ranking de vendas: ' . $e->getMessage()
             ];
         }
+    }
+
+    public static function ListMov($dt_inicio, $dt_fim): false|array
+    {
+        global $pdo;
+        $sql = "SELECT * FROM movimento_caixa WHERE dataContabil BETWEEN :dt_inicio AND :dt_fim AND cancelado = 0";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':dt_inicio', $dt_inicio);
+        $stmt->bindParam(':dt_fim', $dt_fim);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 

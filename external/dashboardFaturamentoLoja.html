@@ -47,11 +47,11 @@
                 <div class="text-gray-500 text-sm">Faturamento Total</div>
                 <div class="text-2xl font-bold animate-number" id="faturamentoTotal">R$ 0,00</div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
                 <div class="text-gray-500 text-sm">Descontos</div>
                 <div class="text-2xl font-bold animate-number" id="descontos">R$ 0,00</div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
                 <div class="text-gray-500 text-sm">Taxa de Serviço</div>
                 <div class="text-2xl font-bold animate-number" id="taxaServico">R$ 0,00</div>
             </div>
@@ -342,7 +342,7 @@
                         stack: 'total',
                         emphasis: { focus: 'series' },
                         label: {
-                            show: true,
+                            show: false,
                             position: 'inside',
                             formatter: val => `R$ ${val.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                         },
@@ -354,7 +354,7 @@
                         stack: 'total',
                         emphasis: { focus: 'series' },
                         label: {
-                            show: true,
+                            show: false,
                             position: 'inside',
                             formatter: val => `R$ ${val.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                         },
@@ -366,7 +366,7 @@
                         stack: 'total',
                         emphasis: { focus: 'series' },
                         label: {
-                            show: true,
+                            show: false,
                             position: 'inside',
                             formatter: val => `R$ ${val.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                         },
