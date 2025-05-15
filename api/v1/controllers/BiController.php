@@ -290,6 +290,105 @@ class BiController {
             ];
         }
     }
+
+    public static function persistMovimentoCaixa($movimentos): array
+    {
+        global $pdo;
+
+        try {
+            $pdo->beginTransaction();
+
+            $stmtMovimento = $pdo->prepare("
+            INSERT INTO movimento_caixa (
+                id, num_controle, lojaId, nomeAtendente, vlTotalReceber, vlTotalRecebido,
+                modoVenda, dataAbertura, dataFechamento, dataContabil, cancelado
+            )
+            VALUES (
+                :id, :num_controle, :lojaId, :nomeAtendente, :vlTotalReceber, :vlTotalRecebido,
+                :modoVenda, :dataAbertura, :dataFechamento, :dataContabil, :cancelado
+            )
+            ON DUPLICATE KEY UPDATE
+                nomeAtendente = VALUES(nomeAtendente),
+                vlTotalReceber = VALUES(vlTotalReceber),
+                vlTotalRecebido = VALUES(vlTotalRecebido),
+                modoVenda = VALUES(modoVenda),
+                dataAbertura = VALUES(dataAbertura),
+                dataFechamento = VALUES(dataFechamento),
+                dataContabil = VALUES(dataContabil),
+                cancelado = VALUES(cancelado)
+            ");
+
+            $stmtDeleteMeios = $pdo->prepare("DELETE FROM meios_pagamento WHERE num_controle = :num_controle AND lojaId = :lojaId");
+            $stmtInsertMeios = $pdo->prepare("
+            INSERT INTO meios_pagamento (id, num_controle, lojaId, codigo, nome, valor, troco, valorRecebido)
+            VALUES (:id, :num_controle, :lojaId, :codigo, :nome, :valor, :troco, :valorRecebido)
+        ");
+
+            $stmtDeleteConsumidores = $pdo->prepare("DELETE FROM consumidores WHERE num_controle = :num_controle AND lojaId = :lojaId");
+            $stmtInsertConsumidor = $pdo->prepare("
+            INSERT INTO consumidores (num_controle, lojaId, documento, tipo, nome)
+            VALUES (:num_controle, :lojaId, :documento, :tipo, :nome)
+        ");
+
+            foreach ($movimentos as $mov) {
+                // Movimento principal
+                $stmtMovimento->execute([
+                    ':id' => $mov['id'],
+                    ':num_controle' => $mov['num_controle'],
+                    ':lojaId' => $mov['lojaId'],
+                    ':nomeAtendente' => $mov['nomeAtendente'],
+                    ':vlTotalReceber' => $mov['vlTotalReceber'],
+                    ':vlTotalRecebido' => $mov['vlTotalRecebido'],
+                    ':modoVenda' => $mov['modoVenda'],
+                    ':dataAbertura' => $mov['dataAbertura'],
+                    ':dataFechamento' => $mov['dataFechamento'],
+                    ':dataContabil' => $mov['dataContabil'],
+                    ':cancelado' => $mov['cancelado']
+                ]);
+
+                // Meios de pagamento
+                $stmtDeleteMeios->execute([
+                    ':num_controle' => $mov['num_controle'],
+                    ':lojaId' => $mov['lojaId']
+                ]);
+                foreach ($mov['meiosPagamento'] as $mp) {
+                    $stmtInsertMeios->execute([
+                        ':id' => $mp['id'],
+                        ':num_controle' => $mov['num_controle'],
+                        ':lojaId' => $mov['lojaId'],
+                        ':codigo' => $mp['codigo'],
+                        ':nome' => $mp['nome'],
+                        ':valor' => $mp['valor'],
+                        ':troco' => $mp['troco'],
+                        ':valorRecebido' => $mp['valorRecebido']
+                    ]);
+                }
+
+                // Consumidores
+                $stmtDeleteConsumidores->execute([
+                    ':num_controle' => $mov['num_controle'],
+                    ':lojaId' => $mov['lojaId']
+                ]);
+                foreach ($mov['consumidores'] as $cons) {
+                    $stmtInsertConsumidor->execute([
+                        ':num_controle' => $mov['num_controle'],
+                        ':lojaId' => $mov['lojaId'],
+                        ':documento' => $cons['documento'],
+                        ':tipo' => $cons['tipo'],
+                        ':nome' => $cons['nome']
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+            return ['status' => 'success', 'message' => 'Movimentos persistidos com sucesso.'];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return ['status' => 'error', 'message' => 'Erro ao persistir movimentos: ' . $e->getMessage()];
+        }
+    }
+
+
     public static function GetInfoConsolidationEstoque($system_unit_id, $data) {
         global $pdo;
 

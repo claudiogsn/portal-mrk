@@ -227,6 +227,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro sales ausente'];
                 }
             break;
+            case 'persistMovimentoCaixa':
+                if (isset($requestData)) {
+                    $response = BiController::persistMovimentoCaixa($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro sales ausente'];
+                }
+            break;
             // Métodos para InsumoController
             case 'getInsumosUsage':
                 if (isset($requestData['system_unit_id'])) {
