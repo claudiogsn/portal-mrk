@@ -356,8 +356,7 @@ class BiController {
                 modoVenda2 = VALUES(modoVenda2),
                 dataAbertura = VALUES(dataAbertura),
                 dataFechamento = VALUES(dataFechamento),
-                dataContabil = VALUES(dataContabil),
-                updated_at = CURRENT_TIMESTAMP
+                dataContabil = VALUES(dataContabil)
         ");
 
             $stmtDeleteMeios = $pdo->prepare("DELETE FROM meios_pagamento WHERE num_controle = :num_controle AND lojaId = :lojaId");
