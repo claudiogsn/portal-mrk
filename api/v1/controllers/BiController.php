@@ -14,7 +14,17 @@ class BiController {
     public static function getUnitsByGroup($group_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT rel.system_unit_id, su.custom_code FROM grupo_estabelecimento_rel AS rel JOIN  system_unit AS su ON rel.system_unit_id = su.id WHERE rel.grupo_id = :group_id;");
+        $stmt = $pdo->prepare("SELECT 
+            rel.system_unit_id, 
+            su.custom_code 
+        FROM 
+            grupo_estabelecimento_rel AS rel 
+        JOIN 
+            system_unit AS su ON rel.system_unit_id = su.id 
+        WHERE 
+            rel.grupo_id = :group_id
+            AND su.custom_code IS NOT NULL;
+        ");
         $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
