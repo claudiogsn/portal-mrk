@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,279 +13,290 @@
 
 
     <style>
-        .animate-number { transition: all 1s ease-in-out; }
-        .loader { border-top-color: #3b82f6; }
+        .animate-number {
+            transition: all 1s ease-in-out;
+        }
+
+        .loader {
+            border-top-color: #3b82f6;
+        }
     </style>
 </head>
+
 <body class="bg-gray-100 text-gray-800">
 
-<div class="p-6">
-    <div class="mb-6">
-        <div class="flex items-center gap-4 flex-wrap">
-            <button onclick="setRange('hoje')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Hoje</button>
-            <button onclick="setRange('ontem')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Ontem</button>
-            <button onclick="setRange('7dias')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Últimos 7 dias</button>
-            <button onclick="setRange('mes')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Último mês</button>
+    <div class="p-6">
+        <div class="mb-6">
+            <div class="flex items-center gap-4 flex-wrap">
+                <button onclick="setRange('hoje')"
+                    class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Hoje</button>
+                <button onclick="setRange('ontem')"
+                    class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Ontem</button>
+                <button onclick="setRange('7dias')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Últimos 7
+                    dias</button>
+                <button onclick="setRange('mes')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Último
+                    mês</button>
 
-            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
-            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
+                <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
+                <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <div class="text-gray-500 text-sm">Faturamento Total</div>
+                <div class="text-2xl font-bold animate-number" id="faturamentoTotal">R$ 0,00</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                <div class="text-gray-500 text-sm">Descontos</div>
+                <div class="text-2xl font-bold animate-number" id="descontos">R$ 0,00</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                <div class="text-gray-500 text-sm">Taxa de Serviço</div>
+                <div class="text-2xl font-bold animate-number" id="taxaServico">R$ 0,00</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <div class="text-gray-500 text-sm">Faturamento Líquido</div>
+                <div class="text-2xl font-bold animate-number" id="faturamentoLiquido">R$ 0,00</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <div class="text-gray-500 text-sm">Nº Clientes</div>
+                <div class="text-2xl font-bold animate-number" id="numClientes">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <div class="text-gray-500 text-sm">Ticket Médio</div>
+                <div class="text-2xl font-bold animate-number" id="ticketMedio">R$ 0,00</div>
+            </div>
+        </div>
+
+        <!-- Faturamento Diário (altura reduzida) -->
+        <!-- Layout: Tabela (20%) + Gráfico de Faturamento Diário (80%) -->
+        <div class="flex flex-col lg:flex-row gap-6 mb-6">
+            <!-- Tabela com toggles (20%) -->
+            <div class="w-full lg:w-3/12 bg-white p-4 rounded-lg shadow flex flex-col justify-between">
+
+                <!-- Título com tooltip -->
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">
+                        Ranking de Produtos
+                        <span class="relative group">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="w-4 h-4 text-gray-400 hover:text-blue-500 cursor-pointer" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 7h2V5H9v2Zm0 2v6h2V9H9Z" />
+                            </svg>
+                            <div
+                                class="absolute z-10 hidden group-hover:block bg-white text-sm text-gray-700 border border-gray-300 p-2 rounded shadow w-64 mt-1 left-1/2 -translate-x-1/2">
+                                Você pode alternar entre:
+                                <ul class="list-disc pl-5 mt-1">
+                                    <li>Mais / Menos vendidos</li>
+                                    <li>Quantidade / Valor</li>
+                                </ul>
+                            </div>
+                        </span>
+                    </h2>
+                </div>
+
+                <!-- Tabela -->
+                <div class="overflow-y-auto max-h-[300px] mb-4">
+                    <table class="min-w-full text-xs text-left border">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="px-1 py-1">#</th>
+                                <th class="px-1 py-1">Produto</th>
+                                <th class="px-1 py-1 text-right" id="headerTipo">Qtd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rankingTableBody">
+                            <!-- Populado dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Botões agrupados -->
+                <div class="flex flex-col gap-2">
+                    <!-- Mais / Menos Vendidos -->
+                    <div class="inline-flex rounded-md shadow-sm" role="group">
+                        <button id="btnMais"
+                            class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">
+                            Mais Vendidos
+                        </button>
+                        <button id="btnMenos"
+                            class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">
+                            Menos Vendidos
+                        </button>
+                    </div>
+
+                    <!-- Quantidade / Valor -->
+                    <div class="inline-flex rounded-md shadow-sm" role="group">
+                        <button id="btnQtd"
+                            class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">
+                            Quantidade
+                        </button>
+                        <button id="btnValor"
+                            class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">
+                            Valor
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Gráfico de Faturamento Diário (80%) -->
+            <div class="w-full lg:w-9/12 bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold mb-4">Faturamento Diário (Líquido, Descontos e Taxa)</h2>
+                <div id="chartFaturamentoDiario" style="width: 100%; height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Grid com dois gráficos lado a lado -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+            <!-- Modo de Venda -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold mb-4">Participação por Modo de Venda</h2>
+                <div id="chartModosVenda" style="width: 100%; height: 250px;"></div>
+            </div>
+
+            <!-- Meio de Pagamento -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold mb-4">Participação por Meio de Pagamento</h2>
+                <div id="chartMeiosPagamento" style="width: 100%; height: 250px;"></div>
+            </div>
+
+        </div>
+
+
+
+        <div class="bg-white p-6 rounded-lg shadow flex items-center justify-center" id="loader">
+            <div class="text-center">
+                <div
+                    class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 animate-spin mx-auto">
+                </div>
+                <div>Carregando dados...</div>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Faturamento Total</div>
-            <div class="text-2xl font-bold animate-number" id="faturamentoTotal">R$ 0,00</div>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Descontos</div>
-            <div class="text-2xl font-bold animate-number" id="descontos">R$ 0,00</div>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Taxa de Serviço</div>
-            <div class="text-2xl font-bold animate-number" id="taxaServico">R$ 0,00</div>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Faturamento Líquido</div>
-            <div class="text-2xl font-bold animate-number" id="faturamentoLiquido">R$ 0,00</div>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Nº Clientes</div>
-            <div class="text-2xl font-bold animate-number" id="numClientes">0</div>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Ticket Médio</div>
-            <div class="text-2xl font-bold animate-number" id="ticketMedio">R$ 0,00</div>
-        </div>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Faturamento Diário (altura reduzida) -->
-<!-- Layout: Tabela (20%) + Gráfico de Faturamento Diário (80%) -->
-<div class="flex flex-col lg:flex-row gap-6 mb-6">
-  <!-- Tabela com toggles (20%) -->
-  <div class="w-full lg:w-3/12 bg-white p-4 rounded-lg shadow flex flex-col justify-between">
+    <script>
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
 
-  <!-- Título com tooltip -->
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold">
-      Ranking de Produtos
-      <span class="relative group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 hover:text-blue-500 cursor-pointer" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 7h2V5H9v2Zm0 2v6h2V9H9Z"/>
-        </svg>
-        <div class="absolute z-10 hidden group-hover:block bg-white text-sm text-gray-700 border border-gray-300 p-2 rounded shadow w-64 mt-1 left-1/2 -translate-x-1/2">
-          Você pode alternar entre:
-          <ul class="list-disc pl-5 mt-1">
-            <li>Mais / Menos vendidos</li>
-            <li>Quantidade / Valor</li>
-          </ul>
-        </div>
-      </span>
-    </h2>
-  </div>
+        const urlParams = new URLSearchParams(window.location.search);
+        const systemUnitId = urlParams.get('system_unit_id');
+        const token = urlParams.get('token');
+        let lojaid = null;
+        let chart;
 
-  <!-- Tabela -->
-  <div class="overflow-y-auto max-h-[300px] mb-4">
-    <table class="min-w-full text-xs text-left border">
-      <thead>
-        <tr class="bg-gray-100 border-b">
-          <th class="px-1 py-1">#</th>
-          <th class="px-1 py-1">Produto</th>
-          <th class="px-1 py-1 text-right" id="headerTipo">Qtd</th>
-        </tr>
-      </thead>
-      <tbody id="rankingTableBody">
-        <!-- Populado dinamicamente -->
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Botões agrupados -->
-  <div class="flex flex-col gap-2">
-    <!-- Mais / Menos Vendidos -->
-    <div class="inline-flex rounded-md shadow-sm" role="group">
-      <button
-        id="btnMais"
-        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">
-        Mais Vendidos
-      </button>
-      <button
-        id="btnMenos"
-        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">
-        Menos Vendidos
-      </button>
-    </div>
-
-    <!-- Quantidade / Valor -->
-    <div class="inline-flex rounded-md shadow-sm" role="group">
-      <button
-        id="btnQtd"
-        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">
-        Quantidade
-      </button>
-      <button
-        id="btnValor"
-        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">
-        Valor
-      </button>
-    </div>
-  </div>
-</div>
-
-
-  <!-- Gráfico de Faturamento Diário (80%) -->
-  <div class="w-full lg:w-9/12 bg-white p-6 rounded-lg shadow">
-    <h2 class="text-lg font-semibold mb-4">Faturamento Diário (Líquido, Descontos e Taxa)</h2>
-    <div id="chartFaturamentoDiario" style="width: 100%; height: 300px;"></div>
-  </div>
-</div>
-
-<!-- Grid com dois gráficos lado a lado -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-
-  <!-- Modo de Venda -->
-  <div class="bg-white p-6 rounded-lg shadow">
-    <h2 class="text-lg font-semibold mb-4">Participação por Modo de Venda</h2>
-    <div id="chartModosVenda" style="width: 100%; height: 250px;"></div>
-  </div>
-
-  <!-- Meio de Pagamento -->
-  <div class="bg-white p-6 rounded-lg shadow">
-    <h2 class="text-lg font-semibold mb-4">Participação por Meio de Pagamento</h2>
-    <div id="chartMeiosPagamento" style="width: 100%; height: 250px;"></div>
-  </div>
-
-</div>
-
-
-
-    <div class="bg-white p-6 rounded-lg shadow flex items-center justify-center" id="loader">
-        <div class="text-center">
-            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 animate-spin mx-auto"></div>
-            <div>Carregando dados...</div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const systemUnitId = urlParams.get('system_unit_id');
-    const token = urlParams.get('token');
-    let lojaid = null;
-    let chart;
-
-    function animateValue(id, start, end, duration, isCurrency = false) {
-        const element = document.getElementById(id);
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = start + progress * (end - start);
-            element.textContent = isCurrency
-                ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                : Math.floor(value);
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        window.requestAnimationFrame(step);
-    }
-
-    function setRange(tipo) {
-        const now = new Date();
-        const start = new Date();
-        if (tipo === 'ontem') {
-            start.setDate(now.getDate() - 1);
-        } else if (tipo === '7dias') {
-            start.setDate(now.getDate() - 7);
-        } else if (tipo === 'mes') {
-            start.setMonth(now.getMonth() - 1);
+        function animateValue(id, start, end, duration, isCurrency = false) {
+            const element = document.getElementById(id);
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = start + progress * (end - start);
+                element.textContent = isCurrency
+                    ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    : Math.floor(value);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
         }
 
-        document.getElementById('endDate').value = now.toISOString().split('T')[0];
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+        function setRange(tipo) {
+            const now = new Date();
+            const start = new Date();
+            if (tipo === 'ontem') {
+                start.setDate(now.getDate() - 1);
+            } else if (tipo === '7dias') {
+                start.setDate(now.getDate() - 7);
+            } else if (tipo === 'mes') {
+                start.setMonth(now.getMonth() - 1);
+            }
 
-        fetchData();
-    }
+            document.getElementById('endDate').value = now.toISOString().split('T')[0];
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
 
-    async function validarIntegracaoMenew() {
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'getLojaIdBySystemUnitId',
-                token: token,
-                data: { system_unit_id: systemUnitId }
-            });
+            fetchData();
+        }
 
-            const result = response.data;
+        async function validarIntegracaoMenew() {
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getLojaIdBySystemUnitId',
+                    token: token,
+                    data: { system_unit_id: systemUnitId }
+                });
 
-            if (result.success && result.lojaId) {
-                lojaid = result.lojaId;
-                setRange('7dias'); // dispara carregamento normal
-            } else {
+                const result = response.data;
+
+                if (result.success && result.lojaId) {
+                    lojaid = result.lojaId;
+                    setRange('7dias'); // dispara carregamento normal
+                } else {
+                    Swal.fire({
+                        title: 'Loja sem integração ativa',
+                        html: `<b>${result.nomeLoja || 'Loja desconhecida'}</b> não possui integração com a Menew.<br><br>Por favor, selecione outra loja.`,
+                        icon: 'error',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        confirmButtonText: 'Entendi',
+                        backdrop: true
+                    });
+                }
+            } catch (error) {
                 Swal.fire({
-                    title: 'Loja sem integração ativa',
-                    html: `<b>${result.nomeLoja || 'Loja desconhecida'}</b> não possui integração com a Menew.<br><br>Por favor, selecione outra loja.`,
+                    title: 'Erro ao verificar loja',
+                    text: 'Não foi possível validar a loja informada.',
                     icon: 'error',
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    confirmButtonText: 'Entendi',
-                    backdrop: true
+                    confirmButtonText: 'OK'
                 });
             }
-        } catch (error) {
-            Swal.fire({
-                title: 'Erro ao verificar loja',
-                text: 'Não foi possível validar a loja informada.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
         }
-    }
 
-    async function fetchData() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
+        async function fetchData() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
 
-        const dt_inicio = startDate + ' 00:00:00';
-        const dt_fim = endDate + ' 23:59:59';
+            const dt_inicio = startDate + ' 00:00:00';
+            const dt_fim = endDate + ' 23:59:59';
 
-        document.getElementById('loader').style.display = 'block';
+            document.getElementById('loader').style.display = 'block';
 
-        try {
-            const resumo = await axios.post(baseUrl, {
-                method: 'generateResumoFinanceiroPorLoja',
-                token,
-                data: { lojaid, dt_inicio, dt_fim }
-            });
+            try {
+                const resumo = await axios.post(baseUrl, {
+                    method: 'generateResumoFinanceiroPorLoja',
+                    token,
+                    data: { lojaid, dt_inicio, dt_fim }
+                });
 
-            const r = resumo.data;
-            animateValue('faturamentoTotal', 0, r.faturamento_bruto, 1000, true);
-            animateValue('descontos', 0, r.descontos, 1000, true);
-            animateValue('taxaServico', 0, r.taxa_servico, 1000, true);
-            animateValue('faturamentoLiquido', 0, r.faturamento_liquido, 1000, true);
-            animateValue('numClientes', 0, r.numero_clientes, 1000);
-            animateValue('ticketMedio', 0, r.ticket_medio, 1000, true);
+                const r = resumo.data;
+                animateValue('faturamentoTotal', 0, r.faturamento_bruto, 1000, true);
+                animateValue('descontos', 0, r.descontos, 1000, true);
+                animateValue('taxaServico', 0, r.taxa_servico, 1000, true);
+                animateValue('faturamentoLiquido', 0, r.faturamento_liquido, 1000, true);
+                animateValue('numClientes', 0, r.numero_clientes, 1000);
+                animateValue('ticketMedio', 0, r.ticket_medio, 1000, true);
 
-            await carregarResumoDiario();
-            await carregarModosVenda();
-            await carregarMeiosPagamento();
-            await carregarRankingProdutos();
-
+                await carregarResumoDiario();
+                await carregarModosVenda();
+                await carregarMeiosPagamento();
+                await carregarRankingProdutos();
 
 
-        } catch (err) {
-            alert('Erro ao carregar dados: ' + err.message);
-        } finally {
-            document.getElementById('loader').style.display = 'none';
+
+            } catch (err) {
+                alert('Erro ao carregar dados: ' + err.message);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
         }
-    }
 
         function renderChartDiario(dias) {
             const chartDom = document.getElementById('chartFaturamentoDiario');
@@ -368,259 +380,248 @@
         }
 
         function renderChartModosVenda(data) {
-    const chartDom = document.getElementById('chartModosVenda');
-    const myChart = echarts.init(chartDom);
+            const chartDom = document.getElementById('chartModosVenda');
+            const myChart = echarts.init(chartDom);
 
-    const option = {
-        tooltip: {
-            trigger: 'item',
-            formatter: ({ name, value, percent }) =>
-                `${name}<br>Valor: R$ ${parseFloat(value).toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2
-                })}<br>Participação: ${percent.toFixed(2)}%`
-        },
-        legend: {
-            top: '5%',
-            left: 'center'
-        },
-        series: [
-            {
-                name: 'Modos de Venda',
-                type: 'pie',
-                radius: ['40%', '70%'],
-                avoidLabelOverlap: false,
-                padAngle: 5,
-                itemStyle: {
-                    borderRadius: 10
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: ({ name, value, percent }) =>
+                        `${name}<br>Valor: R$ ${parseFloat(value).toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2
+                        })}<br>Participação: ${percent.toFixed(2)}%`
                 },
-                label: {
-                    show: false,
-                    position: 'center'
+                legend: {
+                    top: '5%',
+                    left: 'center'
                 },
-                emphasis: {
-                    label: {
-                        show: true,
-                        fontSize: 28                                                                                                                                                                                                                                                                    ,
-                        fontWeight: 'bold',
-                        formatter: function (params) {
-                            const modo = data.find(i => i.modoVenda === params.name);
-                            return `${modo.quantidade} Pedidos`;
-                        }
+                series: [
+                    {
+                        name: 'Modos de Venda',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        padAngle: 5,
+                        itemStyle: {
+                            borderRadius: 10
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 28,
+                                fontWeight: 'bold',
+                                formatter: function (params) {
+                                    const modo = data.find(i => i.modoVenda === params.name);
+                                    return `${modo.quantidade} Pedidos`;
+                                }
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: data.map(item => ({
+                            name: item.modoVenda,
+                            value: parseFloat(item.valor)
+                        }))
                     }
-                },
-                labelLine: {
-                    show: false
-                },
-                data: data.map(item => ({
-                    name: item.modoVenda,
-                    value: parseFloat(item.valor)
-                }))
-            }
-        ]
-    };
+                ]
+            };
 
-    myChart.setOption(option);
-}
+            myChart.setOption(option);
+        }
 
-function renderChartMeiosPagamento(data) {
-    const chartDom = document.getElementById('chartMeiosPagamento');
-    const myChart = echarts.init(chartDom);
+        function renderChartMeiosPagamento(data) {
+            const chartDom = document.getElementById('chartMeiosPagamento');
+            const myChart = echarts.init(chartDom);
 
-    // Ordena os dados do maior para o menor valor
-    const sorted = [...data].sort((a, b) => parseFloat(b.valor) - parseFloat(a.valor));
+            // Ordena os dados do maior para o menor valor
+            const sorted = [...data].sort((a, b) => parseFloat(b.valor) - parseFloat(a.valor));
 
-    const nomes = sorted.map(item => item.nome);
-    const valores = sorted.map(item => parseFloat(item.valor));
+            const nomes = sorted.map(item => item.nome);
+            const valores = sorted.map(item => parseFloat(item.valor));
 
-    const option = {
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: (params) => {
-                const item = sorted[params[0].dataIndex];
-                return `<b>${item.nome}</b><br>
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: (params) => {
+                        const item = sorted[params[0].dataIndex];
+                        return `<b>${item.nome}</b><br>
                         Valor: R$ ${parseFloat(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>
                         Participação: ${item.percentual.toFixed(2)}%`;
-            }
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            containLabel: true
-        },
-        xAxis: {
-            type: 'value',
-            axisLabel: {
-                formatter: val => val.toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                })
-            }
-        },
-        yAxis: {
-            type: 'category',
-            data: nomes,
-            axisLabel: {
-                formatter: name => name.length > 18 ? name.slice(0, 18) + '...' : name
-            }
-        },
-        series: [
-    {
-        name: 'Valor',
-        type: 'bar',
-        data: valores,
-        itemStyle: {
-            color: function (params) {
-                const nome = sorted[params.dataIndex].nome.toUpperCase();
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: val => val.toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                        })
+                    }
+                },
+                yAxis: {
+                    type: 'category',
+                    data: nomes,
+                    axisLabel: {
+                        formatter: name => name.length > 18 ? name.slice(0, 18) + '...' : name
+                    }
+                },
+                series: [
+                    {
+                        name: 'Valor',
+                        type: 'bar',
+                        data: valores,
+                        itemStyle: {
+                            color: function (params) {
+                                const nome = sorted[params.dataIndex].nome.toUpperCase();
 
-                if (nome.includes('IFOOD')) return '#ef4444';      // vermelho
-                if (nome.includes('PIX')) return '#10b981';        // verde
-                if (nome.includes('CREDITO') || nome.includes('DEBITO')) return '#3b82f6'; // azul
-                if (nome.includes('DINHEIRO')) return '#facc15';   // amarelo
+                                if (nome.includes('IFOOD')) return '#ef4444';      // vermelho
+                                if (nome.includes('PIX')) return '#10b981';        // verde
+                                if (nome.includes('CREDITO') || nome.includes('DEBITO')) return '#3b82f6'; // azul
+                                if (nome.includes('DINHEIRO')) return '#facc15';   // amarelo
 
-                return '#d1d5db'; // fallback cinza
-            },
-            borderRadius: [4, 4, 4, 4]
-        },
-        label: {
-            show: true,
-            position: 'right',
-            formatter: val => `R$ ${val.value.toLocaleString('pt-BR', {
-                minimumFractionDigits: 2
-            })}`
+                                return '#d1d5db'; // fallback cinza
+                            },
+                            borderRadius: [4, 4, 4, 4]
+                        },
+                        label: {
+                            show: true,
+                            position: 'right',
+                            formatter: val => `R$ ${val.value.toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2
+                            })}`
+                        }
+                    }
+                ]
+            };
+
+            myChart.setOption(option);
         }
-    }
-]
-    };
 
-    myChart.setOption(option);
-}
+        async function carregarMeiosPagamento() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
 
-async function carregarMeiosPagamento() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+            const dt_inicio = startDate + ' 00:00:00';
+            const dt_fim = endDate + ' 23:59:59';
 
-    const dt_inicio = startDate + ' 00:00:00';
-    const dt_fim = endDate + ' 23:59:59';
-
-    try {
-        const response = await axios.post(baseUrl, {
-            method: 'getResumoMeiosPagamento',
-            token,
-            data: { lojaid, dt_inicio, dt_fim }
-        });
-
-        if (response.data?.success) {
-            renderChartMeiosPagamento(response.data.data);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar meios de pagamento:', error);
-    }
-}
-
-
-
-
-
-async function carregarModosVenda() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-
-    const dt_inicio = startDate + ' 00:00:00';
-    const dt_fim = endDate + ' 23:59:59';
-
-    try {
-        const response = await axios.post(baseUrl, {
-            method: 'getResumoModosVenda',
-            token,
-            data: { lojaid, dt_inicio, dt_fim }
-        });
-
-        if (response.data?.success) {
-            renderChartModosVenda(response.data.data);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar modos de venda:', error);
-    }
-}
-
-
-
-
-
-
-
-
-    async function carregarResumoDiario() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-
-        const dt_inicio = startDate + ' 00:00:00';
-        const dt_fim = endDate + ' 23:59:59';
-
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'generateResumoFinanceiroPorLojaDiario',
-                token,
-                data: { lojaid, dt_inicio, dt_fim }
-            });
-
-            const dias = response.data.data;
-
-            const invalidos = dias.filter(d => d.valido === false);
-            if (invalidos.length > 0) {
-                Swal.fire({
-                    title: 'Atenção',
-                    icon: 'warning',
-                    html: `Foram encontrados ${invalidos.length} dia(s) com divergência no cálculo.<br><b>${invalidos.map(d => d.dataContabil).join(', ')}</b>`,
-                    confirmButtonText: 'Ok',
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getResumoMeiosPagamento',
+                    token,
+                    data: { lojaid, dt_inicio, dt_fim }
                 });
+
+                if (response.data?.success) {
+                    renderChartMeiosPagamento(response.data.data);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar meios de pagamento:', error);
             }
-
-            renderChartDiario(dias);
-
-        } catch (err) {
-            console.error('Erro ao carregar resumo diário:', err);
         }
-    }
 
-    // === RANKING DE PRODUTOS ===
-let rankingData = {};
-let isMaisVendidos = true;
-let isTipoQuantidade = true;
+        async function carregarModosVenda() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
 
-async function carregarRankingProdutos() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+            const dt_inicio = startDate + ' 00:00:00';
+            const dt_fim = endDate + ' 23:59:59';
 
-    const dt_inicio = startDate + ' 00:00:00';
-    const dt_fim = endDate + ' 23:59:59';
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getResumoModosVenda',
+                    token,
+                    data: { lojaid, dt_inicio, dt_fim }
+                });
 
-    try {
-        const response = await axios.post(baseUrl, {
-            method: 'getRankingVendasProdutos',
-            token,
-            data: { lojaid, dt_inicio, dt_fim }
-        });
-
-        if (response.data?.success) {
-            rankingData = response.data.data;
-            renderRankingTable();
+                if (response.data?.success) {
+                    renderChartModosVenda(response.data.data);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar modos de venda:', error);
+            }
         }
-    } catch (error) {
-        console.error('Erro ao carregar ranking de produtos:', error);
-    }
-}
 
-function renderRankingTable() {
-    const tipo = isTipoQuantidade ? 'quantidade' : 'valor';
-    const lado = isMaisVendidos ? 'mais' : 'menos';
-    const key = `${lado}_vendidos_${tipo}`;
-    const dados = rankingData[key] || [];
+        async function carregarResumoDiario() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
 
-    const tbody = document.getElementById('rankingTableBody');
-    tbody.innerHTML = dados.map((item, index) => `
+            const dt_inicio = startDate + ' 00:00:00';
+            const dt_fim = endDate + ' 23:59:59';
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'generateResumoFinanceiroPorLojaDiario',
+                    token,
+                    data: { lojaid, dt_inicio, dt_fim }
+                });
+
+                const dias = response.data.data;
+
+                const invalidos = dias.filter(d => d.valido === false);
+                if (invalidos.length > 0) {
+                    Swal.fire({
+                        title: 'Atenção',
+                        icon: 'warning',
+                        html: `Foram encontrados ${invalidos.length} dia(s) com divergência no cálculo.<br><b>${invalidos.map(d => d.dataContabil).join(', ')}</b>`,
+                        confirmButtonText: 'Ok',
+                    });
+                }
+
+                renderChartDiario(dias);
+
+            } catch (err) {
+                console.error('Erro ao carregar resumo diário:', err);
+            }
+        }
+
+        // === RANKING DE PRODUTOS ===
+        let rankingData = {};
+        let isMaisVendidos = true;
+        let isTipoQuantidade = true;
+
+        async function carregarRankingProdutos() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            const dt_inicio = startDate + ' 00:00:00';
+            const dt_fim = endDate + ' 23:59:59';
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getRankingVendasProdutos',
+                    token,
+                    data: { lojaid, dt_inicio, dt_fim }
+                });
+
+                if (response.data?.success) {
+                    rankingData = response.data.data;
+                    renderRankingTable();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar ranking de produtos:', error);
+            }
+        }
+
+        function renderRankingTable() {
+            const tipo = isTipoQuantidade ? 'quantidade' : 'valor';
+            const lado = isMaisVendidos ? 'mais' : 'menos';
+            const key = `${lado}_vendidos_${tipo}`;
+            const dados = rankingData[key] || [];
+
+            const tbody = document.getElementById('rankingTableBody');
+            tbody.innerHTML = dados.map((item, index) => `
         <tr class="border-b hover:bg-gray-50">
             <td class="px-1 py-1">${index + 1}</td>
             <td class="px-1 py-1">${item.nome_produto}</td>
@@ -632,50 +633,49 @@ function renderRankingTable() {
         </tr>
     `).join('');
 
-    document.getElementById('headerTipo').textContent = isTipoQuantidade ? 'Qtd' : 'Valor (R$)';
-}
-// Toggle: Mais/Menos Vendidos
-document.getElementById('btnMais').addEventListener('click', () => {
-    isMaisVendidos = true;
-    document.getElementById('btnMais').classList.add('bg-blue-600', 'text-white');
-    document.getElementById('btnMenos').classList.remove('bg-blue-600', 'text-white');
-    document.getElementById('btnMenos').classList.add('bg-white', 'text-gray-700');
-    document.getElementById('btnMais').classList.remove('bg-white', 'text-gray-700');
-    renderRankingTable();
-});
+            document.getElementById('headerTipo').textContent = isTipoQuantidade ? 'Qtd' : 'Valor (R$)';
+        }
+        // Toggle: Mais/Menos Vendidos
+        document.getElementById('btnMais').addEventListener('click', () => {
+            isMaisVendidos = true;
+            document.getElementById('btnMais').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('btnMenos').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('btnMenos').classList.add('bg-white', 'text-gray-700');
+            document.getElementById('btnMais').classList.remove('bg-white', 'text-gray-700');
+            renderRankingTable();
+        });
 
-document.getElementById('btnMenos').addEventListener('click', () => {
-    isMaisVendidos = false;
-    document.getElementById('btnMenos').classList.add('bg-blue-600', 'text-white');
-    document.getElementById('btnMais').classList.remove('bg-blue-600', 'text-white');
-    document.getElementById('btnMais').classList.add('bg-white', 'text-gray-700');
-    document.getElementById('btnMenos').classList.remove('bg-white', 'text-gray-700');
-    renderRankingTable();
-});
+        document.getElementById('btnMenos').addEventListener('click', () => {
+            isMaisVendidos = false;
+            document.getElementById('btnMenos').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('btnMais').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('btnMais').classList.add('bg-white', 'text-gray-700');
+            document.getElementById('btnMenos').classList.remove('bg-white', 'text-gray-700');
+            renderRankingTable();
+        });
 
-// Toggle: Quantidade/Valor
-document.getElementById('btnQtd').addEventListener('click', () => {
-    isTipoQuantidade = true;
-    document.getElementById('btnQtd').classList.add('bg-blue-600', 'text-white');
-    document.getElementById('btnValor').classList.remove('bg-blue-600', 'text-white');
-    document.getElementById('btnValor').classList.add('bg-white', 'text-gray-700');
-    document.getElementById('btnQtd').classList.remove('bg-white', 'text-gray-700');
-    renderRankingTable();
-});
+        // Toggle: Quantidade/Valor
+        document.getElementById('btnQtd').addEventListener('click', () => {
+            isTipoQuantidade = true;
+            document.getElementById('btnQtd').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('btnValor').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('btnValor').classList.add('bg-white', 'text-gray-700');
+            document.getElementById('btnQtd').classList.remove('bg-white', 'text-gray-700');
+            renderRankingTable();
+        });
 
-document.getElementById('btnValor').addEventListener('click', () => {
-    isTipoQuantidade = false;
-    document.getElementById('btnValor').classList.add('bg-blue-600', 'text-white');
-    document.getElementById('btnQtd').classList.remove('bg-blue-600', 'text-white');
-    document.getElementById('btnQtd').classList.add('bg-white', 'text-gray-700');
-    document.getElementById('btnValor').classList.remove('bg-white', 'text-gray-700');
-    renderRankingTable();
-});
+        document.getElementById('btnValor').addEventListener('click', () => {
+            isTipoQuantidade = false;
+            document.getElementById('btnValor').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('btnQtd').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('btnQtd').classList.add('bg-white', 'text-gray-700');
+            document.getElementById('btnValor').classList.remove('bg-white', 'text-gray-700');
+            renderRankingTable();
+        });
 
-
-
-    window.onload = validarIntegracaoMenew;
-</script>
+        window.onload = validarIntegracaoMenew;
+    </script>
 
 </body>
+
 </html>
