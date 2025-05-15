@@ -1447,6 +1447,127 @@ class MovimentacaoController
         return $stmt->execute();
     }
 
+    public static function extratoInsumo($systemUnitId, $produto, $dtInicio, $dtFim): array
+    {
+        try {
+            global $pdo;
+
+            // 1. Buscar saldo inicial (último balanço antes da data de início)
+            $stmt = $pdo->prepare("
+            SELECT doc, quantidade
+            FROM movimentacao
+            WHERE system_unit_id = :unitId
+              AND produto = :produto
+              AND tipo_mov = 'balanco'
+              AND status = 1
+              AND data < :data_inicio
+            ORDER BY data DESC, id DESC
+            LIMIT 1
+        ");
+            $stmt->execute([
+                ':unitId' => $systemUnitId,
+                ':produto' => $produto,
+                ':data_inicio' => $dtInicio
+            ]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $saldoInicial = $row ? (float)$row['quantidade'] : 0;
+            $docInicial = $row ? $row['doc'] : null;
+
+            // 2. Buscar todas as movimentações no período
+            $stmt = $pdo->prepare("
+            SELECT data, tipo_mov, doc, quantidade
+            FROM movimentacao
+            WHERE system_unit_id = :unitId
+              AND produto = :produto
+              AND status = 1
+              AND data BETWEEN :data_inicio AND :data_fim
+            ORDER BY data, id
+        ");
+            $stmt->execute([
+                ':unitId' => $systemUnitId,
+                ':produto' => $produto,
+                ':data_inicio' => $dtInicio,
+                ':data_fim' => $dtFim
+            ]);
+            $movs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. Agrupar por data
+            $dias = [];
+            foreach ($movs as $mov) {
+                $data = $mov['data'];
+                unset($mov['data']);
+                if (!isset($dias[$data])) {
+                    $dias[$data] = [
+                        'data' => $data,
+                        'movimentacoes' => [],
+                        'balanco' => null
+                    ];
+                }
+
+                if ($mov['tipo_mov'] === 'balanco') {
+                    $dias[$data]['balanco'] = [
+                        'doc' => $mov['doc'],
+                        'quantidade' => (float)$mov['quantidade']
+                    ];
+                } else {
+                    $dias[$data]['movimentacoes'][] = [
+                        'tipo_mov' => $mov['tipo_mov'],
+                        'doc' => $mov['doc'],
+                        'quantidade' => (float)$mov['quantidade']
+                    ];
+                }
+            }
+
+            // 4. Reordenar e calcular saldos
+            $extrato = [];
+            $saldoAtual = $saldoInicial;
+            $docAnterior = $docInicial;
+
+            foreach ($dias as $dia) {
+                $entradaTotal = 0;
+                $saidaTotal = 0;
+
+                foreach ($dia['movimentacoes'] as $m) {
+                    if ($m['tipo_mov'] === 'entrada') {
+                        $entradaTotal += $m['quantidade'];
+                    } elseif ($m['tipo_mov'] === 'saida') {
+                        $saidaTotal += $m['quantidade'];
+                    }
+                }
+
+                $saldoAtual += $entradaTotal - $saidaTotal;
+
+                $extrato[] = [
+                    'data' => $dia['data'],
+                    'saldo_anterior' => $docAnterior ? [
+                        'doc' => $docAnterior,
+                        'quantidade' => $saldoAtual + $saidaTotal - $entradaTotal
+                    ] : null,
+                    'movimentacoes' => $dia['movimentacoes'],
+                    'saldo_estimado' => $saldoAtual,
+                    'balanco' => $dia['balanco']
+                ];
+
+                if ($dia['balanco']) {
+                    $docAnterior = $dia['balanco']['doc'];
+                    $saldoAtual = $dia['balanco']['quantidade'];
+                }
+            }
+
+            return [
+                'saldo_inicial' => $saldoInicial,
+                'extrato' => $extrato
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'error' => 'Erro interno: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
 
 }
 

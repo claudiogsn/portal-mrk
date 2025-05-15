@@ -2,390 +2,191 @@
 <html lang="pt-br">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Lista de Movimentações por Data</title>
-    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Extrato do Insumo</title>
+  <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Fonts e Ícones -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Fonts e Ícones -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-    <!-- CSS -->
-    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+  <!-- CSS -->
+  <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+  <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+  <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+  <link href="bsb/css/style.css" rel="stylesheet">
+  <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
 
-    <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
-        }
+  <style>
+    .header-card {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      border-radius: 10px;
+    }
 
-        .spinner {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-        }
+    .timeline-day {
+      margin-bottom: 20px;
+    }
 
-        .filter-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-    </style>
+    .movimentacao {
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      color: white;
+    }
+
+    .entrada {
+      background-color: #4CAF50;
+    }
+
+    .saida {
+      background-color: #F44336;
+    }
+
+    .balanco {
+      background-color: #2196F3;
+    }
+  </style>
 </head>
 
 <body class="theme-blue">
-
-    <!-- Carregador -->
-    <div class="page-loader-wrapper">
-        <div class="loader">
-            <div class="preloader">
-                <div class="spinner-layer pl-blue">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-            </div>
-            <p>Aguarde...</p>
+  <div class="page-loader-wrapper">
+    <div class="loader">
+      <div class="preloader">
+        <div class="spinner-layer pl-blue">
+          <div class="circle-clipper left">
+            <div class="circle"></div>
+          </div>
+          <div class="circle-clipper right">
+            <div class="circle"></div>
+          </div>
         </div>
+      </div>
+      <p>Aguarde...</p>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="header-card">
+      <div class="row">
+        <div class="col-md-4">
+          <label for="dataInicial">Data Inicial</label>
+          <input type="date" id="dataInicial" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label for="dataFinal">Data Final</label>
+          <input type="date" id="dataFinal" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label for="insumo_id">ID do Insumo</label>
+          <input type="number" id="insumo_id" class="form-control" value="11000">
+        </div>
+        <div class="col-md-1 text-right">
+          <button id="btnFiltrar" class="btn btn-primary">Buscar</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Conteúdo -->
-    <div class="container-fluid">
-              <div class="header-card">
-            <div class="row">
-                <div class="col-md-2">
-                    <label for="dataInicial">Data Inicial</label>
-                    <input type="date" id="dataInicial" class="form-control" placeholder="Data Inicial">
-                </div>
-                <div class="col-md-2">
-                    <label for="dataFinal">Data Final</label>
-                    <input type="date" id="dataFinal" class="form-control" placeholder="Data Final">
-                </div>
-                <div class="col-md-2">
-                    <label for="filterOrigem">Origem</label>
-                    <select id="filterOrigem" class="form-control">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="filterDestino">Destino</label>
-                    <select id="filterDestino" class="form-control">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="filterTipo">Tipo</label>
-                    <select id="filterTipo" class="form-control">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div class="col-md-1">
-                    <label for="filterStatus">Status</label>
-                    <select id="filterStatus" class="form-control">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div class="col-md-1 text-right">
-                    <button id="btnFiltrar" class="btn btn-primary">Buscar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabela -->
-        <div class="card">
-            <div class="header">
-                <h2>Movimentações por Data</h2>
-            </div>
-            <div class="body table-responsive">
-                <div class="table-container position-relative">
-                    <div class="spinner">
-                        <div class="preloader pl-size-xs">
-                            <div class="spinner-layer pl-blue">
-                                <div class="circle-clipper left">
-                                    <div class="circle"></div>
-                                </div>
-                                <div class="circle-clipper right">
-                                    <div class="circle"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <table id="movimentacoesTable" class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Doc</th>
-                                <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Origem</th>
-                                <th>Destino</th>
-                                <th>Usuário</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Conteúdo Dinâmico -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <div class="card">
+      <div class="header">
+        <h2>Extrato por Dia</h2>
+        <small id="saldo_inicial" class="text-primary font-bold">Saldo inicial: -</small>
+      </div>
+      <div class="body">
+        <div id="timeline"></div>
+      </div>
     </div>
+  </div>
 
-    <!-- Modal Detalhes -->
-    <div id="movimentacaoModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detalhes da Movimentação</h5>
-                    <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th>Quantidade</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detalhesMovimentacao">
-                            <!-- Conteúdo Dinâmico -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="bsb/plugins/node-waves/waves.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+  <script>
+    $(document).ready(function () {
+      const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    <script>
-        $(document).ready(function () {
-            const baseUrl = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-                'http://localhost/portal-mrk/api/v1/index.php';
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const unitId = urlParams.get('unit_id');
 
+      function showLoader() {
+        $('.page-loader-wrapper').fadeIn();
+      }
 
-            
+      function hideLoader() {
+        $('.page-loader-wrapper').fadeOut();
+      }
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const unitId = urlParams.get('unit_id');
+      $('#btnFiltrar').on('click', async function () {
+        const dt_inicio = $('#dataInicial').val();
+        const dt_fim = $('#dataFinal').val();
+        const insumo_id = $('#insumo_id').val();
 
+        if (!dt_inicio || !dt_fim) {
+          Swal.fire('Erro', 'Preencha as datas!', 'error');
+          return;
+        }
 
-            const baseUrlRedirect = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br/index.php' :
-                'http://localhost/portal-mrk/index.php';
+        showLoader();
 
-            function showLoader() {
-                $('.page-loader-wrapper').fadeIn();
+        try {
+          const response = await axios.post(baseUrl, {
+            method: 'extratoInsumo',
+            token: token,
+            data: {
+              system_unit_id: parseInt(unitId),
+              insumo_id: parseInt(insumo_id),
+              dt_inicio,
+              dt_fim
             }
+          });
 
-            function hideLoader() {
-                $('.page-loader-wrapper').fadeOut();
-            }
+          const result = response.data;
+          $('#saldo_inicial').text('Saldo inicial: ' + result.saldo_inicial);
 
-            // Carregar movimentações
-            async function loadMovements(dataInicial, dataFinal) {
-                showLoader();
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'listarMovimentacoesPorData',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            data_inicial: dataInicial,
-                            data_final: dataFinal
-                        }
-                    });
+          const timeline = $('#timeline');
+          timeline.empty();
 
-                    if (response.data) {
-                        renderMovements(response.data);
-                        populateFilters(response.data); // Preencher filtros
-                    } else {
-                        Swal.fire("Erro", "Erro ao carregar movimentações.", "error");
-                    }
-                } catch (error) {
-                    console.error('Erro ao carregar movimentações:', error);
-                } finally {
-                    hideLoader();
-                }
-            }
+          result.extrato.forEach(item => {
+            const box = $('<div class="timeline-day"></div>');
+            box.append(`<h5><b>${formatarData(item.data)}</b></h5>`);
 
-            $('#filterTipo, #filterOrigem, #filterDestino, #filterStatus').on('change', applyFilters);
-
-
-            // Renderizar movimentações
-            function renderMovements(movements) {
-                const tbody = $('#movimentacoesTable tbody');
-                tbody.empty();
-
-                movements.forEach(movement => {
-                    const formatarData = (data) => {
-                        if (!data) return 'N/A';
-                        const [ano, mes, dia] = data.split("-");
-                        return `${dia}/${mes}/${ano}`;
-                    };
-                    const row = $(`
-            <tr>
-                <td>${movement.doc}</td>
-                <td>${formatarData(movement.data)}</td>
-                <td>${movement.tipo_movimentacao}</td>
-                <td>${movement.nome_unidade_origem || 'N/A'}</td>
-                <td>${movement.nome_unidade_destino || 'N/A'}</td>
-                <td>${movement.username || 'N/A'}</td>
-                <td>${movement.status}</td>
-                <td>
-                    <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
-                </td>
-            </tr>
-        `);
-
-                    tbody.append(row);
-
-                    row.find('.btnDetalhes').on('click', function () {
-                        const doc = $(this).data('doc');
-                        loadMovementDetails(doc);
-                    });
-                });
-
-                applyFilters(); // Aplicar filtros após renderizar
-            }
-
-
-            // Carregar detalhes
-            async function loadMovementDetails(doc) {
-                showLoader();
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'getMovimentacao',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            doc: doc
-                        }
-                    });
-
-                    if (response.data) {
-                        renderDetailsModal(response.data);
-                        $('#movimentacaoModal').modal('show');
-                    } else {
-                        Swal.fire("Erro", "Erro ao carregar detalhes da movimentação.", "error");
-                    }
-                } catch (error) {
-                    console.error('Erro ao carregar detalhes:', error);
-                } finally {
-                    hideLoader();
-                }
-            }
-
-            function renderDetailsModal(details) {
-                const tbody = $('#detalhesMovimentacao');
-                tbody.empty();
-
-                details.forEach(item => {
-                    const row = $(`
-                        <tr>
-                            <td>${item.produto} - ${item.product_name}</td>
-                            <td>${item.quantidade}</td>
-                        </tr>
-                    `);
-                    tbody.append(row);
-                });
-            }
-
-            // Data padrão de hoje
-            const today = new Date().toISOString().split('T')[0];
-            $('#dataInicial').val(today);
-            $('#dataFinal').val(today);
-            loadMovements(today, today);
-
-            // Filtrar por data
-            $('#btnFiltrar').on('click', function () {
-                const dataInicial = $('#dataInicial').val();
-                const dataFinal = $('#dataFinal').val();
-                loadMovements(dataInicial, dataFinal);
+            item.movimentacoes.forEach(mov => {
+              const cor = mov.tipo_mov === 'entrada' ? 'entrada' : mov.tipo_mov === 'saida' ? 'saida' : 'balanco';
+              const simbolo = mov.tipo_mov === 'entrada' ? '+' : mov.tipo_mov === 'saida' ? '-' : '=';
+              const movBox = $(`<div class="movimentacao ${cor}">${simbolo} <b>${mov.quantidade}</b> | Doc: ${mov.doc}</div>`);
+              box.append(movBox);
             });
 
-            function populateFilters(movements) {
-                const tipos = new Set();
-                const origens = new Set();
-                const destinos = new Set();
-                const status = new Set();
+            timeline.append(box);
+          });
+        } catch (err) {
+          Swal.fire('Erro', 'Não foi possível carregar o extrato.', 'error');
+          console.error(err);
+        } finally {
+          hideLoader();
+        }
+      });
 
-                movements.forEach(movement => {
-                    tipos.add(movement.tipo_movimentacao);
-                    origens.add(movement.nome_unidade_origem || 'N/A');
-                    destinos.add(movement.nome_unidade_destino || 'N/A');
-                    status.add(movement.status);
-                });
+      function formatarData(dataStr) {
+        const [ano, mes, dia] = dataStr.split('-');
+        return `${dia}/${mes}/${ano}`;
+      }
 
-                const populateSelect = (selectId, items) => {
-                    const select = $(`#${selectId}`);
-                    select.empty();
-                    select.append('<option value="">Todos</option>');
-                    items.forEach(item => {
-                        select.append(`<option value="${item}">${item}</option>`);
-                    });
-                };
-
-                populateSelect('filterTipo', tipos);
-                populateSelect('filterOrigem', origens);
-                populateSelect('filterDestino', destinos);
-                populateSelect('filterStatus', status);
-            }
-
-            function applyFilters() {
-                const tipo = $('#filterTipo').val();
-                const origem = $('#filterOrigem').val();
-                const destino = $('#filterDestino').val();
-                const status = $('#filterStatus').val();
-
-                $('#movimentacoesTable tbody tr').each(function () {
-                    const row = $(this);
-                    const matchesTipo = !tipo || row.find('td:nth-child(3)').text() === tipo;
-                    const matchesOrigem = !origem || row.find('td:nth-child(4)').text() === origem;
-                    const matchesDestino = !destino || row.find('td:nth-child(5)').text() === destino;
-                    const matchesStatus = !status || row.find('td:nth-child(6)').text() === status;
-
-                    if (matchesTipo && matchesOrigem && matchesDestino && matchesStatus) {
-                        row.show();
-                    } else {
-                        row.hide();
-                    }
-                });
-            }
-
-        });
-    </script>
+      // Preencher campos com hoje
+      const hoje = new Date().toISOString().split('T')[0];
+      $('#dataInicial').val(hoje);
+      $('#dataFinal').val(hoje);
+    });
+  </script>
 </body>
 
 </html>

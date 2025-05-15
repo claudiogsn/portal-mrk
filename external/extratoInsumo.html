@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Extrato do Insumo</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Fonts e Ícones -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- CSS -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <style>
+        .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .timeline-day {
+            margin-bottom: 30px;
+        }
+
+        .timeline-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .timeline-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .timeline-item.entrada {
+            background-color: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+
+        .timeline-item.saida {
+            background-color: #ffe5b4;
+            border-left: 5px solid #ff9800;
+        }
+
+        .timeline-item.balanco {
+            background-color: #e0f7ff;
+            border-left: 5px solid #007bff;
+        }
+
+        .timeline-item.saldo-final {
+            background-color: #fefefe;
+            border-left: 5px solid #6c757d;
+        }
+
+        .timeline-arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #888;
+            margin: 10px 0;
+        }
+
+        .timeline-label {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #333;
+        }
+
+        .timeline-connector {
+            width: 3px;
+            height: 50px;
+            background-color: #ccc;
+            margin: 10px auto;
+        }
+
+
+        .timeline-day {
+            padding-bottom: 40px;
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+
+    <div class="container-fluid">
+        <div class="header-card">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="dataInicial">Data Inicial</label>
+                    <input type="date" id="dataInicial" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="dataFinal">Data Final</label>
+                    <input type="date" id="dataFinal" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="item-description">Produto</label>
+                    <input type="hidden" id="item-id" name="item_id"> <!-- Esse vai na API -->
+                    <input type="text" id="item-description" class="form-control" readonly
+                        placeholder="Clique para selecionar um produto" data-toggle="modal" data-target="#itemModal">
+
+                </div>
+                <div class="col-md-1 text-right">
+                    <button id="btnFiltrar" class="btn btn-primary">Buscar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Seleção de Produto -->
+        <div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Selecionar Produto</h4>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" id="item-search" class="form-control"
+                            placeholder="Buscar por código ou descrição">
+                        <br />
+                        <table class="table table-bordered table-hover" id="item-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Unidade</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Conteúdo dinâmico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="card">
+            <div class="header">
+                <h2>Extrato por Dia</h2>
+                <small id="saldo_inicial" class="text-primary font-bold">Saldo inicial: -</small>
+            </div>
+            <div class="body">
+                <div id="timeline"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function () {
+            const baseUrl = window.location.hostname !== 'localhost'
+                ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+                : 'http://localhost/portal-mrk/api/v1/index.php';
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const unitId = urlParams.get('unit_id');
+
+            function showLoader() {
+                $('.page-loader-wrapper').fadeIn();
+            }
+
+            function hideLoader() {
+                $('.page-loader-wrapper').fadeOut();
+            }
+
+            $('.select-item').off('click').on('click', function () {
+                const id = $(this).data('codigo'); // ou .data('id') dependendo do seu backend
+                const nome = $(this).data('nome');
+
+                $('#item-id').val(id); // oculto que vai pra API
+                $('#item-description').val(nome); // visível para o usuário
+
+                $('#itemModal').modal('hide');
+            });
+
+            $('#item-description').on('click', function () {
+                loadItems(unitId); // ou use a unidade de origem se quiser customizar por unidade
+            });
+
+
+            $('#btnFiltrar').on('click', async function () {
+                const dt_inicio = $('#dataInicial').val();
+                const dt_fim = $('#dataFinal').val();
+                const insumo_id = $('#item-id').val(); // usa o campo oculto
+
+                if (!dt_inicio || !dt_fim) {
+                    Swal.fire('Erro', 'Preencha as datas!', 'error');
+                    return;
+                }
+
+                showLoader();
+
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'extratoInsumo',
+                        token: token,
+                        data: {
+                            system_unit_id: parseInt(unitId),
+                            insumo_id: parseInt(insumo_id),
+                            dt_inicio,
+                            dt_fim
+                        }
+                    });
+
+                    const result = response.data;
+                    $('#saldo_inicial').text('Saldo inicial: ' + result.saldo_inicial);
+
+                    const timeline = $('#timeline');
+                    timeline.empty();
+
+                    result.extrato.forEach((item, index) => {
+                        // Linha de conexão antes de cada dia, exceto o primeiro
+                        if (index > 0) {
+                            timeline.append('<div class="timeline-connector"></div>');
+                        }
+
+                        const box = $('<div class="timeline-day" style="max-width: 25%; margin: 0 auto;"></div>');
+                        box.append(`<div class="timeline-label" style="font-size: 20px; text-align: center; margin-bottom: 10px;">${formatarData(item.data)}</div>`);
+
+                        // Saldo anterior
+                        if (item.saldo_anterior) {
+                            box.append(`<div class="timeline-item balanco">+ Tipo: Saldo Anterior | Documento: ${item.saldo_anterior.doc} | Quantidade: ${item.saldo_anterior.quantidade}</div>`);
+                        }
+
+                        // Entradas e saídas
+                        item.movimentacoes.forEach(mov => {
+                            const classe = mov.tipo_mov === 'entrada' ? 'entrada' : 'saida';
+                            const tipoLabel = mov.tipo_mov === 'entrada' ? 'Entrada' : 'Saída';
+                            const sinal = mov.tipo_mov === 'entrada' ? '+' : '-';
+                            box.append(`<div class="timeline-item ${classe}">${sinal} Tipo: ${tipoLabel} | Documento: ${mov.doc} | Quantidade: ${mov.quantidade}</div>`);
+                        });
+
+                        // Saldo estimado
+                        box.append(`<div class="timeline-item saldo-final">~ Saldo final estimado: ${item.saldo_estimado.toFixed(2)}</div>`);
+
+                        // Balanço do dia
+                        if (item.balanco) {
+                            box.append(`<div class="timeline-item balanco">= Tipo: Balanço | Documento: ${item.balanco.doc} | Quantidade: ${item.balanco.quantidade}</div>`);
+                        }
+
+                        timeline.append(box);
+                    });
+                } catch (err) {
+                    Swal.fire('Erro', 'Não foi possível carregar o extrato.', 'error');
+                    console.error(err);
+                } finally {
+                    hideLoader();
+                }
+            });
+
+            async function loadItems(unitId) {
+                if (!unitId) {
+                    Swal.fire('Atenção', 'Selecione a unidade de origem antes de buscar produtos.', 'warning');
+                    return;
+                }
+
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'listInsumos',
+                        token: token,
+                        data: { unit_id: unitId }
+                    });
+
+                    if (response.data.success) {
+                        const items = response.data.insumos;
+                        const tbody = $('#item-table tbody');
+                        tbody.empty();
+
+                        items.forEach(item => {
+                            const row = `
+            <tr>
+                <td>${item.codigo}</td>
+                <td>${item.nome}</td>
+                <td>
+                <button 
+                    class="btn btn-primary select-item"
+                    data-codigo="${item.codigo}" 
+                    data-nome="${item.nome}">
+                    Selecionar
+                </button>
+                </td>
+            </tr>
+            `;
+                            tbody.append(row);
+                        });
+
+                        // Filtro de busca
+                        $('#item-search').off('input').on('input', function () {
+                            const termo = $(this).val().toLowerCase();
+                            $('#item-table tbody tr').each(function () {
+                                const cod = $(this).find('td:nth-child(1)').text().toLowerCase();
+                                const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+                                $(this).toggle(cod.includes(termo) || nome.includes(termo));
+                            });
+                        });
+
+                        // Selecionar item
+                        $('.select-item').off('click').on('click', function () {
+                            const id = $(this).data('codigo');
+                            const nome = $(this).data('nome');
+
+                            $('#item-id').val(id); // campo oculto para envio
+                            $('#item-description').val(nome); // campo visível
+
+                            $('#itemModal').modal('hide');
+                        });
+
+                    } else {
+                        Swal.fire('Erro', 'Não foi possível carregar os produtos.', 'error');
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    Swal.fire('Erro', 'Erro ao buscar produtos.', 'error');
+                }
+            }
+
+
+            function formatarData(dataStr) {
+                const [ano, mes, dia] = dataStr.split('-');
+                return `${dia}/${mes}/${ano}`;
+            }
+
+            const hoje = new Date().toISOString().split('T')[0];
+            $('#dataInicial').val(hoje);
+            $('#dataFinal').val(hoje);
+        });
+    </script>
+
+
+</body>
+
+</html>

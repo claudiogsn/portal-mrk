@@ -203,6 +203,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'extratoInsumo':
+                if (isset($requestData['system_unit_id'], $requestData['insumo_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
+                    $response = MovimentacaoController::extratoInsumo($requestData['system_unit_id'], $requestData['insumo_id'], $requestData['dt_inicio'], $requestData['dt_fim']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, insumo_id, dt_inicio ou dt_fim ausentes'];
+                }
+                break;
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
                     $response = BiController::consolidateSalesByUnit($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim']);
