@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Financeiro</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        .animate-number { transition: all 1s ease-in-out; }
+        .loader { border-top-color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+<div class="p-6">
+    <div class="mb-6">
+        <div class="flex items-center gap-4 flex-wrap">
+            <button onclick="setRange('hoje')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Hoje</button>
+            <button onclick="setRange('ontem')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Ontem</button>
+            <button onclick="setRange('7dias')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Últimos 7 dias</button>
+            <button onclick="setRange('mes')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Último mês</button>
+
+            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
+            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="text-gray-500 text-sm">Faturamento Total</div>
+            <div class="text-2xl font-bold animate-number" id="faturamentoTotal">R$ 0,00</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="text-gray-500 text-sm">Descontos</div>
+            <div class="text-2xl font-bold animate-number" id="descontos">R$ 0,00</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="text-gray-500 text-sm">Taxa de Serviço</div>
+            <div class="text-2xl font-bold animate-number" id="taxaServico">R$ 0,00</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="text-gray-500 text-sm">Faturamento Líquido</div>
+            <div class="text-2xl font-bold animate-number" id="faturamentoLiquido">R$ 0,00</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="text-gray-500 text-sm">Nº Clientes</div>
+            <div class="text-2xl font-bold animate-number" id="numClientes">0</div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div class="text-gray-500 text-sm">Ticket Médio</div>
+            <div class="text-2xl font-bold animate-number" id="ticketMedio">R$ 0,00</div>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <h2 class="text-lg font-semibold mb-4">Faturamento por Hora</h2>
+        <canvas id="chartFaturamentoHora" height="100"></canvas>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow flex items-center justify-center" id="loader">
+        <div class="text-center">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 animate-spin mx-auto"></div>
+            <div>Carregando dados...</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const systemUnitId = urlParams.get('system_unit_id');
+    const token = urlParams.get('token');
+    let lojaid = null;
+    let chart;
+
+    function animateValue(id, start, end, duration, isCurrency = false) {
+        const element = document.getElementById(id);
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const value = start + progress * (end - start);
+            element.textContent = isCurrency
+                ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                : Math.floor(value);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    function setRange(tipo) {
+        const now = new Date();
+        const start = new Date();
+        if (tipo === 'ontem') {
+            start.setDate(now.getDate() - 1);
+        } else if (tipo === '7dias') {
+            start.setDate(now.getDate() - 7);
+        } else if (tipo === 'mes') {
+            start.setMonth(now.getMonth() - 1);
+        }
+
+        document.getElementById('endDate').value = now.toISOString().split('T')[0];
+        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+
+        fetchData();
+    }
+
+    async function validarIntegracaoMenew() {
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'getLojaIdBySystemUnitId',
+                token: token,
+                data: { system_unit_id: systemUnitId }
+            });
+
+            const result = response.data;
+
+            if (result.success && result.lojaId) {
+                lojaid = result.lojaId;
+                setRange('7dias'); // dispara carregamento normal
+            } else {
+                Swal.fire({
+                    title: 'Loja sem integração ativa',
+                    html: `<b>${result.nomeLoja || 'Loja desconhecida'}</b> não possui integração com a Menew.<br><br>Por favor, selecione outra loja.`,
+                    icon: 'error',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    confirmButtonText: 'Entendi',
+                    backdrop: true
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                title: 'Erro ao verificar loja',
+                text: 'Não foi possível validar a loja informada.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    }
+
+    async function fetchData() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        const dt_inicio = startDate + ' 00:00:00';
+        const dt_fim = endDate + ' 23:59:59';
+
+        document.getElementById('loader').style.display = 'block';
+
+        try {
+            const resumo = await axios.post(baseUrl, {
+                method: 'generateResumoFinanceiroPorLoja',
+                token,
+                data: { lojaid, dt_inicio, dt_fim }
+            });
+
+            const dash = await axios.post(baseUrl, {
+                method: 'getDashboardData',
+                token,
+                data: { dt_inicio, dt_fim }
+            });
+
+            const r = resumo.data;
+            animateValue('faturamentoTotal', 0, r.faturamento_bruto, 1000, true);
+            animateValue('descontos', 0, r.descontos, 1000, true);
+            animateValue('taxaServico', 0, r.taxa_servico, 1000, true);
+            animateValue('faturamentoLiquido', 0, r.faturamento_liquido, 1000, true);
+            animateValue('numClientes', 0, r.numero_clientes, 1000);
+            animateValue('ticketMedio', 0, r.ticket_medio, 1000, true);
+
+            renderChart(dash.data);
+        } catch (err) {
+            alert('Erro ao carregar dados: ' + err.message);
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    function renderChart(data) {
+        const ctx = document.getElementById('chartFaturamentoHora').getContext('2d');
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.hours,
+                datasets: data.lojas.map(loja => ({
+                    label: loja.nome,
+                    data: loja.valores,
+                    borderWidth: 2,
+                    fill: false
+                }))
+            },
+            options: {
+                animation: { duration: 2000 },
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    window.onload = validarIntegracaoMenew;
+</script>
+
+</body>
+</html>

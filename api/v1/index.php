@@ -499,11 +499,46 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             // Métodos para DashboardController
             case 'getDashboardData':
-                if (isset($requestData['unit_id'])) {
-                    $response = DashboardController::getDashboardData($requestData['unit_id']);
+                if (isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $dt_inicio = $requestData['dt_inicio'];
+                    $dt_fim = $requestData['dt_fim'];
+
+                    // Verifica se datas são válidas
+                    $inicio = DateTime::createFromFormat('Y-m-d H:i:s', $dt_inicio);
+                    $fim = DateTime::createFromFormat('Y-m-d H:i:s', $dt_fim);
+
+                    if (!$inicio || !$fim) {
+                        http_response_code(400);
+                        $response = ['error' => 'Datas inválidas. Use o formato Y-m-d H:i:s'];
+                    } elseif ($fim < $inicio) {
+                        http_response_code(400);
+                        $response = ['error' => 'A data final deve ser maior ou igual à data inicial.'];
+                    } else {
+                        $response = DashboardController::generateHourlySalesByStore($dt_inicio, $dt_fim);
+                    }
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                    $response = ['error' => 'Parâmetros dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'generateResumoFinanceiroPorLoja':
+                if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateResumoFinanceiroPorLoja(
+                        $requestData['lojaid'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros lojaid, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'getLojaIdBySystemUnitId':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = DashboardController::getLojaIdBySystemUnitId($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
 
