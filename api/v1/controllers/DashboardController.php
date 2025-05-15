@@ -33,8 +33,7 @@ class DashboardController {
         return $response;
     }
 
-
-    public static function generateHourlySalesByStore($start_datetime, $end_datetime)
+    public static function generateHourlySalesByStore($start_datetime, $end_datetime): array
     {
         global $pdo;
 
@@ -54,11 +53,11 @@ class DashboardController {
                     lojaId,
                     ANY_VALUE(loja) AS nome_loja,
                     hora,
-                    SUM(vlTotalRecebido) / COUNT(DISTINCT DATE(dataFechamento)) AS media_hora
+                    SUM(vlTotalRecebido) / COUNT(DISTINCT DATE(dataContabil)) AS media_hora
                 FROM 
                     movimento_caixa
                 WHERE 
-                    dataFechamento BETWEEN :start AND :end
+                    dataContabil BETWEEN :start AND :end
                     AND cancelado = 0
                     AND vlTotalRecebido > 0
                 GROUP BY 
@@ -105,7 +104,7 @@ class DashboardController {
         }
     }
 
-    public static function generateResumoFinanceiroPorLoja($lojaId, $dt_inicio, $dt_fim)
+    public static function generateResumoFinanceiroPorLoja($lojaId, $dt_inicio, $dt_fim): array
     {
         global $pdo;
 
@@ -120,7 +119,7 @@ class DashboardController {
                 movimento_caixa
             WHERE
                 lojaId = :lojaId
-                AND dataFechamento BETWEEN :dt_inicio AND :dt_fim
+                AND dataContabil BETWEEN :dt_inicio AND :dt_fim
                 AND cancelado = 0
         ");
 
@@ -154,6 +153,245 @@ class DashboardController {
             ];
         }
     }
+
+    public static function getResumoMeiosPagamento($lojaId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        // Primeiro, somar o total de valorRecebido no período
+        $sqlTotal = "SELECT SUM(valorRecebido) as total 
+                 FROM meios_pagamento 
+                 WHERE lojaId = :lojaId 
+                   AND data_pagamento BETWEEN :dt_inicio AND :dt_fim";
+
+        $stmtTotal = $pdo->prepare($sqlTotal);
+        $stmtTotal->execute([
+            ':lojaId' => $lojaId,
+            ':dt_inicio' => $dt_inicio,
+            ':dt_fim' => $dt_fim
+        ]);
+
+        $total = $stmtTotal->fetchColumn();
+
+        if (!$total || $total == 0) {
+            return ['success' => true, 'data' => [], 'total' => 0];
+        }
+
+        // Agora, agrupar por código e nome
+        $sqlResumo = "SELECT 
+                    codigo,
+                    nome,
+                    SUM(valorRecebido) as valor,
+                    ROUND(SUM(valorRecebido) / :total * 100, 2) as percentual
+                  FROM meios_pagamento
+                  WHERE lojaId = :lojaId
+                    AND data_pagamento BETWEEN :dt_inicio AND :dt_fim
+                  GROUP BY codigo, nome
+                  ORDER BY valor DESC";
+
+        $stmtResumo = $pdo->prepare($sqlResumo);
+        $stmtResumo->execute([
+            ':lojaId' => $lojaId,
+            ':dt_inicio' => $dt_inicio,
+            ':dt_fim' => $dt_fim,
+            ':total' => $total
+        ]);
+
+        $resumo = $stmtResumo->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'success' => true,
+            'total' => round($total, 2),
+            'data' => $resumo
+        ];
+    }
+
+    public static function getResumoModosVenda($lojaId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        // Soma total geral de faturamento
+        $sqlTotal = "SELECT SUM(vlTotalRecebido) as total 
+                 FROM movimento_caixa 
+                 WHERE lojaId = :lojaId
+                   AND dataContabil BETWEEN :dt_inicio AND :dt_fim";
+
+        $stmtTotal = $pdo->prepare($sqlTotal);
+        $stmtTotal->execute([
+            ':lojaId' => $lojaId,
+            ':dt_inicio' => $dt_inicio,
+            ':dt_fim' => $dt_fim
+        ]);
+
+        $total = $stmtTotal->fetchColumn();
+
+        if (!$total || $total == 0) {
+            return ['success' => true, 'data' => [], 'total' => 0];
+        }
+
+        // Agrupar por modoVenda com soma + contagem
+        $sql = "SELECT 
+                modoVenda,
+                COUNT(*) as quantidade,
+                SUM(vlTotalRecebido) as valor,
+                ROUND(SUM(vlTotalRecebido) / :total * 100, 2) as percentual
+            FROM movimento_caixa
+            WHERE lojaId = :lojaId
+              AND dataContabil BETWEEN :dt_inicio AND :dt_fim
+            GROUP BY modoVenda
+            ORDER BY valor DESC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':lojaId' => $lojaId,
+            ':dt_inicio' => $dt_inicio,
+            ':dt_fim' => $dt_fim,
+            ':total' => $total
+        ]);
+
+        $resumo = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'success' => true,
+            'total' => round($total, 2),
+            'data' => $resumo
+        ];
+    }
+
+    public static function generateResumoFinanceiroPorLojaDiario($lojaId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $sql = "
+            SELECT DISTINCT dataContabil AS data
+            FROM movimento_caixa
+            WHERE lojaId = :lojaId
+              AND dataContabil BETWEEN :dt_inicio AND :dt_fim
+              AND cancelado = 0
+            ORDER BY data ASC
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':lojaId' => $lojaId,
+                ':dt_inicio' => $dt_inicio,
+                ':dt_fim' => $dt_fim,
+            ]);
+
+            $datas = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            $resumo = [];
+
+            foreach ($datas as $data) {
+                $inicio = $data . ' 00:00:00';
+                $fim = $data . ' 23:59:59';
+
+                $info = self::generateResumoFinanceiroPorLoja($lojaId, $inicio, $fim);
+
+                $bruto = round((float) $info['faturamento_bruto'], 2);
+                $descontos = round((float) $info['descontos'], 2);
+                $taxaServico = round((float) $info['taxa_servico'], 2);
+                $liquido = round((float) $info['faturamento_liquido'], 2);
+
+                // Validação com tolerância de centavos
+                $esperado = round($bruto - $descontos - $taxaServico, 2);
+                $valido = abs($esperado - $liquido) < 0.01;
+
+                $resumo[] = [
+                    'dataContabil' => $data,
+                    'faturamento_bruto' => $bruto,
+                    'descontos' => $descontos,
+                    'taxa_servico' => $taxaServico,
+                    'faturamento_liquido' => $liquido,
+                    'valido' => $valido
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data' => $resumo
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar resumo diário: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public static function getRankingVendasProdutos($lojaId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $sql = "
+            SELECT
+                p.nome AS nome_produto,
+                s.cod_material,
+                SUM(s.quantidade) AS total_quantidade,
+                SUM(s.valor_liquido) AS total_valor
+            FROM _bi_sales s
+            INNER JOIN products p
+                ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id
+            WHERE s.custom_code = :lojaId
+              AND s.data_movimento BETWEEN :dt_inicio AND :dt_fim
+            GROUP BY s.cod_material, p.nome
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':lojaId' => $lojaId,
+                ':dt_inicio' => $dt_inicio,
+                ':dt_fim' => $dt_fim
+            ]);
+
+            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Organiza os 4 rankings
+            // Ordena por quantidade (descendente)
+            $produtosQtd = $produtos;
+            usort($produtosQtd, fn($a, $b) => $b['total_quantidade'] <=> $a['total_quantidade']);
+            $maisVendidosQtd = array_slice($produtosQtd, 0, 5);
+
+            // Ordena por valor (descendente)
+            $produtosValor = $produtos;
+            usort($produtosValor, fn($a, $b) => $b['total_valor'] <=> $a['total_valor']);
+            $maisVendidosValor = array_slice($produtosValor, 0, 5);
+
+            // Ordena por quantidade (ascendente, exclui zeros)
+            $produtosQtdAsc = array_filter($produtos, fn($p) => $p['total_quantidade'] > 0);
+            usort($produtosQtdAsc, fn($a, $b) => $a['total_quantidade'] <=> $b['total_quantidade']);
+            $menosVendidosQtd = array_slice($produtosQtdAsc, 0, 5);
+
+            // Ordena por valor (ascendente, exclui zeros)
+            $produtosValorAsc = array_filter($produtos, fn($p) => $p['total_valor'] > 0);
+            usort($produtosValorAsc, fn($a, $b) => $a['total_valor'] <=> $b['total_valor']);
+            $menosVendidosValor = array_slice($produtosValorAsc, 0, 5);
+
+            $filtrar = fn($item) => !in_array((int) $item['cod_material'], [9000, 9600]);
+
+            return [
+                'success' => true,
+                'data' => [
+                    'mais_vendidos_quantidade' => array_values(array_filter($maisVendidosQtd, $filtrar)),
+                    'mais_vendidos_valor' => array_values(array_filter($maisVendidosValor, $filtrar)),
+                    'menos_vendidos_quantidade' => array_values(array_filter($menosVendidosQtd, $filtrar)),
+                    'menos_vendidos_valor' => array_values(array_filter($menosVendidosValor, $filtrar)),
+                ]
+            ];
+
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao consultar ranking de vendas: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
+
 
 
 }

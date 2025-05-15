@@ -541,6 +541,55 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
+            case 'getResumoMeiosPagamento':
+                if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::getResumoMeiosPagamento(
+                        $requestData['lojaid'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
+            case 'getResumoModosVenda':
+                if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::getResumoModosVenda(
+                        $requestData['lojaid'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'generateResumoFinanceiroPorLojaDiario':
+                if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateResumoFinanceiroPorLojaDiario(
+                        $requestData['lojaid'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros lojaid, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'getRankingVendasProdutos':
+                if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::getRankingVendasProdutos(
+                        $requestData['lojaid'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros lojaid, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
 
             // Métodos para EstoqueController
             case 'createEstoque':

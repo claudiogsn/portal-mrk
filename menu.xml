@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <menu>
-  <menuitem label="Faturamento">
-    <icon>fas:money-bill fa-fw</icon>
+  <menuitem label="Business Intelligence (BI)">
+    <icon>fas:chart-bar fa-fw</icon>
     <menu>
-      <menuitem label="Faturamento Loja">
+      <menuitem label="Loja">
         <action>FaturamentoLojaView</action>
-        <icon>fab fa:stack-overflow fa-fw</icon>
+        <icon>fas:circle fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
@@ -14,11 +14,11 @@
     <menu>
       <menuitem label="Importar Dados">
         <action>ImportFinanceiro</action>
-        <icon>fas:coins fa-fw</icon>
+        <icon>fas:circle fa-fw</icon>
       </menuitem>
       <menuitem label="DRE Gerencial">
         <action>Dre</action>
-        <icon>fas:book fa-fw</icon>
+        <icon>fas:circle fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
@@ -26,15 +26,15 @@
     <icon>fas:warehouse fa-fw</icon>
     <menu>
       <menuitem label="Produtos">
-        <icon>fas:clipboard-list fa-fw</icon>
+        <icon>fas:boxes fa-fw</icon>
         <menu>
           <menuitem label="Cadastro de Produtos">
             <action>ProductsList</action>
-            <icon>fas:boxes fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Fichas Técnicas">
             <action>CompositionsList</action>
-            <icon>fas:clipboard-list fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
@@ -43,11 +43,11 @@
         <menu>
           <menuitem label="Modelos de Balanço">
             <action>CreateBalanco</action>
-            <icon>fas:plus-circle fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Relatório de Balanços">
             <action>ListBalanco</action>
-            <icon>fas:clipboard-list fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
@@ -56,11 +56,11 @@
         <menu>
           <menuitem label="Previsão de Demada - Loja">
             <action>TransferenciaAssitida</action>
-            <icon>fas:copy fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Previsão de Demada - Produção">
             <action>PrevisaoDemanda</action>
-            <icon>fas:dolly-flatbed fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
@@ -69,7 +69,7 @@
         <menu>
           <menuitem label="Previsão de Compras">
             <action>PrevisaoCompras</action>
-            <icon>fas:dolly-flatbed fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
@@ -78,7 +78,7 @@
         <menu>
           <menuitem label="Transferência Manual">
             <action>TransferenciaManual</action>
-            <icon>fas:dolly-flatbed fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
@@ -87,19 +87,19 @@
         <menu>
           <menuitem label="Aprovação de Movimentações">
             <action>AprovarMovimentacoes</action>
-            <icon>fas:check-double fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Consultar Movimentações">
             <action>ListarMovimentacoes</action>
-            <icon>fas:search fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Ajuste de Saldo">
             <action>AjusteSaldo</action>
-            <icon>fas:user-edit fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Ajuste de Preço de Custo">
             <action>AjustePrecoCusto</action>
-            <icon>fas:money-bill-wave fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>
@@ -112,11 +112,11 @@
         <menu>
           <menuitem label="Relatório de Diferenças">
             <action>RelatorioDiferencas</action>
-            <icon>fas:clipboard-list fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Consolidar Diferenças">
             <action>DiferencaEstoque</action>
-            <icon>fas:file-medical-alt fa-fw</icon>
+            <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
       </menuitem>

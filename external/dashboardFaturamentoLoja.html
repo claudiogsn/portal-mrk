@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
 
     <style>
         .animate-number { transition: all 1s ease-in-out; }
@@ -56,10 +58,105 @@
         </div>
     </div>
 
-    <div class="bg-white p-6 rounded-lg shadow mb-6">
-        <h2 class="text-lg font-semibold mb-4">Faturamento por Hora</h2>
-        <canvas id="chartFaturamentoHora" height="100"></canvas>
+    <!-- Faturamento Diário (altura reduzida) -->
+<!-- Layout: Tabela (20%) + Gráfico de Faturamento Diário (80%) -->
+<div class="flex flex-col lg:flex-row gap-6 mb-6">
+  <!-- Tabela com toggles (20%) -->
+  <div class="w-full lg:w-3/12 bg-white p-4 rounded-lg shadow flex flex-col justify-between">
+
+  <!-- Título com tooltip -->
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold">
+      Ranking de Produtos
+      <span class="relative group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 hover:text-blue-500 cursor-pointer" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 7h2V5H9v2Zm0 2v6h2V9H9Z"/>
+        </svg>
+        <div class="absolute z-10 hidden group-hover:block bg-white text-sm text-gray-700 border border-gray-300 p-2 rounded shadow w-64 mt-1 left-1/2 -translate-x-1/2">
+          Você pode alternar entre:
+          <ul class="list-disc pl-5 mt-1">
+            <li>Mais / Menos vendidos</li>
+            <li>Quantidade / Valor</li>
+          </ul>
+        </div>
+      </span>
+    </h2>
+  </div>
+
+  <!-- Tabela -->
+  <div class="overflow-y-auto max-h-[300px] mb-4">
+    <table class="min-w-full text-xs text-left border">
+      <thead>
+        <tr class="bg-gray-100 border-b">
+          <th class="px-1 py-1">#</th>
+          <th class="px-1 py-1">Produto</th>
+          <th class="px-1 py-1 text-right" id="headerTipo">Qtd</th>
+        </tr>
+      </thead>
+      <tbody id="rankingTableBody">
+        <!-- Populado dinamicamente -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Botões agrupados -->
+  <div class="flex flex-col gap-2">
+    <!-- Mais / Menos Vendidos -->
+    <div class="inline-flex rounded-md shadow-sm" role="group">
+      <button
+        id="btnMais"
+        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">
+        Mais Vendidos
+      </button>
+      <button
+        id="btnMenos"
+        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">
+        Menos Vendidos
+      </button>
     </div>
+
+    <!-- Quantidade / Valor -->
+    <div class="inline-flex rounded-md shadow-sm" role="group">
+      <button
+        id="btnQtd"
+        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">
+        Quantidade
+      </button>
+      <button
+        id="btnValor"
+        class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">
+        Valor
+      </button>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Gráfico de Faturamento Diário (80%) -->
+  <div class="w-full lg:w-9/12 bg-white p-6 rounded-lg shadow">
+    <h2 class="text-lg font-semibold mb-4">Faturamento Diário (Líquido, Descontos e Taxa)</h2>
+    <div id="chartFaturamentoDiario" style="width: 100%; height: 300px;"></div>
+  </div>
+</div>
+
+<!-- Grid com dois gráficos lado a lado -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  <!-- Modo de Venda -->
+  <div class="bg-white p-6 rounded-lg shadow">
+    <h2 class="text-lg font-semibold mb-4">Participação por Modo de Venda</h2>
+    <div id="chartModosVenda" style="width: 100%; height: 250px;"></div>
+  </div>
+
+  <!-- Meio de Pagamento -->
+  <div class="bg-white p-6 rounded-lg shadow">
+    <h2 class="text-lg font-semibold mb-4">Participação por Meio de Pagamento</h2>
+    <div id="chartMeiosPagamento" style="width: 100%; height: 250px;"></div>
+  </div>
+
+</div>
+
+
 
     <div class="bg-white p-6 rounded-lg shadow flex items-center justify-center" id="loader">
         <div class="text-center">
@@ -167,12 +264,6 @@
                 data: { lojaid, dt_inicio, dt_fim }
             });
 
-            const dash = await axios.post(baseUrl, {
-                method: 'getDashboardData',
-                token,
-                data: { dt_inicio, dt_fim }
-            });
-
             const r = resumo.data;
             animateValue('faturamentoTotal', 0, r.faturamento_bruto, 1000, true);
             animateValue('descontos', 0, r.descontos, 1000, true);
@@ -181,7 +272,13 @@
             animateValue('numClientes', 0, r.numero_clientes, 1000);
             animateValue('ticketMedio', 0, r.ticket_medio, 1000, true);
 
-            renderChart(dash.data);
+            await carregarResumoDiario();
+            await carregarModosVenda();
+            await carregarMeiosPagamento();
+            await carregarRankingProdutos();
+
+
+
         } catch (err) {
             alert('Erro ao carregar dados: ' + err.message);
         } finally {
@@ -189,30 +286,393 @@
         }
     }
 
-    function renderChart(data) {
-        const ctx = document.getElementById('chartFaturamentoHora').getContext('2d');
-        if (chart) chart.destroy();
+        function renderChartDiario(dias) {
+            const chartDom = document.getElementById('chartFaturamentoDiario');
+            const myChart = echarts.init(chartDom);
 
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.hours,
-                datasets: data.lojas.map(loja => ({
-                    label: loja.nome,
-                    data: loja.valores,
-                    borderWidth: 2,
-                    fill: false
+            const option = {
+                title: {
+                    text: 'Faturamento Diário (Líquido + Descontos + Taxa)',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: params => {
+                        return params.map(p =>
+                            `${p.marker} ${p.seriesName}: R$ ${p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        ).join('<br>');
+                    }
+                },
+                legend: {
+                    top: 25
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '5%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dias.map(d => d.dataContabil)
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: value => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                    }
+                },
+                series: [
+                    {
+                        name: 'Faturamento Líquido',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            formatter: val => `R$ ${val.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        },
+                        data: dias.map(d => d.faturamento_liquido)
+                    },
+                    {
+                        name: 'Descontos',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            formatter: val => `R$ ${val.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        },
+                        data: dias.map(d => d.descontos)
+                    },
+                    {
+                        name: 'Taxa de Serviço',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        label: {
+                            show: true,
+                            position: 'inside',
+                            formatter: val => `R$ ${val.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        },
+                        data: dias.map(d => d.taxa_servico)
+                    }
+
+                ]
+            };
+
+            myChart.setOption(option);
+        }
+
+        function renderChartModosVenda(data) {
+    const chartDom = document.getElementById('chartModosVenda');
+    const myChart = echarts.init(chartDom);
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            formatter: ({ name, value, percent }) =>
+                `${name}<br>Valor: R$ ${parseFloat(value).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2
+                })}<br>Participação: ${percent.toFixed(2)}%`
+        },
+        legend: {
+            top: '5%',
+            left: 'center'
+        },
+        series: [
+            {
+                name: 'Modos de Venda',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                padAngle: 5,
+                itemStyle: {
+                    borderRadius: 10
+                },
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: 28                                                                                                                                                                                                                                                                    ,
+                        fontWeight: 'bold',
+                        formatter: function (params) {
+                            const modo = data.find(i => i.modoVenda === params.name);
+                            return `${modo.quantidade} Pedidos`;
+                        }
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: data.map(item => ({
+                    name: item.modoVenda,
+                    value: parseFloat(item.valor)
                 }))
-            },
-            options: {
-                animation: { duration: 2000 },
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: true }
-                }
             }
-        });
+        ]
+    };
+
+    myChart.setOption(option);
+}
+
+function renderChartMeiosPagamento(data) {
+    const chartDom = document.getElementById('chartMeiosPagamento');
+    const myChart = echarts.init(chartDom);
+
+    // Ordena os dados do maior para o menor valor
+    const sorted = [...data].sort((a, b) => parseFloat(b.valor) - parseFloat(a.valor));
+
+    const nomes = sorted.map(item => item.nome);
+    const valores = sorted.map(item => parseFloat(item.valor));
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            formatter: (params) => {
+                const item = sorted[params[0].dataIndex];
+                return `<b>${item.nome}</b><br>
+                        Valor: R$ ${parseFloat(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>
+                        Participação: ${item.percentual.toFixed(2)}%`;
+            }
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'value',
+            axisLabel: {
+                formatter: val => val.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                })
+            }
+        },
+        yAxis: {
+            type: 'category',
+            data: nomes,
+            axisLabel: {
+                formatter: name => name.length > 18 ? name.slice(0, 18) + '...' : name
+            }
+        },
+        series: [
+    {
+        name: 'Valor',
+        type: 'bar',
+        data: valores,
+        itemStyle: {
+            color: function (params) {
+                const nome = sorted[params.dataIndex].nome.toUpperCase();
+
+                if (nome.includes('IFOOD')) return '#ef4444';      // vermelho
+                if (nome.includes('PIX')) return '#10b981';        // verde
+                if (nome.includes('CREDITO') || nome.includes('DEBITO')) return '#3b82f6'; // azul
+                if (nome.includes('DINHEIRO')) return '#facc15';   // amarelo
+
+                return '#d1d5db'; // fallback cinza
+            },
+            borderRadius: [4, 4, 4, 4]
+        },
+        label: {
+            show: true,
+            position: 'right',
+            formatter: val => `R$ ${val.value.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2
+            })}`
+        }
     }
+]
+    };
+
+    myChart.setOption(option);
+}
+
+async function carregarMeiosPagamento() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    const dt_inicio = startDate + ' 00:00:00';
+    const dt_fim = endDate + ' 23:59:59';
+
+    try {
+        const response = await axios.post(baseUrl, {
+            method: 'getResumoMeiosPagamento',
+            token,
+            data: { lojaid, dt_inicio, dt_fim }
+        });
+
+        if (response.data?.success) {
+            renderChartMeiosPagamento(response.data.data);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar meios de pagamento:', error);
+    }
+}
+
+
+
+
+
+async function carregarModosVenda() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    const dt_inicio = startDate + ' 00:00:00';
+    const dt_fim = endDate + ' 23:59:59';
+
+    try {
+        const response = await axios.post(baseUrl, {
+            method: 'getResumoModosVenda',
+            token,
+            data: { lojaid, dt_inicio, dt_fim }
+        });
+
+        if (response.data?.success) {
+            renderChartModosVenda(response.data.data);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar modos de venda:', error);
+    }
+}
+
+
+
+
+
+
+
+
+    async function carregarResumoDiario() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        const dt_inicio = startDate + ' 00:00:00';
+        const dt_fim = endDate + ' 23:59:59';
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'generateResumoFinanceiroPorLojaDiario',
+                token,
+                data: { lojaid, dt_inicio, dt_fim }
+            });
+
+            const dias = response.data.data;
+
+            const invalidos = dias.filter(d => d.valido === false);
+            if (invalidos.length > 0) {
+                Swal.fire({
+                    title: 'Atenção',
+                    icon: 'warning',
+                    html: `Foram encontrados ${invalidos.length} dia(s) com divergência no cálculo.<br><b>${invalidos.map(d => d.dataContabil).join(', ')}</b>`,
+                    confirmButtonText: 'Ok',
+                });
+            }
+
+            renderChartDiario(dias);
+
+        } catch (err) {
+            console.error('Erro ao carregar resumo diário:', err);
+        }
+    }
+
+    // === RANKING DE PRODUTOS ===
+let rankingData = {};
+let isMaisVendidos = true;
+let isTipoQuantidade = true;
+
+async function carregarRankingProdutos() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    const dt_inicio = startDate + ' 00:00:00';
+    const dt_fim = endDate + ' 23:59:59';
+
+    try {
+        const response = await axios.post(baseUrl, {
+            method: 'getRankingVendasProdutos',
+            token,
+            data: { lojaid, dt_inicio, dt_fim }
+        });
+
+        if (response.data?.success) {
+            rankingData = response.data.data;
+            renderRankingTable();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar ranking de produtos:', error);
+    }
+}
+
+function renderRankingTable() {
+    const tipo = isTipoQuantidade ? 'quantidade' : 'valor';
+    const lado = isMaisVendidos ? 'mais' : 'menos';
+    const key = `${lado}_vendidos_${tipo}`;
+    const dados = rankingData[key] || [];
+
+    const tbody = document.getElementById('rankingTableBody');
+    tbody.innerHTML = dados.map((item, index) => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-1 py-1">${index + 1}</td>
+            <td class="px-1 py-1">${item.nome_produto}</td>
+            <td class="px-1 py-1 text-right">
+                ${isTipoQuantidade
+                    ? item.total_quantidade
+                    : 'R$ ' + parseFloat(item.total_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('headerTipo').textContent = isTipoQuantidade ? 'Qtd' : 'Valor (R$)';
+}
+// Toggle: Mais/Menos Vendidos
+document.getElementById('btnMais').addEventListener('click', () => {
+    isMaisVendidos = true;
+    document.getElementById('btnMais').classList.add('bg-blue-600', 'text-white');
+    document.getElementById('btnMenos').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('btnMenos').classList.add('bg-white', 'text-gray-700');
+    document.getElementById('btnMais').classList.remove('bg-white', 'text-gray-700');
+    renderRankingTable();
+});
+
+document.getElementById('btnMenos').addEventListener('click', () => {
+    isMaisVendidos = false;
+    document.getElementById('btnMenos').classList.add('bg-blue-600', 'text-white');
+    document.getElementById('btnMais').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('btnMais').classList.add('bg-white', 'text-gray-700');
+    document.getElementById('btnMenos').classList.remove('bg-white', 'text-gray-700');
+    renderRankingTable();
+});
+
+// Toggle: Quantidade/Valor
+document.getElementById('btnQtd').addEventListener('click', () => {
+    isTipoQuantidade = true;
+    document.getElementById('btnQtd').classList.add('bg-blue-600', 'text-white');
+    document.getElementById('btnValor').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('btnValor').classList.add('bg-white', 'text-gray-700');
+    document.getElementById('btnQtd').classList.remove('bg-white', 'text-gray-700');
+    renderRankingTable();
+});
+
+document.getElementById('btnValor').addEventListener('click', () => {
+    isTipoQuantidade = false;
+    document.getElementById('btnValor').classList.add('bg-blue-600', 'text-white');
+    document.getElementById('btnQtd').classList.remove('bg-blue-600', 'text-white');
+    document.getElementById('btnQtd').classList.add('bg-white', 'text-gray-700');
+    document.getElementById('btnValor').classList.remove('bg-white', 'text-gray-700');
+    renderRankingTable();
+});
+
+
 
     window.onload = validarIntegracaoMenew;
 </script>
