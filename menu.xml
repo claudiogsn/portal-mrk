@@ -3,7 +3,11 @@
   <menuitem label="Business Intelligence (BI)">
     <icon>fas:chart-bar fa-fw</icon>
     <menu>
-      <menuitem label="Loja">
+      <menuitem label="Faturamento Grupo">
+        <action>DashboardFaturamento</action>
+        <icon>fas:circle fa-fw</icon>
+      </menuitem>
+      <menuitem label="Faturamento Loja">
         <action>FaturamentoLojaView</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>

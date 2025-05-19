@@ -602,6 +602,71 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros lojaid, dt_inicio e dt_fim são obrigatórios.'];
                 }
                 break;
+            case 'generateResumoFinanceiroPorGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateResumoFinanceiroPorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
+            case 'generateResumoFinanceiroPorGrupoDiario':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateResumoFinanceiroPorGrupoDiario(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
+            case 'getResumoModosVendaPorGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::getResumoModosVendaPorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
+            case 'getResumoMeiosPagamentoPorGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::getResumoMeiosPagamentoPorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
+            case 'getRankingVendasProdutosPorGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::getRankingVendasProdutosPorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
 
             // Métodos para EstoqueController
             case 'createEstoque':

@@ -16,7 +16,8 @@ class BiController {
 
         $stmt = $pdo->prepare("SELECT 
             rel.system_unit_id, 
-            su.custom_code 
+            su.custom_code,
+            su.name
         FROM 
             grupo_estabelecimento_rel AS rel 
         JOIN 
