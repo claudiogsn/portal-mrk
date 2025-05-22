@@ -230,7 +230,7 @@
                     Swal.fire('Erro', error.message, 'error');
                 }
             }
-            
+
             function renderRelatorio(data, visualizacao) {
                 const container = $('#relatorio');
                 container.empty();
@@ -257,7 +257,7 @@
                         ${
                         visualizacao === 'resumido'
                             ? '<th>Produto</th><th>Nome Produto</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
-                            : '<th>Data</th><th>Nome Produto</th><th>Saldo</th><th>Entradas</th><th>Saídas</th><th>Resultado</th><th>Balanco</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
+                            : '<th>Data</th><th>Nome Produto</th><th>Saldo Anterior</th><th>Entradas</th><th>Saídas</th><th>Resultado</th><th>Balanco</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
                     }
                     </tr>
                 </thead>
