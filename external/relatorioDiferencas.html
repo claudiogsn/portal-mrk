@@ -230,119 +230,120 @@
                     Swal.fire('Erro', error.message, 'error');
                 }
             }
-    
+            
             function renderRelatorio(data, visualizacao) {
                 const container = $('#relatorio');
                 container.empty();
-    
+
                 // Agrupando os dados por unidade
                 const unidades = groupBy(data, 'system_unit_id');
-    
+
                 Object.keys(unidades).forEach(unitId => {
                     const unidade = unidades[unitId];
                     const nomeUnidade = unidade[0].nome_unidade;
-    
+
                     // Cabeçalho clicável para expandir/colapsar
-                    const header = $(`  
-                        <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
-                            ${nomeUnidade} <span style="float: right;">+</span>
-                        </div>
-                    `);
-    
+                    const header = $(`
+            <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
+                ${nomeUnidade} <span style="float: right;">+</span>
+            </div>
+        `);
+
                     // Tabela para os dados
-                    const table = $(`  
-                        <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
-                            <thead>
-                                <tr>
-                                    ${visualizacao === 'resumido' ? '<th>Produto</th>' : '<th>Data</th>'}
-                                    <th>Nome Produto</th>
-                                    <th>Diferença</th>
-                                    <th>Preço Custo</th>
-                                    <th>Perda Custo</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    `);
-    
+                    const table = $(`
+            <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
+                <thead>
+                    <tr>
+                        ${
+                        visualizacao === 'resumido'
+                            ? '<th>Produto</th><th>Nome Produto</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
+                            : '<th>Data</th><th>Nome Produto</th><th>Saldo</th><th>Entradas</th><th>Saídas</th><th>Resultado</th><th>Balanco</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
+                    }
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        `);
+
                     let totalPerdaCusto = 0;
                     let totalDiferenca = 0;
-    
+
                     if (visualizacao === 'resumido') {
-                        // Agrupar os itens por código do produto
                         const produtos = groupBy(unidade, 'produto');
-    
+
                         Object.keys(produtos).forEach(produtoId => {
                             const itens = produtos[produtoId];
                             const nomeProduto = itens[0].nome_produto;
-                            const precoCusto = itens[0].preco_custo; // Usar o preço do primeiro produto
-    
-                            // Somar as colunas de Diferença e Perda Custo
+                            const precoCusto = itens[0].preco_custo;
                             const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
                             const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
-    
+
                             totalDiferenca += somaDiferenca;
                             totalPerdaCusto += somaPerdaCusto;
-    
-                            // Adicionar a linha do produto
-                            const row = $(`  
-                                <tr>
-                                    <td>${produtoId}</td>
-                                    <td>${nomeProduto}</td>
-                                    <td>- ${formatNumber(somaDiferenca)}</td>
-                                    <td>${formatCurrency(precoCusto)}</td>
-                                    <td>- ${formatCurrency(somaPerdaCusto)}</td>
-                                </tr>
-                            `);
-    
+
+                            const row = $(`
+                    <tr>
+                        <td>${produtoId}</td>
+                        <td>${nomeProduto}</td>
+                        <td>- ${formatNumber(somaDiferenca)}</td>
+                        <td>${formatCurrency(precoCusto)}</td>
+                        <td>- ${formatCurrency(somaPerdaCusto)}</td>
+                    </tr>
+                `);
+
                             table.find('tbody').append(row);
                         });
                     } else {
-                        // Modo detalhado (sem agrupamento por código de produto)
                         unidade.forEach(item => {
                             totalDiferenca += item.diferenca;
                             totalPerdaCusto += item.perda_custo;
-    
-                            const row = $(`  
-                                <tr>
-                                    <td>${formatDate(item.data)}</td>
-                                    <td>${item.nome_produto}</td>
-                                    <td>- ${formatNumber(item.diferenca)}</td>
-                                    <td>${formatCurrency(item.preco_custo)}</td>
-                                    <td>- ${formatCurrency(item.perda_custo)}</td>
-                                </tr>
-                            `);
-    
+
+                            const row = $(`
+                    <tr>
+                        <td>${formatDate(item.data)}</td>
+                        <td>${item.produto} - ${item.nome_produto}</td>
+                        <td>${formatNumber(item.saldo_anterior)}</td>
+                        <td>${formatNumber(item.entradas)}</td>
+                        <td>${formatNumber(item.saidas)}</td>
+                        <td>${formatNumber(item.contagem_ideal)}</td>
+                        <td>${formatNumber(item.contagem_realizada)}</td>
+                        <td>- ${formatNumber(item.diferenca)}</td>
+                        <td>${formatCurrency(item.preco_custo)}</td>
+                        <td>- ${formatCurrency(item.perda_custo)}</td>
+                    </tr>
+                `);
+
                             table.find('tbody').append(row);
                         });
                     }
-    
-                    // Adiciona o rodapé com os totais
-                    const footer = $(`  
-                        <tr class="total-row">
-                            <td colspan="${visualizacao === 'resumido' ? '4' : '4'}" style="font-weight: bold;">Total</td>
-                            <td>${formatCurrency(- totalPerdaCusto)}</td>
-                        </tr>
-                    `);
-    
+
+                    // Rodapé com total
+                    const footer = $(`
+            <tr class="total-row">
+                <td colspan="${visualizacao === 'resumido' ? '4' : '9'}" style="font-weight: bold;">Total</td>
+                <td>${formatCurrency(- totalPerdaCusto)}</td>
+            </tr>
+        `);
+
                     table.find('tbody').append(footer);
-    
-                    // Adiciona o cabeçalho e a tabela ao container
+
+                    // Adiciona ao DOM
                     container.append(header);
                     container.append(table);
-    
-                    // Expansão e colapso da tabela com transição
+
+                    // Toggle da unidade
                     header.on('click', function () {
                         const isVisible = table.is(':visible');
-                        table.slideToggle(300); // Adiciona efeito de transição
+                        table.slideToggle(300);
                         $(this).find('span').text(isVisible ? '+' : '-');
                     });
-    
-                    // Ordenação da tabela
+
+                    // Ordenação (se necessário)
                     setupSortButtons(table, unidade, visualizacao);
                 });
             }
-    
+
+
             // Função para configurar a ordenação
             function setupSortButtons(table, unidade, visualizacao) {
                 // Ordenar por Data
