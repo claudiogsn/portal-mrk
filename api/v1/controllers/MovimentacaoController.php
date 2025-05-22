@@ -1293,6 +1293,96 @@ class MovimentacaoController
         }
     }
 
+    public static function ajustarPrecoCustoPorGrupo($grupo_id, $ajuste_date, $itens, $usuario_id): array
+    {
+        global $pdo;
+
+        try {
+            // 1. Obter as unidades do grupo
+            $unidades = BiController::getUnitsByGroupMov($grupo_id);
+            if (empty($unidades)) {
+                throw new Exception('Nenhuma unidade encontrada para o grupo.');
+            }
+
+            $system_unit_ids = [];
+            $unidadeProducao = null;
+
+            foreach ($unidades as $unidade) {
+                $system_unit_ids[] = $unidade['system_unit_id'];
+
+                if (!$unidadeProducao && str_ends_with($unidade['name'], 'Produção')) {
+                    $unidadeProducao = $unidade;
+                }
+            }
+
+            if (!$unidadeProducao) {
+                throw new Exception('Unidade com sufixo "Produção" não encontrada.');
+            }
+
+            // 2. Iniciar transação
+            $pdo->beginTransaction();
+
+            // 3. Gerar documento apenas para a unidade de produção
+            $doc = self::gerarDocAjustePreco($unidadeProducao['system_unit_id']);
+
+            // 4. Preparar INSERT para log de ajustes
+            $stmtInsert = $pdo->prepare("
+            INSERT INTO ajustes_preco_custo 
+            (system_unit_id, doc, produto, preco_antigo, preco_atual, usuario_id, data_ajuste) 
+            VALUES (:system_unit_id, :doc, :produto, :preco_antigo, :preco_atual, :usuario_id, :data_ajuste)
+        ");
+
+            // 5. Preparar UPDATE para todos os system_unit_id
+            $placeholders = implode(',', array_fill(0, count($system_unit_ids), '?'));
+            $stmtUpdate = $pdo->prepare("
+            UPDATE products 
+            SET preco_custo = ? 
+            WHERE system_unit_id IN ($placeholders) AND codigo = ?
+        ");
+
+            // 6. Executar para cada item
+            foreach ($itens as $item) {
+                $codigo = $item['codigo'];
+                $precoAtual = $item['precoAtual'];
+                $novoPreco = $item['novoPreco'];
+
+                // INSERT apenas na unidade de produção
+                $stmtInsert->execute([
+                    ':system_unit_id' => $unidadeProducao['system_unit_id'],
+                    ':doc' => $doc,
+                    ':produto' => $codigo,
+                    ':preco_antigo' => $precoAtual,
+                    ':preco_atual' => $novoPreco,
+                    ':usuario_id' => $usuario_id,
+                    ':data_ajuste' => $ajuste_date
+                ]);
+
+                // UPDATE para todas as unidades
+                $paramsUpdate = array_merge([$novoPreco], $system_unit_ids, [$codigo]);
+                $stmtUpdate->execute($paramsUpdate);
+            }
+
+            // 7. Commit
+            $pdo->commit();
+
+            return [
+                'status' => 'success',
+                'message' => 'Ajustes aplicados com sucesso.',
+                'doc' => $doc,
+                'unidade_producao' => [
+                    'id' => $unidadeProducao['system_unit_id'],
+                    'nome' => $unidadeProducao['name']
+                ]
+            ];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao aplicar ajustes: ' . $e->getMessage()
+            ];
+        }
+    }
+
     public static function gerarDocAjusteSaldo($system_unit_id): string
     {
         global $pdo;

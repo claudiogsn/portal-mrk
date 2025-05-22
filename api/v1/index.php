@@ -167,6 +167,18 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'ajustarPrecoCustoPorGrupo':
+                if ($requestData['grupo_id'] && $requestData['ajuste_date'] && $requestData['itens'] && $requestData['usuario_id']) {
+                    $response = MovimentacaoController::ajustarPrecoCustoPorGrupo($requestData['grupo_id'], $requestData['ajuste_date'], $requestData['itens'], $requestData['usuario_id']);
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
             case 'createAjusteSaldo':
                 if ($requestData['system_unit_id'] && $requestData['ajuste_date'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = MovimentacaoController::ajustarSaldo($requestData['system_unit_id'], $requestData['ajuste_date'], $requestData['itens'], $requestData['usuario_id']);

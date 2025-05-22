@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Importação de Preço de Custo</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <!-- Links para o seu CSS -->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="bsb/plugins/dropzone/dropzone.css" rel="stylesheet">
+</head>
+<body>
+
+<input type="file" id="excelFile" accept=".xls,.xlsx" />
+<button onclick="processarArquivo()">Importar Preço de Custo</button>
+
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script src="bsb/plugins/dropzone/dropzone.js"></script>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+    const username = urlParams.get('username');
+    const adjustDate = new Date().toISOString().split('T')[0];
+
+    function formatarPreco(precoStr) {
+        return parseFloat(
+            precoStr.replace('R$', '').replace(/\./g, '').replace(',', '.')
+        ) || 0;
+    }
+
+    function processarArquivo() {
+        const input = document.getElementById('excelFile');
+        const file = input.files[0];
+
+        if (!file) {
+            Swal.fire('Erro', 'Selecione um arquivo Excel.', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+
+            const itens = json.map(row => ({
+                codigo: row['Código'],
+                descricao: row['Produto'],
+                precoAtual: 0,
+                novoPreco: formatarPreco(row['Preço Custo'])
+            }));
+
+            Swal.fire({
+                title: 'Confirmar Ajuste?',
+                text: 'Deseja realmente confirmar o ajuste de preço?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sim',
+                cancelButtonText: 'Não'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+
+                    try {
+                        const response = await axios.post(baseUrl, {
+                            method: 'ajustarPrecoCustoPorGrupo',
+                            token: token,
+                            data: {
+                                grupo_id: 1,
+                                ajuste_date: adjustDate,
+                                itens: itens,
+                                usuario_id: username
+                            }
+                        });
+
+                        if (response.data.status === 'success') {
+                            const resDoc = response.data.doc;
+                            Swal.fire('Sucesso', 'Ajuste realizado. Documento: ' + resDoc, 'success');
+                        } else {
+                            Swal.fire('Erro', response.data.message || 'Erro ao ajustar preço.', 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Erro', 'Erro de comunicação com o servidor.', 'error');
+                        console.error(err);
+                    }
+                }
+            });
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
+</script>
+
+</body>
+</html>
