@@ -235,21 +235,18 @@
                 const container = $('#relatorio');
                 container.empty();
 
-                // Agrupando os dados por unidade
                 const unidades = groupBy(data, 'system_unit_id');
 
                 Object.keys(unidades).forEach(unitId => {
                     const unidade = unidades[unitId];
                     const nomeUnidade = unidade[0].nome_unidade;
 
-                    // Cabeçalho clicável para expandir/colapsar
                     const header = $(`
             <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
                 ${nomeUnidade} <span style="float: right;">+</span>
             </div>
         `);
 
-                    // Tabela para os dados
                     const table = $(`
             <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
                 <thead>
@@ -271,7 +268,14 @@
                     if (visualizacao === 'resumido') {
                         const produtos = groupBy(unidade, 'produto');
 
-                        Object.keys(produtos).forEach(produtoId => {
+                        // Ordena alfabeticamente pelo nome do produto
+                        const sortedProdutoIds = Object.keys(produtos).sort((a, b) => {
+                            const nomeA = produtos[a][0].nome_produto.toLowerCase();
+                            const nomeB = produtos[b][0].nome_produto.toLowerCase();
+                            return nomeA.localeCompare(nomeB);
+                        });
+
+                        sortedProdutoIds.forEach(produtoId => {
                             const itens = produtos[produtoId];
                             const nomeProduto = itens[0].nome_produto;
                             const precoCusto = itens[0].preco_custo;
@@ -294,14 +298,19 @@
                             table.find('tbody').append(row);
                         });
                     } else {
-                        unidade.forEach(item => {
+                        // Ordena por nome do produto no modo detalhado
+                        const sortedUnidade = unidade.slice().sort((a, b) =>
+                            a.nome_produto.toLowerCase().localeCompare(b.nome_produto.toLowerCase())
+                        );
+
+                        sortedUnidade.forEach(item => {
                             totalDiferenca += item.diferenca;
                             totalPerdaCusto += item.perda_custo;
 
                             const row = $(`
                     <tr>
                         <td>${formatDate(item.data)}</td>
-                        <td>${item.produto} - ${item.nome_produto}</td>
+                        <td>${item.nome_produto}</td>
                         <td>${formatNumber(item.saldo_anterior)}</td>
                         <td>${formatNumber(item.entradas)}</td>
                         <td>${formatNumber(item.saidas)}</td>
@@ -317,28 +326,24 @@
                         });
                     }
 
-                    // Rodapé com total
                     const footer = $(`
             <tr class="total-row">
                 <td colspan="${visualizacao === 'resumido' ? '4' : '9'}" style="font-weight: bold;">Total</td>
-                <td>${formatCurrency(- totalPerdaCusto)}</td>
+                <td>${formatCurrency(-totalPerdaCusto)}</td>
             </tr>
         `);
 
                     table.find('tbody').append(footer);
 
-                    // Adiciona ao DOM
                     container.append(header);
                     container.append(table);
 
-                    // Toggle da unidade
                     header.on('click', function () {
                         const isVisible = table.is(':visible');
                         table.slideToggle(300);
                         $(this).find('span').text(isVisible ? '+' : '-');
                     });
 
-                    // Ordenação (se necessário)
                     setupSortButtons(table, unidade, visualizacao);
                 });
             }
