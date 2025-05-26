@@ -47,7 +47,7 @@ if (isset($data['method']) && isset($data['data'])) {
     if (isset($data['token'])){$requestToken = $data['token'];}
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['validateCPF', 'persistMovimentoCaixa','validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution','persistSales','consolidateSalesByGroup','importMovBySalesCons'];
+    $noAuthMethods = ['generateResumoFinanceiroPorLoja','validateCPF', 'persistMovimentoCaixa','validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution','persistSales','consolidateSalesByGroup','importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
