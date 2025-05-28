@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Importador Fichas Técnicas (.xlsx)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { padding: 2rem; }
+        pre {
+            max-height: 500px;
+            overflow: auto;
+            background: #f0f0f0;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h4 class="center-align">📥 Importar Fichas Técnicas (.xlsx)</h4>
+
+    <div class="file-field input-field">
+        <div class="btn blue darken-2">
+            <span>Selecionar Arquivo</span>
+            <input type="file" id="fileInput" accept=".xlsx">
+        </div>
+        <div class="file-path-wrapper">
+            <input class="file-path validate" type="text" placeholder="Selecione um arquivo Excel">
+        </div>
+    </div>
+
+    <div id="outputCard" class="card hide">
+        <div class="card-content">
+            <span class="card-title">Resultado JSON</span>
+            <pre id="output"></pre>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script>
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+            const dados = [];
+            let current = null;
+            let mode = 'none';
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i].map(col => col?.toString().trim());
+
+                if (!row[0] && row[1] === "Código" && row[2] === "Descrição") {
+                    mode = 'insumo';
+                    continue;
+                }
+
+                if (row[0] && /^\d{4,}$/.test(row[0]) && row[2].includes('R$')) {
+                    if (current) dados.push(current);
+                    current = {
+                        codigo: row[0],
+                        descricao: row[1],
+                        insumos: []
+                    };
+                    mode = 'header';
+                    continue;
+                }
+
+                if (mode === 'insumo' && current && row[1] && /^\d{4,}$/.test(row[1])) {
+                    current.insumos.push({
+                        codigo: row[1],
+                        descricao: row[2],
+                        quantidade:row[6] || 0,
+                    });
+                }
+            }
+
+            if (current) dados.push(current);
+
+            const jsonOutput = JSON.stringify(dados, null, 2);
+            document.getElementById('output').textContent = jsonOutput;
+            document.getElementById('outputCard').classList.remove('hide');
+            console.log(dados);
+            M.toast({ html: '✅ Fichas importadas com sucesso!', classes: 'green darken-2' });
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+</script>
+</body>
+</html>

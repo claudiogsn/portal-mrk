@@ -102,6 +102,57 @@ class ComposicaoController {
         }
     }
 
+    public static function importCompositions(int $system_unit_id, array $itens): array
+    {
+        global $pdo;
+
+        try {
+            $pdo->beginTransaction();
+
+            // Remove todas as composições antigas desse system_unit_id
+            $pdo->prepare("DELETE FROM compositions WHERE system_unit_id = ?")
+                ->execute([$system_unit_id]);
+
+            // Insere as novas composições
+            $insertQuery = "
+            INSERT INTO compositions (
+                product_id, insumo_id, quantity, system_unit_id
+            ) VALUES (?, ?, ?, ?)
+        ";
+            $insertStmt = $pdo->prepare($insertQuery);
+
+            foreach ($itens as $item) {
+                $productId = (int) $item['codigo'];
+
+                foreach ($item['insumos'] as $insumo) {
+                    $insumoId = (int) $insumo['codigo'];
+                    $quantidade = (float) str_replace(',', '.', $insumo['quantidade']);
+
+                    $insertStmt->execute([
+                        $productId,
+                        $insumoId,
+                        $quantidade,
+                        $system_unit_id
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Composições substituídas com sucesso.'
+            ];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return [
+                'success' => false,
+                'message' => 'Erro ao salvar composições: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
 
 }
 ?>

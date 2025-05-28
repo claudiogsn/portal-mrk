@@ -331,6 +331,17 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
             }
                 break;
+            case 'importCompositions':
+                if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
+                    $response = ComposicaoController::importCompositions(
+                        $requestData['system_unit_id'],
+                        $requestData['itens']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
+                }
+                break;
             // Métodos para ProducaoController
             case 'createProducao':
                 if (isset($requestData['items']) && is_array($requestData['items'])) {
