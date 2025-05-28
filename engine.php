@@ -9,41 +9,51 @@ class TApplication extends AdiantiCoreApplication
     public static function run($debug = null)
     {
         new TSession;
-        ApplicationTranslator::setLanguage( TSession::getValue('user_language'), true ); // multi-lang
-        
+        ApplicationTranslator::setLanguage(TSession::getValue('user_language'), true); // multi-lang
+
         if ($_REQUEST)
         {
             $ini = AdiantiApplicationConfig::get();
-            
+
             $class  = isset($_REQUEST['class']) ? $_REQUEST['class'] : '';
             $method = isset($_REQUEST['method']) ? $_REQUEST['method'] : '';
             $public = in_array($class, $ini['permission']['public_classes']);
             $debug  = is_null($debug)? $ini['general']['debug'] : $debug;
-            
+
+
+
             if (TSession::getValue('logged')) // logged
             {
-                if ( SystemPermission::checkPermission($class, $method) )
+                if (SystemPermission::checkPermission($class, $method))
                 {
                     parent::run($debug);
+                    if ($class !== 'MudarFilial' && $class !== 'LoginForm' && $class !== 'SearchInputBox' && $class !== 'NotificationList' && $class !== 'MessageList'){
+                        TSession::setValue('last_class', $class);
+                        error_log("Last class set to: $class", 0);
+                    }
                 }
                 else if (self::hasDefaultPermissions($class))
                 {
                     parent::run($debug);
+                    if ($class !== 'MudarFilial' && $class !== 'LoginForm' && $class !== 'SearchInputBox' && $class !== 'NotificationList' && $class !== 'MessageList'){
+                        TSession::setValue('last_class', $class);
+                        error_log("Last class set to: $class", 0);
+                    }
                 }
                 else
                 {
                     http_response_code(401);
-                    new TMessage('error', _t('Permission denied') );
+                    new TMessage('error', _t('Permission denied'));
                 }
             }
-            else if ($class == 'LoginForm' || $public )
+            else if ($class == 'LoginForm' || $public)
             {
                 parent::run($debug);
             }
             else
             {
                 http_response_code(401);
-                new TMessage('error', _t('Permission denied'), new TAction(array('LoginForm','onLogout')) );
+                new TMessage('error', _t('Permission denied'), new TAction(['LoginForm','onLogout']));
             }
         }
     }

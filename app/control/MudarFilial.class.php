@@ -14,12 +14,8 @@ use Adianti\Widget\Container\TVBox;
  */
 class MudarFilial extends \Adianti\Control\TWindow
 {
-    protected $form; // form
+    protected $form;
 
-    /**
-     * Form constructor
-     * @param $param Request
-     */
     public function __construct($param)
     {
         parent::__construct();
@@ -27,16 +23,18 @@ class MudarFilial extends \Adianti\Control\TWindow
         $this->form = new BootstrapFormBuilder('form_MudarFilial');
         $this->form->setFormTitle('SELECIONE A UNIDADE');
 
-        // Create TCombo
         $system_unit_id = new TCombo('system_unit_id');
         $this->form->addFields([new TLabel('Unidade')], [$system_unit_id]);
-
         $system_unit_id->setSize('100%');
 
-        // Load options for TCombo with filtering
         $this->populateUnits($system_unit_id);
 
-        $this->form->addAction('Mudar', new TAction([$this, 'onSave']), 'fa:save green');
+        $action = new TAction([$this, 'onSave']);
+        if (!empty($param['callback'])) {
+            $action->setParameter('callback', $param['callback']);
+        }
+
+        $this->form->addAction('Mudar', $action, 'fa:save green');
 
         $container = new TVBox;
         $container->style = 'width: 100%';
@@ -44,18 +42,14 @@ class MudarFilial extends \Adianti\Control\TWindow
         parent::add($container);
     }
 
-    /**
-     * Populate units into the TCombo
-     */
     public function populateUnits($combo)
     {
         try {
-            TTransaction::open('communication');
+            TTransaction::open('permission');
 
             $repo = new TRepository('SystemUnit');
             $criteria = new TCriteria;
 
-            // Get user units from session
             $units = TSession::getValue('userunitids');
             if ($units && is_array($units)) {
                 $criteria->add(new TFilter('id', 'IN', $units));
@@ -77,19 +71,15 @@ class MudarFilial extends \Adianti\Control\TWindow
         }
     }
 
-    /**
-     * Save form data
-     * @param $param Request
-     */
     public function onSave($param)
     {
-        $this->form->validate(); // validate form data
-        $data = $this->form->getData(); // get form data as array
+        $this->form->validate();
+        $data = $this->form->getData();
         TSession::setValue('userunitid', $data->system_unit_id);
         $IDUnidade = TSession::getValue('userunitid');
 
-        // Consultar Nome da Unidade
-        TTransaction::open('communication');
+        // Consulta nome da unidade
+        TTransaction::open('permission');
         $conn = TTransaction::get();
         $sth = $conn->prepare("SELECT name FROM system_unit WHERE id = :id LIMIT 1");
         $sth->bindParam(':id', $IDUnidade, PDO::PARAM_INT);
@@ -98,8 +88,10 @@ class MudarFilial extends \Adianti\Control\TWindow
         $NomeUnidade = $result['name'];
         TSession::setValue('userunitname', $NomeUnidade);
 
+        TTransaction::close();
+
         new TMessage('info', "Modificado para Unidade $IDUnidade - $NomeUnidade");
 
-        AdiantiCoreApplication::gotoPage('WelcomeView');
-    }
+        $callback = TSession::getValue('last_class') ?? 'WelcomeView';
+        AdiantiCoreApplication::gotoPage($callback);    }
 }
