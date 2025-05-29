@@ -70,6 +70,10 @@
             <action>PrevisaoDemanda</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Solicitação de Insumos">
+            <action>SolicitacaoInsumos</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Compra">
