@@ -184,6 +184,27 @@ class ProductController {
         }
     }
 
+    public static function listItemVenda($system_unit_id) {
+        try {
+            global $pdo;
+            $stmt = $pdo->query("SELECT * FROM products WHERE system_unit_id = $system_unit_id and venda = 1");
+            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($produtos as &$produto) {
+                if (is_null($produto['preco_custo'])) {
+                    $produto['preco_custo'] = 0;
+                }
+                if (is_null($produto['saldo'])) {
+                    $produto['saldo'] = 0;
+                }
+            }
+
+            return ['success' => true, 'produtos' => $produtos];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar produtos: ' . $e->getMessage()];
+        }
+    }
+
     public static function updateStockBalance($system_unit_id, $codigo, $saldo, $documento) {
         global $pdo;
 

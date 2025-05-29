@@ -519,6 +519,25 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro matriz_id, insumoIds ou dias ausente'];
                 }
                 break;
+            case 'listItemVenda':
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductController::listItemVenda($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+            case 'calculateInsumosByItens':
+                if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
+                    $response = NecessidadesController::calculateInsumosByItens(
+                        $requestData['system_unit_id'],
+                        $requestData['itens']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro matriz_id, insumoIds ou dias ausente'];
+                }
+                break;
             case 'createTransferItems':
                     $response = MovimentacaoController::createTransferItems($requestData);
                     break;
@@ -1048,7 +1067,7 @@ if (isset($data['method']) && isset($data['data'])) {
             // Métodos para ConsolidationEstoqueController
             case 'getStatusConsolidationMonth':
                 if (isset($requestData['month']) && isset($requestData['year']) && isset($requestData['system_unit_id'])) {
-                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['month'], $requestData['year'],$requestData['system_unit_id']);
+                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['system_unit_id'], $requestData['month'],$requestData['year']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro month, year ou system_unit_id ausente'];

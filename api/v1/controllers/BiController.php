@@ -472,8 +472,6 @@ class BiController {
         }
     }
 
-
-
     public static function GetInfoConsolidationEstoque($system_unit_id, $data) {
         global $pdo;
 
@@ -840,7 +838,6 @@ class BiController {
 
         return $data;
     }
-
 
 }
 

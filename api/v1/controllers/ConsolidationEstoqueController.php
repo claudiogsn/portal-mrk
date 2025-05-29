@@ -11,7 +11,7 @@ require_once __DIR__ . '/../database/db.php';
 
 class ConsolidationEstoqueController {
 
-    public static function getStatusConsolidationMonth($month = null, $year = null,$system_unit_id)
+    public static function getStatusConsolidationMonth($system_unit_id,$month = null, $year = null)
     {
         global $pdo;
 

@@ -2,7 +2,8 @@
 
 require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
 
-class NecessidadesController {
+class NecessidadesController
+{
 
     /**
      * @throws DateMalformedStringException
@@ -130,9 +131,9 @@ class NecessidadesController {
                 if (!isset($insumoConsumption[$insumo_id])) {
                     continue;
                 }
-                
-                $sales = (float) $insumo['sales'];
-                $saldo = (float) $insumo['saldo'];
+
+                $sales = (float)$insumo['sales'];
+                $saldo = (float)$insumo['saldo'];
 
                 $insumoConsumption[$insumo_id]['sales'] += $sales;
                 $insumoConsumption[$insumo_id]['saldo_lojas'] += $saldo;
@@ -168,7 +169,7 @@ class NecessidadesController {
         return array_values($insumoConsumption);
     }
 
-    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds,$user_id, $type = 'media'): array
+    public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $user_id, $type = 'media'): array
     {
         global $pdo;
 
@@ -193,11 +194,11 @@ class NecessidadesController {
             WHERE p.codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
             AND p.system_unit_id = ?
         ");
-        
+
         // Prepara os parâmetros dos insumos
         $params = array_merge($insumoIds, [$system_unit_id]);
         $stmt->execute($params);
-    
+
         // Inicializa o consumo dos insumos com o nome
         $insumoConsumption = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -213,23 +214,23 @@ class NecessidadesController {
                 'categoria' => $row['categoria'],
             ];
         }
-    
+
         // Itera sobre as datas e calcula o total de consumo usando a nova consulta SQL
         foreach ($dates as $date) {
             // Busca o total de consumo de insumos para uma data específica
             $consumoData = self::fetchTotalConsumption($system_unit_id, $insumoIds, $date);
-    
+
             // Atualiza o consumo total de insumos
             foreach ($consumoData as $row) {
                 $insumo_id = $row['insumo_id'];
-                
+
                 // Verifica se o insumo existe no array e atualiza as vendas
                 if (isset($insumoConsumption[$insumo_id])) {
                     $insumoConsumption[$insumo_id]['sales'] += $row['total_consumo'];
                 }
             }
         }
-    
+
         // Atualiza saldo, margem e recomendado
         foreach ($insumoIds as $insumo_id) {
             // Obtém o saldo atual do insumo
@@ -241,8 +242,8 @@ class NecessidadesController {
                 // Calcula margem e recomendado
                 $insumoConsumption[$insumo_id]['sales'] = number_format($insumoConsumption[$insumo_id]['sales'] / 4, 2, '.', '');
                 if ($insumoConsumption[$insumo_id]['unidade'] === 'UND') {
-                    $insumoConsumption[$insumo_id]['recomendado'] = max(0,ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']));
-                }else {
+                    $insumoConsumption[$insumo_id]['recomendado'] = max(0, ceil($insumoConsumption[$insumo_id]['sales'] + $insumoConsumption[$insumo_id]['margem'] - $insumoConsumption[$insumo_id]['saldo']));
+                } else {
                     $insumoConsumption[$insumo_id]['recomendado'] = max(0, round(
                         $insumoConsumption[$insumo_id]['sales'] +
                         $insumoConsumption[$insumo_id]['margem'] -
@@ -259,18 +260,18 @@ class NecessidadesController {
             'consumos' => array_values($insumoConsumption) // Retorna um array indexado
         ]; // Retorna um array indexado
     }
-    
+
     private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date): array
     {
         global $pdo;
-    
+
         // Cria uma string de placeholders nomeados para os insumos
         $placeholders = [];
         foreach ($insumoIds as $insumo_id) {
             $placeholders[] = ":insumo_$insumo_id"; // Cria placeholders nomeados
         }
         $insumoIdsPlaceholders = implode(',', $placeholders); // Converte o array em uma string separada por vírgulas
-    
+
         // Consulta SQL para calcular o total de consumo
         $stmt = $pdo->prepare("
             SELECT 
@@ -288,18 +289,18 @@ class NecessidadesController {
             GROUP BY 
                 c.insumo_id, b.data_movimento
         ");
-    
+
         // Bind dos parâmetros para system_unit_id e date
         $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
         $stmt->bindParam(':date', $date);
-    
+
         // Bind dos parâmetros dos insumos
         foreach ($insumoIds as $insumo_id) {
             $stmt->bindValue(":insumo_$insumo_id", $insumo_id, PDO::PARAM_INT);
         }
-    
+
         $stmt->execute(); // Executa a consulta
-    
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todos os resultados
     }
 
@@ -559,17 +560,112 @@ class NecessidadesController {
         return $diasSemana;
     }
 
+    public static function calculateInsumosByItens($system_unit_id, $itens): array
+    {
+        global $pdo;
+        $resultado = [];
 
+        foreach ($itens as $item) {
+            if (!isset($item['produto']) || !isset($item['quantidade'])) {
+                continue;
+            }
 
+            $produto_codigo = $item['produto'];
+            $quantidade_desejada = $item['quantidade'];
 
+            // Buscar nome do produto principal
+            $stmtProduto = $pdo->prepare("
+            SELECT nome
+            FROM products
+            WHERE system_unit_id = :unit_id AND codigo = :codigo
+            LIMIT 1
+            ");
+            $stmtProduto->execute([
+                ':unit_id' => $system_unit_id,
+                ':codigo' => $produto_codigo
+            ]);
+            $produto = $stmtProduto->fetch(PDO::FETCH_ASSOC);
 
+            if (!$produto) {
+                $resultado[] = [
+                    'produto' => $produto_codigo,
+                    'erro' => 'Produto não encontrado'
+                ];
+                continue;
+            }
 
+            $produto_nome = $produto['nome'];
 
+            // Buscar insumos da composição usando product_id = codigo
+            $stmtInsumos = $pdo->prepare("
+            SELECT insumo_id, quantity
+            FROM compositions
+            WHERE system_unit_id = :unit_id AND product_id = :product_id
+            ");
+            $stmtInsumos->execute([
+                ':unit_id' => $system_unit_id,
+                ':product_id' => $produto_codigo
+            ]);
 
+            $insumos = [];
 
+            while ($row = $stmtInsumos->fetch(PDO::FETCH_ASSOC)) {
+                $insumo_id = $row['insumo_id'];
+                $quantidade = $row['quantity'];
 
+                // Buscar nome e categoria do insumo
+                $stmtProdutoInsumo = $pdo->prepare("
+                SELECT nome, categoria
+                FROM products
+                WHERE system_unit_id = :unit_id AND codigo = :codigo
+                LIMIT 1
+            ");
+                $stmtProdutoInsumo->execute([
+                    ':unit_id' => $system_unit_id,
+                    ':codigo' => $insumo_id
+                ]);
+                $produtoInsumo = $stmtProdutoInsumo->fetch(PDO::FETCH_ASSOC);
 
+                $nome_insumo = $produtoInsumo['nome'] ?? '(produto não encontrado)';
+                $categoria_nome = null;
 
+                if (isset($produtoInsumo['categoria'])) {
+                    $stmtCategoria = $pdo->prepare("
+                    SELECT nome
+                    FROM categorias
+                    WHERE system_unit_id = :unit_id AND codigo = :codigo
+                    LIMIT 1
+                ");
+                    $stmtCategoria->execute([
+                        ':unit_id' => $system_unit_id,
+                        ':codigo' => $produtoInsumo['categoria']
+                    ]);
+                    $categoria = $stmtCategoria->fetch(PDO::FETCH_ASSOC);
+                    $categoria_nome = $categoria['nome'] ?? null;
+                }
+
+                $insumos[] = [
+                    'insumo' => $insumo_id,
+                    'nome_insumo' => $nome_insumo,
+                    'categoria' => $categoria_nome,
+                    'quantidade' => $quantidade_desejada * $quantidade
+                ];
+            }
+
+            $resultado[] = [
+                'produto' => $produto_codigo,
+                'nome' => $produto_nome,
+                'quantidade' => $quantidade_desejada,
+                'insumos' => $insumos
+            ];
+
+        }
+
+        return [
+            'success' => true,
+            'consumos' => array_values($resultado)
+        ];
+    }
 
 
 }

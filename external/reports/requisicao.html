@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Solicitação de Insumos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        #conteudo-pdf {padding: 0 15px;}
+        body { font-family: Arial, sans-serif;padding: 20px 15px; }
+        h1, h2 { margin: 0; padding: 0; }
+        h1 { font-size: 24px; font-weight: bold; }
+        h2 { font-size: 18px; margin-top: 20px; }
+        hr { border: 1px solid black; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 8px; text-align: left; }
+        .categoria-header { background-color: #f0f0f0; font-weight: bold; }
+        .signature-line { margin-top: 50px; text-align: center; font-size: 14px; }
+        .signature-line span { display: inline-block; margin-top: 10px; border-top: 1px solid black; width: 400px; }
+    </style>
+</head>
+<body>
+
+<div id="conteudo-pdf"></div>
+
+<script>
+    const data = JSON.parse(localStorage.getItem('consumosPdfData'));
+    if (!data || !Array.isArray(data)) {
+        document.body.innerHTML = "<p>Erro: Nenhum dado encontrado.</p>";
+        throw new Error('Dados da requisição não encontrados');
+    }
+
+    // Agrupar e somar insumos por categoria
+    const insumoMap = {};
+
+    data.forEach(produto => {
+        produto.insumos.forEach(insumo => {
+            const key = `${insumo.insumo}`;
+            if (!insumoMap[key]) {
+                insumoMap[key] = {
+                    id: insumo.insumo,
+                    nome: insumo.nome_insumo,
+                    categoria: insumo.categoria,
+                    quantidade: parseFloat(insumo.quantidade) || 0
+                };
+            } else {
+                insumoMap[key].quantidade += parseFloat(insumo.quantidade) || 0;
+            }
+        });
+    });
+
+    // Reorganizar por categoria e ordenar
+    const agrupadoPorCategoria = {};
+
+    Object.values(insumoMap).forEach(insumo => {
+        if (!agrupadoPorCategoria[insumo.categoria]) {
+            agrupadoPorCategoria[insumo.categoria] = [];
+        }
+        agrupadoPorCategoria[insumo.categoria].push(insumo);
+    });
+
+    const categoriasOrdenadas = Object.keys(agrupadoPorCategoria).sort();
+
+    // Ordenar os insumos dentro de cada categoria
+    categoriasOrdenadas.forEach(cat => {
+        agrupadoPorCategoria[cat].sort((a, b) => a.nome.localeCompare(b.nome));
+    });
+
+    async function getBase64ImageFromURL(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function gerarPdfBlob(logoBase64) {
+        let html = `
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h1>Portal MRK</h1>
+                <h2>Solicitação de Insumos</h2>
+            </div>
+            <div>
+                <img src="${logoBase64}" alt="Logo" style="max-height: 60px;">
+            </div>
+        </div>
+        <hr>
+
+        <p><strong>Produtos solicitados:</strong></p>
+        <ul style="margin-top: 5px; margin-bottom: 10px;">
+            ${data.map(prod => `<li>${prod.nome} (Quantidade: ${prod.quantidade})</li>`).join('')}
+        </ul>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Insumo</th>
+                    <th>Quantidade</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+
+        categoriasOrdenadas.forEach(categoria => {
+            html += `
+                <tr class="categoria-header">
+                    <td colspan="3">${categoria}</td>
+                </tr>`;
+
+            agrupadoPorCategoria[categoria].forEach(insumo => {
+                html += `
+                <tr>
+                    <td>${insumo.nome}</td>
+                    <td>${insumo.quantidade.toFixed(3)}</td>
+                </tr>`;
+            });
+        });
+
+        html += `
+            </tbody>
+        </table>
+
+        <div class="signature-line">
+            <span>Assinatura do Responsável</span>
+        </div>`;
+
+        const container = document.getElementById('conteudo-pdf');
+        container.innerHTML = html;
+
+        const arrayBuffer = await html2pdf()
+            .from(container)
+            .set({
+                margin: [10, 15, 10, 15],
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            })
+            .toPdf()
+            .output('arraybuffer');
+
+        return new File([arrayBuffer], `Solicitacao_Insumos.pdf`, { type: 'application/pdf' });
+    }
+
+    async function iniciarEscolha() {
+        const logoBase64 = await getBase64ImageFromURL('logo.png');
+        const file = await gerarPdfBlob(logoBase64);
+
+        Swal.fire({
+            title: 'O que deseja fazer?',
+            text: 'Escolha uma ação para o PDF gerado:',
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: '📥 Baixar PDF',
+            denyButtonText: '🔗 Compartilhar PDF'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const url = URL.createObjectURL(file);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } else if (result.isDenied) {
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: `Solicitação de Insumos`,
+                        text: 'Segue requisição gerada.',
+                        files: [file]
+                    });
+                } else {
+                    alert('Seu navegador não suporta compartilhamento de arquivos.');
+                }
+            }
+        });
+    }
+
+    setTimeout(iniciarEscolha, 500);
+</script>
+</body>
+</html>
