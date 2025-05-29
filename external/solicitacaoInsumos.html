@@ -311,8 +311,8 @@
 
             // Solicitar confirmação antes de enviar
             swal.fire({
-                title: 'Confirmar Transferência?',
-                text: 'Você está prestes a realizar a transferência de itens.',
+                title: 'Confirmar Solicitação?',
+                text: 'Você está prestes a reailzar o calculos dos insumos para esses produtos.',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Sim, Realizar',
@@ -321,7 +321,7 @@
                 if (result.isConfirmed) {
 
                     swal.fire({
-                        title: 'Processando transferência...',
+                        title: 'Processando insumos...',
                         text: 'Por favor, aguarde enquanto os dados estão sendo enviados.',
                         allowOutsideClick: false,
                         didOpen: () => {
@@ -344,7 +344,7 @@
 
                         if (response.data.success) {
                             swal.fire({
-                                title: 'Solicitação Calculada com sucesso!',
+                                title: 'Solicitação calculada com sucesso!',
                                 icon: 'success',
                                 confirmButtonText: 'OK'
                             }).then(async () => {
