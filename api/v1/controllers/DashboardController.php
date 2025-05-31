@@ -114,7 +114,8 @@ class DashboardController {
                 SUM(vlTotalRecebido) AS faturamento_bruto,
                 SUM(vlDesconto) AS total_descontos,
                 SUM(vlServicoRecebido) AS total_taxa_servico,
-                SUM(numPessoas) AS total_clientes
+                SUM(numPessoas) AS total_clientes,
+                count(num_controle) as numero_pedidos
             FROM
                 movimento_caixa
             WHERE
@@ -144,7 +145,8 @@ class DashboardController {
                 'taxa_servico' => round($taxaServico, 2),
                 'faturamento_liquido' => round($liquido, 2),
                 'numero_clientes' => $clientes,
-                'ticket_medio' => round($ticketMedio, 2)
+                'ticket_medio' => round($ticketMedio, 2),
+                'numero_pedidos' => (int) $res['numero_pedidos'] ?? 0
             ];
         } catch (Exception $e) {
             return [
@@ -402,7 +404,6 @@ class DashboardController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-
     private static function getLojasDoGrupo($grupoId): array
     {
         return array_map(
@@ -410,7 +411,6 @@ class DashboardController {
             BiController::getUnitsByGroup($grupoId)
         );
     }
-
 
     public static function generateResumoFinanceiroPorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
