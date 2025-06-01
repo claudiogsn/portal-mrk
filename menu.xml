@@ -74,7 +74,7 @@
             <action>PrevisaoDemanda</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-          <menuitem label="Solicitação de Insumos">
+          <menuitem label="Previsão de Demanda - Extra">
             <action>SolicitacaoInsumos</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
