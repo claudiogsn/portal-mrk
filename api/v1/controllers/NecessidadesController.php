@@ -393,33 +393,23 @@ class NecessidadesController
             $produto = $item['insumo_id'];
             $quantidadeVendas = floatval($item['compras']);
 
-            // Verifica se é produto de produção
             $stmtProd = $pdo->prepare("SELECT producao FROM products WHERE codigo = ? AND system_unit_id = ?");
             $stmtProd->execute([$produto, $matriz_id]);
             $producao = $stmtProd->fetchColumn();
 
-            if ($producao === false) {
-                continue; // Produto não encontrado, ignora
-            }
+            if ($producao === false) continue;
 
             if ((int)$producao === 0) {
-                // Produto comprado pronto: já adiciona diretamente
                 $compras[$produto] = $quantidadeVendas;
                 $insumoIds[$produto] = $produto;
                 continue;
             }
 
-            // Produto de produção: calcular necessidade com base no saldo
             $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
             $saldoAtual = floatval($saldoData['quantidade']);
             $necessario = $quantidadeVendas - $saldoAtual;
-            if ($necessario < 0) {
-                $necessario = 0;
-            }
-
             if ($necessario <= 0) continue;
 
-            // Consultar ficha técnica
             $stmtFicha = $pdo->prepare("SELECT product_id, insumo_id, quantity, rendimento FROM productions WHERE system_unit_id = :matriz_id and product_id = :product_id");
             $stmtFicha->bindParam(":product_id", $produto, PDO::PARAM_INT);
             $stmtFicha->bindParam(":matriz_id", $matriz_id, PDO::PARAM_INT);
@@ -441,38 +431,73 @@ class NecessidadesController
             }
         }
 
-        // Passo 4: Consultar nomes, categorias e montar o array final
         if (empty($insumoIds)) {
             return [];
         }
 
-        $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
-        $stmt = $pdo->prepare("
-        SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria
-        FROM products p
-        INNER JOIN categorias cc ON p.categoria = cc.codigo AND cc.system_unit_id = p.system_unit_id
-        WHERE p.codigo IN ($insumoPlaceholders)
-        AND p.system_unit_id = ?
-        ORDER BY p.system_unit_id = ? DESC
-    ");
+        // LOOP: enquanto houver produtos não compráveis, substitui pelas fichas técnicas
+        do {
+            $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
+            $stmt = $pdo->prepare("
+            SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria, p.compravel
+            FROM products p
+            INNER JOIN categorias cc ON p.categoria = cc.codigo AND cc.system_unit_id = p.system_unit_id
+            WHERE p.codigo IN ($insumoPlaceholders)
+            AND p.system_unit_id = ?
+        ");
 
-        $params = array_merge(array_values($insumoIds), [$matriz_id, $matriz_id]);
-        $stmt->execute($params);
-        $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $params = array_merge(array_values($insumoIds), [$matriz_id]);
+            $stmt->execute($params);
+            $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $resultado = [];
-        foreach ($produtosInfo as $produto) {
-            $id = $produto['insumo_id'];
-            $resultado[] = [
-                'insumo_id' => $id,
-                'nome' => $produto['nome'],
-                'categoria' => $produto['categoria'],
-                'compras' => round($compras[$id], 2)
-            ];
-        }
+            $resultado = [];
+            $naoCompraveis = [];
 
-        return $resultado;
+            foreach ($produtosInfo as $produto) {
+                $id = $produto['insumo_id'];
+                $quantidade = round($compras[$id], 2);
+                if ((int)$produto['compravel'] === 1) {
+                    $resultado[$id] = [
+                        'insumo_id' => $id,
+                        'nome' => $produto['nome'],
+                        'categoria' => $produto['categoria'],
+                        'compras' => $quantidade
+                    ];
+                } else {
+                    $naoCompraveis[$id] = $quantidade;
+                    unset($resultado[$id]);
+                    unset($compras[$id]);
+                    unset($insumoIds[$id]);
+                }
+            }
+
+            if (!empty($naoCompraveis)) {
+                foreach ($naoCompraveis as $produto => $quantidadeNecessaria) {
+                    $stmtFicha = $pdo->prepare("SELECT insumo_id, quantity, rendimento FROM productions WHERE system_unit_id = ? AND product_id = ?");
+                    $stmtFicha->execute([$matriz_id, $produto]);
+                    $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($fichas as $ficha) {
+                        $insumo_id = $ficha['insumo_id'];
+                        $qtd_ficha = floatval($ficha['quantity']);
+                        $rendimento = floatval($ficha['rendimento']) ?: 1;
+
+                        $qtd_compra = ($qtd_ficha * $quantidadeNecessaria) / $rendimento;
+
+                        if (!isset($compras[$insumo_id])) {
+                            $compras[$insumo_id] = 0;
+                        }
+                        $compras[$insumo_id] += $qtd_compra;
+                        $insumoIds[$insumo_id] = $insumo_id;
+                    }
+                }
+            }
+
+        } while (!empty($naoCompraveis));
+
+        return array_values($resultado);
     }
+
 
     /**
      * @throws DateMalformedStringException
