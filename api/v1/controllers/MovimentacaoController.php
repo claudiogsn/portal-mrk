@@ -1135,7 +1135,8 @@ class MovimentacaoController
     public static function getDiferencasEstoque(
         $startDate,
         $endDate,
-        array $systemUnitIds
+        array $systemUnitIds,
+        $tipo = 'detalhado'
     ): array
     {
         global $pdo;
@@ -1145,6 +1146,7 @@ class MovimentacaoController
                 "startDate" => $startDate,
                 "endDate" => $endDate,
                 "systemUnitIds" => $systemUnitIds,
+                "tipo" => $tipo,
             ],
             "status" => "success",
             "data" => [],
@@ -1153,34 +1155,35 @@ class MovimentacaoController
         try {
             // Query base para buscar as diferenças de estoque com as condições especificadas
             $sql = "
-            SELECT
-                d.system_unit_id,
-                su.name AS nome_unidade,
-                d.produto,
-                d.nome_produto,
-                saldo_anterior,
-                entradas,
-                saidas,
-                contagem_ideal,
-                contagem_realizada,
-                (d.diferenca) * -1 AS diferenca,
-                d.data,
-                COALESCE(p.preco_custo, 0) AS preco_custo,
-                ROUND(((d.diferenca * -1) * COALESCE(p.preco_custo, 0)), 2) AS perda_custo
-            FROM
-                diferencas_estoque d
-            JOIN
-                products p
-            ON
-                d.produto = p.codigo AND d.system_unit_id = p.system_unit_id
-            JOIN
-                system_unit su
-            ON
-                d.system_unit_id = su.id
-            WHERE
-                d.diferenca < 0
-                AND d.system_unit_id = ?
-                AND d.data BETWEEN ? AND ?
+        SELECT
+            d.system_unit_id,
+            su.name AS nome_unidade,
+            d.produto,
+            d.nome_produto,
+            saldo_anterior,
+            entradas,
+            saidas,
+            contagem_ideal,
+            contagem_realizada,
+            (d.diferenca) * -1 AS diferenca,
+            d.data,
+            COALESCE(p.preco_custo, 0) AS preco_custo,
+            ROUND(((d.diferenca * -1) * COALESCE(p.preco_custo, 0)), 2) AS perda_custo
+        FROM
+            diferencas_estoque d
+        JOIN
+            products p
+        ON
+            d.produto = p.codigo AND d.system_unit_id = p.system_unit_id
+        JOIN
+            system_unit su
+        ON
+            d.system_unit_id = su.id
+        WHERE
+            d.diferenca < 0
+            AND d.system_unit_id = ?
+            AND d.data BETWEEN ? AND ?
+        ORDER BY d.system_unit_id, d.produto, d.data
         ";
 
             // Prepara a consulta uma vez, para reutilização
@@ -1192,7 +1195,65 @@ class MovimentacaoController
 
                 // Adiciona os resultados ao array de dados
                 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                if (!empty($results)) {
+
+                if (empty($results)) {
+                    continue;
+                }
+
+                if ($tipo === 'resumido') {
+                    $resumido = [];
+
+                    // Agrupa por produto
+                    foreach ($results as $row) {
+                        $produto = $row['produto'];
+
+                        if (!isset($resumido[$produto])) {
+                            // Primeiro registro do produto (será o primeiro dia)
+                            $resumido[$produto] = [
+                                'system_unit_id' => $row['system_unit_id'],
+                                'nome_unidade' => $row['nome_unidade'],
+                                'produto' => $row['produto'],
+                                'nome_produto' => $row['nome_produto'],
+                                'saldo_anterior' => $row['saldo_anterior'], // Primeiro dia
+                                'entradas' => 0,
+                                'saidas' => 0,
+                                'preco_custo' => $row['preco_custo'],
+                                'ultima_contagem_realizada' => 0,
+                            ];
+                        }
+
+                        // Soma entradas e saídas
+                        $resumido[$produto]['entradas'] += $row['entradas'];
+                        $resumido[$produto]['saidas'] += $row['saidas'];
+
+                        // Guarda a última contagem realizada
+                        $resumido[$produto]['ultima_contagem_realizada'] = $row['contagem_realizada'];
+                    }
+
+                    foreach ($resumido as &$prod) {
+                        // Calcula contagem ideal (saldo inicial + entradas - saídas)
+                        $prod['contagem_ideal'] = $prod['saldo_anterior'] + $prod['entradas'] - $prod['saidas'];
+
+                        // Calcula diferença (contagem ideal - última contagem realizada)
+                        $prod['diferenca'] = $prod['contagem_ideal'] - $prod['ultima_contagem_realizada'];
+
+                        // Calcula perda de custo
+                        $prod['perda_custo'] = round($prod['diferenca'] * $prod['preco_custo'], 2);
+
+                        // Novo campo: balanco final (última contagem realizada)
+                        $prod['contagem_realizada'] = $prod['ultima_contagem_realizada'];
+
+                        // Remove campo temporário
+                        unset($prod['ultima_contagem_realizada']);
+                    }
+
+
+                    $response["data"] = array_merge(
+                        $response["data"],
+                        array_values($resumido)
+                    );
+                } else {
+                    // Mantém detalhado
                     $response["data"] = array_merge(
                         $response["data"],
                         $results

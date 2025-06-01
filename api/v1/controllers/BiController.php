@@ -15,22 +15,25 @@ class BiController {
         global $pdo;
 
         $stmt = $pdo->prepare("SELECT 
-            rel.system_unit_id, 
-            su.custom_code,
-            su.name
-        FROM 
-            grupo_estabelecimento_rel AS rel 
-        JOIN 
-            system_unit AS su ON rel.system_unit_id = su.id 
-        WHERE 
-            rel.grupo_id = :group_id
-            AND su.custom_code IS NOT NULL;
-        ");
+        rel.system_unit_id, 
+        su.custom_code,
+        su.name
+    FROM 
+        grupo_estabelecimento_rel AS rel 
+    JOIN 
+        system_unit AS su ON rel.system_unit_id = su.id 
+    WHERE 
+        rel.grupo_id = :group_id
+        AND su.custom_code IS NOT NULL
+    ORDER BY FIELD(su.id, 9, 3, 4, 5, 7);  -- Ordem específica
+    ");
+
         $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function getUnitsByGroupMov($group_id) {
         global $pdo;

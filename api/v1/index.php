@@ -145,7 +145,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getDiferencasEstoque':
                 if (isset($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::getDiferencasEstoque($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id']);
+                    $response = MovimentacaoController::getDiferencasEstoque($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id'], $requestData['tipo'] ?? null);
                     http_response_code(200);
                 }else{
                     http_response_code(400);
@@ -334,6 +334,17 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'importCompositions':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
                     $response = ComposicaoController::importCompositions(
+                        $requestData['system_unit_id'],
+                        $requestData['itens']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
+                }
+                break;
+                case 'importProductions':
+                if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
+                    $response = ComposicaoController::importProductions(
                         $requestData['system_unit_id'],
                         $requestData['itens']
                     );
@@ -647,6 +658,18 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'generateResumoFinanceiroPorGrupo':
                 if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::generateResumoFinanceiroPorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+                case 'generateHourlySalesByGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateHourlySalesByGrupo(
                         $requestData['grupoId'],
                         $requestData['dt_inicio'],
                         $requestData['dt_fim']

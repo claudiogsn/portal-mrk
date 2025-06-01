@@ -44,6 +44,10 @@
             <action>ImportarFichasTecnicas</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Importar Fichas de Produção">
+            <action>ImportarProducoes</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Balanco">

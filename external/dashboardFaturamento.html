@@ -138,6 +138,11 @@
             </div>
         </div>
     </div>
+    <div class="bg-white p-6 mt-6 rounded-lg shadow">
+        <h2 class="text-lg font-semibold mb-4">Faturamento por Hora (média)</h2>
+        <div id="chartFaturamentoHora" style="width: 100%; height: 400px;"></div>
+    </div>
+
 
 </div>
 
@@ -156,6 +161,8 @@
     let resumoDiarioGrupo = [];
     let modosVendaGrupo = [];
     let meiosPagamentoGrupo = [];
+    let faturamentoHoraGrupo = [];
+    let horasGrupo = [];
 
     let isMaisVendidos = true;
     let isTipoQuantidade = true;
@@ -210,6 +217,7 @@
             await carregarModosVendaPorGrupo(dt_inicio, dt_fim);
             await carregarMeiosPagamentoPorGrupo(dt_inicio, dt_fim);
             await carregarRankingProdutosPorGrupo(dt_inicio, dt_fim);
+            await carregarFaturamentoHoraPorGrupo(dt_inicio, dt_fim);
             aplicarFiltroLoja();
         } catch (err) {
             Swal.fire('Erro ao carregar', err.message, 'error');
@@ -277,6 +285,16 @@
         rankingDataGrupo = response.data.data;
     }
 
+    async function carregarFaturamentoHoraPorGrupo(dt_inicio, dt_fim) {
+        const response = await axios.post(baseUrl, {
+            method: 'generateHourlySalesByGrupo',
+            token,
+            data: { grupoId, dt_inicio, dt_fim }
+        });
+        horasGrupo = response.data.horas;
+        faturamentoHoraGrupo = response.data.lojas;
+
+    }
     function aplicarFiltroLoja() {
         const selectedLoja = parseInt(document.getElementById('filtroLoja').value) || null;
 
@@ -285,6 +303,7 @@
         const filtradoModos = modosVendaGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
         const filtradoMeios = meiosPagamentoGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
         const filtradoRanking = rankingDataGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
+        const filtradoHora = faturamentoHoraGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
 
         renderResumo(filtradoResumo);
         renderResumoDiario(filtradoResumoDiario);
@@ -292,6 +311,7 @@
         renderDonutLojasComSetas(filtradoResumo);
         renderRankingTableGrupo(filtradoRanking);
         renderChartMeiosPagamento(agregarMeiosPagamento(filtradoMeios));
+        renderChartFaturamentoHora(filtradoHora, horasGrupo);
     }
 
     function agregarMeiosPagamento(data) {
@@ -310,6 +330,84 @@
         // Convertendo para array e ordenando por valor
         return Object.values(agregados).sort((a, b) => b.valor - a.valor);
     }
+
+    function renderChartFaturamentoHora(lojas, hours) {
+        const chartDom = document.getElementById('chartFaturamentoHora');
+        const myChart = echarts.init(chartDom);
+
+        // Ordena do maior para o menor
+        const lojasOrdenadas = [...lojas]
+            .sort((a, b) => {
+                const totalA = a.valores.reduce((sum, v) => sum + v, 0);
+                const totalB = b.valores.reduce((sum, v) => sum + v, 0);
+                return totalB - totalA;
+            })
+            .reverse(); // ← INVERTE para que o maior fique no TOPO da pilha
+
+        const series = lojasOrdenadas.map(loja => ({
+            name: loja.nome,
+            type: 'line',
+            stack: 'Total',
+            areaStyle: {},
+            emphasis: { focus: 'series' },
+            data: loja.valores
+        }));
+
+        const option = {
+            title: { text: ' ' },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross',
+                    label: {
+                        backgroundColor: '#6a7985'
+                    }
+                },
+                formatter: function (params) {
+                    const sorted = [...params].sort((a, b) => b.value - a.value);
+                    let total = 0;
+
+                    let content = `<strong>${params[0].axisValue}</strong><br>`;
+                    sorted.forEach(item => {
+                        total += item.value;
+                        content += `
+                <span style="display:inline-block;margin-right:5px;border-radius:50%;width:10px;height:10px;background:${item.color}"></span>
+                ${item.seriesName}: <b>R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b><br>
+            `;
+                    });
+
+                    content += `<hr style="margin:4px 0;"><b>Total: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`;
+                    return content;
+                }
+            },
+            legend: {
+                data: lojasOrdenadas.map(loja => loja.nome),
+                bottom: 0
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '10%',
+                containLabel: true
+            },
+            xAxis: [
+                {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: hours
+                }
+            ],
+            yAxis: [
+                {
+                    type: 'value'
+                }
+            ],
+            series
+        };
+
+        myChart.setOption(option);
+    }
+
 
     function renderChartMeiosPagamento(data) {
         const chartDom = document.getElementById('payments');

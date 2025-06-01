@@ -404,12 +404,72 @@ class DashboardController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private static function getLojasDoGrupo($grupoId): array
+    public static function generateHourlySalesByGrupo($grupoId, $start_datetime, $end_datetime): array
     {
-        return array_map(
-            fn($loja) => (int) $loja['custom_code'],
-            BiController::getUnitsByGroup($grupoId)
-        );
+        global $pdo;
+
+        $result = [
+            'hours' => [],
+            'lojas' => []
+        ];
+
+        // Gera o eixo X: ["00h", ..., "23h"]
+        for ($h = 0; $h < 24; $h++) {
+            $result['hours'][] = str_pad($h, 2, '0', STR_PAD_LEFT) . 'h';
+        }
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $lojasMap = [];
+
+            foreach ($lojas as $loja) {
+                $lojaId = (int) $loja['custom_code'];
+                $nomeLoja = $loja['name'];
+
+                $stmt = $pdo->prepare("
+                SELECT 
+                    hora,
+                    SUM(vlTotalRecebido) / COUNT(DISTINCT DATE(dataContabil)) AS media_hora
+                FROM 
+                    movimento_caixa
+                WHERE 
+                    lojaId = :lojaId
+                    AND dataContabil BETWEEN :start AND :end
+                    AND cancelado = 0
+                    AND vlTotalRecebido > 0
+                GROUP BY 
+                    hora
+                ORDER BY 
+                    hora
+            ");
+
+                $stmt->execute([
+                    ':lojaId' => $lojaId,
+                    ':start' => $start_datetime,
+                    ':end' => $end_datetime
+                ]);
+
+                $horarios = array_fill(0, 24, 0);
+
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $hora = (int) $row['hora'];
+                    $media = (float) $row['media_hora'];
+                    $horarios[$hora] = round($media, 2);
+                }
+
+                $result['lojas'][] = [
+                    'nome' => $nomeLoja,
+                    'valores' => $horarios
+                ];
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao gerar dados por grupo: ' . $e->getMessage()
+            ];
+        }
     }
 
     public static function generateResumoFinanceiroPorGrupo($grupoId, $dt_inicio, $dt_fim): array

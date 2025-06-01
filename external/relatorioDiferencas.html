@@ -21,7 +21,6 @@
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/css/bootstrap-select.min.css">
 
-
     <style>
         .header-card {
             margin-top: 20px;
@@ -64,388 +63,291 @@
             white-space: normal;
         }
         .override-bootstrap-select {
-            display: block !important; /* Força a regra sobre o arquivo CSS externo */
+            display: block !important;
         }
         .bootstrap-select {
-            width: 100% !important; /* Ajusta o campo para ocupar 100% da largura do contêiner */
+            width: 100% !important;
         }
-
     </style>
 </head>
 
 <body class="theme-blue">
-    <div class="container-fluid">
-            <div class="header-card">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <label for="dataInicial">Data Inicial</label>
-                                <input type="date" id="dataInicial" class="form-control">
-                            </div>
-                            <div class="col-md-2">
-                                <label for="dataFinal">Data Final</label>
-                                <input type="date" id="dataFinal" class="form-control">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="selectLojas">Lojas</label>
-                                <select id="selectLojas" style="display: block; width: 100%;" class="form-control selectpicker override-bootstrap-select" data-selected-text-format="count" data-actions-box="true" multiple data-live-search="true" data-width="fit">
-                                    <!-- Preenchido dinamicamente -->
-                                </select>
-                                
-                            </div>
-                            <div class="col-md-3">
-                                <label for="visualizacao">Visualização</label>
-                                <select id="visualizacao" class="form-control">
-                                    <option value="resumido">Resumido</option>
-                                    <option value="detalhado">Detalhado</option>
-                                </select>
-                            </div>
-                        
-                       
-                        <div class="col-md-1">
-                            <label for="btnBuscar">&nbsp;</label>
-                            <input type="button" id="btnBuscar" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Buscar"></input>
-                        </div>
-                    </div>
+<div class="container-fluid">
+    <div class="header-card">
+        <div class="row">
+            <div class="col-md-2">
+                <label for="dataInicial">Data Inicial</label>
+                <input type="date" id="dataInicial" class="form-control">
             </div>
-
-        <div class="card">
-            <div class="header">
-                <h2>Relatório de Diferenças de Estoque</h2>
+            <div class="col-md-2">
+                <label for="dataFinal">Data Final</label>
+                <input type="date" id="dataFinal" class="form-control">
             </div>
-            <!-- Relatório -->
-            <div id="relatorio" class="mt-4">
-                <!-- Conteúdo dinâmico -->
+            <div class="col-md-3">
+                <label for="selectLojas">Lojas</label>
+                <select id="selectLojas" style="display: block; width: 100%;" class="form-control selectpicker override-bootstrap-select" data-selected-text-format="count" data-actions-box="true" multiple data-live-search="true" data-width="fit">
+                    <!-- Preenchido dinamicamente -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="visualizacao">Visualização</label>
+                <select id="visualizacao" class="form-control">
+                    <option value="resumido">Resumido</option>
+                    <option value="detalhado">Detalhado</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label for="btnBuscar">&nbsp;</label>
+                <button id="btnBuscar" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF">Buscar</button>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/js/bootstrap-select.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/i18n/defaults-pt_BR.min.js"></script>
-    <script src="bsb/plugins/bootstrap-select/js/bootstrap-select.js"></script>
+    <div class="card">
+        <div class="header">
+            <h2>Relatório de Diferenças de Estoque</h2>
+        </div>
+        <div id="relatorio" class="mt-4">
+            <!-- Conteúdo dinâmico -->
+        </div>
+    </div>
+</div>
 
-    <script>
-        const baseUrl = window.location.hostname !== 'localhost' ?
-            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-            'http://localhost/portal-mrk/api/v1/index.php';
-    
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const username = urlParams.get('username');
-    
-        $(document).ready(function () {
-    
-            $('#selectLojas').selectpicker({
-                noneSelectedText: 'Nenhuma loja selecionada',
-                noneResultsText: 'Nenhum resultado encontrado {0}',
-                selectAllText: 'Selecionar tudo',
-                deselectAllText: 'Desmarcar tudo',
-                width: 'fit'
-            });
-    
-            $('#selectLojas').on('changed.bs.select', function () {
-                const selected = $(this).val(); // Obtém os valores selecionados
-                const count = selected ? selected.length : 0; // Conta quantos itens foram selecionados
-    
-                if (count === 0) {
-                    $('.dropdown-toggle .filter-option').text('Nenhuma loja selecionada');
-                } else if (count === 1) {
-                    $('.dropdown-toggle .filter-option').text('1 loja selecionada');
-                } else {
-                    $('.dropdown-toggle .filter-option').text(`${count} lojas selecionadas`);
-                }
-            });
-    
-            $('#selectLojas').selectpicker({
-                noneSelectedText: 'Nenhuma loja selecionada',
-                countSelectedText: (numSelected) => `${numSelected} lojas selecionadas`,
-            });
-    
-            // Carregar unidades
-            async function loadUnidades() {
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'getFiliaisByMatriz',
-                        token: token,
-                        data: { unit_matriz_id: username }
-                    });
-    
-                    if (response.data) {
-                        const selectLojas = $('#selectLojas');
-                        selectLojas.empty(); // Limpa as opções existentes
-                        response.data.forEach(filial => {
-                            selectLojas.append(`<option value="${filial.filial_id}">${filial.filial_nome}</option>`);
-                        });
-                        selectLojas.selectpicker('refresh'); // Atualiza o Bootstrap Select
-                    } else {
-                        Swal.fire('Erro', 'Não foi possível carregar as lojas.', 'error');
-                    }
-                } catch (error) {
-                    Swal.fire('Erro', error.message, 'error');
-                }
-            }
-    
-            // Buscar relatório
-            async function buscarRelatorio() {
-                const dataInicial = $('#dataInicial').val();
-                const dataFinal = $('#dataFinal').val();
-                const lojas = $('#selectLojas').val();
-                const visualizacao = $('#visualizacao').val();
-    
-                if (!dataInicial || !dataFinal || new Date(dataInicial) > new Date(dataFinal)) {
-                    Swal.fire('Erro', 'Preencha as datas corretamente.', 'error');
-                    return;
-                }
-    
-                if (!lojas || lojas.length === 0) {
-                    Swal.fire('Erro', 'Selecione pelo menos uma loja.', 'error');
-                    return;
-                }
-    
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'getDiferencasEstoque',
-                        token: token,
-                        data: {
-                            system_unit_id: lojas,
-                            start_date: dataInicial,
-                            end_date: dataFinal
-                        }
-                    });
-    
-                    if (response.data.status === 'success') {
-                        renderRelatorio(response.data.data, visualizacao);
-                    } else {
-                        Swal.fire('Erro', 'Não foi possível carregar o relatório.', 'error');
-                    }
-                } catch (error) {
-                    Swal.fire('Erro', error.message, 'error');
-                }
-            }
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/js/bootstrap-select.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/i18n/defaults-pt_BR.min.js"></script>
+<script src="bsb/plugins/bootstrap-select/js/bootstrap-select.js"></script>
 
-            function renderRelatorio(data, visualizacao) {
-                const container = $('#relatorio');
-                container.empty();
+<script>
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
 
-                const unidades = groupBy(data, 'system_unit_id');
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const username = urlParams.get('username');
 
-                Object.keys(unidades).forEach(unitId => {
-                    const unidade = unidades[unitId];
-                    const nomeUnidade = unidade[0].nome_unidade;
-
-                    const header = $(`
-            <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
-                ${nomeUnidade} <span style="float: right;">+</span>
-            </div>
-        `);
-
-                    const table = $(`
-            <table class="table table-bordered unit-table" style="display: none; transition: max-height 0.3s ease; overflow: hidden;">
-                <thead>
-                    <tr>
-                        ${
-                        visualizacao === 'resumido'
-                            ? '<th>Produto</th><th>Nome Produto</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
-                            : '<th>Data</th><th>Nome Produto</th><th>Saldo Anterior</th><th>Entradas</th><th>Saídas</th><th>Resultado</th><th>Balanco</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'
-                    }
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        `);
-
-                    let totalPerdaCusto = 0;
-                    let totalDiferenca = 0;
-
-                    if (visualizacao === 'resumido') {
-                        const produtos = groupBy(unidade, 'produto');
-
-                        // Ordena alfabeticamente pelo nome do produto
-                        const sortedProdutoIds = Object.keys(produtos).sort((a, b) => {
-                            const nomeA = produtos[a][0].nome_produto.toLowerCase();
-                            const nomeB = produtos[b][0].nome_produto.toLowerCase();
-                            return nomeA.localeCompare(nomeB);
-                        });
-
-                        sortedProdutoIds.forEach(produtoId => {
-                            const itens = produtos[produtoId];
-                            const nomeProduto = itens[0].nome_produto;
-                            const precoCusto = itens[0].preco_custo;
-                            const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
-                            const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
-
-                            totalDiferenca += somaDiferenca;
-                            totalPerdaCusto += somaPerdaCusto;
-
-                            const row = $(`
-                    <tr>
-                        <td>${produtoId}</td>
-                        <td>${nomeProduto}</td>
-                        <td>- ${formatNumber(somaDiferenca)}</td>
-                        <td>${formatCurrency(precoCusto)}</td>
-                        <td>- ${formatCurrency(somaPerdaCusto)}</td>
-                    </tr>
-                `);
-
-                            table.find('tbody').append(row);
-                        });
-                    } else {
-                        // Ordena por nome do produto no modo detalhado
-                        const sortedUnidade = unidade.slice().sort((a, b) =>
-                            a.nome_produto.toLowerCase().localeCompare(b.nome_produto.toLowerCase())
-                        );
-
-                        sortedUnidade.forEach(item => {
-                            totalDiferenca += item.diferenca;
-                            totalPerdaCusto += item.perda_custo;
-
-                            const row = $(`
-                    <tr>
-                        <td>${formatDate(item.data)}</td>
-                        <td>${item.nome_produto}</td>
-                        <td>${formatNumber(item.saldo_anterior)}</td>
-                        <td>${formatNumber(item.entradas)}</td>
-                        <td>${formatNumber(item.saidas)}</td>
-                        <td>${formatNumber(item.contagem_ideal)}</td>
-                        <td>${formatNumber(item.contagem_realizada)}</td>
-                        <td>- ${formatNumber(item.diferenca)}</td>
-                        <td>${formatCurrency(item.preco_custo)}</td>
-                        <td>- ${formatCurrency(item.perda_custo)}</td>
-                    </tr>
-                `);
-
-                            table.find('tbody').append(row);
-                        });
-                    }
-
-                    const footer = $(`
-            <tr class="total-row">
-                <td colspan="${visualizacao === 'resumido' ? '4' : '9'}" style="font-weight: bold;">Total</td>
-                <td>${formatCurrency(-totalPerdaCusto)}</td>
-            </tr>
-        `);
-
-                    table.find('tbody').append(footer);
-
-                    container.append(header);
-                    container.append(table);
-
-                    header.on('click', function () {
-                        const isVisible = table.is(':visible');
-                        table.slideToggle(300);
-                        $(this).find('span').text(isVisible ? '+' : '-');
-                    });
-
-                    setupSortButtons(table, unidade, visualizacao);
-                });
-            }
-
-
-            // Função para configurar a ordenação
-            function setupSortButtons(table, unidade, visualizacao) {
-                // Ordenar por Data
-                table.find('button[data-sort="data-asc"]').on('click', function() {
-                    unidade.sort((a, b) => new Date(a.data) - new Date(b.data));
-                    renderTableBody(table, unidade, visualizacao);
-                });
-    
-                table.find('button[data-sort="data-desc"]').on('click', function() {
-                    unidade.sort((a, b) => new Date(b.data) - new Date(a.data));
-                    renderTableBody(table, unidade, visualizacao);
-                });
-    
-                // Ordenar por Nome do Produto
-                table.find('button[data-sort="produto-asc"]').on('click', function() {
-                    unidade.sort((a, b) => a.nome_produto.localeCompare(b.nome_produto));
-                    renderTableBody(table, unidade, visualizacao);
-                });
-    
-                table.find('button[data-sort="produto-desc"]').on('click', function() {
-                    unidade.sort((a, b) => b.nome_produto.localeCompare(a.nome_produto));
-                    renderTableBody(table, unidade, visualizacao);
-                });
-            }
-    
-            // Função para renderizar o corpo da tabela após a ordenação
-            function renderTableBody(table, unidade, visualizacao) {
-                const tbody = table.find('tbody');
-                tbody.empty();
-    
-                if (visualizacao === 'resumido') {
-                    const produtos = groupBy(unidade, 'produto');
-                    Object.keys(produtos).forEach(produtoId => {
-                        const itens = produtos[produtoId];
-                        const nomeProduto = itens[0].nome_produto;
-                        const precoCusto = itens[0].preco_custo;
-                        const somaDiferenca = itens.reduce((sum, item) => sum + item.diferenca, 0);
-                        const somaPerdaCusto = itens.reduce((sum, item) => sum + item.perda_custo, 0);
-    
-                        const row = $(`  
-                            <tr>
-                                <td>${produtoId}</td>
-                                <td>${nomeProduto}</td>
-                                <td>- ${formatNumber(somaDiferenca)}</td>
-                                <td>${formatCurrency(precoCusto)}</td>
-                                <td>- ${formatCurrency(somaPerdaCusto)}</td>
-                            </tr>
-                        `);
-                        tbody.append(row);
-                    });
-                } else {
-                    unidade.forEach(item => {
-                        const row = $(`  
-                            <tr>
-                                <td>${formatDate(item.data)}</td>
-                                <td>${item.nome_produto}</td>
-                                <td>- ${formatNumber(item.diferenca)}</td>
-                                <td>${formatCurrency(item.preco_custo)}</td>
-                                <td>- ${formatCurrency(item.perda_custo)}</td>
-                            </tr>
-                        `);
-                        tbody.append(row);
-                    });
-                }
-            }
-    
-            // Função para agrupar dados por chave
-            function groupBy(array, key) {
-                return array.reduce((result, currentValue) => {
-                    (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
-                    return result;
-                }, {});
-            }
-    
-            function formatNumber(value) {
-                return parseFloat(value).toFixed(2).replace('.', ',');
-            }
-    
-            // Função para formatar moeda
-            function formatCurrency(value) {
-                return `R$ ${parseFloat(value).toFixed(2).replace('.', ',')}`;
-            }
-    
-            // Função para formatar data no formato dd/mm/aaaa
-            function formatDate(dateString) {
-                const [year, month, day] = dateString.split('-');
-                return `${day}/${month}/${year}`;
-            }
-    
-            $('#btnBuscar').on('click', buscarRelatorio);
-            loadUnidades();
+    $(document).ready(function () {
+        // Configuração do selectpicker
+        $('#selectLojas').selectpicker({
+            noneSelectedText: 'Nenhuma loja selecionada',
+            noneResultsText: 'Nenhum resultado encontrado {0}',
+            selectAllText: 'Selecionar tudo',
+            deselectAllText: 'Desmarcar tudo',
+            width: 'fit'
         });
-    </script>
-    
 
+        $('#selectLojas').on('changed.bs.select', function () {
+            const selected = $(this).val();
+            const count = selected ? selected.length : 0;
 
- 
+            if (count === 0) {
+                $('.dropdown-toggle .filter-option').text('Nenhuma loja selecionada');
+            } else if (count === 1) {
+                $('.dropdown-toggle .filter-option').text('1 loja selecionada');
+            } else {
+                $('.dropdown-toggle .filter-option').text(`${count} lojas selecionadas`);
+            }
+        });
+
+        // Carregar unidades
+        async function loadUnidades() {
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getFiliaisByMatriz',
+                    token: token,
+                    data: { unit_matriz_id: username }
+                });
+
+                if (response.data) {
+                    const selectLojas = $('#selectLojas');
+                    selectLojas.empty();
+                    response.data.forEach(filial => {
+                        selectLojas.append(`<option value="${filial.filial_id}">${filial.filial_nome}</option>`);
+                    });
+                    selectLojas.selectpicker('refresh');
+                } else {
+                    Swal.fire('Erro', 'Não foi possível carregar as lojas.', 'error');
+                }
+            } catch (error) {
+                Swal.fire('Erro', error.message, 'error');
+            }
+        }
+
+        // Buscar relatório
+        async function buscarRelatorio() {
+            const dataInicial = $('#dataInicial').val();
+            const dataFinal = $('#dataFinal').val();
+            const lojas = $('#selectLojas').val();
+            const visualizacao = $('#visualizacao').val();
+
+            if (!dataInicial || !dataFinal || new Date(dataInicial) > new Date(dataFinal)) {
+                Swal.fire('Erro', 'Preencha as datas corretamente.', 'error');
+                return;
+            }
+
+            if (!lojas || lojas.length === 0) {
+                Swal.fire('Erro', 'Selecione pelo menos uma loja.', 'error');
+                return;
+            }
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getDiferencasEstoque',
+                    token: token,
+                    data: {
+                        start_date: dataInicial,
+                        end_date: dataFinal,
+                        system_unit_id: lojas,
+                        tipo: visualizacao
+                    }
+                });
+
+                if (response.data.status === 'success') {
+                    renderRelatorio(response.data.data, visualizacao);
+                } else {
+                    Swal.fire('Erro', response.data.message || 'Não foi possível carregar o relatório.', 'error');
+                }
+            } catch (error) {
+                Swal.fire('Erro', error.message, 'error');
+            }
+        }
+
+        function renderRelatorio(data, visualizacao) {
+            const container = $('#relatorio');
+            container.empty();
+
+            if (data.length === 0) {
+                container.html('<div class="alert alert-info">Nenhum resultado encontrado para os filtros selecionados.</div>');
+                return;
+            }
+
+            const unidades = groupBy(data, 'system_unit_id');
+
+            Object.keys(unidades).forEach(unitId => {
+                const unidade = unidades[unitId];
+                const nomeUnidade = unidade[0].nome_unidade;
+
+                const header = $(`
+                        <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
+                            ${nomeUnidade} <span style="float: right;">+</span>
+                        </div>
+                    `);
+
+                const table = $(`
+                        <table class="table table-bordered unit-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    ${visualizacao === 'resumido' ?
+                    '<th>Produto</th><th>Nome</th><th>Saldo Inicial</th><th>Entradas</th><th>Saídas</th><th>Contagem Ideal</th><th>Contagem Real</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>' :
+                    '<th>Data</th><th>Produto</th><th>Nome</th><th>Saldo Anterior</th><th>Entradas</th><th>Saídas</th><th>Contagem Ideal</th><th>Contagem Real</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'}
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    `);
+
+                let totalPerdaCusto = 0;
+                let totalDiferenca = 0;
+
+                if (visualizacao === 'resumido') {
+                    // No modo resumido, cada item já contém os totais calculados
+                    unidade.forEach(item => {
+                        totalDiferenca += item.diferenca;
+                        totalPerdaCusto += item.perda_custo;
+
+                        const row = $(`
+                                <tr>
+                                    <td>${item.produto}</td>
+                                    <td>${item.nome_produto}</td>
+                                    <td>${formatNumber(item.saldo_anterior)}</td>
+                                    <td>${formatNumber(item.entradas)}</td>
+                                    <td>${formatNumber(item.saidas)}</td>
+                                    <td>${formatNumber(item.contagem_ideal)}</td>
+                                    <td>${formatNumber(item.contagem_realizada)}</td>
+                                    <td class="${item.diferenca < 0 ? 'text-danger' : ''}">${formatNumber(item.diferenca)}</td>
+                                    <td>${formatCurrency(item.preco_custo)}</td>
+                                    <td class="${item.perda_custo < 0 ? 'text-danger' : ''}">${formatCurrency(item.perda_custo)}</td>
+                                </tr>
+                            `);
+                        table.find('tbody').append(row);
+                    });
+                } else {
+                    // Modo detalhado - mostra todos os registros
+                    unidade.forEach(item => {
+                        totalDiferenca += item.diferenca;
+                        totalPerdaCusto += item.perda_custo;
+
+                        const row = $(`
+                                <tr>
+                                    <td>${formatDate(item.data)}</td>
+                                    <td>${item.produto}</td>
+                                    <td>${item.nome_produto}</td>
+                                    <td>${formatNumber(item.saldo_anterior)}</td>
+                                    <td>${formatNumber(item.entradas)}</td>
+                                    <td>${formatNumber(item.saidas)}</td>
+                                    <td>${formatNumber(item.contagem_ideal)}</td>
+                                    <td>${formatNumber(item.contagem_realizada)}</td>
+                                    <td class="${item.diferenca < 0 ? 'text-danger' : ''}">${formatNumber(item.diferenca)}</td>
+                                    <td>${formatCurrency(item.preco_custo)}</td>
+                                    <td class="${item.perda_custo < 0 ? 'text-danger' : ''}">${formatCurrency(item.perda_custo)}</td>
+                                </tr>
+                            `);
+                        table.find('tbody').append(row);
+                    });
+                }
+
+                // Adiciona linha de total
+                const footer = $(`
+                        <tr class="total-row">
+                            <td colspan="${visualizacao === 'resumido' ? '8' : '9'}" style="font-weight: bold;">Total</td>
+                            <td>${formatNumber(totalDiferenca)}</td>
+                            <td>${formatCurrency(totalPerdaCusto)}</td>
+                        </tr>
+                    `);
+                table.find('tbody').append(footer);
+
+                container.append(header);
+                container.append(table);
+
+                header.on('click', function () {
+                    const isVisible = table.is(':visible');
+                    table.slideToggle(300);
+                    $(this).find('span').text(isVisible ? '+' : '-');
+                });
+            });
+        }
+
+        function groupBy(array, key) {
+            return array.reduce((result, currentValue) => {
+                (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+                return result;
+            }, {});
+        }
+
+        function formatNumber(value) {
+            return parseFloat(value).toFixed(2).replace('.', ',');
+        }
+
+        function formatCurrency(value) {
+            return `R$ ${parseFloat(value).toFixed(2).replace('.', ',')}`;
+        }
+
+        function formatDate(dateString) {
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        $('#btnBuscar').on('click', buscarRelatorio);
+        loadUnidades();
+    });
+</script>
 </body>
-
 </html>

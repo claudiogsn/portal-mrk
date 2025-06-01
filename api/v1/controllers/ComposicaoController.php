@@ -152,7 +152,69 @@ class ComposicaoController {
         }
     }
 
+    public static function importProductions(int $system_unit_id, array $itens): array
+    {
+        global $pdo;
 
+        try {
+            $pdo->beginTransaction();
+
+            // Remove todas as produções antigas desse system_unit_id
+            $pdo->prepare("DELETE FROM productions WHERE system_unit_id = ?")
+                ->execute([$system_unit_id]);
+
+            // Insere as novas produções
+            $insertQuery = "
+            INSERT INTO productions (
+                product_id, insumo_id, quantity, rendimento, system_unit_id
+            ) VALUES (?, ?, ?, ?, ?)
+        ";
+            $insertStmt = $pdo->prepare($insertQuery);
+
+            $productIds = [];
+
+            foreach ($itens as $item) {
+                $productId = (int) $item['codigo'];
+                $rendimento = isset($item['rendimento']) ? (float) str_replace(',', '.', $item['rendimento']) : null;
+
+                $productIds[] = $productId;
+
+                foreach ($item['insumos'] as $insumo) {
+                    $insumoId = (int) $insumo['codigo'];
+                    $quantidade = (float) str_replace(',', '.', $insumo['quantidade']);
+
+                    $insertStmt->execute([
+                        $productId,
+                        $insumoId,
+                        $quantidade,
+                        $rendimento,
+                        $system_unit_id
+                    ]);
+                }
+            }
+
+            // Atualiza os produtos principais para não serem compráveis
+            if (!empty($productIds)) {
+                $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+                $updateQuery = "UPDATE products SET compravel = 0 WHERE system_unit_id = ? AND codigo IN ($placeholders)";
+                $updateStmt = $pdo->prepare($updateQuery);
+                $updateStmt->execute(array_merge([$system_unit_id], $productIds));
+            }
+
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Produções substituídas com sucesso.'
+            ];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return [
+                'success' => false,
+                'message' => 'Erro ao salvar produções: ' . $e->getMessage()
+            ];
+        }
+    }
 
 }
 ?>
