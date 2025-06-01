@@ -971,6 +971,22 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
+            case 'importarProdutosPorLoja':
+                if ($requestData['system_unit_id'] && $requestData['itens'] && $requestData['usuario_id']) {
+                    $response = ProductController::importarProdutosPorLoja(
+                        $requestData['system_unit_id'],
+                        $requestData['itens'],
+                        $requestData['usuario_id']
+                    );
+                    http_response_code(200);
+                }else{
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
             case 'listProductsByCategory':
                 if (isset($requestData['unit_id'])) {
                     $response = ProductController::listProductsByCategory($requestData['unit_id']);

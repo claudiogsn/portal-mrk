@@ -374,6 +374,145 @@ class ProductController {
     }
 
 
+    public static function importarProdutosPorLoja($system_unit_id, $produtos, $usuario_id): array
+    {
+        global $pdo;
+
+        try {
+            error_log("### Início da função importarProdutosPorLoja ###");
+
+            if (empty($system_unit_id) || empty($usuario_id) || !is_array($produtos)) {
+                throw new Exception('Parâmetros inválidos.');
+            }
+
+            error_log("Parâmetros recebidos - system_unit_id: $system_unit_id, usuario_id: $usuario_id, produtos: " . count($produtos));
+
+            $pdo->beginTransaction();
+            error_log("Transação iniciada.");
+
+            // Carrega categorias existentes
+            $stmtCategoriasExistentes = $pdo->prepare("SELECT id, codigo, nome FROM categorias WHERE system_unit_id = ?");
+            $stmtCategoriasExistentes->execute([$system_unit_id]);
+            $categoriasExistentes = $stmtCategoriasExistentes->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapCategorias = [];
+            $maiorCodigo = 0;
+            foreach ($categoriasExistentes as $cat) {
+                $nomeNormalizado = strtoupper(trim($cat['nome']));
+                $mapCategorias[$nomeNormalizado] = [
+                    'id' => $cat['id'],
+                    'codigo' => $cat['codigo']
+                ];
+                if ($cat['codigo'] > $maiorCodigo) {
+                    $maiorCodigo = $cat['codigo'];
+                }
+            }
+
+            $stmtInsertCategoria = $pdo->prepare("
+            INSERT INTO categorias (system_unit_id, codigo, nome)
+            VALUES (:system_unit_id, :codigo, :nome)
+        ");
+
+            $stmtInsertProduto = $pdo->prepare("
+            INSERT INTO products (
+                system_unit_id, codigo, nome, und, preco_custo, categoria, insumo
+            ) VALUES (
+                :system_unit_id, :codigo, :nome, :und, :preco_custo, :categoria_codigo, :insumo
+            )
+            ON DUPLICATE KEY UPDATE 
+                nome = VALUES(nome),
+                und = VALUES(und),
+                preco_custo = VALUES(preco_custo),
+                categoria = VALUES(categoria),
+                insumo = VALUES(insumo),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+
+            $produtosImportados = 0;
+
+            foreach ($produtos as $produto) {
+                if (!isset($produto['categoria_nome'], $produto['codigo'], $produto['nome'], $produto['und'], $produto['preco_custo'])) {
+                    throw new Exception("Produto malformado: " . json_encode($produto));
+                }
+
+                $nomeCategoria = strtoupper(trim($produto['categoria_nome']));
+                if (in_array($nomeCategoria, ['DESATIVADOS', 'INTEGRADOR PADRAO'])) {
+                    continue;
+                }
+
+                // Verifica se já temos a categoria no map
+                if (!isset($mapCategorias[$nomeCategoria])) {
+                    $novoCodigo = $maiorCodigo + 1;
+
+                    $stmtInsertCategoria->execute([
+                        ':system_unit_id' => $system_unit_id,
+                        ':codigo' => $novoCodigo,
+                        ':nome' => $nomeCategoria
+                    ]);
+
+                    $mapCategorias[$nomeCategoria] = [
+                        'id' => $pdo->lastInsertId(),
+                        'codigo' => $novoCodigo
+                    ];
+                    $maiorCodigo++;
+                    error_log("Categoria inserida: $nomeCategoria (COD: $novoCodigo)");
+                }
+
+                $categoria_codigo = $mapCategorias[$nomeCategoria]['codigo'];
+
+                $codigo = $produto['codigo'];
+                $nome = mb_substr($produto['nome'], 0, 50);
+                $und = $produto['und'];
+                $preco_custo = str_replace(',', '.', $produto['preco_custo']);
+
+                try {
+                    $stmtInsertProduto->execute([
+                        ':system_unit_id' => $system_unit_id,
+                        ':codigo' => $codigo,
+                        ':nome' => $nome,
+                        ':und' => $und,
+                        ':preco_custo' => $preco_custo,
+                        ':categoria_codigo' => $categoria_codigo,
+                        ':insumo' => 1
+                    ]);
+                    $produtosImportados++;
+                } catch (Exception $e) {
+                    error_log("Erro ao inserir/atualizar produto (codigo: $codigo): " . $e->getMessage());
+                    throw $e;
+                }
+            }
+
+            $pdo->commit();
+            error_log("Transação commitada com sucesso.");
+            error_log("### Fim da função importarProdutosPorLoja ###");
+
+            return [
+                'status' => 'success',
+                'message' => 'Importação concluída com sucesso.',
+                'categorias_importadas' => count($mapCategorias),
+                'produtos_importados' => $produtosImportados
+            ];
+        } catch (Exception $e) {
+            try {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                    error_log("Rollback executado.");
+                }
+            } catch (Exception $rollbackError) {
+                error_log("Erro ao tentar rollback: " . $rollbackError->getMessage());
+            }
+
+            error_log("Erro capturado: " . $e->getMessage());
+
+            return [
+                'status' => 'error',
+                'message' => 'Erro na importação: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
 
 
 }

@@ -36,8 +36,8 @@
             <action>ProductsList</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-          <menuitem label="Fichas Técnicas">
-            <action>CompositionsList</action>
+          <menuitem label="Importar Insumos">
+            <action>ImportarInsumos</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Importar Fichas Técnicas">
