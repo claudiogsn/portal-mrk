@@ -805,6 +805,98 @@ class DashboardController {
         }
     }
 
+    public static function generateResumoEstoquePorGrupo($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $financeiros = self::generateResumoFinanceiroPorGrupo($grupoId, $dt_inicio, $dt_fim)['data'];
+            $resumo = [];
+
+            foreach ($lojas as $loja) {
+                $systemUnitId = (int)$loja['custom_code'];
+                $system_unit_id = $loja['system_unit_id'];
+
+                // 1. Buscar insumos da unidade
+                $stmt = $pdo->prepare("
+                SELECT codigo, nome, categoria, preco_custo
+                FROM products
+                WHERE system_unit_id = :id AND insumo = 1
+            ");
+                $stmt->execute([':id' => $system_unit_id]);
+                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $cmvTotal = 0;
+                $produtosRuptura = 0;
+                $desperdicioTotal = 0;
+
+                foreach ($insumos as $insumo) {
+                    $codigo = $insumo['codigo'];
+                    $preco = (float)($insumo['preco_custo'] ?? 0);
+
+                    $extrato = MovimentacaoController::extratoInsumo($system_unit_id, $codigo, $dt_inicio, $dt_fim);
+
+
+                    if (isset($extrato['error'])) continue;
+
+                    foreach ($extrato['extrato'] as $dia) {
+                        // somar saídas do dia
+                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
+                        $totalSaidas = array_sum(array_column($saidas, 'quantidade'));
+                        $cmvTotal += $totalSaidas * $preco;
+
+                        // verificar ruptura
+                        if ($dia['saldo_estimado'] <= 0) {
+                            $produtosRuptura++;
+                        }
+
+                        // desperdício (saldo estimado maior que o balanço)
+                        if ($dia['balanco']) {
+                            $real = $dia['balanco']['quantidade'];
+                            $estimado = $dia['saldo_estimado'];
+                            if ($real < $estimado) {
+                                $desperdicioTotal += ($estimado - $real) * $preco;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Buscar faturamento bruto da loja
+                $faturamentoBruto = 0;
+                foreach ($financeiros as $fin) {
+                    if ((int)$fin['lojaId'] === $systemUnitId) {
+                        $faturamentoBruto = (float)$fin['faturamento_bruto'];
+                        break;
+                    }
+                }
+
+                $percentualCmv = $faturamentoBruto > 0 ? ($cmvTotal / $faturamentoBruto) * 100 : 0;
+
+                $resumo[] = [
+                    'lojaId' => $system_unit_id,
+                    'nomeLoja' => $loja['name'],
+                    'faturamento_bruto' => round($faturamentoBruto, 2),
+                    'cmv' => round($cmvTotal, 2),
+                    'percentual_cmv' => round($percentualCmv, 2),
+                    'produtos_ruptura' => $produtosRuptura,
+                    'desperdicio' => round($desperdicioTotal, 2)
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data' => $resumo
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar resumo de estoque por grupo: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 
