@@ -1072,6 +1072,64 @@ class DashboardController {
         }
     }
 
+    public static function generateCmvPorCategoria($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $categorias = [];
+
+            foreach ($lojas as $loja) {
+                $unitId = $loja['system_unit_id'];
+
+                // Buscar insumos com categoria
+                $stmt = $pdo->prepare("
+                SELECT codigo, nome, categoria, preco_custo
+                FROM products
+                WHERE system_unit_id = :id AND insumo = 1
+            ");
+                $stmt->execute([':id' => $unitId]);
+                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($insumos as $insumo) {
+                    $codigo = $insumo['codigo'];
+                    $categoria = $insumo['categoria'] ?? 'Sem Categoria';
+                    $preco = (float) $insumo['preco_custo'];
+
+                    $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dt_inicio, $dt_fim);
+                    if (isset($extrato['error'])) continue;
+
+                    $qtdTotal = 0;
+                    foreach ($extrato['extrato'] as $dia) {
+                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
+                        $qtd = array_sum(array_column($saidas, 'quantidade'));
+                        $qtdTotal += $qtd;
+                    }
+
+                    $valor = $qtdTotal * $preco;
+
+                    if (!isset($categorias[$categoria])) {
+                        $categorias[$categoria] = 0;
+                    }
+
+                    $categorias[$categoria] += $valor;
+                }
+            }
+
+            // Monta saída para gráfico
+            $saida = [];
+            foreach ($categorias as $cat => $valor) {
+                $saida[] = ['name' => $cat, 'value' => round($valor, 2)];
+            }
+
+            return ['success' => true, 'data' => $saida];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
 
 
 

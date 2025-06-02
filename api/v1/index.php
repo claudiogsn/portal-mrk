@@ -44,10 +44,12 @@ $data = json_decode($json, true);
 if (isset($data['method']) && isset($data['data'])) {
     $method = $data['method'];
     $requestData = $data['data'];
-    if (isset($data['token'])){$requestToken = $data['token'];}
+    if (isset($data['token'])) {
+        $requestToken = $data['token'];
+    }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['generateResumoFinanceiroPorLoja','validateCPF', 'persistMovimentoCaixa','validateCNPJ','getModelByTag','saveBalanceItems','getUnitsByGroup','registerJobExecution','persistSales','consolidateSalesByGroup','importMovBySalesCons'];
+    $noAuthMethods = ['generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -108,10 +110,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'importComprasCSV':
-                if (isset($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao'])){
+                if (isset($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao'])) {
                     $response = MovimentacaoController::importComprasCSV($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -120,10 +122,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'importMovBySales':
-                if (isset($requestData['system_unit_id'], $requestData['data'])){
+                if (isset($requestData['system_unit_id'], $requestData['data'])) {
                     $response = MovimentacaoController::importMovBySales($requestData['system_unit_id'], $requestData['data']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -132,10 +134,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'importMovBySalesCons':
-                if (isset($requestData['system_unit_id'], $requestData['data'])){
+                if (isset($requestData['system_unit_id'], $requestData['data'])) {
                     $response = MovimentacaoController::importMovBySalesCons($requestData['system_unit_id'], $requestData['data']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -144,10 +146,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'getDiferencasEstoque':
-                if (isset($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id'])) {
-                    $response = MovimentacaoController::getDiferencasEstoque($requestData['start_date'], $requestData['end_date'],$requestData['system_unit_id'], $requestData['tipo'] ?? null);
+                if (isset($requestData['start_date'], $requestData['end_date'], $requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::getDiferencasEstoque($requestData['start_date'], $requestData['end_date'], $requestData['system_unit_id'], $requestData['tipo'] ?? null);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -159,7 +161,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 if ($requestData['system_unit_id'] && $requestData['ajuste_date'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = MovimentacaoController::ajustarPrecoCusto($requestData['system_unit_id'], $requestData['ajuste_date'], $requestData['itens'], $requestData['usuario_id']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -171,7 +173,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 if ($requestData['grupo_id'] && $requestData['ajuste_date'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = MovimentacaoController::ajustarPrecoCustoPorGrupo($requestData['grupo_id'], $requestData['ajuste_date'], $requestData['itens'], $requestData['usuario_id']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -183,7 +185,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 if ($requestData['system_unit_id'] && $requestData['ajuste_date'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = MovimentacaoController::ajustarSaldo($requestData['system_unit_id'], $requestData['ajuste_date'], $requestData['itens'], $requestData['usuario_id']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -192,10 +194,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'getDatesByDoc':
-                if ($requestData['system_unit_id'] && $requestData['doc']){
+                if ($requestData['system_unit_id'] && $requestData['doc']) {
                     $response = MovimentacaoController::getDatesByDoc($requestData['system_unit_id'], $requestData['doc']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -204,10 +206,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'updateDataByDoc':
-                if ($requestData['system_unit_id'] && $requestData['doc'] && $requestData['data']){
+                if ($requestData['system_unit_id'] && $requestData['doc'] && $requestData['data']) {
                     $response = MovimentacaoController::updateDataByDoc($requestData['system_unit_id'], $requestData['doc'], $requestData['data']);
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -246,7 +248,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro sales ausente'];
                 }
-            break;
+                break;
             case 'persistMovimentoCaixa':
                 if (isset($requestData)) {
                     $response = BiController::persistMovimentoCaixa($requestData);
@@ -254,7 +256,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro sales ausente'];
                 }
-            break;
+                break;
             // Métodos para InsumoController
             case 'getInsumosUsage':
                 if (isset($requestData['system_unit_id'])) {
@@ -289,16 +291,17 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'getFiliaisByMatriz':
-                        if (isset($requestData['unit_matriz_id'])) {
-                            $response = NecessidadesController::getFiliaisByMatriz($requestData['unit_matriz_id']);
-                        } else {
-                            http_response_code(400);
-                            $response = ['error' => 'Parâmetro $unit_matriz_id ausente'];
-                        }
-                        break;
+                if (isset($requestData['unit_matriz_id'])) {
+                    $response = NecessidadesController::getFiliaisByMatriz($requestData['unit_matriz_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro $unit_matriz_id ausente'];
+                }
+                break;
             // Métodos para ComposicaoController
             case 'createComposicao':
-                $response = ComposicaoController::createComposicao($requestData);break;
+                $response = ComposicaoController::createComposicao($requestData);
+                break;
             case 'updateComposicao':
                 if (isset($requestData['id'])) {
                     $response = ComposicaoController::updateComposicao($requestData['id'], $requestData);
@@ -324,12 +327,12 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'listFichaTecnica':
-            if (isset($requestData['unit_id']) && isset($requestData['product_id'])) {
-                $response = ComposicaoController::listFichaTecnica($requestData['product_id'],$requestData['unit_id']);
-            } else {
-                http_response_code(400);
-                $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
-            }
+                if (isset($requestData['unit_id']) && isset($requestData['product_id'])) {
+                    $response = ComposicaoController::listFichaTecnica($requestData['product_id'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
+                }
                 break;
             case 'importCompositions':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
@@ -342,7 +345,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
                 }
                 break;
-                case 'importProductions':
+            case 'importProductions':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
                     $response = ComposicaoController::importProductions(
                         $requestData['system_unit_id'],
@@ -495,20 +498,20 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'getLastBalance':
-                    if (isset($requestData['system_unit_id']) && isset($requestData['produto'])) {
-                        $response = MovimentacaoController::getLastBalance($requestData['system_unit_id'], $requestData['produto']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
-                    }
+                if (isset($requestData['system_unit_id']) && isset($requestData['produto'])) {
+                    $response = MovimentacaoController::getLastBalance($requestData['system_unit_id'], $requestData['produto']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                }
                 break;
             case 'getLastBalanceByMatriz':
-                    if (isset($requestData['matriz_id']) && isset($requestData['produto'])) {
-                        $response = MovimentacaoController::getLastBalanceByMatriz($requestData['matriz_id'], $requestData['produto']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
-                    }
+                if (isset($requestData['matriz_id']) && isset($requestData['produto'])) {
+                    $response = MovimentacaoController::getLastBalanceByMatriz($requestData['matriz_id'], $requestData['produto']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                }
                 break;
             case 'getProductsToBuy':
                 if (isset($requestData['matriz_id']) && isset($requestData['vendas'])) {
@@ -550,8 +553,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'createTransferItems':
-                    $response = MovimentacaoController::createTransferItems($requestData);
-                    break;
+                $response = MovimentacaoController::createTransferItems($requestData);
+                break;
             case 'contarDiasSemana':
                 $response = NecessidadesController::contarDiasSemana($requestData['dias']);
                 break;
@@ -583,7 +586,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'ListMov':
-                $response = DashboardController::ListMov($requestData['dt_inicio'],$requestData['dt_fim']);
+                $response = DashboardController::ListMov($requestData['dt_inicio'], $requestData['dt_fim']);
                 break;
 
             case 'generateResumoFinanceiroPorLoja':
@@ -667,7 +670,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
                 }
                 break;
-                case 'generateHourlySalesByGrupo':
+            case 'generateHourlySalesByGrupo':
                 if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::generateHourlySalesByGrupo(
                         $requestData['grupoId'],
@@ -732,55 +735,66 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'generateResumoEstoquePorGrupo':
-                            if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
-                                $response = DashboardController::generateResumoEstoquePorGrupo(
-                                    $requestData['grupoId'],
-                                    $requestData['dt_inicio'],
-                                    $requestData['dt_fim']
-                                );
-                            } else {
-                                http_response_code(400);
-                                $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
-                            }
-                            break;
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateResumoEstoquePorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
             case 'generateCmvEvolucao':
-                                        if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
-                                            $response = DashboardController::generateCmvEvolucao(
-                                                $requestData['grupoId'],
-                                                $requestData['dt_inicio'],
-                                                $requestData['dt_fim']
-                                            );
-                                        } else {
-                                            http_response_code(400);
-                                            $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
-                                        }
-                                        break;
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateCmvEvolucao(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
 
             case 'generateTopComprasPorProduto':
-                                                    if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
-                                                        $response = DashboardController::generateTopComprasPorProduto(
-                                                            $requestData['grupoId'],
-                                                            $requestData['dt_inicio'],
-                                                            $requestData['dt_fim']
-                                                        );
-                                                    } else {
-                                                        http_response_code(400);
-                                                        $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
-                                                    }
-                                                    break;
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateTopComprasPorProduto(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
             case 'generateCmvPorProduto':
-                                                                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
-                                                                    $response = DashboardController::generateCmvPorProduto(
-                                                                        $requestData['grupoId'],
-                                                                        $requestData['dt_inicio'],
-                                                                        $requestData['dt_fim']
-                                                                    );
-                                                                } else {
-                                                                    http_response_code(400);
-                                                                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
-                                                                }
-                                                                break;
-
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateCmvPorProduto(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'generateCmvPorCategoria':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateCmvPorCategoria(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
 
             // Métodos para EstoqueController
             case 'createEstoque':
@@ -972,7 +986,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = ProductController::createProduct($requestData);
                 break;
             case 'updateProduct':
-                if (isset($requestData['codigo']  )) {
+                if (isset($requestData['codigo'])) {
                     $response = ProductController::updateProduct($requestData['codigo'], $requestData, $requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
@@ -1006,16 +1020,16 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'toggleModeloStatus':
 
                 if (isset($requestData['unit_id'])) {
-                    $response = ModeloBalancoController::toggleModeloStatus($requestData['unit_id'],$requestData['tag'],$requestData['status']);
+                    $response = ModeloBalancoController::toggleModeloStatus($requestData['unit_id'], $requestData['tag'], $requestData['status']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro ausentes'];
                 }
                 break;
             case 'getProductCards':
-                if (isset ($requestData['system_unit_id'])){
-                        $response = ProductController::getProductCards($requestData['system_unit_id']);
-                }else{
+                if (isset ($requestData['system_unit_id'])) {
+                    $response = ProductController::getProductCards($requestData['system_unit_id']);
+                } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
@@ -1028,7 +1042,7 @@ if (isset($data['method']) && isset($data['data'])) {
                         $requestData['usuario_id']
                     );
                     http_response_code(200);
-                }else{
+                } else {
                     http_response_code(400);
                     $response = [
                         'status' => 'error',
@@ -1113,29 +1127,29 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'rejeitarMovimentacao':
-                    if (isset($requestData['system_unit_id']) && isset($requestData['doc']) && isset($requestData['usuario_id'])) {
-                        $response = MovimentacaoController::rejeitarMovimentacao($requestData['system_unit_id'], $requestData['doc'], $requestData['usuario_id']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
-                    }
-                    break;
+                if (isset($requestData['system_unit_id']) && isset($requestData['doc']) && isset($requestData['usuario_id'])) {
+                    $response = MovimentacaoController::rejeitarMovimentacao($requestData['system_unit_id'], $requestData['doc'], $requestData['usuario_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
+                }
+                break;
             case 'listarMovimentacoesPorData':
-                    if (isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
-                        $response = MovimentacaoController::listarMovimentacoesPorData($requestData['system_unit_id'],$requestData['data_inicial'],$requestData['data_final']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'Parâmetro system_unit_id, data_inicial ou data_final ausente'];
-                    }
-                    break;
+                if (isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
+                    $response = MovimentacaoController::listarMovimentacoesPorData($requestData['system_unit_id'], $requestData['data_inicial'], $requestData['data_final']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id, data_inicial ou data_final ausente'];
+                }
+                break;
             case 'getMovimentacao':
-                    if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
-                        $response = MovimentacaoController::getMovimentacao($requestData['system_unit_id'],$requestData['doc']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'Parâmetro id ausente'];
-                    }
-                    break;
+                if (isset($requestData['system_unit_id']) && isset($requestData['doc'])) {
+                    $response = MovimentacaoController::getMovimentacao($requestData['system_unit_id'], $requestData['doc']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
             case 'getLastMov':
                 if (isset($requestData['system_unit_id']) && isset($requestData['tipo'])) {
                     $response = MovimentacaoController::getLastMov($requestData['system_unit_id'], $requestData['tipo']);
@@ -1155,7 +1169,7 @@ if (isset($data['method']) && isset($data['data'])) {
             // Métodos para ConsolidationEstoqueController
             case 'getStatusConsolidationMonth':
                 if (isset($requestData['month']) && isset($requestData['year']) && isset($requestData['system_unit_id'])) {
-                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['system_unit_id'], $requestData['month'],$requestData['year']);
+                    $response = ConsolidationEstoqueController::getStatusConsolidationMonth($requestData['system_unit_id'], $requestData['month'], $requestData['year']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro month, year ou system_unit_id ausente'];
@@ -1170,7 +1184,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'persistStockDifferences':
-                if (isset($requestData['system_unit_id']) && isset($requestData['date'])&& isset($requestData['data'])) {
+                if (isset($requestData['system_unit_id']) && isset($requestData['date']) && isset($requestData['data'])) {
                     $response = BiController::persistStockDifferences($requestData['system_unit_id'], $requestData['date'], $requestData['data']);
                 } else {
                     http_response_code(400);
@@ -1198,13 +1212,13 @@ if (isset($data['method']) && isset($data['data'])) {
 }
 
 // Função de verificação do token
-function verifyToken($token) {
+function verifyToken($token)
+{
     global $pdo;
     $stmt = $pdo->prepare("SELECT * FROM system_access_log WHERE sessionid = :sessionid");
     $stmt->bindParam(':sessionid', $token, PDO::PARAM_STR);
     $stmt->execute();
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
 
 
     if ($result) {
@@ -1227,4 +1241,5 @@ function verifyToken($token) {
         exit;
     }
 }
+
 ?>
