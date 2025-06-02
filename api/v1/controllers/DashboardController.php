@@ -828,7 +828,7 @@ class DashboardController {
                 $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 $cmvTotal = 0;
-                $produtosRuptura = 0;
+                $totalCompras = 0;
                 $desperdicioTotal = 0;
 
                 foreach ($insumos as $insumo) {
@@ -837,21 +837,20 @@ class DashboardController {
 
                     $extrato = MovimentacaoController::extratoInsumo($system_unit_id, $codigo, $dt_inicio, $dt_fim);
 
-
                     if (isset($extrato['error'])) continue;
 
                     foreach ($extrato['extrato'] as $dia) {
-                        // somar saídas do dia
+                        // somar saídas
                         $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
                         $totalSaidas = array_sum(array_column($saidas, 'quantidade'));
                         $cmvTotal += $totalSaidas * $preco;
 
-                        // verificar ruptura
-                        if ($dia['saldo_estimado'] <= 0) {
-                            $produtosRuptura++;
-                        }
+                        // somar entradas
+                        $entradas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'entrada');
+                        $totalEntradas = array_sum(array_column($entradas, 'quantidade'));
+                        $totalCompras += $totalEntradas * $preco;
 
-                        // desperdício (saldo estimado maior que o balanço)
+                        // desperdício
                         if ($dia['balanco']) {
                             $real = $dia['balanco']['quantidade'];
                             $estimado = $dia['saldo_estimado'];
@@ -879,7 +878,7 @@ class DashboardController {
                     'faturamento_bruto' => round($faturamentoBruto, 2),
                     'cmv' => round($cmvTotal, 2),
                     'percentual_cmv' => round($percentualCmv, 2),
-                    'produtos_ruptura' => $produtosRuptura,
+                    'total_compras' => round($totalCompras, 2),
                     'desperdicio' => round($desperdicioTotal, 2)
                 ];
             }
