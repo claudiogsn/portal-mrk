@@ -818,7 +818,7 @@ class DashboardController {
                 $systemUnitId = (int)$loja['custom_code'];
                 $system_unit_id = $loja['system_unit_id'];
 
-                // 1. Buscar insumos da unidade
+                // Buscar insumos
                 $stmt = $pdo->prepare("
                 SELECT codigo, nome, categoria, preco_custo
                 FROM products
@@ -829,6 +829,7 @@ class DashboardController {
 
                 $cmvTotal = 0;
                 $totalCompras = 0;
+                $totalSaidas = 0;
                 $desperdicioTotal = 0;
 
                 foreach ($insumos as $insumo) {
@@ -840,29 +841,31 @@ class DashboardController {
                     if (isset($extrato['error'])) continue;
 
                     foreach ($extrato['extrato'] as $dia) {
-                        // somar saídas
-                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
-                        $totalSaidas = array_sum(array_column($saidas, 'quantidade'));
-                        $cmvTotal += $totalSaidas * $preco;
+                        $dataDia = $dia['data'];
 
-                        // somar entradas
+                        // Entradas
                         $entradas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'entrada');
-                        $totalEntradas = array_sum(array_column($entradas, 'quantidade'));
-                        $totalCompras += $totalEntradas * $preco;
-                        
-                        // desperdício (considera APENAS o último dia com balanço)
-                        if ($dia['balanco'] && $dia['data'] === $dt_fim) {
+                        $qtdEntradas = array_sum(array_column($entradas, 'quantidade'));
+                        $totalCompras += $qtdEntradas * $preco;
+
+                        // Saídas
+                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
+                        $qtdSaidas = array_sum(array_column($saidas, 'quantidade'));
+                        $cmvTotal += $qtdSaidas * $preco;
+                        $totalSaidas += $qtdSaidas * $preco;
+
+                        // Desperdício — só no último dia
+                        if ($dia['balanco'] && $dataDia === $dt_fim) {
                             $real = $dia['balanco']['quantidade'];
                             $estimado = $dia['saldo_estimado'];
                             if ($real < $estimado) {
                                 $desperdicioTotal += ($estimado - $real) * $preco;
                             }
                         }
-
                     }
                 }
 
-                // 2. Buscar faturamento bruto da loja
+                // Buscar faturamento bruto da loja
                 $faturamentoBruto = 0;
                 foreach ($financeiros as $fin) {
                     if ((int)$fin['lojaId'] === $systemUnitId) {
@@ -880,6 +883,7 @@ class DashboardController {
                     'cmv' => round($cmvTotal, 2),
                     'percentual_cmv' => round($percentualCmv, 2),
                     'total_compras' => round($totalCompras, 2),
+                    'total_saidas' => round($totalSaidas, 2),
                     'desperdicio' => round($desperdicioTotal, 2)
                 ];
             }
