@@ -734,7 +734,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
                 }
                 break;
-            case 'generateResumoEstoquePorGrupo':
+            case 'generateDashboardEstoqueGrupo':
                 if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::generateResumoEstoquePorGrupo(
                         $requestData['grupoId'],

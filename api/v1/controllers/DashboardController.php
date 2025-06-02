@@ -909,50 +909,53 @@ class DashboardController {
             $dados = [];
 
             foreach ($lojas as $loja) {
-                $systemUnitId = $loja['system_unit_id'];
-                $customCode = (int) $loja['custom_code'];
+                $unitId = $loja['system_unit_id'];
+                $nomeLoja = $loja['name'];
+                $valores = [];
 
-                // Buscar insumos
-                $stmt = $pdo->prepare("
-                SELECT codigo, preco_custo
-                FROM products
-                WHERE system_unit_id = :id AND insumo = 1
-            ");
-                $stmt->execute([':id' => $systemUnitId]);
-                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $periodo = new DatePeriod(
+                    new DateTime($dt_inicio),
+                    new DateInterval('P1D'),
+                    (new DateTime($dt_fim))->modify('+1 day')
+                );
 
-                $dias = [];
+                foreach ($periodo as $dia) {
+                    $dataStr = $dia->format('Y-m-d');
+                    $totalCmv = 0;
 
-                foreach ($insumos as $insumo) {
-                    $codigo = $insumo['codigo'];
-                    $preco = (float)$insumo['preco_custo'];
+                    $stmt = $pdo->prepare("
+                    SELECT codigo, preco_custo
+                    FROM products
+                    WHERE system_unit_id = :id AND insumo = 1
+                ");
+                    $stmt->execute([':id' => $unitId]);
+                    $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    $extrato = MovimentacaoController::extratoInsumo($systemUnitId, $codigo, $dt_inicio, $dt_fim);
-                    if (isset($extrato['error'])) continue;
+                    foreach ($insumos as $insumo) {
+                        $codigo = $insumo['codigo'];
+                        $preco = (float)$insumo['preco_custo'];
 
-                    foreach ($extrato['extrato'] as $dia) {
-                        $data = $dia['data'];
-                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
-                        $qtd = array_sum(array_column($saidas, 'quantidade'));
+                        $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dataStr, $dataStr);
+                        if (isset($extrato['error'])) continue;
 
-                        if (!isset($dias[$data])) {
-                            $dias[$data] = 0;
+                        foreach ($extrato['extrato'] as $diaMov) {
+                            $saidas = array_filter($diaMov['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
+                            $qtd = array_sum(array_column($saidas, 'quantidade'));
+                            $totalCmv += $qtd * $preco;
                         }
-                        $dias[$data] += $qtd * $preco;
                     }
+
+                    $valores[] = round($totalCmv, 2);
                 }
 
-                ksort($dias); // ordena por data
-
-                $dados[] = [
-                    'lojaId' => $customCode,
-                    'nome' => $loja['name'],
-                    'valores' => array_values($dias),
-                    'datas' => array_keys($dias)
-                ];
+                $dados[] = ['nome' => $nomeLoja, 'valores' => $valores];
             }
 
-            return ['success' => true, 'data' => $dados];
+            return [
+                'success' => true,
+                'data' => $dados,
+                'labels' => array_map(fn($d) => $d->format('d/m'), iterator_to_array($periodo))
+            ];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
@@ -1050,25 +1053,19 @@ class DashboardController {
                         $totalSaidas += $qtd;
                     }
 
-                    // pula produtos com CMV zero
                     if ($totalSaidas <= 0 || $preco <= 0) continue;
 
                     $valor = $totalSaidas * $preco;
-
-                    if (!isset($produtos[$nome])) {
-                        $produtos[$nome] = 0;
-                    }
-
-                    $produtos[$nome] += $valor;
+                    $produtos[$nome] = ($produtos[$nome] ?? 0) + $valor;
                 }
             }
 
-            // monta array final
+            arsort($produtos);
+            $top5 = array_slice($produtos, 0, 5, true);
+
             $saida = [];
-            foreach ($produtos as $nome => $valor) {
-                if ($valor > 0) {
-                    $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
-                }
+            foreach ($top5 as $nome => $valor) {
+                $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
             }
 
             return ['success' => true, 'data' => $saida];
@@ -1088,7 +1085,6 @@ class DashboardController {
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
 
-                // 1. Carrega nomes das categorias da unidade
                 $categoriaNomes = [];
                 $catStmt = $pdo->prepare("SELECT codigo, nome FROM categorias WHERE system_unit_id = :id");
                 $catStmt->execute([':id' => $unitId]);
@@ -1096,7 +1092,6 @@ class DashboardController {
                     $categoriaNomes[$row['codigo']] = $row['nome'];
                 }
 
-                // 2. Buscar insumos com categoria
                 $stmt = $pdo->prepare("
                 SELECT codigo, nome, categoria, preco_custo
                 FROM products
@@ -1121,25 +1116,18 @@ class DashboardController {
                         $qtdTotal += $qtd;
                     }
 
-                    // ignora se não teve saída ou preco for zero
                     if ($qtdTotal <= 0 || $preco <= 0) continue;
 
                     $valor = $qtdTotal * $preco;
-
-                    if (!isset($categorias[$categoria])) {
-                        $categorias[$categoria] = 0;
-                    }
-
-                    $categorias[$categoria] += $valor;
+                    $categorias[$categoria] = ($categorias[$categoria] ?? 0) + $valor;
                 }
             }
 
-            // Ordena e pega as top 5
             arsort($categorias);
-            $topCategorias = array_slice($categorias, 0, 5, true);
+            $top5 = array_slice($categorias, 0, 5, true);
 
             $saida = [];
-            foreach ($topCategorias as $cat => $valor) {
+            foreach ($top5 as $cat => $valor) {
                 $saida[] = ['name' => $cat, 'value' => round($valor, 2)];
             }
 
