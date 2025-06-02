@@ -1050,6 +1050,9 @@ class DashboardController {
                         $totalSaidas += $qtd;
                     }
 
+                    // pula produtos com CMV zero
+                    if ($totalSaidas <= 0 || $preco <= 0) continue;
+
                     $valor = $totalSaidas * $preco;
 
                     if (!isset($produtos[$nome])) {
@@ -1060,10 +1063,12 @@ class DashboardController {
                 }
             }
 
-            // montar array de saída
+            // monta array final
             $saida = [];
             foreach ($produtos as $nome => $valor) {
-                $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
+                if ($valor > 0) {
+                    $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
+                }
             }
 
             return ['success' => true, 'data' => $saida];
@@ -1083,7 +1088,15 @@ class DashboardController {
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
 
-                // Buscar insumos com categoria
+                // 1. Carrega nomes das categorias da unidade
+                $categoriaNomes = [];
+                $catStmt = $pdo->prepare("SELECT codigo, nome FROM categorias WHERE system_unit_id = :id");
+                $catStmt->execute([':id' => $unitId]);
+                while ($row = $catStmt->fetch(PDO::FETCH_ASSOC)) {
+                    $categoriaNomes[$row['codigo']] = $row['nome'];
+                }
+
+                // 2. Buscar insumos com categoria
                 $stmt = $pdo->prepare("
                 SELECT codigo, nome, categoria, preco_custo
                 FROM products
@@ -1094,7 +1107,8 @@ class DashboardController {
 
                 foreach ($insumos as $insumo) {
                     $codigo = $insumo['codigo'];
-                    $categoria = $insumo['categoria'] ?? 'Sem Categoria';
+                    $catCod = $insumo['categoria'] ?? null;
+                    $categoria = $catCod && isset($categoriaNomes[$catCod]) ? $categoriaNomes[$catCod] : 'Sem Categoria';
                     $preco = (float) $insumo['preco_custo'];
 
                     $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dt_inicio, $dt_fim);
@@ -1107,6 +1121,9 @@ class DashboardController {
                         $qtdTotal += $qtd;
                     }
 
+                    // ignora se não teve saída ou preco for zero
+                    if ($qtdTotal <= 0 || $preco <= 0) continue;
+
                     $valor = $qtdTotal * $preco;
 
                     if (!isset($categorias[$categoria])) {
@@ -1117,9 +1134,12 @@ class DashboardController {
                 }
             }
 
-            // Monta saída para gráfico
+            // Ordena e pega as top 5
+            arsort($categorias);
+            $topCategorias = array_slice($categorias, 0, 5, true);
+
             $saida = [];
-            foreach ($categorias as $cat => $valor) {
+            foreach ($topCategorias as $cat => $valor) {
                 $saida[] = ['name' => $cat, 'value' => round($valor, 2)];
             }
 
