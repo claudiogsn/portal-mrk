@@ -143,7 +143,7 @@
     let cmvProdutosGrupo = [];
     let cmvCategoriasGrupo = [];
     let cmvHoraGrupo = [];
-    let horasGrupo = [];
+    let datasEvolucao = [];
     let isTopCompras = true;
 
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
@@ -237,7 +237,7 @@
             data: { grupoId, dt_inicio, dt_fim }
         });
         evolucaoCmvGrupo = response.data.data;
-        horasGrupo = response.data.labels;
+        datasEvolucao = response.data.labels;
     }
 
     async function carregarTopComprasPorGrupo(dt_inicio, dt_fim) {
@@ -288,7 +288,7 @@
         const filtradoHora = cmvHoraGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
 
         renderResumo(filtradoResumo);
-        renderEvolucaoCmv(filtradoEvolucao, horasGrupo);
+        renderEvolucaoCmv(filtradoEvolucao, datasEvolucao);
         renderTopProdutos(filtradoCompras, filtradoCmvProdutos);
         renderChartCategorias(agregarCategorias(filtradoCategorias));
         renderChartTopProdutos(agregarProdutos(filtradoCmvProdutos));
@@ -546,6 +546,7 @@
             symbolSize: 8,
             data: loja.valores
         }));
+
 
         const option = {
             title: { text: ' ', left: 'center' },
