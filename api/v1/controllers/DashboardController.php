@@ -805,6 +805,9 @@ class DashboardController {
         }
     }
 
+    //---------------------------------------------------------------------------------------------------------------**
+
+
     public static function generateResumoEstoquePorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
         global $pdo;
@@ -815,88 +818,53 @@ class DashboardController {
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $systemUnitId = (int)$loja['custom_code'];
                 $system_unit_id = $loja['system_unit_id'];
 
-                // Buscar insumos
                 $stmt = $pdo->prepare("
-                SELECT codigo, nome, categoria, preco_custo
-                FROM products
-                WHERE system_unit_id = :id AND insumo = 1
+                SELECT 
+                    SUM(entradas * preco_custo) AS total_compras,
+                    SUM(saidas * preco_custo) AS total_saidas,
+                    SUM(saidas * preco_custo) AS cmv,
+                    SUM(CASE 
+                        WHEN data = :dt_fim AND contagem_realizada < contagem_ideal 
+                        THEN (contagem_ideal - contagem_realizada) * preco_custo
+                        ELSE 0
+                    END) AS desperdicio
+                FROM fluxo_estoque
+                WHERE system_unit_id = :unit AND data BETWEEN :dt_inicio AND :dt_fim
             ");
-                $stmt->execute([':id' => $system_unit_id]);
-                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([
+                    ':unit' => $system_unit_id,
+                    ':dt_inicio' => $dt_inicio,
+                    ':dt_fim' => $dt_fim
+                ]);
 
-                $cmvTotal = 0;
-                $totalCompras = 0;
-                $totalSaidas = 0;
-                $desperdicioTotal = 0;
-
-                foreach ($insumos as $insumo) {
-                    $codigo = $insumo['codigo'];
-                    $preco = (float)($insumo['preco_custo'] ?? 0);
-
-                    $extrato = MovimentacaoController::extratoInsumo($system_unit_id, $codigo, $dt_inicio, $dt_fim);
-
-                    if (isset($extrato['error'])) continue;
-
-                    foreach ($extrato['extrato'] as $dia) {
-                        $dataDia = $dia['data'];
-
-                        // Entradas
-                        $entradas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'entrada');
-                        $qtdEntradas = array_sum(array_column($entradas, 'quantidade'));
-                        $totalCompras += $qtdEntradas * $preco;
-
-                        // Saídas
-                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
-                        $qtdSaidas = array_sum(array_column($saidas, 'quantidade'));
-                        $cmvTotal += $qtdSaidas * $preco;
-                        $totalSaidas += $qtdSaidas * $preco;
-
-                        // Desperdício — só no último dia
-                        if ($dia['balanco'] && $dataDia === $dt_fim) {
-                            $real = $dia['balanco']['quantidade'];
-                            $estimado = $dia['saldo_estimado'];
-                            if ($real < $estimado) {
-                                $desperdicioTotal += ($estimado - $real) * $preco;
-                            }
-                        }
-                    }
-                }
-
-                // Buscar faturamento bruto da loja
+                $res = $stmt->fetch(PDO::FETCH_ASSOC);
                 $faturamentoBruto = 0;
                 foreach ($financeiros as $fin) {
-                    if ((int)$fin['lojaId'] === $systemUnitId) {
+                    if ((int)$fin['lojaId'] === (int)$loja['custom_code']) {
                         $faturamentoBruto = (float)$fin['faturamento_bruto'];
                         break;
                     }
                 }
 
-                $percentualCmv = $faturamentoBruto > 0 ? ($cmvTotal / $faturamentoBruto) * 100 : 0;
+                $percentualCmv = $faturamentoBruto > 0 ? ($res['cmv'] / $faturamentoBruto) * 100 : 0;
 
                 $resumo[] = [
                     'lojaId' => $system_unit_id,
                     'nomeLoja' => $loja['name'],
                     'faturamento_bruto' => round($faturamentoBruto, 2),
-                    'cmv' => round($cmvTotal, 2),
+                    'cmv' => round($res['cmv'], 2),
                     'percentual_cmv' => round($percentualCmv, 2),
-                    'total_compras' => round($totalCompras, 2),
-                    'total_saidas' => round($totalSaidas, 2),
-                    'desperdicio' => round($desperdicioTotal, 2)
+                    'total_compras' => round($res['total_compras'], 2),
+                    'total_saidas' => round($res['total_saidas'], 2),
+                    'desperdicio' => round($res['desperdicio'], 2)
                 ];
             }
 
-            return [
-                'success' => true,
-                'data' => $resumo
-            ];
+            return ['success' => true, 'data' => $resumo];
         } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Erro ao gerar resumo de estoque por grupo: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
         }
     }
 
@@ -908,47 +876,31 @@ class DashboardController {
             $lojas = BiController::getUnitsByGroup($grupoId);
             $dados = [];
 
+            $periodo = new DatePeriod(
+                new DateTime($dt_inicio),
+                new DateInterval('P1D'),
+                (new DateTime($dt_fim))->modify('+1 day')
+            );
+
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
-                $nomeLoja = $loja['name'];
                 $valores = [];
 
-                $periodo = new DatePeriod(
-                    new DateTime($dt_inicio),
-                    new DateInterval('P1D'),
-                    (new DateTime($dt_fim))->modify('+1 day')
-                );
-
                 foreach ($periodo as $dia) {
-                    $dataStr = $dia->format('Y-m-d');
-                    $totalCmv = 0;
+                    $data = $dia->format('Y-m-d');
 
                     $stmt = $pdo->prepare("
-                    SELECT codigo, preco_custo
-                    FROM products
-                    WHERE system_unit_id = :id AND insumo = 1
+                    SELECT SUM(saidas * preco_custo) AS cmv
+                    FROM fluxo_estoque
+                    WHERE system_unit_id = :unit AND data = :data
                 ");
-                    $stmt->execute([':id' => $unitId]);
-                    $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
+                    $valor = $stmt->fetchColumn() ?: 0;
 
-                    foreach ($insumos as $insumo) {
-                        $codigo = $insumo['codigo'];
-                        $preco = (float)$insumo['preco_custo'];
-
-                        $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dataStr, $dataStr);
-                        if (isset($extrato['error'])) continue;
-
-                        foreach ($extrato['extrato'] as $diaMov) {
-                            $saidas = array_filter($diaMov['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
-                            $qtd = array_sum(array_column($saidas, 'quantidade'));
-                            $totalCmv += $qtd * $preco;
-                        }
-                    }
-
-                    $valores[] = round($totalCmv, 2);
+                    $valores[] = round($valor, 2);
                 }
 
-                $dados[] = ['nome' => $nomeLoja, 'valores' => $valores];
+                $dados[] = ['nome' => $loja['name'], 'valores' => $valores];
             }
 
             return [
@@ -967,50 +919,32 @@ class DashboardController {
 
         try {
             $lojas = BiController::getUnitsByGroup($grupoId);
-            $compras = [];
+            $saida = [];
 
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
 
                 $stmt = $pdo->prepare("
-                SELECT codigo, nome, preco_custo
-                FROM products
-                WHERE system_unit_id = :id AND insumo = 1
+                SELECT nome_produto AS name, ROUND(SUM(entradas * preco_custo), 2) AS value
+                FROM fluxo_estoque
+                WHERE system_unit_id = :unitId AND data BETWEEN :inicio AND :fim
+                GROUP BY nome_produto
+                ORDER BY value DESC
+                LIMIT 5
             ");
-                $stmt->execute([':id' => $unitId]);
-                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim' => $dt_fim
+                ]);
 
-                foreach ($insumos as $insumo) {
-                    $codigo = $insumo['codigo'];
-                    $nome = $insumo['nome'];
-                    $preco = (float) $insumo['preco_custo'];
+                $topProdutos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dt_inicio, $dt_fim);
-                    if (isset($extrato['error'])) continue;
-
-                    $qtdTotal = 0;
-                    foreach ($extrato['extrato'] as $dia) {
-                        $entradas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'entrada');
-                        $qtd = array_sum(array_column($entradas, 'quantidade'));
-                        $qtdTotal += $qtd;
-                    }
-
-                    $valor = $qtdTotal * $preco;
-
-                    if (!isset($compras[$nome])) {
-                        $compras[$nome] = 0;
-                    }
-
-                    $compras[$nome] += $valor;
-                }
-            }
-
-            arsort($compras); // ordena decrescente por valor
-
-            $top = array_slice($compras, 0, 5, true);
-            $saida = [];
-            foreach ($top as $nome => $valor) {
-                $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
+                $saida[] = [
+                    'lojaId' => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'produtos' => $topProdutos
+                ];
             }
 
             return ['success' => true, 'data' => $saida];
@@ -1025,47 +959,32 @@ class DashboardController {
 
         try {
             $lojas = BiController::getUnitsByGroup($grupoId);
-            $produtos = [];
+            $saida = [];
 
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
 
                 $stmt = $pdo->prepare("
-                SELECT codigo, nome, preco_custo
-                FROM products
-                WHERE system_unit_id = :id AND insumo = 1
+                SELECT nome_produto AS name, ROUND(SUM(saidas * preco_custo), 2) AS value
+                FROM fluxo_estoque
+                WHERE system_unit_id = :unitId AND data BETWEEN :inicio AND :fim
+                GROUP BY nome_produto
+                ORDER BY value DESC
+                LIMIT 5
             ");
-                $stmt->execute([':id' => $unitId]);
-                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim' => $dt_fim
+                ]);
 
-                foreach ($insumos as $insumo) {
-                    $codigo = $insumo['codigo'];
-                    $nome = $insumo['nome'];
-                    $preco = (float) $insumo['preco_custo'];
+                $topCmv = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dt_inicio, $dt_fim);
-                    if (isset($extrato['error'])) continue;
-
-                    $totalSaidas = 0;
-                    foreach ($extrato['extrato'] as $dia) {
-                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
-                        $qtd = array_sum(array_column($saidas, 'quantidade'));
-                        $totalSaidas += $qtd;
-                    }
-
-                    if ($totalSaidas <= 0 || $preco <= 0) continue;
-
-                    $valor = $totalSaidas * $preco;
-                    $produtos[$nome] = ($produtos[$nome] ?? 0) + $valor;
-                }
-            }
-
-            arsort($produtos);
-            $top5 = array_slice($produtos, 0, 5, true);
-
-            $saida = [];
-            foreach ($top5 as $nome => $valor) {
-                $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
+                $saida[] = [
+                    'lojaId' => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'produtos' => $topCmv
+                ];
             }
 
             return ['success' => true, 'data' => $saida];
@@ -1080,55 +999,37 @@ class DashboardController {
 
         try {
             $lojas = BiController::getUnitsByGroup($grupoId);
-            $categorias = [];
+            $saida = [];
 
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
 
-                $categoriaNomes = [];
-                $catStmt = $pdo->prepare("SELECT codigo, nome FROM categorias WHERE system_unit_id = :id");
-                $catStmt->execute([':id' => $unitId]);
-                while ($row = $catStmt->fetch(PDO::FETCH_ASSOC)) {
-                    $categoriaNomes[$row['codigo']] = $row['nome'];
-                }
-
                 $stmt = $pdo->prepare("
-                SELECT codigo, nome, categoria, preco_custo
-                FROM products
-                WHERE system_unit_id = :id AND insumo = 1
+                SELECT 
+                    COALESCE(cat.nome, 'Sem Categoria') AS name,
+                    ROUND(SUM(f.saidas * f.preco_custo), 2) AS value
+                FROM fluxo_estoque f
+                LEFT JOIN categorias cat 
+                    ON f.categoria = cat.codigo AND f.system_unit_id = cat.system_unit_id
+                WHERE f.system_unit_id = :unitId
+                  AND f.data BETWEEN :inicio AND :fim
+                GROUP BY cat.nome
+                ORDER BY value DESC
+                LIMIT 5
             ");
-                $stmt->execute([':id' => $unitId]);
-                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim' => $dt_fim
+                ]);
 
-                foreach ($insumos as $insumo) {
-                    $codigo = $insumo['codigo'];
-                    $catCod = $insumo['categoria'] ?? null;
-                    $categoria = $catCod && isset($categoriaNomes[$catCod]) ? $categoriaNomes[$catCod] : 'Sem Categoria';
-                    $preco = (float) $insumo['preco_custo'];
+                $categorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dt_inicio, $dt_fim);
-                    if (isset($extrato['error'])) continue;
-
-                    $qtdTotal = 0;
-                    foreach ($extrato['extrato'] as $dia) {
-                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
-                        $qtd = array_sum(array_column($saidas, 'quantidade'));
-                        $qtdTotal += $qtd;
-                    }
-
-                    if ($qtdTotal <= 0 || $preco <= 0) continue;
-
-                    $valor = $qtdTotal * $preco;
-                    $categorias[$categoria] = ($categorias[$categoria] ?? 0) + $valor;
-                }
-            }
-
-            arsort($categorias);
-            $top5 = array_slice($categorias, 0, 5, true);
-
-            $saida = [];
-            foreach ($top5 as $cat => $valor) {
-                $saida[] = ['name' => $cat, 'value' => round($valor, 2)];
+                $saida[] = [
+                    'lojaId' => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'categorias' => $categorias
+                ];
             }
 
             return ['success' => true, 'data' => $saida];
