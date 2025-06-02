@@ -743,6 +743,18 @@ if (isset($data['method']) && isset($data['data'])) {
                                 $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
                             }
                             break;
+            case 'generateCmvEvolucao':
+                                        if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                                            $response = DashboardController::generateCmvEvolucao(
+                                                $requestData['grupoId'],
+                                                $requestData['dt_inicio'],
+                                                $requestData['dt_fim']
+                                            );
+                                        } else {
+                                            http_response_code(400);
+                                            $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                                        }
+                                        break;
 
 
             // Métodos para EstoqueController

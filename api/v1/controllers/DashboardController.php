@@ -900,6 +900,65 @@ class DashboardController {
         }
     }
 
+    public static function generateCmvEvolucao($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $dados = [];
+
+            foreach ($lojas as $loja) {
+                $systemUnitId = $loja['system_unit_id'];
+                $customCode = (int) $loja['custom_code'];
+
+                // Buscar insumos
+                $stmt = $pdo->prepare("
+                SELECT codigo, preco_custo
+                FROM products
+                WHERE system_unit_id = :id AND insumo = 1
+            ");
+                $stmt->execute([':id' => $systemUnitId]);
+                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $dias = [];
+
+                foreach ($insumos as $insumo) {
+                    $codigo = $insumo['codigo'];
+                    $preco = (float)$insumo['preco_custo'];
+
+                    $extrato = MovimentacaoController::extratoInsumo($systemUnitId, $codigo, $dt_inicio, $dt_fim);
+                    if (isset($extrato['error'])) continue;
+
+                    foreach ($extrato['extrato'] as $dia) {
+                        $data = $dia['data'];
+                        $saidas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'saida');
+                        $qtd = array_sum(array_column($saidas, 'quantidade'));
+
+                        if (!isset($dias[$data])) {
+                            $dias[$data] = 0;
+                        }
+                        $dias[$data] += $qtd * $preco;
+                    }
+                }
+
+                ksort($dias); // ordena por data
+
+                $dados[] = [
+                    'lojaId' => $customCode,
+                    'nome' => $loja['name'],
+                    'valores' => array_values($dias),
+                    'datas' => array_keys($dias)
+                ];
+            }
+
+            return ['success' => true, 'data' => $dados];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
 
 
 
