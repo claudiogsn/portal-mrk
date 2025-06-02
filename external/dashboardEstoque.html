@@ -1,165 +1,141 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <title>Dashboard CMV</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Estoque - CMV</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
+<body class="bg-gray-100 p-4">
 
-<body class="bg-gray-100 p-6">
-<div class="mb-6">
-    <div class="flex flex-wrap gap-4">
-        <button onclick="setRange('hoje')" class="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow">Hoje</button>
-        <button onclick="setRange('ontem')" class="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow">Ontem</button>
-        <button onclick="setRange('7dias')" class="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow">7 dias</button>
-        <button onclick="setRange('mes')" class="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow">Último mês</button>
-        <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
-        <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
-        <select id="filtroLoja" class="border p-2 rounded-md shadow">
-            <option value="">Todas as lojas</option>
-        </select>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500">CMV (R$)</h2>
+        <p id="cmv" class="text-2xl font-bold text-red-600">-</p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500">% CMV</h2>
+        <p id="percentual_cmv" class="text-2xl font-bold">-</p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500">Faturamento</h2>
+        <p id="faturamento" class="text-2xl font-bold text-green-600">-</p>
+    </div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <h2 class="text-sm text-gray-500">Total de Compras</h2>
+        <p id="total_compras" class="text-2xl font-bold text-blue-600">-</p>
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-    <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
-        <div class="text-sm text-gray-500">CMV Total</div>
-        <div class="text-2xl font-bold" id="cmvTotal">R$ 0,00</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="text-lg font-semibold mb-2">Evolução do CMV</h3>
+        <div id="graficoLinha" style="height: 300px;"></div>
     </div>
-    <div class="bg-white p-4 rounded shadow border-l-4 border-red-500">
-        <div class="text-sm text-gray-500">Desperdício</div>
-        <div class="text-2xl font-bold" id="desperdicio">R$ 0,00</div>
-    </div>
-    <div class="bg-white p-4 rounded shadow border-l-4 border-green-500">
-        <div class="text-sm text-gray-500">Total de Entradas</div>
-        <div class="text-2xl font-bold" id="totalEntradas">R$ 0,00</div>
-    </div>
-    <div class="bg-white p-4 rounded shadow border-l-4 border-yellow-500">
-        <div class="text-sm text-gray-500">Total de Saídas</div>
-        <div class="text-2xl font-bold" id="totalSaidas">R$ 0,00</div>
-    </div>
-</div>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="bg-white p-6 rounded shadow">
-        <h2 class="text-lg font-semibold mb-4">Evolução do CMV</h2>
-        <div id="chartCmvEvolucao" class="w-full h-[300px]"></div>
+    <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="text-lg font-semibold mb-2">CMV por Categoria</h3>
+        <div id="graficoBarra" style="height: 300px;"></div>
     </div>
-    <div class="bg-white p-6 rounded shadow">
-        <h2 class="text-lg font-semibold mb-4">CMV por Produto</h2>
-        <div id="chartCmvPorProduto" class="w-full h-[300px]"></div>
-    </div>
-</div>
 
-<div class="bg-white p-6 mt-6 rounded shadow">
-    <h2 class="text-lg font-semibold mb-4">Top 5 Produtos mais Comprados</h2>
-    <div id="chartTopProdutos" class="w-full h-[400px]"></div>
+    <div class="bg-white rounded-xl shadow p-4 col-span-1 md:col-span-2">
+        <h3 class="text-lg font-semibold mb-2">Composição do CMV</h3>
+        <div id="graficoPizza" style="height: 300px;"></div>
+    </div>
 </div>
 
 <script>
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
+    const baseUrl = 'https://portal.mrksolucoes.com.br/api/v1/index.php';
+    const params = new URLSearchParams(window.location.search);
+    const grupoId = params.get('grupo_id');
+    const token = params.get('token');
+    const dt_inicio = params.get('dt_inicio');
+    const dt_fim = params.get('dt_fim');
 
-    const grupoId = new URLSearchParams(window.location.search).get('grupo_id');
-    const token = new URLSearchParams(window.location.search).get('token');
-
-    function setRange(tipo) {
-        const now = new Date();
-        const start = new Date();
-        if (tipo === 'ontem') start.setDate(now.getDate() - 1);
-        else if (tipo === '7dias') start.setDate(now.getDate() - 7);
-        else if (tipo === 'mes') start.setMonth(now.getMonth() - 1);
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
-        document.getElementById('endDate').value = now.toISOString().split('T')[0];
-        fetchData();
+    function formatReal(valor) {
+        return 'R$ ' + valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    async function fetchData() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const dt_inicio = startDate + ' 00:00:00';
-        const dt_fim = endDate + ' 23:59:59';
-        const lojaId = document.getElementById('filtroLoja').value;
-
-        Swal.fire({
-            title: 'Carregando...',
-            html: 'Buscando dados atualizados.',
-            didOpen: () => Swal.showLoading(),
-            allowOutsideClick: false
-        });
-
+    async function carregarDashboard() {
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'generateDashboardEstoqueGrupo',
+            const resumo = await axios.post(baseUrl, {
+                method: 'generateResumoEstoqueGrupo',
                 token,
-                data: { grupoId, dt_inicio, dt_fim, lojaId }
+                data: { grupoId, dt_inicio, dt_fim }
             });
 
-            const { resumo, evolucao, produtos, top_compras } = res.data;
+            if (resumo.data.success && resumo.data.data.length > 0) {
+                const total = resumo.data.data.reduce((acc, cur) => {
+                    acc.cmv += cur.cmv;
+                    acc.fat += cur.faturamento_bruto;
+                    acc.compras += cur.total_compras;
+                    return acc;
+                }, { cmv: 0, fat: 0, compras: 0 });
 
-            document.getElementById('cmvTotal').textContent = resumo.total_cmv;
-            document.getElementById('desperdicio').textContent = resumo.desperdicio;
-            document.getElementById('totalEntradas').textContent = resumo.total_entradas;
-            document.getElementById('totalSaidas').textContent = resumo.total_saidas;
+                document.getElementById('cmv').innerText = formatReal(total.cmv);
+                document.getElementById('faturamento').innerText = formatReal(total.fat);
+                document.getElementById('total_compras').innerText = formatReal(total.compras);
+                const percentual = total.fat > 0 ? (total.cmv / total.fat * 100) : 0;
+                document.getElementById('percentual_cmv').innerText = percentual.toFixed(2) + '%';
+            }
 
-            renderCmvEvolucao(evolucao);
-            renderCmvPorProduto(produtos);
-            renderTopCompras(top_compras);
+            const evolucao = await axios.post(baseUrl, {
+                method: 'generateCmvEvolucao',
+                token,
+                data: { grupoId, dt_inicio, dt_fim }
+            });
+            const labels = evolucao.data.labels;
+            const series = evolucao.data.data.map(loja => ({
+                name: loja.nome,
+                type: 'line',
+                data: loja.valores
+            }));
+            echarts.init(document.getElementById('graficoLinha')).setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { data: evolucao.data.data.map(l => l.nome) },
+                xAxis: { type: 'category', data: labels },
+                yAxis: { type: 'value' },
+                series
+            });
 
-            Swal.close();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao buscar dados do dashboard', 'error');
+            const pizza = await axios.post(baseUrl, {
+                method: 'generateCmvPorProduto',
+                token,
+                data: { grupoId, dt_inicio, dt_fim }
+            });
+            echarts.init(document.getElementById('graficoPizza')).setOption({
+                tooltip: { trigger: 'item' },
+                series: [{
+                    type: 'pie',
+                    radius: '60%',
+                    data: pizza.data.data.filter(p => p.value > 0)
+                }]
+            });
+
+            const barra = await axios.post(baseUrl, {
+                method: 'generateCmvPorCategoria',
+                token,
+                data: { grupoId, dt_inicio, dt_fim }
+            });
+            echarts.init(document.getElementById('graficoBarra')).setOption({
+                tooltip: {},
+                xAxis: { type: 'category', data: barra.data.data.map(d => d.name) },
+                yAxis: { type: 'value' },
+                series: [{
+                    name: 'CMV',
+                    type: 'bar',
+                    data: barra.data.data.map(d => d.value)
+                }]
+            });
+
+        } catch (error) {
+            console.error('Erro ao carregar dashboard:', error);
         }
     }
 
-    function renderCmvEvolucao(data) {
-        const chart = echarts.init(document.getElementById('chartCmvEvolucao'));
-        chart.setOption({
-            tooltip: { trigger: 'axis' },
-            xAxis: { type: 'category', data: data.map(d => d.data) },
-            yAxis: { type: 'value' },
-            series: [{ name: 'CMV', type: 'line', data: data.map(d => d.valor) }]
-        });
-    }
-
-    function renderCmvPorProduto(data) {
-        const chart = echarts.init(document.getElementById('chartCmvPorProduto'));
-        chart.setOption({
-            tooltip: { trigger: 'item' },
-            series: [{
-                name: 'CMV', type: 'pie', radius: '70%',
-                data: data.filter(p => p.valor > 0).map(p => ({ name: p.nome, value: p.valor }))
-            }]
-        });
-    }
-
-    function renderTopCompras(data) {
-        const chart = echarts.init(document.getElementById('chartTopProdutos'));
-        chart.setOption({
-            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-            xAxis: { type: 'category', data: data.map(p => p.nome), axisLabel: { fontSize: 10 } },
-            yAxis: { type: 'value' },
-            series: [{
-                name: 'Valor Comprado',
-                type: 'bar',
-                data: data.map(p => p.valor),
-                itemStyle: { borderRadius: [4, 4, 4, 4] }
-            }]
-        });
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('filtroLoja').addEventListener('change', fetchData);
-        setRange('7dias');
-    });
+    carregarDashboard();
 </script>
 </body>
-
 </html>
