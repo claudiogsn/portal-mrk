@@ -958,6 +958,65 @@ class DashboardController {
         }
     }
 
+    public static function generateTopComprasPorProduto($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $compras = [];
+
+            foreach ($lojas as $loja) {
+                $unitId = $loja['system_unit_id'];
+
+                $stmt = $pdo->prepare("
+                SELECT codigo, nome, preco_custo
+                FROM products
+                WHERE system_unit_id = :id AND insumo = 1
+            ");
+                $stmt->execute([':id' => $unitId]);
+                $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($insumos as $insumo) {
+                    $codigo = $insumo['codigo'];
+                    $nome = $insumo['nome'];
+                    $preco = (float) $insumo['preco_custo'];
+
+                    $extrato = MovimentacaoController::extratoInsumo($unitId, $codigo, $dt_inicio, $dt_fim);
+                    if (isset($extrato['error'])) continue;
+
+                    $qtdTotal = 0;
+                    foreach ($extrato['extrato'] as $dia) {
+                        $entradas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'entrada');
+                        $qtd = array_sum(array_column($entradas, 'quantidade'));
+                        $qtdTotal += $qtd;
+                    }
+
+                    $valor = $qtdTotal * $preco;
+
+                    if (!isset($compras[$nome])) {
+                        $compras[$nome] = 0;
+                    }
+
+                    $compras[$nome] += $valor;
+                }
+            }
+
+            arsort($compras); // ordena decrescente por valor
+
+            $top = array_slice($compras, 0, 5, true);
+            $saida = [];
+            foreach ($top as $nome => $valor) {
+                $saida[] = ['name' => $nome, 'value' => round($valor, 2)];
+            }
+
+            return ['success' => true, 'data' => $saida];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
 
 
 
