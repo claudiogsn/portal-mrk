@@ -49,7 +49,7 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
+    $noAuthMethods = ['generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -737,6 +737,18 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'generateResumoEstoquePorGrupo':
                 if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::generateResumoEstoquePorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'generateResumoEstoquePorGrupoNAuth':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateResumoEstoquePorGrupoNAuth(
                         $requestData['grupoId'],
                         $requestData['dt_inicio'],
                         $requestData['dt_fim']

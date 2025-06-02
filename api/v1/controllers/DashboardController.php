@@ -807,6 +807,65 @@ class DashboardController {
 
     //---------------------------------------------------------------------------------------------------------------**
 
+    public static function generateResumoEstoquePorGrupoNAuth($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $financeiros = self::generateResumoFinanceiroPorGrupo($grupoId, $dt_inicio, $dt_fim)['data'];
+            $resumo = [];
+
+            foreach ($lojas as $loja) {
+                $system_unit_id = $loja['system_unit_id'];
+
+                $stmt = $pdo->prepare("
+                SELECT 
+                    SUM(entradas * preco_custo) AS total_compras,
+                    SUM(saidas * preco_custo) AS total_saidas,
+                    SUM(saidas * preco_custo) AS cmv,
+                    SUM(CASE 
+                        WHEN data = :dt_fim AND contagem_realizada < contagem_ideal 
+                        THEN (contagem_ideal - contagem_realizada) * preco_custo
+                        ELSE 0
+                    END) AS desperdicio
+                FROM fluxo_estoque
+                WHERE system_unit_id = :unit AND data BETWEEN :dt_inicio AND :dt_fim
+            ");
+                $stmt->execute([
+                    ':unit' => $system_unit_id,
+                    ':dt_inicio' => $dt_inicio,
+                    ':dt_fim' => $dt_fim
+                ]);
+
+                $res = $stmt->fetch(PDO::FETCH_ASSOC);
+                $faturamentoBruto = 0;
+                foreach ($financeiros as $fin) {
+                    if ((int)$fin['lojaId'] === (int)$loja['custom_code']) {
+                        $faturamentoBruto = (float)$fin['faturamento_bruto'];
+                        break;
+                    }
+                }
+
+                $percentualCmv = $faturamentoBruto > 0 ? ($res['cmv'] / $faturamentoBruto) * 100 : 0;
+
+                $resumo[] = [
+                    'lojaId' => $system_unit_id,
+                    'nomeLoja' => $loja['name'],
+                    'faturamento_bruto' => round($faturamentoBruto, 2),
+                    'cmv' => round($res['cmv'], 2),
+                    'percentual_cmv' => round($percentualCmv, 2),
+                    'total_compras' => round($res['total_compras'], 2),
+                    'total_saidas' => round($res['total_saidas'], 2),
+                    'desperdicio' => round($res['desperdicio'], 2)
+                ];
+            }
+
+            return ['success' => true, 'data' => $resumo];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
+        }
+    }
 
     public static function generateResumoEstoquePorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
