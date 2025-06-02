@@ -849,15 +849,16 @@ class DashboardController {
                         $entradas = array_filter($dia['movimentacoes'], fn($m) => $m['tipo_mov'] === 'entrada');
                         $totalEntradas = array_sum(array_column($entradas, 'quantidade'));
                         $totalCompras += $totalEntradas * $preco;
-
-                        // desperdício
-                        if ($dia['balanco']) {
+                        
+                        // desperdício (considera APENAS o último dia com balanço)
+                        if ($dia['balanco'] && $dia['data'] === $dt_fim) {
                             $real = $dia['balanco']['quantidade'];
                             $estimado = $dia['saldo_estimado'];
                             if ($real < $estimado) {
                                 $desperdicioTotal += ($estimado - $real) * $preco;
                             }
                         }
+
                     }
                 }
 
