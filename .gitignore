@@ -1,1 +1,10 @@
+# Ignorar arquivos específicos
+app/config/communication.ini
+app/config/permission.ini
+app/config/log.ini
+app/config/sample.ini
+
+# Ignorar todos os arquivos .ini
+*.ini
+
 /logs
