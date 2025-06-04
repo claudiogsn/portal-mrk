@@ -1,8 +1,186 @@
 <?php
 
 require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
+require_once __DIR__ . '/../libs/dompdf/autoload.inc.php';
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
 
 class DashboardController {
+
+    private static function calcularVariacao($atual, $anterior): float
+    {
+        if ($anterior == 0) {
+            return $atual > 0 ? 100.0 : 0.0;
+        }
+
+        return (($atual - $anterior) / abs($anterior)) * 100;
+    }
+
+
+    private static function gerarHtmlComparativoLoja(
+        string $nomeLoja,
+        DateTimeInterface $inicioAtual,
+        DateTimeInterface $fimAtual,
+        DateTimeInterface $inicioAnterior,
+        DateTimeInterface $fimAnterior,
+        array $dadosAtual,
+        array $dadosAnterior
+    ): string {
+
+
+        $campos = [
+            'faturamento_bruto' => 'Faturamento Bruto',
+            'descontos' => 'Descontos',
+            'taxa_servico' => 'Taxa de Serviço',
+            'faturamento_liquido' => 'Faturamento Líquido',
+            'numero_clientes' => 'Número de Clientes',
+            'ticket_medio' => 'Ticket Médio',
+        ];
+
+        $html = '<div style="page-break-after: always; font-family: Arial, sans-serif;">';
+
+        // Cabeçalho com logo
+        $html .= "<div style='position: relative; margin-bottom: 16px;'>
+            <div style='position: absolute; top: 0; right: 0;'>
+                <img src='https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo-mrk.png' alt='Logo' style='max-height: 40px;' />
+            </div>
+            <div>
+                <h2 style='margin: 0;'>Portal MRK</h2>
+                <h3 style='margin: 0;'>Relatório Semanal - {$nomeLoja}</h3>
+                <p style='margin: 4px 0 0 0; font-size: 14px;'>
+                    Comparativo entre <strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong>
+                    e <strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong>
+                </p>
+            </div>
+        </div>
+        <br>
+        <br>";
+
+        $html .= "<table style='width:100%; border-collapse: collapse; font-size: 14px;'>
+        <thead>
+            <tr style='background: #f0f0f0;'>
+                <th style='border: 0px solid #ccc; padding: 6px;'>Indicador</th>
+                <th style='border: 0px solid #ccc; padding: 6px;text-align: left'>Semana Anterior</th>
+                <th style='border: 0px solid #ccc; padding: 6px;text-align: left'>Semana Atual</th>
+                <th style='border: 0px solid #ccc; padding: 6px;text-align: left'>Variação (%)</th>
+            </tr>
+        </thead>
+        <tbody>";
+
+        foreach ($campos as $chave => $label) {
+            $anterior = $dadosAnterior[$chave] ?? 0;
+            $atual = $dadosAtual[$chave] ?? 0;
+
+            $variacao = self::calcularVariacao($atual, $anterior);
+            $variacaoFormatada = number_format($variacao, 2, ',', '.') . '%';
+            $class = $variacao >= 0 ? 'color: green;' : 'color: red;';
+
+            $html .= "<tr>
+            <td style='border: 0px solid #ccc; padding: 6px;'>{$label}</td>
+            <td style='border: 0px solid #ccc; padding: 6px;text-align: left'>" . number_format($anterior, 2, ',', '.') . "</td>
+            <td style='border: 0px solid #ccc; padding: 6px;text-align: left'>" . number_format($atual, 2, ',', '.') . "</td>
+            <td style='border: 0px solid #ccc; padding: 6px;text-align: left; {$class}'>{$variacaoFormatada}</td>
+        </tr>";
+        }
+
+        $html .= "</tbody></table>";
+
+        $html .= "<p style='text-align: right; font-size: 12px; margin-top: 30px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
+
+        $html .= "</div>";
+
+        return $html;
+    }
+
+    public static function gerarRelatorioFinanceiroSemanalPorGrupo($grupoId): array
+    {
+        // 1. Datas da última e penúltima semana (segunda a domingo)
+        $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+
+        $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
+        $fimAtual = $hoje->modify('last sunday'); // domingo passado
+
+        // Semana retrasada (anterior à anterior)
+        $inicioAnterior = $inicioAtual->modify('-7 days');
+        $fimAnterior = $fimAtual->modify('-7 days');
+
+        // 2. Buscar os resumos com o método existente
+        $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        error_log("📊 RESUMO ATUAL:");
+        foreach ($resumoAtual['data'] as $loja) {
+            error_log('Data Inicio: ' . $inicioAtual->format('Y-m-d 00:00:00'));
+            error_log('Data Fim: ' . $fimAtual->format('Y-m-d 00:00:00'));
+            error_log(print_r($loja, true));
+        }
+
+        error_log("📊 RESUMO ANTERIOR:");
+        foreach ($resumoAnterior['data'] as $loja) {
+            error_log('Data Inicio: ' . $inicioAnterior->format('Y-m-d 00:00:00'));
+            error_log('Data Fim: ' . $fimAnterior->format('Y-m-d 00:00:00'));
+            error_log(print_r($loja, true));
+        }
+
+        if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
+            return ['success' => false, 'message' => 'Erro ao buscar dados das semanas.'];
+        }
+
+        // 3. Indexar dados por lojaId para comparação
+        $dadosAtuais = [];
+        foreach ($resumoAtual['data'] as $loja) {
+            $dadosAtuais[$loja['lojaId']] = $loja;
+        }
+
+        $dadosAnteriores = [];
+        foreach ($resumoAnterior['data'] as $loja) {
+            $dadosAnteriores[$loja['lojaId']] = $loja;
+        }
+
+        // 4. Calcular variações e montar HTML por loja
+        $html = '';
+        foreach ($dadosAtuais as $lojaId => $dadosLojaAtual) {
+            $dadosLojaAnterior = $dadosAnteriores[$lojaId] ?? [
+                'faturamento_bruto' => 0,
+                'descontos' => 0,
+                'taxa_servico' => 0,
+                'faturamento_liquido' => 0,
+                'numero_clientes' => 0,
+                'ticket_medio' => 0
+            ];
+
+            $html .= self::gerarHtmlComparativoLoja(
+                $dadosLojaAtual['nomeLoja'],
+                $inicioAtual, $fimAtual,
+                $inicioAnterior, $fimAnterior,
+                $dadosLojaAtual,
+                $dadosLojaAnterior
+            );
+        }
+
+        // 5. Gerar PDF
+        $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
+        $dompdf->loadHtml('<html><body>' . $html . '</body></html>');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $fileName = 'relatorio_semanal_grupo_' . $grupoId . '_' . date('Ymd_His') . '.pdf';
+        $filePath = __DIR__ . '/../public/reports/' . $fileName;
+        $publicUrl = 'https://portal.mrksolucoes.com.br/api/v1/public/reports/' . $fileName;
+
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 0777, true);
+        }
+
+        file_put_contents($filePath, $dompdf->output());
+
+        return [
+            'success' => true,
+            'url' => $publicUrl
+        ];
+    }
 
     public static function getLojaIdBySystemUnitId($systemUnitId): array
     {

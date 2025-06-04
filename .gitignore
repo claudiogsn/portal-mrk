@@ -8,3 +8,4 @@ app/config/sample.ini
 *.ini
 
 /logs
+/api/v1/public

@@ -609,6 +609,16 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
+            case 'gerarPdf':
+                //print_r($requestData);
+                //exit();
+                if (isset($requestData['group_id'])) {
+                    $response = DashboardController::gerarRelatorioFinanceiroSemanalPorGrupo($requestData['group_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id e nome_loja são obrigatórios.'];
+                }
+                break;
             case 'getResumoMeiosPagamento':
                 if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::getResumoMeiosPagamento(
