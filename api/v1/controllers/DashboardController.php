@@ -65,12 +65,12 @@ class DashboardController
             <tr style='border-bottom: 1px solid #000000;'>
                 <th style='padding: 6px; text-align: left;'> </th>
                 <th style='padding: 6px; text-align: right;'>
-                    Semana Anterior<br>
-                    <strong>{$inicioAnterior->format('d/m')} - {$fimAnterior->format('d/m')}</strong>
-                </th>
-                <th style='padding: 6px; text-align: right;'>
                     Semana Atual<br>
                     <strong>{$inicioAtual->format('d/m')} - {$fimAtual->format('d/m')}</strong>
+                </th>
+                <th style='padding: 6px; text-align: right;'>
+                    Semana Anterior<br>
+                    <strong>{$inicioAnterior->format('d/m')} - {$fimAnterior->format('d/m')}</strong>
                 </th>
                 <th style='padding: 6px; text-align: right; width: 30px; font-size: 8px;'>Var (%)</th>
             </tr>
@@ -92,8 +92,8 @@ class DashboardController
 
             $html .= "<tr>
             <td style='padding: 6px; text-align: left;'>{$label}</td>
+            <td style='padding: 6px; text-align: right;'><strong>{$atualFormatado}</strong></td>
             <td style='padding: 6px; text-align: right;'>{$anteriorFormatado}</td>
-            <td style='padding: 6px; text-align: right;'>{$atualFormatado}</td>
             <td style='padding: 6px; text-align: right; font-size: 8px; {$class}'>{$variacaoFormatada}</td>
         </tr>";
         }
@@ -137,8 +137,8 @@ class DashboardController
 
             $html .= "<tr>
             <td style='padding: 6px; text-align: left;'>{$modo}</td>
+            <td style='padding: 6px; text-align: right;'><strong>{$atualFmt}</strong></td>
             <td style='padding: 6px; text-align: right;'>{$antFmt}</td>
-            <td style='padding: 6px; text-align: right;'>{$atualFmt}</td>
             <td style='padding: 6px; text-align: right; font-size: 8px; {$class}'>{$variacaoFormatada}</td>
         </tr>";
         }
@@ -163,18 +163,19 @@ class DashboardController
                 $right = $formatter($atual[$i] ?? null);
                 $html .= "<tr>
                 <td style='padding: 4px; text-align: left;'> </td>
-                <td style='padding: 4px; text-align: right;'>{$left}</td>
+                <td style='padding: 4px; text-align: right;'><strong>{$left}</strong></td>
                 <td style='padding: 4px; text-align: right;'>{$right}</td>
+
             </tr>";
             }
 
             return $html . "</tbody></table>";
         };
 
-        $html .= $renderRankingBlock('Top 3 MAIOR faturamento:', $ranking['anterior']['mais_vendidos_valor'] ?? [], $ranking['atual']['mais_vendidos_valor'] ?? [], fn($i) => $i ? "{$i['nome_produto']} (R$ " . number_format($i['total_valor'], 0, ',', '.') . ")" : '');
-        $html .= $renderRankingBlock('Top 3 MENOR faturamento:', $ranking['anterior']['menos_vendidos_valor'] ?? [], $ranking['atual']['menos_vendidos_valor'] ?? [], fn($i) => $i ? "{$i['nome_produto']} (R$ " . number_format($i['total_valor'], 0, ',', '.') . ")" : '');
-        $html .= $renderRankingBlock('Top 3 MAIS vendidos:', $ranking['anterior']['mais_vendidos_quantidade'] ?? [], $ranking['atual']['mais_vendidos_quantidade'] ?? [], fn($i) => $i ? "{$i['nome_produto']} ({$i['total_quantidade']})" : '');
-        $html .= $renderRankingBlock('Top 3 MENOS vendidos:', $ranking['anterior']['menos_vendidos_quantidade'] ?? [], $ranking['atual']['menos_vendidos_quantidade'] ?? [], fn($i) => $i ? "{$i['nome_produto']} ({$i['total_quantidade']})" : '');
+        $html .= $renderRankingBlock('Top 3 MAIOR faturamento:', $ranking['atual']['mais_vendidos_valor'] ?? [], $ranking['anterior']['mais_vendidos_valor'] ?? [], fn($i) => $i ? "{$i['nome_produto']} (R$ " . number_format($i['total_valor'], 0, ',', '.') . ")" : '');
+        $html .= $renderRankingBlock('Top 3 MENOR faturamento:', $ranking['atual']['menos_vendidos_valor'] ?? [], $ranking['anterior']['menos_vendidos_valor'] ?? [], fn($i) => $i ? "{$i['nome_produto']} (R$ " . number_format($i['total_valor'], 0, ',', '.') . ")" : '');
+        $html .= $renderRankingBlock('Top 3 MAIS vendidos:', $ranking['atual']['mais_vendidos_quantidade'] ?? [], $ranking['anterior']['mais_vendidos_quantidade'] ?? [], fn($i) => $i ? "{$i['nome_produto']} ({$i['total_quantidade']})" : '');
+        $html .= $renderRankingBlock('Top 3 MENOS vendidos:', $ranking['atual']['menos_vendidos_quantidade'] ?? [], $ranking['anterior']['menos_vendidos_quantidade'] ?? [], fn($i) => $i ? "{$i['nome_produto']} ({$i['total_quantidade']})" : '');
 
         $html .= "<p style='text-align: right; font-size: 12px; margin-top: 30px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
         $html .= "</div>";
@@ -1152,18 +1153,25 @@ class DashboardController
                 $lojaId = (int)$loja['custom_code'];
 
                 $sql = "
-                SELECT
-                    p.nome AS nome_produto,
-                    s.cod_material,
-                    SUM(s.quantidade) AS total_quantidade,
-                    SUM(s.valor_liquido) AS total_valor
-                FROM _bi_sales s
-                INNER JOIN products p
-                    ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id
-                WHERE s.custom_code = :lojaId
-                  AND s.data_movimento BETWEEN :dt_inicio AND :dt_fim
-                GROUP BY s.cod_material, p.nome
-            ";
+                        SELECT
+                            p.nome AS nome_produto,
+                            s.cod_material,
+                            SUM(s.quantidade) AS total_quantidade,
+                            SUM(s.valor_liquido) AS total_valor
+                        FROM _bi_sales s
+                        INNER JOIN products p
+                            ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id
+                        WHERE s.custom_code = :lojaId
+                          AND s.data_movimento BETWEEN :dt_inicio AND :dt_fim
+                          AND s.cod_material NOT IN (9000, 9600)
+                          AND p.nome NOT LIKE '%taxa%'
+                          AND p.nome NOT LIKE '%mal passado%'
+                          AND p.nome NOT LIKE '%ao ponto%'
+                          AND p.nome NOT LIKE '%bem passado%'
+                          AND p.nome NOT LIKE '%serviço%'
+                        GROUP BY s.cod_material, p.nome
+                    ";
+
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
                     ':lojaId' => $lojaId,
@@ -1173,19 +1181,12 @@ class DashboardController
 
                 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                $filtrar = fn($item) => !in_array((int)$item['cod_material'], [9000, 9600]) &&
-                    stripos($item['nome_produto'], 'taxa') === false &&
-                    stripos($item['nome_produto'], 'mal passado') === false &&
-                    stripos($item['nome_produto'], 'ao ponto') === false &&
-                    stripos($item['nome_produto'], 'bem passado') === false &&
-                    stripos($item['nome_produto'], 'serviço') === false;
-
                 $ordenar = fn($arr, $campo, $ordem) => array_values(array_filter(
                     ($ordem === 'asc'
                         ? array_slice(array_filter($arr, fn($p) => $p[$campo] > 0), 0, 3) // top 3 crescentes
                         : array_slice($arr, 0, 3) // top 3 decrescentes
                     ),
-                    $filtrar
+
                 ));
 
 
