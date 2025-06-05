@@ -818,10 +818,12 @@ class DashboardController
 
                 $stmt = $pdo->prepare("
                 SELECT
+                    COUNT(*) AS numero_pedidos,
                     SUM(vlTotalRecebido) AS faturamento_bruto,
                     SUM(vlDesconto) AS total_descontos,
                     SUM(vlServicoRecebido) AS total_taxa_servico,
                     SUM(numPessoas) AS total_clientes
+                
                 FROM movimento_caixa
                 WHERE lojaId = :lojaId
                   AND dataContabil BETWEEN :dt_inicio AND :dt_fim
