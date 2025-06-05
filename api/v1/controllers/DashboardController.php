@@ -7,7 +7,8 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 
 
-class DashboardController {
+class DashboardController
+{
 
     private static function calcularVariacao($atual, $anterior): float
     {
@@ -20,16 +21,18 @@ class DashboardController {
 
 
     private static function gerarHtmlComparativoLoja(
-        string $nomeLoja,
+        string            $nomeLoja,
         DateTimeInterface $inicioAtual,
         DateTimeInterface $fimAtual,
         DateTimeInterface $inicioAnterior,
         DateTimeInterface $fimAnterior,
-        array $dadosAtual,
-        array $dadosAnterior
-    ): string {
-
-
+        array             $dadosAtual,
+        array             $dadosAnterior,
+        array             $ranking = [],
+        array             $modosVendaAnterior = [],
+        array             $modosVendaAtual = []
+    ): string
+    {
         $campos = [
             'faturamento_bruto' => 'Faturamento Bruto',
             'descontos' => 'Descontos',
@@ -41,30 +44,35 @@ class DashboardController {
 
         $html = '<div style="page-break-after: always; font-family: Arial, sans-serif;">';
 
-        // Cabeçalho com logo
+        // Cabeçalho
         $html .= "<div style='position: relative; margin-bottom: 16px;'>
-            <div style='position: absolute; top: 0; right: 0;'>
-                <img src='https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo-mrk.png' alt='Logo' style='max-height: 40px;' />
-            </div>
-            <div>
-                <h2 style='margin: 0;'>Portal MRK</h2>
-                <h3 style='margin: 0;'>Relatório Semanal - {$nomeLoja}</h3>
-                <p style='margin: 4px 0 0 0; font-size: 14px;'>
-                    Comparativo entre <strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong>
-                    e <strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong>
-                </p>
-            </div>
+        <div style='position: absolute; top: 0; right: 0;'>
+            <img src='https://portal.mrksolucoes.com.br/external/reports/logo.png' alt='Logo' style='max-height: 80px;' />
         </div>
-        <br>
-        <br>";
+        <div>
+            <h2 style='margin: 0;'>Portal MRK</h2>
+            <h3 style='margin: 0;'>Relatório Semanal - {$nomeLoja}</h3>
+            <p style='margin: 4px 0 0 0; font-size: 14px;'>
+                Comparativo entre <strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong>
+                e <strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong>
+            </p>
+        </div>
+    </div><br><br>";
 
-        $html .= "<table style='width:100%; border-collapse: collapse; font-size: 14px;'>
+        // Tabela comparativa principal
+        $html .= "<table style='width:100%; border-collapse: collapse; font-size: 12px;'>
         <thead>
-            <tr style='background: #f0f0f0;'>
-                <th style='border: 0px solid #ccc; padding: 6px;'>Indicador</th>
-                <th style='border: 0px solid #ccc; padding: 6px;text-align: left'>Semana Anterior</th>
-                <th style='border: 0px solid #ccc; padding: 6px;text-align: left'>Semana Atual</th>
-                <th style='border: 0px solid #ccc; padding: 6px;text-align: left'>Variação (%)</th>
+            <tr style='border-bottom: 1px solid #000000;'>
+                <th style='padding: 6px; text-align: left;'> </th>
+                <th style='padding: 6px; text-align: right;'>
+                    Semana Anterior<br>
+                    <strong>{$inicioAnterior->format('d/m')} - {$fimAnterior->format('d/m')}</strong>
+                </th>
+                <th style='padding: 6px; text-align: right;'>
+                    Semana Atual<br>
+                    <strong>{$inicioAtual->format('d/m')} - {$fimAtual->format('d/m')}</strong>
+                </th>
+                <th style='padding: 6px; text-align: right; width: 30px; font-size: 8px;'>Var (%)</th>
             </tr>
         </thead>
         <tbody>";
@@ -77,58 +85,184 @@ class DashboardController {
             $variacaoFormatada = number_format($variacao, 2, ',', '.') . '%';
             $class = $variacao >= 0 ? 'color: green;' : 'color: red;';
 
+            $isMonetario = in_array($chave, ['faturamento_bruto', 'descontos', 'taxa_servico', 'faturamento_liquido', 'ticket_medio']);
+
+            $anteriorFormatado = $isMonetario ? 'R$ ' . number_format($anterior, 2, ',', '.') : number_format($anterior, 0, ',', '.');
+            $atualFormatado = $isMonetario ? 'R$ ' . number_format($atual, 2, ',', '.') : number_format($atual, 0, ',', '.');
+
             $html .= "<tr>
-            <td style='border: 0px solid #ccc; padding: 6px;'>{$label}</td>
-            <td style='border: 0px solid #ccc; padding: 6px;text-align: left'>" . number_format($anterior, 2, ',', '.') . "</td>
-            <td style='border: 0px solid #ccc; padding: 6px;text-align: left'>" . number_format($atual, 2, ',', '.') . "</td>
-            <td style='border: 0px solid #ccc; padding: 6px;text-align: left; {$class}'>{$variacaoFormatada}</td>
+            <td style='padding: 6px; text-align: left;'>{$label}</td>
+            <td style='padding: 6px; text-align: right;'>{$anteriorFormatado}</td>
+            <td style='padding: 6px; text-align: right;'>{$atualFormatado}</td>
+            <td style='padding: 6px; text-align: right; font-size: 8px; {$class}'>{$variacaoFormatada}</td>
         </tr>";
         }
 
         $html .= "</tbody></table>";
 
-        $html .= "<p style='text-align: right; font-size: 12px; margin-top: 30px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
+        // Tabela de Modos de Venda
+        $html .= "<br><table style='width:100%; border-collapse: collapse; font-size: 12px;'>
+        <thead>
+            <tr style='border-bottom: 1px solid #000000;'>
+                <th style='padding: 6px; text-align: left;'>Comparativo Modo de Venda</th>
+                <th style='padding: 6px; text-align: right;'> </th>
+                <th style='padding: 6px; text-align: right;'> </th>
+                <th style='padding: 6px; text-align: right; font-size: 8px;'> </th>
+            </tr>
+        </thead>
+        <tbody>";
 
+        $modos = ['SALAO', 'DELIVERY', 'BALCAO'];
+
+        $mapAnt = [];
+        foreach ($modosVendaAnterior as $mv) {
+            $mapAnt[$mv['modoVenda']] = (float)$mv['valor'];
+        }
+
+        $mapAtual = [];
+        foreach ($modosVendaAtual as $mv) {
+            $mapAtual[$mv['modoVenda']] = (float)$mv['valor'];
+        }
+
+        foreach ($modos as $modo) {
+            $anterior = $mapAnt[$modo] ?? 0;
+            $atual = $mapAtual[$modo] ?? 0;
+
+            $variacao = self::calcularVariacao($atual, $anterior);
+            $variacaoFormatada = number_format($variacao, 2, ',', '.') . '%';
+            $class = $variacao >= 0 ? 'color: green;' : 'color: red;';
+
+            $antFmt = 'R$ ' . number_format($anterior, 2, ',', '.');
+            $atualFmt = 'R$ ' . number_format($atual, 2, ',', '.');
+
+            $html .= "<tr>
+            <td style='padding: 6px; text-align: left;'>{$modo}</td>
+            <td style='padding: 6px; text-align: right;'>{$antFmt}</td>
+            <td style='padding: 6px; text-align: right;'>{$atualFmt}</td>
+            <td style='padding: 6px; text-align: right; font-size: 8px; {$class}'>{$variacaoFormatada}</td>
+        </tr>";
+        }
+
+        $html .= "</tbody></table>";
+
+        // Rankings
+        $html .= "<br><hr style='margin: 20px 0; border: none;'>";
+
+        $renderRankingBlock = function ($titulo, $anterior, $atual, $formatter) {
+            $html = "<table style='width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 16px;'>
+            <thead>
+                <tr style='border-bottom: 1px solid #000;'>
+                    <th style='text-align: left; padding: 6px;'>{$titulo}</th>
+                    <th style='text-align: right; padding: 6px;'> </th>
+                    <th style='text-align: right; padding: 6px;'> </th>
+                </tr>
+            </thead><tbody>";
+
+            for ($i = 0; $i < 3; $i++) {
+                $left = $formatter($anterior[$i] ?? null);
+                $right = $formatter($atual[$i] ?? null);
+                $html .= "<tr>
+                <td style='padding: 4px; text-align: left;'> </td>
+                <td style='padding: 4px; text-align: right;'>{$left}</td>
+                <td style='padding: 4px; text-align: right;'>{$right}</td>
+            </tr>";
+            }
+
+            return $html . "</tbody></table>";
+        };
+
+        $html .= $renderRankingBlock('Top 3 MAIOR faturamento:', $ranking['anterior']['mais_vendidos_valor'] ?? [], $ranking['atual']['mais_vendidos_valor'] ?? [], fn($i) => $i ? "{$i['nome_produto']} (R$ " . number_format($i['total_valor'], 0, ',', '.') . ")" : '');
+        $html .= $renderRankingBlock('Top 3 MENOR faturamento:', $ranking['anterior']['menos_vendidos_valor'] ?? [], $ranking['atual']['menos_vendidos_valor'] ?? [], fn($i) => $i ? "{$i['nome_produto']} (R$ " . number_format($i['total_valor'], 0, ',', '.') . ")" : '');
+        $html .= $renderRankingBlock('Top 3 MAIS vendidos:', $ranking['anterior']['mais_vendidos_quantidade'] ?? [], $ranking['atual']['mais_vendidos_quantidade'] ?? [], fn($i) => $i ? "{$i['nome_produto']} ({$i['total_quantidade']})" : '');
+        $html .= $renderRankingBlock('Top 3 MENOS vendidos:', $ranking['anterior']['menos_vendidos_quantidade'] ?? [], $ranking['atual']['menos_vendidos_quantidade'] ?? [], fn($i) => $i ? "{$i['nome_produto']} ({$i['total_quantidade']})" : '');
+
+        $html .= "<p style='text-align: right; font-size: 12px; margin-top: 30px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
         $html .= "</div>";
 
         return $html;
     }
 
+
+    private static function gerarTabelaModosVenda(array $dadosAnteriores, array $dadosAtuais): string
+    {
+        $modos = ['SALAO', 'DELIVERY', 'BALCAO'];
+
+        // Indexar por modo
+        $mapAnteriores = [];
+        foreach ($dadosAnteriores as $item) {
+            $mapAnteriores[$item['modoVenda']] = (float)$item['valor'];
+        }
+
+        $mapAtuais = [];
+        foreach ($dadosAtuais as $item) {
+            $mapAtuais[$item['modoVenda']] = (float)$item['valor'];
+        }
+
+        $html = "<br><table style='width:100%; border-collapse: collapse; font-size: 14px;'>";
+        $html .= "<thead><tr style='border-bottom: 1px solid #000000;'>";
+        $html .= "<th style='padding: 6px; text-align: left;'>Modo</th>";
+        $html .= "<th style='padding: 6px; text-align: right;'></th>";
+        $html .= "<th style='padding: 6px; text-align: right;'></th>";
+        $html .= "<th style='padding: 6px; text-align: right; width: 30px; font-size: 8px;'>Var</th>";
+        $html .= "</tr></thead><tbody>";
+
+        foreach ($modos as $modo) {
+            $anterior = $mapAnteriores[$modo] ?? 0.0;
+            $atual = $mapAtuais[$modo] ?? 0.0;
+
+            $variacao = self::calcularVariacao($atual, $anterior);
+            $variacaoFormatada = number_format($variacao, 2, ',', '.') . '%';
+            $cor = $variacao >= 0 ? 'green' : 'red';
+
+            $anteriorFormatado = 'R$ ' . number_format($anterior, 2, ',', '.');
+            $atualFormatado = 'R$ ' . number_format($atual, 2, ',', '.');
+
+            $html .= "<tr>";
+            $html .= "<td style='padding: 6px; text-align: left;'>{$modo}</td>";
+            $html .= "<td style='padding: 6px; text-align: right;'>{$anteriorFormatado}</td>";
+            $html .= "<td style='padding: 6px; text-align: right;'>{$atualFormatado}</td>";
+            $html .= "<td style='padding: 6px; text-align: right; font-size: 8px; color: {$cor};'>{$variacaoFormatada}</td>";
+            $html .= "</tr>";
+        }
+
+        $html .= "</tbody></table>";
+        return $html;
+    }
+
     public static function gerarRelatorioFinanceiroSemanalPorGrupo($grupoId): array
     {
-        // 1. Datas da última e penúltima semana (segunda a domingo)
         $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
 
         $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
         $fimAtual = $hoje->modify('last sunday'); // domingo passado
 
-        // Semana retrasada (anterior à anterior)
         $inicioAnterior = $inicioAtual->modify('-7 days');
         $fimAnterior = $fimAtual->modify('-7 days');
 
-        // 2. Buscar os resumos com o método existente
+        // Buscar resumos financeiros
         $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
         $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
-
-        error_log("📊 RESUMO ATUAL:");
-        foreach ($resumoAtual['data'] as $loja) {
-            error_log('Data Inicio: ' . $inicioAtual->format('Y-m-d 00:00:00'));
-            error_log('Data Fim: ' . $fimAtual->format('Y-m-d 00:00:00'));
-            error_log(print_r($loja, true));
-        }
-
-        error_log("📊 RESUMO ANTERIOR:");
-        foreach ($resumoAnterior['data'] as $loja) {
-            error_log('Data Inicio: ' . $inicioAnterior->format('Y-m-d 00:00:00'));
-            error_log('Data Fim: ' . $fimAnterior->format('Y-m-d 00:00:00'));
-            error_log(print_r($loja, true));
-        }
 
         if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
             return ['success' => false, 'message' => 'Erro ao buscar dados das semanas.'];
         }
 
-        // 3. Indexar dados por lojaId para comparação
+        // Buscar ranking top 3 para cada semana
+        $rankingAtual = self::getRankingTop3ProdutosPorGrupo($grupoId, $inicioAtual->format('Y-m-d'), $fimAtual->format('Y-m-d'));
+        $rankingAnterior = self::getRankingTop3ProdutosPorGrupo($grupoId, $inicioAnterior->format('Y-m-d'), $fimAnterior->format('Y-m-d'));
+
+        // Indexar rankings por lojaId
+        $rankingsPorLoja = [];
+
+        foreach ($rankingAnterior['data'] ?? [] as $loja) {
+            $rankingsPorLoja[$loja['lojaId']]['anterior'] = $loja;
+        }
+
+        foreach ($rankingAtual['data'] ?? [] as $loja) {
+            $rankingsPorLoja[$loja['lojaId']]['atual'] = $loja;
+        }
+
+        // Indexar resumos
         $dadosAtuais = [];
         foreach ($resumoAtual['data'] as $loja) {
             $dadosAtuais[$loja['lojaId']] = $loja;
@@ -139,7 +273,20 @@ class DashboardController {
             $dadosAnteriores[$loja['lojaId']] = $loja;
         }
 
-        // 4. Calcular variações e montar HTML por loja
+        $modosVendaAtual = self::getResumoModosVendaPorGrupo($grupoId, $inicioAtual->format('Y-m-d'), $fimAtual->format('Y-m-d'));
+        $modosVendaAnterior = self::getResumoModosVendaPorGrupo($grupoId, $inicioAnterior->format('Y-m-d'), $fimAnterior->format('Y-m-d'));
+
+        $mvAtual = [];
+        foreach ($modosVendaAtual['data'] ?? [] as $item) {
+            $mvAtual[$item['lojaId']] = $item['data'];
+        }
+
+        $mvAnterior = [];
+        foreach ($modosVendaAnterior['data'] ?? [] as $item) {
+            $mvAnterior[$item['lojaId']] = $item['data'];
+        }
+
+        // Montar HTML por loja
         $html = '';
         foreach ($dadosAtuais as $lojaId => $dadosLojaAtual) {
             $dadosLojaAnterior = $dadosAnteriores[$lojaId] ?? [
@@ -151,16 +298,25 @@ class DashboardController {
                 'ticket_medio' => 0
             ];
 
+            $ranking = $rankingsPorLoja[$lojaId] ?? [
+                'anterior' => [],
+                'atual' => []
+            ];
+
             $html .= self::gerarHtmlComparativoLoja(
                 $dadosLojaAtual['nomeLoja'],
                 $inicioAtual, $fimAtual,
                 $inicioAnterior, $fimAnterior,
                 $dadosLojaAtual,
-                $dadosLojaAnterior
+                $dadosLojaAnterior,
+                $ranking,
+                $mvAnterior[$lojaId] ?? [],
+                $mvAtual[$lojaId] ?? []
             );
+
         }
 
-        // 5. Gerar PDF
+        // Gerar PDF
         $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
         $dompdf->loadHtml('<html><body>' . $html . '</body></html>');
         $dompdf->setPaper('A4', 'portrait');
@@ -200,8 +356,7 @@ class DashboardController {
                 'lojaId' => $result['custom_code'],
                 'name' => $result['name']
             ];
-        }
-        else {
+        } else {
             $response = [
                 'success' => false,
                 'name' => $result['name']
@@ -309,10 +464,10 @@ class DashboardController {
 
             $res = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $bruto = (float) $res['faturamento_bruto'] ?? 0;
-            $descontos = (float) $res['total_descontos'] ?? 0;
-            $taxaServico = (float) $res['total_taxa_servico'] ?? 0;
-            $clientes = (int) $res['total_clientes'] ?? 0;
+            $bruto = (float)$res['faturamento_bruto'] ?? 0;
+            $descontos = (float)$res['total_descontos'] ?? 0;
+            $taxaServico = (float)$res['total_taxa_servico'] ?? 0;
+            $clientes = (int)$res['total_clientes'] ?? 0;
 
             $liquido = $bruto - $descontos - $taxaServico;
             $ticketMedio = $clientes > 0 ? $bruto / $clientes : 0;
@@ -324,7 +479,7 @@ class DashboardController {
                 'faturamento_liquido' => round($liquido, 2),
                 'numero_clientes' => $clientes,
                 'ticket_medio' => round($ticketMedio, 2),
-                'numero_pedidos' => (int) $res['numero_pedidos'] ?? 0
+                'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0
             ];
         } catch (Exception $e) {
             return [
@@ -364,10 +519,10 @@ class DashboardController {
 
                 $info = self::generateResumoFinanceiroPorLoja($lojaId, $inicio, $fim);
 
-                $bruto = round((float) $info['faturamento_bruto'], 2);
-                $descontos = round((float) $info['descontos'], 2);
-                $taxaServico = round((float) $info['taxa_servico'], 2);
-                $liquido = round((float) $info['faturamento_liquido'], 2);
+                $bruto = round((float)$info['faturamento_bruto'], 2);
+                $descontos = round((float)$info['descontos'], 2);
+                $taxaServico = round((float)$info['taxa_servico'], 2);
+                $liquido = round((float)$info['faturamento_liquido'], 2);
 
                 // Validação com tolerância de centavos
                 $esperado = round($bruto - $descontos - $taxaServico, 2);
@@ -548,7 +703,7 @@ class DashboardController {
             usort($produtosValorAsc, fn($a, $b) => $a['total_valor'] <=> $b['total_valor']);
             $menosVendidosValor = array_slice($produtosValorAsc, 0, 10);
 
-            $filtrar = fn($item) => !in_array((int) $item['cod_material'], [9000, 9600]);
+            $filtrar = fn($item) => !in_array((int)$item['cod_material'], [9000, 9600]);
 
             return [
                 'success' => true,
@@ -601,7 +756,7 @@ class DashboardController {
             $lojasMap = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int) $loja['custom_code'];
+                $lojaId = (int)$loja['custom_code'];
                 $nomeLoja = $loja['name'];
 
                 $stmt = $pdo->prepare("
@@ -630,8 +785,8 @@ class DashboardController {
                 $horarios = array_fill(0, 24, 0);
 
                 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $hora = (int) $row['hora'];
-                    $media = (float) $row['media_hora'];
+                    $hora = (int)$row['hora'];
+                    $media = (float)$row['media_hora'];
                     $horarios[$hora] = round($media, 2);
                 }
 
@@ -659,7 +814,7 @@ class DashboardController {
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int) $loja['custom_code'];
+                $lojaId = (int)$loja['custom_code'];
 
                 $stmt = $pdo->prepare("
                 SELECT
@@ -680,10 +835,10 @@ class DashboardController {
 
                 $res = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                $bruto = (float) $res['faturamento_bruto'] ?? 0;
-                $descontos = (float) $res['total_descontos'] ?? 0;
-                $taxaServico = (float) $res['total_taxa_servico'] ?? 0;
-                $clientes = (int) $res['total_clientes'] ?? 0;
+                $bruto = (float)$res['faturamento_bruto'] ?? 0;
+                $descontos = (float)$res['total_descontos'] ?? 0;
+                $taxaServico = (float)$res['total_taxa_servico'] ?? 0;
+                $clientes = (int)$res['total_clientes'] ?? 0;
 
                 $liquido = $bruto - $descontos - $taxaServico;
                 $ticketMedio = $clientes > 0 ? $bruto / $clientes : 0;
@@ -721,7 +876,7 @@ class DashboardController {
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int) $loja['custom_code'];
+                $lojaId = (int)$loja['custom_code'];
                 $stmt = $pdo->prepare("
                 SELECT DISTINCT dataContabil AS data
                 FROM movimento_caixa
@@ -745,10 +900,10 @@ class DashboardController {
 
                     $info = self::generateResumoFinanceiroPorLoja($lojaId, $inicio, $fim);
 
-                    $bruto = round((float) $info['faturamento_bruto'], 2);
-                    $descontos = round((float) $info['descontos'], 2);
-                    $taxaServico = round((float) $info['taxa_servico'], 2);
-                    $liquido = round((float) $info['faturamento_liquido'], 2);
+                    $bruto = round((float)$info['faturamento_bruto'], 2);
+                    $descontos = round((float)$info['descontos'], 2);
+                    $taxaServico = round((float)$info['taxa_servico'], 2);
+                    $liquido = round((float)$info['faturamento_liquido'], 2);
 
                     $esperado = round($bruto - $descontos - $taxaServico, 2);
                     $valido = abs($esperado - $liquido) < 0.01;
@@ -785,7 +940,7 @@ class DashboardController {
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int) $loja['custom_code'];
+                $lojaId = (int)$loja['custom_code'];
 
                 $sqlTotal = "SELECT SUM(vlTotalRecebido) as total 
                          FROM movimento_caixa 
@@ -852,7 +1007,7 @@ class DashboardController {
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int) $loja['custom_code'];
+                $lojaId = (int)$loja['custom_code'];
 
                 $sqlTotal = "SELECT SUM(valorRecebido) as total 
                          FROM meios_pagamento 
@@ -919,7 +1074,7 @@ class DashboardController {
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int) $loja['custom_code'];
+                $lojaId = (int)$loja['custom_code'];
 
                 $sql = "
                 SELECT
@@ -943,16 +1098,90 @@ class DashboardController {
 
                 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                $filtrar = fn($item) => !in_array((int) $item['cod_material'], [9000, 9600]);
+                $filtrar = fn($item) => !in_array((int)$item['cod_material'], [9000, 9600]);
 
-                $ordenar = fn($arr, $campo, $ordem) =>
-                array_values(array_filter(
+                $ordenar = fn($arr, $campo, $ordem) => array_values(array_filter(
                     ($ordem === 'asc'
                         ? array_slice(array_filter($arr, fn($p) => $p[$campo] > 0), 0, 10)
                         : array_slice($arr, 0, 10)
                     ),
                     $filtrar
                 ));
+
+                // Ordenações
+                usort($produtos, fn($a, $b) => $b['total_quantidade'] <=> $a['total_quantidade']);
+                $maisQtd = $ordenar($produtos, 'total_quantidade', 'desc');
+
+                usort($produtos, fn($a, $b) => $b['total_valor'] <=> $a['total_valor']);
+                $maisVal = $ordenar($produtos, 'total_valor', 'desc');
+
+                usort($produtos, fn($a, $b) => $a['total_quantidade'] <=> $b['total_quantidade']);
+                $menosQtd = $ordenar($produtos, 'total_quantidade', 'asc');
+
+                usort($produtos, fn($a, $b) => $a['total_valor'] <=> $b['total_valor']);
+                $menosVal = $ordenar($produtos, 'total_valor', 'asc');
+
+                $resumo[] = [
+                    'lojaId' => $lojaId,
+                    'nomeLoja' => $loja['name'],
+                    'mais_vendidos_quantidade' => $maisQtd,
+                    'mais_vendidos_valor' => $maisVal,
+                    'menos_vendidos_quantidade' => $menosQtd,
+                    'menos_vendidos_valor' => $menosVal
+                ];
+            }
+
+            return ['success' => true, 'data' => $resumo];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao gerar ranking de produtos por grupo: ' . $e->getMessage()];
+        }
+    }
+
+    public static function getRankingTop3ProdutosPorGrupo($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $resumo = [];
+
+            foreach ($lojas as $loja) {
+                $lojaId = (int)$loja['custom_code'];
+
+                $sql = "
+                SELECT
+                    p.nome AS nome_produto,
+                    s.cod_material,
+                    SUM(s.quantidade) AS total_quantidade,
+                    SUM(s.valor_liquido) AS total_valor
+                FROM _bi_sales s
+                INNER JOIN products p
+                    ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id
+                WHERE s.custom_code = :lojaId
+                  AND s.data_movimento BETWEEN :dt_inicio AND :dt_fim
+                GROUP BY s.cod_material, p.nome
+            ";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([
+                    ':lojaId' => $lojaId,
+                    ':dt_inicio' => $dt_inicio,
+                    ':dt_fim' => $dt_fim
+                ]);
+
+                $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $filtrar = fn($item) => !in_array((int)$item['cod_material'], [9000, 9600]) &&
+                    stripos($item['nome_produto'], 'taxa') === false &&
+                    stripos($item['nome_produto'], 'serviço') === false;
+
+                $ordenar = fn($arr, $campo, $ordem) => array_values(array_filter(
+                    ($ordem === 'asc'
+                        ? array_slice(array_filter($arr, fn($p) => $p[$campo] > 0), 0, 3) // top 3 crescentes
+                        : array_slice($arr, 0, 3) // top 3 decrescentes
+                    ),
+                    $filtrar
+                ));
+
 
                 // Ordenações
                 usort($produtos, fn($a, $b) => $b['total_quantidade'] <=> $a['total_quantidade']);
@@ -1274,22 +1503,6 @@ class DashboardController {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }
