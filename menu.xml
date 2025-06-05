@@ -80,6 +80,15 @@
           </menuitem>
         </menu>
       </menuitem>
+      <menuitem label="Fornecedores">
+        <icon>fas:industry fa-fw</icon>
+        <menu>
+          <menuitem label="Listar Fornecedores">
+            <action>ListarFornecedores</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
       <menuitem label="Compra">
         <icon>fas:dolly-flatbed fa-fw</icon>
         <menu>
