@@ -184,6 +184,27 @@ class ProductController {
         }
     }
 
+    public static function listCompraveis($system_unit_id) {
+        try {
+            global $pdo;
+            $stmt = $pdo->query("SELECT * FROM products WHERE system_unit_id = $system_unit_id and compravel = 1");
+            $insumos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($insumos as &$insumo) {
+                if (is_null($insumo['preco_custo'])) {
+                    $insumo['preco_custo'] = 0;
+                }
+                if (is_null($insumo['saldo'])) {
+                    $insumo['saldo'] = 0;
+                }
+            }
+
+            return ['success' => true, 'insumos' => $insumos];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar insumos: ' . $e->getMessage()];
+        }
+    }
+
     public static function listItemVenda($system_unit_id) {
         try {
             global $pdo;

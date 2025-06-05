@@ -280,11 +280,11 @@ async function loadItems(unitId) {
     }
 
     try {
-        const response = await axios.post(baseUrl, {
-            method: 'listInsumos',
-            token: token,
-            data: { unit_id: unitId }
-        });
+            const response = await axios.post(baseUrl, {
+                method: 'listInsumos',
+                token: token,
+                data: { unit_id: unitId }
+            });
 
         if (response.data.success) {
             const items = response.data.insumos;

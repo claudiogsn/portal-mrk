@@ -849,32 +849,97 @@ if (isset($data['method']) && isset($data['data'])) {
 
             // Métodos para FornecedoresController
             case 'createFornecedor':
-                $response = FornecedoresController::createFornecedor($requestData);
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FornecedoresController::createFornecedor($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
+                }
                 break;
+
             case 'updateFornecedor':
-                if (isset($requestData['id'])) {
+                if (isset($requestData['id'], $requestData['system_unit_id'])) {
                     $response = FornecedoresController::updateFornecedor($requestData['id'], $requestData);
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ausente'];
+                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
                 }
                 break;
+
             case 'getFornecedorById':
-                if (isset($requestData['id'])) {
-                    $response = FornecedoresController::getFornecedorById($requestData['id']);
+                if (isset($requestData['id'], $requestData['system_unit_id'])) {
+                    $response = FornecedoresController::getFornecedorById($requestData['id'], $requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetro id ausente'];
+                    $response = ['error' => 'Parâmetro id ou system_unit_id ausente'];
                 }
                 break;
+
             case 'listFornecedores':
-                if (isset($requestData['unit_id'])) {
-                    $response = FornecedoresController::listFornecedores($requestData['unit_id']);
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FornecedoresController::listFornecedores($requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
+            case 'addItensFornecedor':
+                if (
+                    isset($requestData['system_unit_id'], $requestData['fornecedor_id']) &&
+                    is_array($requestData['itens'])
+                ) {
+                    $response = FornecedoresController::addItensFornecedor(
+                        $requestData['system_unit_id'],
+                        $requestData['fornecedor_id'],
+                        $requestData['itens']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes ou inválidos.'];
+                }
+                break;
+            case 'editItemFornecedor':
+                if (
+                    isset($requestData['system_unit_id'], $requestData['fornecedor_id'], $requestData['produto_codigo'])
+                ) {
+                    $response = FornecedoresController::editItemFornecedor(
+                        $requestData['system_unit_id'],
+                        $requestData['fornecedor_id'],
+                        $requestData['produto_codigo'],
+                        $requestData
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes: system_unit_id, fornecedor_id, produto_codigo'];
+                }
+                break;
+
+            case 'removeItemFornecedor':
+                if (
+                    isset($requestData['system_unit_id'], $requestData['fornecedor_id'], $requestData['produto_codigo'])
+                ) {
+                    $response = FornecedoresController::removeItemFornecedor(
+                        $requestData['system_unit_id'],
+                        $requestData['fornecedor_id'],
+                        $requestData['produto_codigo']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes: system_unit_id, fornecedor_id, produto_codigo'];
+                }
+                break;
+            case 'listItensFornecedor':
+                if(isset($requestData['system_unit_id'], $requestData['fornecedor_id'])){
+                    $response = FornecedoresController::listItensFornecedor(
+                        $requestData['system_unit_id'],
+                        $requestData['fornecedor_id']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou fornecedor_id ausente'];
+                }
+                break;
+
             // Métodos para NecessidadesController
             case 'createNecessidade':
                 $response = NecessidadesController::createNecessidade($requestData);
@@ -1092,6 +1157,14 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'listInsumos':
                 if (isset($requestData['unit_id'])) {
                     $response = ProductController::listInsumos($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+            case 'listCompraveis':
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductController::listCompraveis($requestData['unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro unit_id ausente'];

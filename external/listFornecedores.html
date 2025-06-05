@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Fornecedores</title>
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .form-control {
+            margin-bottom: 10px;
+        }
+
+        th, td {
+            vertical-align: middle !important;
+        }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+
+            h2, .modal-title {
+                font-size: 16px !important;
+            }
+
+            .btn {
+                padding: 6px 10px !important;
+                font-size: 12px !important;
+            }
+
+            .table-responsive {
+                overflow-x: auto;
+            }
+
+            .modal-dialog {
+                margin: 10px;
+            }
+
+            .row > div[class*="col-"] {
+                margin-bottom: 10px;
+            }
+
+            .form-control {
+                height: 30px;
+                padding: 4px 8px;
+            }
+
+            #tabela-fornecedores td,
+            #tabela-fornecedores th {
+                white-space: nowrap;
+            }
+
+            #tabela-fornecedores th.col-acoes,
+            #tabela-fornecedores td.col-acoes {
+                display: none !important;
+            }
+
+            #tabela-fornecedores th.mobile-menu,
+            #tabela-fornecedores td.mobile-menu {
+                display: table-cell !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            #tabela-fornecedores th.mobile-menu,
+            #tabela-fornecedores td.mobile-menu {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Fornecedores</h2>
+        </div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="filtroCnpj" class="form-control" placeholder="Filtrar por CNPJ">
+                </div>
+                <div class="col-md-4 text-right">
+                    <button class="btn btn-success" id="btnNovoFornecedor">Novo Fornecedor</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="tabela-fornecedores">
+                    <thead>
+                    <tr>
+                        <th style="display:none">ID</th>
+                        <th>CNPJ</th>
+                        <th>Nome</th>
+                        <th>Telefone</th>
+                        <th class="col-acoes">Ações</th>
+                        <th class="mobile-menu">⋮</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Criar Fornecedor -->
+<div class="modal fade" id="modalFornecedor" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Cadastrar Fornecedor</h4>
+            </div>
+            <div class="modal-body">
+                <form id="formFornecedor">
+                    <input type="hidden" id="fornecedorId">
+                    <input type="text" class="form-control" id="cnpj" placeholder="CNPJ *" required>
+                    <input type="text" class="form-control" id="nome" placeholder="Nome *" required>
+                    <input type="text" class="form-control" id="telefone" placeholder="Telefone *" required>
+                    <input type="email" class="form-control" id="email" placeholder="E-mail">
+                    <input type="text" class="form-control" id="endereco" placeholder="Endereço">
+                    <textarea class="form-control" id="observacoes" placeholder="Observações"></textarea>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarFornecedor">Salvar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modais vazios para Editar e Itens (preenchidos dinamicamente) -->
+<div class="modal fade" id="modalEditarFornecedor" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Editar Fornecedor</h4>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarFornecedor">
+                    <input type="hidden" id="editarFornecedorId">
+                    <input type="text" class="form-control" id="editarNome" placeholder="Nome *" required>
+                    <input type="text" class="form-control" id="editarCnpj" placeholder="CNPJ *" required>
+                    <input type="text" class="form-control" id="editarTelefone" placeholder="Telefone *" required>
+                    <input type="email" class="form-control" id="editarEmail" placeholder="E-mail">
+                    <input type="text" class="form-control" id="editarEndereco" placeholder="Endereço">
+                    <textarea class="form-control" id="editarObservacoes" placeholder="Observações"></textarea>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarEdicaoFornecedor">Salvar Alterações</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Itens do Fornecedor -->
+<div class="modal fade" id="modalItensFornecedor" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Itens do Fornecedor</h4>
+            </div>
+            <div class="modal-body">
+                <button class="btn btn-success mb-3" id="btnAdicionarItem">Adicionar Item</button>
+                <table class="table table-bordered" id="tabela-itens-fornecedor">
+                    <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Preço Unitário</th>
+                        <th>Prazo (dias)</th>
+                        <th>Observações</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Seleção de Produto -->
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Selecionar Produto</h4>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição">
+                <table id="item-table" class="table table-bordered">
+                    <thead>
+                    <tr>
+                        <th>Cod.</th>
+                        <th>Descrição</th>
+                        <th>Saldo Atual</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Adicionar Item Fornecedor -->
+<div class="modal fade" id="modalConfirmarItem" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Informações do Item</h4>
+            </div>
+            <div class="modal-body">
+                <form id="formNovoItemFornecedor">
+                    <input type="hidden" id="itemFornecedorCodigo">
+                    <div class="form-group">
+                        <label>Produto</label>
+                        <input type="text" class="form-control" id="itemDescricao" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Preço Unitário</label>
+                        <input type="number" step="0.01" class="form-control" id="itemPreco">
+                    </div>
+                    <div class="form-group">
+                        <label>Prazo de Entrega (dias)</label>
+                        <input type="number" class="form-control" id="itemPrazo">
+                    </div>
+                    <div class="form-group">
+                        <label>Observações</label>
+                        <textarea class="form-control" id="itemObs"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnSalvarItemFornecedor">Salvar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('system_unit_id');
+
+    $(document).ready(() => {
+        listarFornecedores();
+
+        $('#cnpj').mask('00.000.000/0000-00');
+        $('#telefone').mask('(00) 00000-0000');
+
+
+        $('#cnpj').on('input', async function () {
+            const raw = $(this).val().replace(/\D/g, '');
+            if (raw.length === 14) {
+                Swal.fire({
+                    title: 'Consultando CNPJ...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                    const response = await axios.get(`https://open.cnpja.com/office/${raw}`);
+                    const data = response.data;
+
+                    if (data && data.company && data.address) {
+                        $('#nome').val(data.company.name);
+                        if (data.phones.length) {
+                            const tel = data.phones[0];
+                            $('#telefone').val(`(${tel.area}) ${tel.number}`);
+                        }
+                        if (data.emails.length) {
+                            $('#email').val(data.emails[0].address);
+                        }
+
+                        const endereco = data.address;
+                        const enderecoCompleto = `${endereco.street}, ${endereco.number}, ${endereco.district}, ${endereco.city} - ${endereco.state}, ${endereco.zip}`;
+                        $('#endereco').val(enderecoCompleto);
+
+                        Swal.close();
+                    } else {
+                        Swal.fire('CNPJ não encontrado', 'Preencha os dados manualmente.', 'info');
+                    }
+                } catch (error) {
+                    Swal.fire('Erro ao consultar CNPJ', 'Preencha os dados manualmente.', 'warning');
+                }
+            }
+        });
+
+        $('#filtroNome, #filtroCnpj').on('input', filtrarTabela);
+        $('#btnNovoFornecedor').click(() => $('#modalFornecedor').modal('show'));
+
+        $('#salvarFornecedor').click(async () => {
+            const dados = {
+                nome: $('#nome').val(),
+                cnpj: $('#cnpj').val(),
+                telefone: $('#telefone').val(),
+                email: $('#email').val(),
+                endereco: $('#endereco').val(),
+                observacoes: $('#observacoes').val(),
+                system_unit_id: system_unit_id
+            };
+
+            if (!dados.nome || !dados.cnpj || !dados.telefone) {
+                return Swal.fire('Erro', 'Preencha os campos obrigatórios.', 'error');
+            }
+
+            Swal.fire({
+                title: 'Salvando...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                await axios.post(baseUrl, {
+                    method: 'createFornecedor',
+                    token,
+                    data: dados
+                });
+                Swal.close();
+                $('#modalFornecedor').modal('hide');
+                listarFornecedores();
+            } catch (err) {
+                Swal.fire('Erro', 'Não foi possível salvar o fornecedor.', 'error');
+            }
+        });
+    });
+
+    async function listarFornecedores() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listFornecedores',
+                token,
+                data: {system_unit_id}
+            });
+
+            const dados = res.data;
+            const tbody = $('#tabela-fornecedores tbody');
+            tbody.empty();
+
+            dados.forEach(f => {
+                const nomeFormatado = f.nome.replace(/\b\w/g, l => l.toUpperCase());
+                const cnpj = f.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                let tel = f.telefone;
+                if (tel.length === 11) {
+                    tel = tel.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+                } else if (tel.length === 10) {
+                    tel = tel.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+                }
+                const row = `
+        <tr>
+          <td style="display:none">${f.id}</td>
+          <td>${cnpj}</td>
+          <td>${nomeFormatado}</td>
+          <td><a href="#" class="whatsapp-link" data-telefone="${tel}">${tel}</a></td>
+          <td>
+            <button class="btn btn-info btn-sm editar" data-id="${f.id}">Editar</button>
+            <button class="btn btn-warning btn-sm itens" data-id="${f.id}">Itens</button>
+          </td>
+        </tr>
+      `;
+                tbody.append(row);
+            });
+
+            $('.whatsapp-link').click(function () {
+                const telefone = $(this).data('telefone');
+                Swal.fire({
+                    title: 'Telefone',
+                    text: telefone,
+                    showCancelButton: true,
+                    confirmButtonText: 'Abrir WhatsApp',
+                    cancelButtonText: 'Copiar'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}`, '_blank');
+                    } else if (result.dismiss === Swal.DismissReason.cancel) {
+                        navigator.clipboard.writeText(telefone);
+                        Swal.fire('Copiado!', '', 'success');
+                    }
+                });
+            });
+        } catch (err) {
+            Swal.fire('Erro', err, 'error');
+        }
+    }
+
+    function filtrarTabela() {
+        const nome = $('#filtroNome').val().toLowerCase();
+        const cnpj = $('#filtroCnpj').val().toLowerCase();
+
+        $('#tabela-fornecedores tbody tr').each(function () {
+            const textoNome = $(this).find('td:nth-child(3)').text().toLowerCase();
+            const textoCnpj = $(this).find('td:nth-child(2)').text().toLowerCase();
+            const match = textoNome.includes(nome) && textoCnpj.includes(cnpj);
+            $(this).toggle(match);
+        });
+    }
+
+    $(document).on('click', '.editar', async function () {
+        const fornecedorId = $(this).data('id');
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getFornecedorById',
+                token,
+                data: { id: fornecedorId, system_unit_id }
+            });
+
+            const f = res.data;
+            $('#editarFornecedorId').val(f.id);
+            $('#editarNome').val(f.nome);
+            $('#editarCnpj').val(f.cnpj);
+            $('#editarTelefone').val(f.telefone);
+            $('#editarEmail').val(f.email);
+            $('#editarEndereco').val(f.endereco);
+            $('#editarObservacoes').val(f.observacoes);
+
+            $('#modalEditarFornecedor').modal('show');
+        } catch (err) {
+            Swal.fire('Erro', 'Não foi possível carregar os dados do fornecedor.', 'error');
+        }
+    });
+    $('#salvarEdicaoFornecedor').click(async function () {
+        $('#editarCnpj').mask('00.000.000/0000-00');
+        $('#editarTelefone').mask('(00) 00000-0000');
+        const dados = {
+            id: $('#editarFornecedorId').val(),
+            system_unit_id,
+            nome: $('#editarNome').val(),
+            cnpj: $('#editarCnpj').val(),
+            telefone: $('#editarTelefone').val(),
+            email: $('#editarEmail').val(),
+            endereco: $('#editarEndereco').val(),
+            observacoes: $('#editarObservacoes').val()
+        };
+
+        if (!dados.nome || !dados.cnpj || !dados.telefone) {
+            return Swal.fire('Erro', 'Preencha os campos obrigatórios.', 'error');
+        }
+
+        const confirmacao = await Swal.fire({
+            title: 'Confirmar alteração?',
+            text: 'Deseja salvar as alterações deste fornecedor?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, salvar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Salvando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            await axios.post(baseUrl, {
+                method: 'updateFornecedor',
+                token,
+                data: dados
+            });
+
+            Swal.close();
+            $('#modalEditarFornecedor').modal('hide');
+            listarFornecedores();
+        } catch (err) {
+            Swal.fire('Erro', 'Erro ao salvar as alterações.', 'error');
+        }
+    });
+    $(document).on('click', '.itens', async function () {
+        const fornecedorId = $(this).data('id');
+
+        Swal.fire({
+            title: 'Carregando itens...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listItensFornecedor',
+                token,
+                data: {
+                    system_unit_id,
+                    fornecedor_id: fornecedorId
+                }
+            });
+
+            const dados = res.data;
+            const tbody = $('#tabela-itens-fornecedor tbody');
+            tbody.empty();
+
+            if (Array.isArray(dados) && dados.length > 0) {
+                dados.forEach(item => {
+                    const preco = item.preco_unitario ? `R$ ${parseFloat(item.preco_unitario).toFixed(2).replace('.', ',')}` : '-';
+                    const prazo = item.prazo_entrega_dias ?? '-';
+                    const obs = item.observacoes ?? '';
+
+                    tbody.append(`
+          <tr>
+            <td>${item.produto_codigo}</td>
+            <td>${preco}</td>
+            <td>${prazo}</td>
+            <td>${obs}</td>
+          </tr>
+        `);
+                });
+            } else {
+                tbody.append(`<tr><td colspan="4" class="text-center">Nenhum item cadastrado.</td></tr>`);
+            }
+
+            Swal.close();
+            $('#modalItensFornecedor').modal('show');
+        } catch (err) {
+            Swal.fire('Erro', 'Não foi possível carregar os itens do fornecedor.', 'error');
+        }
+    });
+
+    let fornecedorSelecionado = null;
+    let itemSelecionado = null;
+
+    $(document).on('click', '.itens', async function () {
+        fornecedorSelecionado = $(this).data('id');
+        $('#modalItensFornecedor').modal('show');
+        await carregarItensFornecedor(fornecedorSelecionado);
+    });
+
+    $('#btnAdicionarItem').click(async () => {
+        itemSelecionado = null;
+        await loadItems(); // carrega lista de insumos
+        $('#itemModal').modal('show');
+    });
+
+    async function loadItems() {
+        Swal.fire({
+            title: 'Carregando itens...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listCompraveis',
+                token: token,
+                data: { unit_id: system_unit_id }
+            });
+
+            Swal.close();
+
+            if (response.data.success) {
+                const items = response.data.insumos;
+                const tbody = $('#item-table tbody');
+                tbody.empty();
+
+                items.forEach(item => {
+                    const row = `
+                        <tr>
+                            <td>${item.codigo}</td>
+                            <td>${item.nome}</td>
+                            <td>${item.saldo}</td>
+                            <td>
+                                <button
+                                    class="btn btn-primary select-item"
+                                    data-codigo="${item.codigo}"
+                                    data-nome="${item.nome}"
+                                    data-saldo="${item.saldo}">
+                                    Inserir
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(row);
+                });
+
+                $('#item-search').off('input').on('input', function () {
+                    const searchValue = $(this).val().toLowerCase();
+                    $('#item-table tbody tr').each(function () {
+                        const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
+                        const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+
+                        if (codigo.includes(searchValue) || nome.includes(searchValue)) {
+                            $(this).show();
+                        } else {
+                            $(this).hide();
+                        }
+                    });
+                });
+
+                $('.select-item').click(function () {
+                    const codigo = $(this).data('codigo');
+                    const nome = $(this).data('nome');
+                    const saldo = $(this).data('saldo');
+
+                    $('#item-code').val(codigo);
+                    $('#item-description').val(nome);
+                    $('#current-balance').val(saldo);
+                    $('#itemModal').modal('hide');
+                });
+            } else {
+                Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
+        }
+    }
+
+
+    async function carregarItensFornecedor(fornecedorId) {
+        Swal.fire({ title: 'Carregando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listItensFornecedor',
+                token,
+                data: {
+                    fornecedor_id: fornecedorId,
+                    system_unit_id
+                }
+            });
+
+            Swal.close();
+
+            const itens = res.data.data || [];
+            const tbody = $('#tabela-itens-fornecedor tbody');
+            tbody.empty();
+
+            itens.forEach(item => {
+                tbody.append(`
+                <tr>
+                    <td>${item.produto_codigo} - ${item.nome_produto}</td>
+                    <td>${item.preco_unitario ?? '-'}</td>
+                    <td>${item.prazo_entrega_dias ?? '-'}</td>
+                    <td>${item.observacoes ?? ''}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm remover-item" data-id="${item.produto_codigo}">Remover</button>
+                    </td>
+                </tr>
+            `);
+            });
+
+            $('.remover-item').click(async function () {
+                const produto_codigo = $(this).data('id');
+                const confirm = await Swal.fire({
+                    title: 'Tem certeza?',
+                    text: 'Deseja remover este item do fornecedor?',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sim, remover',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                if (confirm.isConfirmed) {
+                    try {
+                        await axios.post(baseUrl, {
+                            method: 'removeItemFornecedor',
+                            token,
+                            data: {
+                                fornecedor_id: fornecedorSelecionado,
+                                produto_codigo,
+                                system_unit_id
+                            }
+                        });
+                        await carregarItensFornecedor(fornecedorSelecionado);
+                    } catch {
+                        Swal.fire('Erro', 'Falha ao remover item.', 'error');
+                    }
+                }
+            });
+        } catch (err) {
+            Swal.close();
+            Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+        }
+    }
+
+    // ao selecionar item da tabela de produtos
+    $(document).on('click', '.select-item', function () {
+        itemSelecionado = {
+            codigo: $(this).data('codigo'),
+            nome: $(this).data('nome'),
+            saldo: $(this).data('saldo')
+        };
+
+        $('#itemFornecedorCodigo').val(itemSelecionado.codigo);
+        $('#itemDescricao').val(itemSelecionado.nome);
+        $('#itemPreco').val('');
+        $('#itemPrazo').val('');
+        $('#itemObs').val('');
+
+        $('#itemModal').modal('hide');
+        $('#modalConfirmarItem').modal('show');
+    });
+
+    $('#btnSalvarItemFornecedor').click(async () => {
+        const preco = $('#itemPreco').val();
+        const prazo = $('#itemPrazo').val();
+        const observacoes = $('#itemObs').val();
+
+        const item = {
+            produto_codigo: itemSelecionado.codigo,
+            observacoes
+        };
+
+        if (preco) item.preco_unitario = parseFloat(preco);
+        if (prazo) item.prazo_entrega_dias = parseInt(prazo);
+
+        Swal.fire({ title: 'Salvando item...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            await axios.post(baseUrl, {
+                method: 'addItensFornecedor',
+                token,
+                data: {
+                    system_unit_id,
+                    fornecedor_id: fornecedorSelecionado,
+                    itens: [item]
+                }
+            });
+
+            Swal.close();
+            $('#modalConfirmarItem').modal('hide');
+            await carregarItensFornecedor(fornecedorSelecionado);
+        } catch {
+            Swal.fire('Erro', 'Erro ao salvar item.', 'error');
+        }
+    });
+
+
+</script>
+</body>
+</html>
