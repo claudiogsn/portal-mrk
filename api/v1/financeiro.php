@@ -141,15 +141,19 @@ if (isset($data['method']) && isset($data['data'])) {
 }
 
 // Função de verificação do token
-function verifyToken($token) {
+function verifyToken($token)
+{
     global $pdo;
     $stmt = $pdo->prepare("SELECT * FROM system_access_log WHERE sessionid = :sessionid");
     $stmt->bindParam(':sessionid', $token, PDO::PARAM_STR);
     $stmt->execute();
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
+
     if ($result) {
-        if ($result['logout_time'] == "0000-00-00 00:00:00") {
+        $logoutTime = $result['logout_time'];
+
+        if (is_null($logoutTime) || $logoutTime === '0000-00-00 00:00:00') {
             if ($result['impersonated'] == 'S') {
                 return ['user' => $result['impersonated_by']];
             } else {
