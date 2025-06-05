@@ -1175,6 +1175,9 @@ class DashboardController
 
                 $filtrar = fn($item) => !in_array((int)$item['cod_material'], [9000, 9600]) &&
                     stripos($item['nome_produto'], 'taxa') === false &&
+                    stripos($item['nome_produto'], 'mal passado') === false &&
+                    stripos($item['nome_produto'], 'ao ponto') === false &&
+                    stripos($item['nome_produto'], 'bem passado') === false &&
                     stripos($item['nome_produto'], 'serviço') === false;
 
                 $ordenar = fn($arr, $campo, $ordem) => array_values(array_filter(
