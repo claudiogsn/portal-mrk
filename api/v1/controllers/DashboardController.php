@@ -19,6 +19,99 @@ class DashboardController
         return (($atual - $anterior) / abs($anterior)) * 100;
     }
 
+    private static function gerarHtmlConsolidadoGrupo(
+        DateTimeInterface $inicioAtual,
+        DateTimeInterface $fimAtual,
+        DateTimeInterface $inicioAnterior,
+        DateTimeInterface $fimAnterior,
+        array $dadosAtuais,
+        array $dadosAnteriores,
+        array $rankingsPorLoja,
+        array $mvAnterior,
+        array $mvAtual
+    ): string {
+        $somaCampos = function(array $dados, array $campos) {
+            $soma = array_fill_keys($campos, 0.0);
+            foreach ($dados as $loja) {
+                foreach ($campos as $campo) {
+                    $soma[$campo] += (float)($loja[$campo] ?? 0);
+                }
+            }
+            return $soma;
+        };
+
+        $campos = ['faturamento_bruto', 'descontos', 'taxa_servico', 'faturamento_liquido', 'numero_clientes', 'ticket_medio'];
+
+        $dadosAtual = $somaCampos($dadosAtuais, $campos);
+        $dadosAnterior = $somaCampos($dadosAnteriores, $campos);
+
+        // Modos de venda
+        $consolidarModos = function($mapas) {
+            $consolidados = ['SALAO' => 0.0, 'DELIVERY' => 0.0, 'BALCAO' => 0.0];
+            foreach ($mapas as $loja) {
+                foreach ($loja as $modo) {
+                    if (isset($consolidados[$modo['modoVenda']])) {
+                        $consolidados[$modo['modoVenda']] += (float)$modo['valor'];
+                    }
+                }
+            }
+            return array_map(fn($modo, $valor) => ['modoVenda' => $modo, 'valor' => $valor], array_keys($consolidados), $consolidados);
+        };
+
+        $mvAnt = $consolidarModos($mvAnterior);
+        $mvAt = $consolidarModos($mvAtual);
+
+        // Agrupar rankings
+        $agruparRankings = function($tipo, $campo) use ($rankingsPorLoja) {
+            $agregados = [];
+            foreach ($rankingsPorLoja as $r) {
+                foreach (($r[$tipo][$campo] ?? []) as $item) {
+                    $chave = $item['cod_material'] ?? $item['nome_produto'];
+                    if (!isset($agregados[$chave])) {
+                        $agregados[$chave] = $item;
+                    } else {
+                        $agregados[$chave]['total_quantidade'] += (float)$item['total_quantidade'];
+                        $agregados[$chave]['total_valor'] += (float)$item['total_valor'];
+                    }
+                }
+            }
+            return $agregados;
+        };
+
+        $top3 = function($arr, $campo, $ordem = SORT_DESC) {
+            usort($arr, fn($a, $b) => $ordem === SORT_DESC ? $b[$campo] <=> $a[$campo] : $a[$campo] <=> $b[$campo]);
+            return array_slice(array_values($arr), 0, 3);
+        };
+
+
+        $ranking = [
+            'atual' => [
+                'mais_vendidos_valor' => $top3($agruparRankings('atual', 'mais_vendidos_valor'), 'total_valor'),
+                'menos_vendidos_valor' => $top3($agruparRankings('atual', 'menos_vendidos_valor'), 'total_valor', SORT_ASC),
+                'mais_vendidos_quantidade' => $top3($agruparRankings('atual', 'mais_vendidos_quantidade'), 'total_quantidade'),
+                'menos_vendidos_quantidade' => $top3($agruparRankings('atual', 'menos_vendidos_quantidade'), 'total_quantidade', SORT_ASC),
+            ],
+            'anterior' => [
+                'mais_vendidos_valor' => $top3($agruparRankings('anterior', 'mais_vendidos_valor'), 'total_valor'),
+                'menos_vendidos_valor' => $top3($agruparRankings('anterior', 'menos_vendidos_valor'), 'total_valor', SORT_ASC),
+                'mais_vendidos_quantidade' => $top3($agruparRankings('anterior', 'mais_vendidos_quantidade'), 'total_quantidade'),
+                'menos_vendidos_quantidade' => $top3($agruparRankings('anterior', 'menos_vendidos_quantidade'), 'total_quantidade', SORT_ASC),
+            ]
+        ];
+
+        return self::gerarHtmlComparativoLoja(
+            'Consolidado Geral',
+            $inicioAtual, $fimAtual,
+            $inicioAnterior, $fimAnterior,
+            $dadosAtual,
+            $dadosAnterior,
+            $ranking,
+            $mvAnt,
+            $mvAt
+        );
+    }
+
+
 
     private static function gerarHtmlComparativoLoja(
         string            $nomeLoja,
@@ -180,55 +273,10 @@ class DashboardController
         $html .= "<p style='text-align: right; font-size: 12px; margin-top: 30px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
         $html .= "</div>";
 
+
         return $html;
     }
 
-
-    private static function gerarTabelaModosVenda(array $dadosAnteriores, array $dadosAtuais): string
-    {
-        $modos = ['SALAO', 'DELIVERY', 'BALCAO'];
-
-        // Indexar por modo
-        $mapAnteriores = [];
-        foreach ($dadosAnteriores as $item) {
-            $mapAnteriores[$item['modoVenda']] = (float)$item['valor'];
-        }
-
-        $mapAtuais = [];
-        foreach ($dadosAtuais as $item) {
-            $mapAtuais[$item['modoVenda']] = (float)$item['valor'];
-        }
-
-        $html = "<br><table style='width:100%; border-collapse: collapse; font-size: 14px;'>";
-        $html .= "<thead><tr style='border-bottom: 1px solid #000000;'>";
-        $html .= "<th style='padding: 6px; text-align: left;'>Modo</th>";
-        $html .= "<th style='padding: 6px; text-align: right;'></th>";
-        $html .= "<th style='padding: 6px; text-align: right;'></th>";
-        $html .= "<th style='padding: 6px; text-align: right; width: 30px; font-size: 8px;'>Var</th>";
-        $html .= "</tr></thead><tbody>";
-
-        foreach ($modos as $modo) {
-            $anterior = $mapAnteriores[$modo] ?? 0.0;
-            $atual = $mapAtuais[$modo] ?? 0.0;
-
-            $variacao = self::calcularVariacao($atual, $anterior);
-            $variacaoFormatada = number_format($variacao, 2, ',', '.') . '%';
-            $cor = $variacao >= 0 ? 'green' : 'red';
-
-            $anteriorFormatado = 'R$ ' . number_format($anterior, 2, ',', '.');
-            $atualFormatado = 'R$ ' . number_format($atual, 2, ',', '.');
-
-            $html .= "<tr>";
-            $html .= "<td style='padding: 6px; text-align: left;'>{$modo}</td>";
-            $html .= "<td style='padding: 6px; text-align: right;'>{$anteriorFormatado}</td>";
-            $html .= "<td style='padding: 6px; text-align: right;'>{$atualFormatado}</td>";
-            $html .= "<td style='padding: 6px; text-align: right; font-size: 8px; color: {$cor};'>{$variacaoFormatada}</td>";
-            $html .= "</tr>";
-        }
-
-        $html .= "</tbody></table>";
-        return $html;
-    }
 
     public static function gerarRelatorioFinanceiroSemanalPorGrupo($grupoId): array
     {
@@ -304,6 +352,8 @@ class DashboardController
                 'atual' => []
             ];
 
+
+
             $html .= self::gerarHtmlComparativoLoja(
                 $dadosLojaAtual['nomeLoja'],
                 $inicioAtual, $fimAtual,
@@ -314,6 +364,21 @@ class DashboardController
                 $mvAnterior[$lojaId] ?? [],
                 $mvAtual[$lojaId] ?? []
             );
+
+            // Página Consolidado Geral
+            $html .= self::gerarHtmlConsolidadoGrupo(
+                $inicioAtual,
+                $fimAtual,
+                $inicioAnterior,
+                $fimAnterior,
+                $resumoAtual['data'],
+                $resumoAnterior['data'],
+                $rankingsPorLoja,
+                $mvAnterior,
+                $mvAtual
+            );
+
+
 
         }
 
