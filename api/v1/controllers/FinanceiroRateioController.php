@@ -141,7 +141,7 @@ class FinanceiroRateioController {
                     $rateio['idconta'],
                     $rateio['nome'],
                     $rateio['entidade'],
-                    $rateio['cgc'] ?? '',
+                    $rateio['cgc'] ?? '0',
                     $rateio['tipo'],
                     $rateio['emissao'],
                     $rateio['vencimento'],
