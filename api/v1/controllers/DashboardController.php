@@ -365,22 +365,20 @@ class DashboardController
                 $mvAtual[$lojaId] ?? []
             );
 
-            // Página Consolidado Geral
-            $html .= self::gerarHtmlConsolidadoGrupo(
-                $inicioAtual,
-                $fimAtual,
-                $inicioAnterior,
-                $fimAnterior,
-                $resumoAtual['data'],
-                $resumoAnterior['data'],
-                $rankingsPorLoja,
-                $mvAnterior,
-                $mvAtual
-            );
-
-
-
         }
+
+        // Página Consolidado Geral
+        $html .= self::gerarHtmlConsolidadoGrupo(
+            $inicioAtual,
+            $fimAtual,
+            $inicioAnterior,
+            $fimAnterior,
+            $resumoAtual['data'],
+            $resumoAnterior['data'],
+            $rankingsPorLoja,
+            $mvAnterior,
+            $mvAtual
+        );
 
         // Gerar PDF
         $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
