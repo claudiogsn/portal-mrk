@@ -853,7 +853,8 @@ class DashboardController
                     'taxa_servico' => round($taxaServico, 2),
                     'faturamento_liquido' => round($liquido, 2),
                     'numero_clientes' => $clientes,
-                    'ticket_medio' => round($ticketMedio, 2)
+                    'ticket_medio' => round($ticketMedio, 2),
+                    'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0
                 ];
             }
 
