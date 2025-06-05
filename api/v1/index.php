@@ -49,7 +49,7 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
+    $noAuthMethods = ['gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -609,9 +609,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
-            case 'gerarPdf':
-                //print_r($requestData);
-                //exit();
+            case 'gerarPdfSemanal':
                 if (isset($requestData['group_id'])) {
                     $response = DashboardController::gerarRelatorioFinanceiroSemanalPorGrupo($requestData['group_id']);
                 } else {
