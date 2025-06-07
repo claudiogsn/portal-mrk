@@ -71,7 +71,8 @@ class FinanceiroApiMenewController {
 
             $response = self::makeRequest($token, "FinanceiroConta/fetch", [
                 "estabelecimento" => $estabelecimento,
-                "tipo" => $tipo
+                "tipo" => $tipo,
+                "emissao_inicial" => "2025-01-01"
             ], "100");
 
             if (isset($response["result"])) {

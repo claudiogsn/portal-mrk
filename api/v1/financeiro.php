@@ -116,11 +116,6 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
 
-
-
-
-
-
             default:
                 http_response_code(405);
                 $response = ['error' => 'Método não suportado'];
