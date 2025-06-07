@@ -144,7 +144,8 @@ class FinanceiroApiMenewController {
             $token = self::authenticate();
 
             $response = self::makeRequest($token, "FinanceiroRateio/fetch", [
-                "estabelecimento" => $estabelecimento
+                "estabelecimento" => $estabelecimento,
+                "emissao_inicial" => "2025-01-01"
             ], self::DEFAULT_REQUEST_ID);
 
             if (isset($response["result"])) {
