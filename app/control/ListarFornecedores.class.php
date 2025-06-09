@@ -6,7 +6,6 @@ class ListarFornecedores extends TPage
     {
         parent::__construct();
 
-        $username = TSession::getValue('userid');
         $token = TSession::getValue('sessionid');
         $unit_id = TSession::getValue('userunitid');
 

@@ -40,10 +40,18 @@ class DashboardController
             return $soma;
         };
 
-        $campos = ['faturamento_bruto', 'descontos', 'taxa_servico', 'faturamento_liquido', 'numero_clientes', 'ticket_medio'];
+        $campos = ['faturamento_bruto', 'descontos', 'taxa_servico', 'faturamento_liquido', 'numero_clientes'];
 
         $dadosAtual = $somaCampos($dadosAtuais, $campos);
         $dadosAnterior = $somaCampos($dadosAnteriores, $campos);
+
+        $dadosAtual['ticket_medio'] = $dadosAtual['numero_clientes'] > 0
+            ? $dadosAtual['faturamento_liquido'] / $dadosAtual['numero_clientes']
+            : 0;
+
+        $dadosAnterior['ticket_medio'] = $dadosAnterior['numero_clientes'] > 0
+            ? $dadosAnterior['faturamento_liquido'] / $dadosAnterior['numero_clientes']
+            : 0;
 
         // Modos de venda
         $consolidarModos = function($mapas) {
@@ -83,7 +91,6 @@ class DashboardController
             return array_slice(array_values($arr), 0, 3);
         };
 
-
         $ranking = [
             'atual' => [
                 'mais_vendidos_valor' => $top3($agruparRankings('atual', 'mais_vendidos_valor'), 'total_valor'),
@@ -110,6 +117,7 @@ class DashboardController
             $mvAt
         );
     }
+
 
 
 
