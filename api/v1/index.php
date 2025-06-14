@@ -49,7 +49,7 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
+    $noAuthMethods = ['getUnitsToProcess','generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -72,6 +72,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro group_id ausente'];
                 }
+                break;
+            case 'getUnitsToProcess':
+                    $response = BiController::getUnitsToProcess();
                 break;
             case 'ListUnitsByGroup':
                 if (isset($requestData['group_id'])) {
