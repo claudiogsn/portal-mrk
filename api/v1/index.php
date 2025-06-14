@@ -73,6 +73,94 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro group_id ausente'];
                 }
                 break;
+            case 'ListUnitsByGroup':
+                if (isset($requestData['group_id'])) {
+                    $response = BiController::ListUnitsByGroup($requestData['group_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro group_id ausente'];
+                }
+                break;
+            case 'createGroup':
+                if (isset($requestData['nome'])) {
+                    $nome = $requestData['nome'];
+                    $slug = $requestData['slug'] ?? null;
+                    $ativo = $requestData['ativo'] ?? 'S';
+                    $bi = $requestData['bi'] ?? 0;
+
+                    $id = BiController::createGroup($nome, $slug, $ativo, $bi);
+                    $response = ['success' => true, 'id' => $id];
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro nome ausente'];
+                }
+                break;
+            case 'editGroup':
+                if (isset($requestData['id'], $requestData['nome'])) {
+                    $id = $requestData['id'];
+                    $nome = $requestData['nome'];
+                    $slug = $requestData['slug'] ?? null;
+                    $ativo = $requestData['ativo'] ?? 'S';
+                    $bi = $requestData['bi'] ?? 0;
+
+                    $success = BiController::editGroup($id, $nome, $slug, $ativo, $bi);
+                    $response = ['success' => $success];
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros id e nome são obrigatórios'];
+                }
+                break;
+            case 'toggleGroupAtivo':
+                if (isset($requestData['id'], $requestData['ativo'])) {
+                    $id = $requestData['id'];
+                    $ativo = (int)$requestData['ativo']; // 0 ou 1
+
+                    $success = BiController::toggleGroupAtivo($id, $ativo);
+                    $response = ['success' => $success];
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros id e ativo (0 ou 1) são obrigatórios'];
+                }
+                break;
+
+            case 'updateUnitsGroup':
+                if (isset($requestData['grupo_id'], $requestData['unidades']) && is_array($requestData['unidades'])) {
+                    $grupoId = $requestData['grupo_id'];
+                    $unidades = $requestData['unidades'];
+
+                    $result = BiController::updateUnitsGroup($grupoId, $unidades);
+                    $response = is_array($result) ? $result : ['success' => true];
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupo_id e unidades[] são obrigatórios'];
+                }
+                break;
+            case 'getGroupByUnit':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = BiController::getGroupByUnit($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro group_id ausente'];
+                }
+                break;
+            case 'getGroupByUser':
+                if (isset($requestData['user_id'])) {
+                    $response = BiController::getGroupByUser($requestData['user_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro group_id ausente'];
+                }
+                break;
+            case 'getGroups':
+                    $response = BiController::getGroups();
+                break;
+            case 'getUnits':
+                $response = BiController::getUnits();
+                break;
+            case 'getUnitsNotGrouped':
+                $response = BiController::getUnitsNotGrouped();
+                break;
+
             case 'generateDashboardData':
                 if (isset($requestData['system_unit_id'], $requestData['start_date'], $requestData['end_date'])) {
                     $response = BiController::generateDashboardData($requestData['system_unit_id'], $requestData['start_date'], $requestData['end_date']);

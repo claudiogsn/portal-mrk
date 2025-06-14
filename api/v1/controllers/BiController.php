@@ -11,6 +11,88 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class BiController {
 
+    public static function createGroup($nome, $slug = null, $ativo = 1, $bi = 0) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+            INSERT INTO grupo_estabelecimento (nome, slug, ativo, bi)
+            VALUES (:nome, :slug, :ativo, :bi)
+        ");
+
+        $stmt->execute([
+            ':nome' => $nome,
+            ':slug' => $slug ?? strtolower(preg_replace('/[^a-z0-9]+/i', '-', $nome)),
+            ':ativo' => $ativo,
+            ':bi' => $bi
+        ]);
+
+        return $pdo->lastInsertId();
+    }
+    public static function editGroup($id, $nome, $slug = null, $ativo = 1, $bi = 0) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+            UPDATE grupo_estabelecimento
+            SET nome = :nome, slug = :slug, ativo = :ativo, bi = :bi
+            WHERE id = :id
+        ");
+
+        return $stmt->execute([
+            ':id' => $id,
+            ':nome' => $nome,
+            ':slug' => $slug ?? strtolower(preg_replace('/[^a-z0-9]+/i', '-', $nome)),
+            ':ativo' => $ativo,
+            ':bi' => $bi
+        ]);
+    }
+    public static function toggleGroupAtivo($id, $ativo) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        UPDATE grupo_estabelecimento
+        SET ativo = :ativo
+        WHERE id = :id
+    ");
+
+        return $stmt->execute([
+            ':id' => $id,
+            ':ativo' => $ativo
+        ]);
+    }
+    public static function updateUnitsGroup($grupo_id, array $unidades) {
+        global $pdo;
+
+        // Inicia transação para garantir integridade
+        $pdo->beginTransaction();
+
+        try {
+            // Remove unidades existentes do grupo
+            $stmtDelete = $pdo->prepare("
+                DELETE FROM grupo_estabelecimento_rel
+                WHERE grupo_id = :grupo_id
+            ");
+            $stmtDelete->execute([':grupo_id' => $grupo_id]);
+
+            // Insere novas unidades
+            $stmtInsert = $pdo->prepare("
+                INSERT INTO grupo_estabelecimento_rel (grupo_id, system_unit_id)
+                VALUES (:grupo_id, :system_unit_id)
+            ");
+
+            foreach ($unidades as $unitId) {
+                $stmtInsert->execute([
+                    ':grupo_id' => $grupo_id,
+                    ':system_unit_id' => $unitId
+                ]);
+            }
+
+            $pdo->commit();
+            return ['success' => true];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
     public static function getUnitsByGroup($group_id) {
         global $pdo;
 
@@ -33,8 +115,125 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    public static function ListUnitsByGroup($group_id) {
+        global $pdo;
 
+        $stmt = $pdo->prepare("SELECT 
+        rel.system_unit_id, 
+        su.custom_code,
+        su.name
+    FROM 
+        grupo_estabelecimento_rel AS rel 
+    JOIN 
+        system_unit AS su ON rel.system_unit_id = su.id 
+    WHERE 
+        rel.grupo_id = :group_id
+    ");
 
+        $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getGroupByUnit($system_unit_id) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+        ge.id, 
+        ge.nome,
+        ge.slug
+    FROM 
+        grupo_estabelecimento_rel AS rel 
+    JOIN 
+        grupo_estabelecimento AS ge ON rel.grupo_id = ge.id 
+    WHERE 
+        rel.system_unit_id = :system_unit_id
+    ");
+
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getGroupByUser($user_id) {
+        global $pdo;
+
+        // Consulta com JOIN na tabela de lojas (system_unit)
+        $stmt = $pdo->prepare("
+        SELECT 
+            ge.id AS grupo_id,
+            ge.nome AS grupo_nome,
+            ge.slug AS grupo_slug,
+            ge.ativo AS grupo_ativo,
+            ge.bi AS grupo_bi,
+            su.id AS loja_id,
+            su.name AS loja_nome,
+            su.custom_code AS loja_codigo
+        FROM system_user_unit suu
+        INNER JOIN grupo_estabelecimento_rel ger ON suu.system_unit_id = ger.system_unit_id
+        INNER JOIN grupo_estabelecimento ge ON ger.grupo_id = ge.id
+        INNER JOIN system_unit su ON su.id = ger.system_unit_id
+        WHERE suu.system_user_id = :user_id
+    ");
+
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $grupos = [];
+        $lojasPorGrupo = [];
+
+        foreach ($dados as $row) {
+            $grupoId = $row['grupo_id'];
+
+            // Monta lista única de grupos
+            if (!isset($grupos[$grupoId])) {
+                $grupos[$grupoId] = [
+                    'id' => $row['grupo_id'],
+                    'nome' => $row['grupo_nome'],
+                    'slug' => $row['grupo_slug'],
+                    'ativo' => $row['grupo_ativo'],
+                    'bi' => $row['grupo_bi']
+                ];
+            }
+
+            // Agrupa lojas por grupo
+            if (!isset($lojasPorGrupo[$grupoId])) {
+                $lojasPorGrupo[$grupoId] = [];
+            }
+
+            $lojasPorGrupo[$grupoId][] = [
+                'id' => $row['loja_id'],
+                'name' => $row['loja_nome'],
+                'custom_code' => $row['loja_codigo']
+            ];
+        }
+
+        return [
+            "grupos" => array_values($grupos),
+            "lojas_por_grupo" => $lojasPorGrupo
+        ];
+    }
+    public static function getGroups() {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT * FROM grupo_estabelecimento");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    }
+    public static function getUnits() {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT * FROM system_unit");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getUnitsNotGrouped() {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT * FROM system_unit WHERE id NOT IN (SELECT system_unit_id FROM grupo_estabelecimento_rel)");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     public static function getUnitsByGroupMov($group_id) {
         global $pdo;
 
@@ -54,7 +253,6 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function registerJobExecution($data) {
         global $pdo;
 
@@ -96,7 +294,6 @@ class BiController {
             ];
         }
     }
-
     public static function consolidateSalesByUnit($system_unit_id, $dt_inicio, $dt_fim) {
     global $pdo;
 
@@ -154,7 +351,6 @@ class BiController {
         'message' => 'Sales consolidated successfully for unit.'
     ];
 }
-
     public static function consolidateSalesByGroup($group_id, $dt_inicio, $dt_fim) {
         // pega as vendas dentro de sales
         global $pdo;
@@ -247,7 +443,6 @@ class BiController {
             'message' => 'Sales consolidated successfully for group.'
         ];
     }
-
     public static function persistSales($salesData) {
         global $pdo;
 
@@ -324,7 +519,6 @@ class BiController {
             ];
         }
     }
-
     public static function persistMovimentoCaixa($movimentos): array
     {
         global $pdo;
@@ -474,7 +668,6 @@ class BiController {
             return ['status' => 'error', 'message' => 'Erro ao persistir movimentos: ' . $e->getMessage()];
         }
     }
-
     public static function GetInfoConsolidationEstoque($system_unit_id, $data) {
         global $pdo;
 
@@ -604,7 +797,6 @@ class BiController {
             ];
         }
     }
-
     public static function persistStockDifferences($system_unit_id,$date, $data) {
         global $pdo;
 
@@ -688,7 +880,6 @@ class BiController {
             ];
         }
     }
-
     public static function getSalesByInsumos ($systemUnitId, $data)
     {
         global $pdo;
@@ -762,7 +953,6 @@ class BiController {
             return ["error" => "Erro ao processar os dados: " . $e->getMessage()];
         }
     }
-
     public static function generateDashboardData($system_unit_id, $start_date, $end_date) {
         global $pdo;
 

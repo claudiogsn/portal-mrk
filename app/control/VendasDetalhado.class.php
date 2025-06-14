@@ -24,8 +24,12 @@ class VendasDetalhado extends TPage
         $iframe->scrolling = "yes";
         $iframe->width = "100%";
         $iframe->height = "800px";
+        $container = new TVBox;
+        $container->style = 'width: 100%';
+        $container->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
+        $container->add($iframe);
 
-        parent::add($iframe);
+        parent::add($container);
     }
     function onFeed($param){
         // $id = $param['key'];

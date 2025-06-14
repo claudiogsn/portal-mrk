@@ -166,12 +166,12 @@
         <action>SystemProgramList</action>
         <icon>far:file-code fa-fw</icon>
       </menuitem>
-      <menuitem label="_t{Groups}">
-        <action>SystemGroupList</action>
-        <icon>fas:users fa-fw</icon>
-      </menuitem>
-      <menuitem label="_t{Units}">
+      <menuitem label="Estabelecimentos">
         <action>SystemUnitList</action>
+        <icon>fas:university fa-fw</icon>
+      </menuitem>
+      <menuitem label="Grupo de Estabelecimentos">
+        <action>GrupoEstabelecimento</action>
         <icon>fas:university fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Roles}">
@@ -181,6 +181,10 @@
       <menuitem label="_t{Users}">
         <action>SystemUserList</action>
         <icon>fas:user fa-fw</icon>
+      </menuitem>
+      <menuitem label="Perfis de Acesso">
+        <action>SystemGroupList</action>
+        <icon>fas:users fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Contacts}">
         <action>SystemContactsList</action>

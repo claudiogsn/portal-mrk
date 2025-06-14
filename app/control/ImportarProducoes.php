@@ -16,7 +16,7 @@ class ImportarProducoes extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/importarProducoes.html.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
+            $link = "http://localhost/portal-mrk/external/importarProducoes.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
         }else{
             $link = "https://portal.mrksolucoes.com.br/external/importarProducoes.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
         }
@@ -28,8 +28,12 @@ class ImportarProducoes extends TPage
         $iframe->scrolling = "yes";
         $iframe->width = "100%";
         $iframe->height = "800px";
+        $container = new TVBox;
+        $container->style = 'width: 100%';
+        $container->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
+        $container->add($iframe);
 
-        parent::add($iframe);
+        parent::add($container);
     }
     function onFeed($param){
         // $id = $param['key'];

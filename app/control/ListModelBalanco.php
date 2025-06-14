@@ -12,7 +12,7 @@ class ListModelBalanco extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/listModelBalanco.html.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/external/listModelBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }else{
             $link = "https://portal.mrksolucoes.com.br/external/listModelBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }
@@ -24,8 +24,12 @@ class ListModelBalanco extends TPage
         $iframe->scrolling = "yes";
         $iframe->width = "100%";
         $iframe->height = "800px";
+        $container = new TVBox;
+        $container->style = 'width: 100%';
+        $container->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
+        $container->add($iframe);
 
-        parent::add($iframe);
+        parent::add($container);
     }
     function onFeed($param){
         // $id = $param['key'];

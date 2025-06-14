@@ -1,20 +1,19 @@
 <?php
-class ImportComprasCsv extends TPage
+class GrupoEstabelecimento extends TPage
 {
     private $form;
+    protected $pageNavigation;
+
     public function __construct($param)
     {
         parent::__construct();
 
-        $username = TSession::getValue('userid');
         $token = TSession::getValue('sessionid');
-        $unit_id = TSession::getValue('userunitid');
 
-
-        if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/importComprasCsv.html?user_id={$username}&token={$token}";
-        }else{
-            $link = "https://portal.mrksolucoes.com.br/external/importComprasCsv.html?user_id={$username}&token={$token}";
+        if ($_SERVER['SERVER_NAME'] == "localhost") {
+            $link = "http://localhost/portal-mrk/external/listGrupos.html?token={$token}";
+        } else {
+            $link = "https://portal.mrksolucoes.com.br/external/listGrupos.html?token={$token}";
         }
 
         $iframe = new TElement('iframe');
@@ -31,10 +30,14 @@ class ImportComprasCsv extends TPage
 
         parent::add($container);
     }
-    function onFeed($param){
+
+    function onFeed($param)
+    {
         // $id = $param['key'];
     }
-    function onEdit($param){
+
+    function onEdit($param)
+    {
         // $id = $param['key'];
     }
 }

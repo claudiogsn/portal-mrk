@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestão de Grupos de Estabelecimento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Multi-select plugin -->
+    <link href="bsb/plugins/multi-select/css/multi-select.css" rel="stylesheet" />
+    <script src="bsb/plugins/multi-select/js/jquery.multi-select.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+        }
+        .custom-header {
+            padding: 5px;
+            background: #f1f1f1;
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br />
+    <div class="card">
+        <div class="header"><h2>Grupos de Estabelecimento</h2></div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-6"><input type="text" id="filtroGrupo" class="form-control" placeholder="Filtrar por nome do grupo" /></div>
+                <div class="col-md-6 text-right"><button class="btn btn-success" id="btnNovoGrupo">Novo Grupo</button></div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-grupos" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                    <tr>
+                        <th style="width: 28px; padding: 0;" class="text-center"> </th>
+                        <th style="width: 28px; padding: 0;" class="text-center"> </th>
+                        <th style="width: 28px; padding: 0;" class="text-center"> </th>
+                        <th style="text-align: center;">ID</th>
+                        <th style="text-align: left;">Nome</th>
+                        <th style="text-align: center;">Slug</th>
+                        <th style="text-align: center;">Ativo</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição/Cadastro do Grupo -->
+<div class="modal fade" id="modalGrupo" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header"><h4 class="modal-title">Dados do Grupo</h4></div>
+            <div class="modal-body">
+                <form id="formGrupo">
+                    <input type="hidden" id="grupoId">
+                    <input type="text" class="form-control" id="grupoNome" placeholder="Nome *" required>
+                    <input type="text" class="form-control" id="grupoSlug" placeholder="Slug (gerado automaticamente)" readonly>
+                    <select class="form-control" id="grupoAtivo" required>
+                        <option value="">Ativo?</option>
+                        <option value="1">Sim</option>
+                        <option value="0">Não</option>
+                    </select>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="salvarGrupo" class="btn btn-primary">Salvar</button>
+                <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Associação de Estabelecimentos -->
+<!-- Modal Associação de Estabelecimentos -->
+<!-- Modal Associação de Estabelecimentos -->
+<div class="modal fade" id="modalLojasGrupo" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header"><h4 class="modal-title">Associação de Estabelecimentos</h4></div>
+            <div class="modal-body">
+                <select id="multiSelectEstabelecimentos" multiple="multiple" class="form-control"></select>
+            </div>
+            <div class="modal-footer">
+                <button id="btnSalvarUnidadesGrupo" class="btn btn-primary">Salvar</button>
+                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const token = new URLSearchParams(window.location.search).get('token');
+    let grupoAtualId = null;
+
+    $(document).ready(() => {
+        listarGrupos();
+
+        $('#btnNovoGrupo').click(() => {
+            $('#grupoId').val('');
+            $('#grupoNome').val('');
+            $('#grupoSlug').val('');
+            $('#grupoAtivo').val('');
+            $('#modalGrupo').modal('show');
+        });
+
+        $('#filtroGrupo').on('input', filtrarTabela);
+
+        $('#salvarGrupo').click(async () => {
+            const id = $('#grupoId').val();
+            const nome = $('#grupoNome').val();
+            const ativo = $('#grupoAtivo').val();
+
+            if (!nome || ativo === "") {
+                return Swal.fire('Erro', 'Preencha todos os campos obrigatórios.', 'error');
+            }
+
+            Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                await axios.post(baseUrl, {
+                    method: id ? 'editGroup' : 'createGroup',
+                    token,
+                    data: { ...(id && { id }), nome, ativo }
+                });
+
+                Swal.close();
+                $('#modalGrupo').modal('hide');
+                listarGrupos();
+            } catch {
+                Swal.fire('Erro', 'Falha ao salvar o grupo.', 'error');
+            }
+        });
+
+        $('#selectDisponiveis').on('dblclick', function () {
+            $('#selectDisponiveis option:selected').each(function () {
+                $('#selectNoGrupo').append($(this));
+            });
+        });
+
+        $('#selectNoGrupo').on('dblclick', function () {
+            $('#selectNoGrupo option:selected').each(function () {
+                $('#selectDisponiveis').append($(this));
+            });
+        });
+
+        $('#btnSalvarUnidadesGrupo').click(async () => {
+            const unidades = $('#multiSelectEstabelecimentos').val().map(Number);
+
+            if (!grupoAtualId) return;
+
+            Swal.fire({ title: 'Salvando associação...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                await axios.post(baseUrl, {
+                    method: 'updateUnitsGroup',
+                    token,
+                    data: {
+                        grupo_id: grupoAtualId,
+                        unidades
+                    }
+                });
+
+                Swal.close();
+                $('#modalLojasGrupo').modal('hide');
+                listarGrupos();
+            } catch {
+                Swal.fire('Erro', 'Não foi possível salvar associação.', 'error');
+            }
+        });
+
+    });
+
+    async function listarGrupos() {
+        try {
+            const res = await axios.post(baseUrl, { method: 'getGroups', token, data: {} });
+            const tbody = $('#tabela-grupos tbody');
+            tbody.empty();
+
+            for (const grupo of res.data) {
+                const ativo = grupo.ativo === "1"
+                    ? '<span class="label label-success" style="font-size:10pt;">Sim</span>'
+                    : '<span class="label label-danger" style="font-size:10pt;">Não</span>';
+
+                const row = `
+                    <tr>
+                      <td class="text-center">
+                        <a href="#" title="Editar" onclick="editarGrupo(${grupo.id}, '${grupo.nome}', '${grupo.slug}', '${grupo.ativo}')">
+                          <i class="far fa-edit blue"></i>
+                        </a>
+                      </td>
+                      <td class="text-center">
+                        <a href="#" title="Associar Estabelecimentos" onclick="abrirModalAssociar(${grupo.id})">
+                          <i class="fa fa-home" style="color: green"></i>
+                        </a>
+                      </td>
+                      <td class="text-center">
+                        <a href="#" title="${grupo.ativo == '1' ? 'Desativar' : 'Ativar'} Grupo" onclick="toggleAtivoGrupo(${grupo.id}, ${grupo.ativo})">
+                          <i class="fa fa-power-off" style="color: orange"></i>
+                        </a>
+                      </td>
+                      <td class="text-center">${grupo.id}</td>
+                      <td>${grupo.nome}</td>
+                      <td class="text-center">${grupo.slug}</td>
+                      <td class="text-center">${ativo}</td>
+                    </tr>`;
+                tbody.append(row);
+            }
+
+        } catch (err) {
+            Swal.fire('Erro', 'Não foi possível carregar os grupos.', 'error');
+        }
+    }
+
+    function editarGrupo(id, nome, slug, ativo) {
+        $('#grupoId').val(id);
+        $('#grupoNome').val(nome);
+        $('#grupoSlug').val(slug);
+        $('#grupoAtivo').val(ativo);
+        $('#modalGrupo').modal('show');
+    }
+
+    async function abrirModalAssociar(group_id) {
+        grupoAtualId = group_id;
+        const $select = $('#multiSelectEstabelecimentos');
+
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+        try {
+            const [disponiveisRes, noGrupoRes] = await Promise.all([
+                axios.post(baseUrl, { method: 'getUnitsNotGrouped', token, data: {} }),
+                axios.post(baseUrl, { method: 'ListUnitsByGroup', token, data: { group_id } })
+            ]);
+
+            $select.empty();
+
+            const allOptions = [
+                ...disponiveisRes.data.map(loja => ({
+                    id: loja.id,
+                    label: formatLoja(loja)
+                })),
+                ...noGrupoRes.data.map(loja => ({
+                    id: loja.system_unit_id,
+                    label: formatLoja(loja)
+                }))
+            ];
+
+            const selectedIds = new Set(noGrupoRes.data.map(l => l.system_unit_id));
+
+            allOptions.forEach(opt => {
+                $select.append(new Option(opt.label, opt.id, false, selectedIds.has(opt.id)));
+            });
+
+            // Recria o multi-select com headers
+            if ($select.data('multiselect')) {
+                $select.multiSelect('destroy');
+            }
+
+            $select.multiSelect({
+                selectableHeader: '<div class="custom-header text-center"><strong>Disponíveis</strong></div>',
+                selectionHeader: '<div class="custom-header text-center"><strong>Selecionados</strong></div>',
+                keepOrder: true
+            });
+
+            Swal.close();
+            $('#modalLojasGrupo').modal('show');
+        } catch {
+            Swal.fire('Erro', 'Erro ao carregar estabelecimentos.', 'error');
+        }
+    }
+
+
+    function formatLoja(loja) {
+        return `${loja.id ? loja.id : loja.system_unit_id} - ${loja.name} - ${loja.custom_code ? loja.custom_code : 'Sem Integração'}`;
+    }
+
+
+    async function toggleAtivoGrupo(id, statusAtual) {
+        const novoStatus = statusAtual === 1 || statusAtual === "1" ? 0 : 1;
+        const acao = novoStatus ? 'ativar' : 'desativar';
+
+        const confirm = await Swal.fire({
+            title: `Deseja ${acao} este grupo?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            await axios.post(baseUrl, {
+                method: 'toggleGroupAtivo',
+                token,
+                data: { id, ativo: novoStatus }
+            });
+
+            Swal.close();
+            listarGrupos();
+        } catch {
+            Swal.fire('Erro', 'Erro ao alterar o status do grupo.', 'error');
+        }
+    }
+
+
+    function filtrarTabela() {
+        const termo = $('#filtroGrupo').val().toLowerCase();
+        $('#tabela-grupos tbody tr').each(function () {
+            const nome = $(this).find('td:nth-child(4)').text().toLowerCase(); // Nome está na 4ª coluna
+            $(this).toggle(nome.includes(termo));
+        });
+    }
+</script>
+</body>
+</html>
