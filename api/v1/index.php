@@ -49,7 +49,7 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['getUnitsToProcess','generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
+    $noAuthMethods = ['getGroupsToProcess','getUnitsToProcess','generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -75,6 +75,9 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getUnitsToProcess':
                     $response = BiController::getUnitsToProcess();
+                break;
+            case 'getGroupsToProcess':
+                $response = BiController::getGroupsToProcess();
                 break;
             case 'ListUnitsByGroup':
                 if (isset($requestData['group_id'])) {

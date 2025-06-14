@@ -131,6 +131,21 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    public static function getGroupsToProcess() {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+            su.id, 
+            su.nome
+            FROM 
+                grupo_estabelecimento AS su
+            WHERE 
+                su.bi = 1
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     public static function ListUnitsByGroup($group_id) {
         global $pdo;
