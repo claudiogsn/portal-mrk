@@ -21,9 +21,9 @@ class DashboardFaturamento extends TPage
     
     
             if($_SERVER['SERVER_NAME'] == "localhost"){
-                $link = "http://localhost/portal-mrk/external/dashboardFaturamento.html?system_unit_id={$unit_id}&user_id={$user_id}token={$token}";
+                $link = "http://localhost/portal-mrk/external/dashboardFaturamento.html?system_unit_id={$unit_id}&user_id={$user_id}&token={$token}";
             }else{
-                $link = "https://portal.mrksolucoes.com.br/external/dashboardFaturamento.html?system_unit_id={$unit_id}&user_id={$user_id}token={$token}";
+                $link = "https://portal.mrksolucoes.com.br/external/dashboardFaturamento.html?system_unit_id={$unit_id}&user_id={$user_id}&token={$token}";
             }
     
             $iframe = new TElement('iframe');
