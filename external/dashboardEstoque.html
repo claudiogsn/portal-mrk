@@ -34,6 +34,10 @@
             <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
             <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
 
+            <select id="filtroGrupo" class="border p-2 rounded-md shadow">
+                <option value="">Todos os Grupos</option>
+            </select>
+
             <select id="filtroLoja" class="border p-2 rounded-md shadow">
                 <option value="">Todas as lojas</option>
             </select>
@@ -133,8 +137,12 @@
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
     const urlParams = new URLSearchParams(window.location.search);
-    const grupoId = urlParams.get('grupo_id');
+    const system_unit_id = parseInt(urlParams.get('system_unit_id'));
+    const user_id = parseInt(urlParams.get('user_id'));
     const token = urlParams.get('token');
+
+    let grupoId = null;
+
 
     let lojasGrupo = [];
     let resumoEstoqueGrupo = [];
@@ -174,6 +182,60 @@
         document.getElementById('startDate').value = start.toISOString().split('T')[0];
         fetchData();
     }
+
+    let gruposDisponiveis = {};
+    let lojasPorGrupo = {};
+
+    async function carregarGrupoInicial() {
+        const res = await axios.post(baseUrl, {
+            method: 'getGroupByUnit',
+            token,
+            data: { system_unit_id }
+        });
+
+        if (res.data?.length > 0) {
+            grupoId = res.data[0].id;
+        }
+
+        await carregarGruposUsuario();
+    }
+
+    async function carregarGruposUsuario() {
+        const res = await axios.post(baseUrl, {
+            method: 'getGroupByUser',
+            token,
+            data: { user_id }
+        });
+
+        const { grupos, lojas_por_grupo } = res.data;
+        gruposDisponiveis = grupos;
+        lojasPorGrupo = lojas_por_grupo;
+
+        const grupoSelect = document.getElementById('filtroGrupo');
+        grupoSelect.innerHTML = '';
+
+        grupos.forEach(grupo => {
+            grupoSelect.innerHTML += `<option value="${grupo.id}" ${grupo.id == grupoId ? 'selected' : ''}>${grupo.nome}</option>`;
+        });
+
+        grupoSelect.addEventListener('change', () => {
+            grupoId = parseInt(grupoSelect.value);
+            atualizarFiltroLoja();
+            fetchData();
+        });
+
+        atualizarFiltroLoja();
+    }
+
+    function atualizarFiltroLoja() {
+        const lojas = lojasPorGrupo[grupoId] || [];
+        const filtro = document.getElementById('filtroLoja');
+        filtro.innerHTML = '<option value="">Todas as lojas</option>';
+        lojas.forEach(loja => {
+            filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`;
+        });
+    }
+
 
     async function fetchData() {
         const startDate = document.getElementById('startDate').value;
@@ -705,7 +767,7 @@
             .slice(0, 10);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('filtroLoja').addEventListener('change', aplicarFiltroLoja);
 
         document.getElementById('btnCompras').addEventListener('click', () => {
@@ -722,8 +784,10 @@
             aplicarFiltroLoja();
         });
 
+        await carregarGrupoInicial();
         setRange('7dias');
     });
+
 </script>
 </body>
 </html>

@@ -15,15 +15,15 @@ class DashboardEstoque extends TPage
         {
             parent::__construct();
     
-            $username = TSession::getValue('userid');
+            $user_id = TSession::getValue('userid');
             $token = TSession::getValue('sessionid');
             $unit_id = TSession::getValue('userunitid');
     
     
             if($_SERVER['SERVER_NAME'] == "localhost"){
-                $link = "http://localhost/portal-mrk/external/dashboardEstoque.html?token={$token}&grupo_id=1";
+                $link = "http://localhost/portal-mrk/external/dashboardEstoque.html?system_unit_id={$unit_id}&user_id={$user_id}token={$token}";
             }else{
-                $link = "https://portal.mrksolucoes.com.br/external/dashboardEstoque.html?token={$token}&grupo_id=1";
+                $link = "https://portal.mrksolucoes.com.br/external/dashboardEstoque.html?system_unit_id={$unit_id}&user_id={$user_id}token={$token}";
             }
     
             $iframe = new TElement('iframe');
