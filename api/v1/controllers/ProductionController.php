@@ -150,6 +150,107 @@ class ProductionController {
             ];
         }
     }
+    public static function listProdutosComFichaStatus($system_unit_id): array
+    {
+        global $pdo;
+
+        try {
+            // Busca todos os produtos
+            $stmt = $pdo->prepare("
+            SELECT p.codigo, p.nome, p.compravel,
+                EXISTS (
+                    SELECT 1
+                    FROM productions f
+                    WHERE f.system_unit_id = p.system_unit_id AND f.product_id = p.codigo
+                    LIMIT 1
+                ) AS tem_ficha
+            FROM products p
+            WHERE p.system_unit_id = :unit_id
+              AND p.codigo >= 10000
+        ");
+            $stmt->execute([':unit_id' => $system_unit_id]);
+
+            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'produtos' => $produtos
+            ];
+
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao listar produtos: ' . $e->getMessage()
+            ];
+        }
+    }
+    public static function listProdutosComFicha($system_unit_id) {
+        global $pdo;
+        $stmt = $pdo->prepare("
+        SELECT DISTINCT p.codigo, p.nome
+        FROM products p
+        INNER JOIN productions f ON f.product_id = p.codigo AND f.system_unit_id = p.system_unit_id
+        WHERE p.system_unit_id = ? AND p.codigo >= 10000
+        ORDER BY p.nome
+    ");
+        $stmt->execute([$system_unit_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getFichaTecnica($system_unit_id, $codigo_produto) {
+        global $pdo;
+        $stmt = $pdo->prepare("
+        SELECT f.id, f.insumo_id, i.nome AS insumo_nome, f.quantity, f.rendimento
+        FROM productions f
+        INNER JOIN products i ON i.codigo = f.insumo_id AND i.system_unit_id = f.system_unit_id
+        WHERE f.system_unit_id = ? AND f.product_id = ?
+        ORDER BY i.nome
+    ");
+        $stmt->execute([$system_unit_id, $codigo_produto]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function saveFichaTecnica($system_unit_id, $codigo_produto, $insumos) {
+        global $pdo;
+        $pdo->beginTransaction();
+
+        // Remove ficha antiga
+        $del = $pdo->prepare("DELETE FROM productions WHERE system_unit_id = ? AND product_id = ?");
+        $del->execute([$system_unit_id, $codigo_produto]);
+
+        // Insere nova ficha
+        $insert = $pdo->prepare("
+        INSERT INTO productions (system_unit_id, product_id, insumo_id, quantity, rendimento)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+
+        foreach ($insumos as $insumo) {
+            $insert->execute([
+                $system_unit_id,
+                $codigo_produto,
+                $insumo['insumo_id'],
+                $insumo['quantity'],
+                $insumo['rendimento'] ?? 1
+            ]);
+        }
+
+        $pdo->commit();
+        return ['success' => true];
+    }
+    public static function listInsumosDisponiveis($system_unit_id) {
+        global $pdo;
+        $stmt = $pdo->prepare("
+        SELECT codigo, nome
+        FROM products
+        WHERE system_unit_id = ? AND codigo >= 10000 AND insumo = 1
+        ORDER BY nome
+    ");
+        $stmt->execute([$system_unit_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+
+
+
 
 
 }

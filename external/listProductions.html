@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Fichas de Produção</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .form-control {
+            display: block;
+            width: 100%;
+            height: 34px;
+            padding: 6px 12px;
+            font-size: 14px;
+            line-height: 1.42857143;
+            color: #555;
+            background-color: #fff;
+            background-image: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+            -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+        }
+        .form-control:focus {
+            border-color: #66afe9;
+            outline: 0;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header"><h2>Fichas de Produção</h2></div>
+        <div class="row" style="margin: 15px 0;">
+            <div class="col-md-4">
+                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome do produto">
+            </div>
+            <div class="col-md-3">
+                <select id="filtroCompravel" class="form-control">
+                    <option value="">Comprável: Todos</option>
+                    <option value="1">Sim</option>
+                    <option value="0">Não</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filtroFicha" class="form-control">
+                    <option value="">Ficha Técnica: Todos</option>
+                    <option value="1">Sim</option>
+                    <option value="0">Não</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="body">
+            <table class="table table-bordered table-striped" id="tabela-produtos">
+                <thead>
+                <tr>
+                    <th style="width: 28px; padding: 0;" class="text-center"></th>
+                    <th>Código</th>
+                    <th>Produto</th>
+                    <th>Comprável</th>
+                    <th>Ficha Técnica</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ficha Técnica -->
+<div class="modal fade" id="modalFicha" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="modalTituloFicha">Ficha Técnica</h4>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="produtoCodigo">
+
+                <!-- Rendimento -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <label>Rendimento</label>
+                        <input type="number" step="0.01" id="rendimento" class="form-control">
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Tabela de Insumos -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <table class="table" id="tabela-insumos">
+                            <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Quantidade</th>
+                                <th></th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Adicionar Novo Insumo -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Insumo</label>
+                        <select id="selectInsumo" class="form-control"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Quantidade</label>
+                        <input type="number" step="0.01" id="quantidadeInsumo" class="form-control" placeholder="Quantidade">
+                    </div>
+                    <div class="col-md-3" style="margin-top: 25px;">
+                        <button id="adicionarInsumo" class="btn btn-success btn-block">
+                            <i class="fa fa-plus"></i> Adicionar Insumo
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button id="salvarFicha" class="btn btn-primary">Salvar</button>
+                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const token = new URLSearchParams(window.location.search).get('token');
+    const system_unit_id = new URLSearchParams(window.location.search).get('system_unit_id');
+
+    $(document).ready(() => {
+        carregarProdutos();
+
+        $('#adicionarInsumo').click(() => {
+            const insumoId = $('#selectInsumo').val();
+            const insumoNome = $('#selectInsumo option:selected').text();
+            const quantidade = parseFloat($('#quantidadeInsumo').val());
+
+            if (!insumoId || !quantidade || quantidade <= 0) return;
+
+            $('#tabela-insumos tbody').append(`
+                <tr data-id="${insumoId}">
+                    <td>${insumoNome}</td>
+                    <td><input type="number" class="form-control quantidade" value="${quantidade}" /></td>
+                    <td class="text-center">
+                        <a href="#" class="removerInsumo" title="Remover">
+                            <i class="fa fa-trash red" style="color: red"></i>
+                        </a>
+                    </td>
+                </tr>
+            `);
+
+            $('#quantidadeInsumo').val('');
+        });
+
+
+        $('#tabela-insumos').on('click', '.removerInsumo', function () {
+            $(this).closest('tr').remove();
+        });
+
+        $('#salvarFicha').click(async () => {
+            const product_id = $('#produtoCodigo').val();
+            const rendimento = parseFloat($('#rendimento').val()) || 1;
+            const insumos = [];
+
+            $('#tabela-insumos tbody tr').each(function () {
+                const insumo_id = $(this).data('id');
+                const quantity = parseFloat($(this).find('.quantidade').val());
+                if (insumo_id && quantity > 0) {
+                    insumos.push({ insumo_id, quantity });
+                }
+            });
+
+            try {
+                Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+                await axios.post(baseUrl, {
+                    method: 'saveFichaTecnica',
+                    token,
+                    data: { system_unit_id, product_id, rendimento, insumos }
+                });
+                Swal.close();
+                $('#modalFicha').modal('hide');
+                carregarProdutos();
+            } catch {
+                Swal.fire('Erro', 'Erro ao salvar ficha.', 'error');
+            }
+        });
+    });
+
+    let todosProdutos = [];
+
+    async function carregarProdutos() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listProdutosComFichaStatus',
+                token,
+                data: { system_unit_id }
+            });
+
+            todosProdutos = res.data.produtos;
+            aplicarFiltros(); // Renderiza com filtros
+        } catch {
+            Swal.fire('Erro', 'Falha ao carregar produtos.', 'error');
+        }
+    }
+
+    function aplicarFiltros() {
+        const nomeFiltro = $('#filtroNome').val().toLowerCase();
+        const compravelFiltro = $('#filtroCompravel').val();
+        const fichaFiltro = $('#filtroFicha').val();
+
+        const tbody = $('#tabela-produtos tbody');
+        tbody.empty();
+
+        const filtrados = todosProdutos.filter(p => {
+            const nomeCond = p.nome.toLowerCase().includes(nomeFiltro);
+            const compravelCond = compravelFiltro === "" || String(p.compravel) === compravelFiltro;
+            const fichaCond = fichaFiltro === "" || String(p.tem_ficha) === fichaFiltro;
+            return nomeCond && compravelCond && fichaCond;
+        });
+
+        for (const p of filtrados) {
+            const temFicha = p.tem_ficha == 1
+                ? '<span class="label label-success">Sim</span>'
+                : '<span class="label label-danger">Não</span>';
+
+            const compravel = p.compravel == 1
+                ? '<span class="label label-info">Sim</span>'
+                : '<span class="label label-default">Não</span>';
+
+            const row = `
+            <tr>
+                <td class="text-center">
+                    <a href="#" title="Editar" onclick="abrirFicha(${p.codigo}, '${p.nome}')">
+                        <i class="far fa-edit blue"></i>
+                    </a>
+                </td>
+                <td>${p.codigo}</td>
+                <td>${p.nome}</td>
+                <td class="text-center">${compravel}</td>
+                <td class="text-center">${temFicha}</td>
+            </tr>
+        `;
+            tbody.append(row);
+        }
+    }
+
+    $('#filtroNome').on('input', aplicarFiltros);
+    $('#filtroCompravel, #filtroFicha').on('change', aplicarFiltros);
+
+
+
+    async function abrirFicha(codigo, nome) {
+        $('#modalTituloFicha').text(`Ficha Técnica – ${codigo} - ${nome}`);
+        $('#produtoCodigo').val(codigo);
+        $('#rendimento').val(1);
+        $('#tabela-insumos tbody').empty();
+        $('#selectInsumo').empty();
+
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+        try {
+            const [resFicha, resInsumos] = await Promise.all([
+                axios.post(baseUrl, {
+                    method: 'getFichaTecnica',
+                    token,
+                    data: { system_unit_id, product_id: codigo }
+                }),
+                axios.post(baseUrl, {
+                    method: 'listInsumosDisponiveis',
+                    token,
+                    data: { system_unit_id }
+                })
+            ]);
+
+            const ficha = resFicha.data;
+
+            if (Array.isArray(ficha) && ficha.length > 0) {
+                $('#rendimento').val(ficha[0].rendimento || 1);
+
+                ficha.forEach(insumo => {
+                    $('#tabela-insumos tbody').append(`
+                    <tr data-id="${insumo.insumo_id}">
+                        <td>${insumo.insumo_nome}</td>
+                        <td>
+                            <input type="number" class="form-control quantidade" value="${insumo.quantity}" />
+                        </td>
+                        <td class="text-center">
+                            <a href="#" class="removerInsumo" title="Remover">
+                                <i class="fa fa-trash red" style="color: red"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `);
+                });
+            }
+
+            resInsumos.data.forEach(insumo => {
+                $('#selectInsumo').append(new Option(`${insumo.codigo} - ${insumo.nome}`, insumo.codigo));
+            });
+
+            Swal.close();
+            $('#modalFicha').modal('show');
+        } catch {
+            Swal.fire('Erro', 'Erro ao carregar ficha técnica.', 'error');
+        }
+    }
+</script>
+</body>
+</html>

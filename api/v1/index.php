@@ -1115,6 +1115,58 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro obrigatório: system_unit_id'];
                 }
                 break;
+            case 'listProdutosComFichaStatus':
+                if (!isset($requestData['system_unit_id'])) {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
+                    break;
+                }
+
+                $response = ProductionController::listProdutosComFichaStatus($requestData['system_unit_id']);
+                break;
+            case 'getFichaTecnica':
+                if (!isset($requestData['system_unit_id']) || !isset($requestData['product_id'])) {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios: system_unit_id, product_id'];
+                    break;
+                }
+
+                $response = ProductionController::getFichaTecnica(
+                    $requestData['system_unit_id'],
+                    $requestData['product_id']
+                );
+                break;
+            case 'saveFichaTecnica':
+                if (
+                    !isset($requestData['system_unit_id']) ||
+                    !isset($requestData['product_id']) ||
+                    !isset($requestData['insumos']) ||
+                    !is_array($requestData['insumos'])
+                ) {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios: system_unit_id, product_id, insumos[]'];
+                    break;
+                }
+
+                $response = ProductionController::saveFichaTecnica(
+                    $requestData['system_unit_id'],
+                    $requestData['product_id'],
+                    $requestData['insumos']
+                );
+                break;
+            case 'listInsumosDisponiveis':
+                if (!isset($requestData['system_unit_id'])) {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ausente'];
+                    break;
+                }
+
+                $response = ProductionController::listInsumosDisponiveis($requestData['system_unit_id']);
+                break;
+
+
+
+
             case 'getProductionById':
                 if (isset($requestData['unit_id'])) {
                     if (isset($requestData['id'])) {

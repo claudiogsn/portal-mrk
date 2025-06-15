@@ -393,7 +393,7 @@ class NecessidadesController
         $stmt = $pdo->prepare("
         SELECT codigo, producao 
         FROM products 
-        WHERE codigo IN ($placeholders) AND system_unit_id = ?
+        WHERE codigo IN ($placeholders) AND system_unit_id = ? AND codigo >= 10000
     ");
         $stmt->execute([...$produtosIds, $matriz_id]);
         $producoes = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -437,7 +437,7 @@ class NecessidadesController
         if (empty($insumoIds)) return [];
 
         $resultado = [];
-        $debugRodadas = []; // Para guardar os itens processados
+        $debugRodadas = [];
         $maxRodadas = 10;
         $rodada = 0;
 
@@ -453,30 +453,47 @@ class NecessidadesController
                     }
                 }
 
-                // Ordena por maior número de ocorrências (repetições)
                 arsort($todos);
+
+                $suspeitos = array_filter($todos, fn($v) => $v > 1);
+                $detalhes = [];
+
+                // Coleta informações detalhadas sobre os suspeitos
+                if (!empty($suspeitos)) {
+                    $placeholders = implode(',', array_fill(0, count($suspeitos), '?'));
+                    $stmtDebug = $pdo->prepare("
+            SELECT p.codigo, p.nome, p.compravel, COUNT(f.insumo_id) AS tem_ficha
+            FROM products p
+            LEFT JOIN productions f ON f.product_id = p.codigo AND f.system_unit_id = p.system_unit_id
+            WHERE p.codigo IN ($placeholders) AND p.system_unit_id = ?
+            GROUP BY p.codigo, p.nome, p.compravel
+        ");
+                    $stmtDebug->execute([...array_keys($suspeitos), $matriz_id]);
+                    $detalhes = $stmtDebug->fetchAll(PDO::FETCH_ASSOC);
+                }
 
                 $debugFormatado = [
                     'rodadas_executadas' => $rodada - 1,
                     'itens_por_rodada' => $debugRodadas,
                     'repeticoes_detectadas' => $todos,
-                    'suspeitos_com_mais_de_1_ocorrencia' => array_filter($todos, fn($v) => $v > 1),
+                    'suspeitos_com_mais_de_1_ocorrencia' => $suspeitos,
+                    'detalhes_suspeitos' => $detalhes,
                 ];
 
                 echo "🚨 Loop detectado após {$maxRodadas} rodadas! Análise de insumos:\n";
                 echo json_encode($debugFormatado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-                return array_values($resultado); // Ou return []; se quiser abortar
+                return array_values($resultado);
             }
 
-            $debugRodadas[] = array_keys($insumoIds); // Guarda os itens dessa rodada
+
+            $debugRodadas[] = array_keys($insumoIds);
 
             $placeholders = implode(',', array_fill(0, count($insumoIds), '?'));
             $stmt = $pdo->prepare("
             SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria, p.compravel
             FROM products p
             INNER JOIN categorias cc ON p.categoria = cc.codigo AND cc.system_unit_id = p.system_unit_id
-            WHERE p.codigo IN ($placeholders) AND p.system_unit_id = ?
+            WHERE p.codigo IN ($placeholders) AND p.system_unit_id = ? AND p.codigo >= 10000
         ");
             $stmt->execute([...array_values($insumoIds), $matriz_id]);
             $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);

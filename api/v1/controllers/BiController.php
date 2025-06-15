@@ -146,7 +146,6 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function ListUnitsByGroup($group_id) {
         global $pdo;
 

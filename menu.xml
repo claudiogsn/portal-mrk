@@ -40,16 +40,25 @@
             <action>ImportarInsumos</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Produtos Compraveis">
+            <action>ListCompraveis</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
+      <menuitem label="Produtos">
+        <icon>fas:list fa-fw</icon>
+        <menu>
+          <menuitem label="Fichas de Produção">
+            <action>ListProductions</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Importar Fichas Técnicas">
             <action>ImportarFichasTecnicas</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
           <menuitem label="Importar Fichas de Produção">
             <action>ImportarProducoes</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
-          <menuitem label="Produtos Compraveis">
-            <action>ListCompraveis</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
