@@ -48,6 +48,10 @@
             <action>ImportarProducoes</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Produtos Compraveis">
+            <action>ListCompraveis</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Balanco">

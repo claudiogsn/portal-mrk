@@ -377,13 +377,11 @@ class NecessidadesController
     {
         global $pdo;
 
-        // Passo 1: Buscar filiais da matriz (ainda necessário?)
         $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
         $stmt->execute([$matriz_id]);
         $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
         if (empty($filiais)) return [];
 
-        // === AGRUPA VENDAS ===
         $quantidadesPorProduto = [];
         foreach ($vendas as $item) {
             $quantidadesPorProduto[$item['insumo_id']] = floatval($item['compras']);
@@ -391,7 +389,6 @@ class NecessidadesController
 
         $produtosIds = array_keys($quantidadesPorProduto);
 
-        // === Busca produção em lote ===
         $placeholders = implode(',', array_fill(0, count($produtosIds), '?'));
         $stmt = $pdo->prepare("
         SELECT codigo, producao 
@@ -404,7 +401,6 @@ class NecessidadesController
         $compras = [];
         $insumoIds = [];
 
-        // === Expande produtos que precisam de produção ===
         foreach ($quantidadesPorProduto as $produto => $qtdVenda) {
             $producao = isset($producoes[$produto]) ? intval($producoes[$produto]) : 0;
             if ($producao === 0) {
@@ -413,11 +409,9 @@ class NecessidadesController
                 continue;
             }
 
-            // Busca saldo de uma vez? Aqui ainda está 1x1
             $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
             $saldoAtual = floatval($saldoData['quantidade'] ?? 0);
             $necessario = $qtdVenda - $saldoAtual;
-
             if ($necessario <= 0) continue;
 
             $stmtFicha = $pdo->prepare("
@@ -432,7 +426,6 @@ class NecessidadesController
                 $insumo_id = $ficha['insumo_id'];
                 $qtd_ficha = floatval($ficha['quantity']);
                 $rendimento = floatval($ficha['rendimento']) ?: 1;
-
                 $qtd_compra = ($qtd_ficha * $necessario) / $rendimento;
 
                 if (!isset($compras[$insumo_id])) $compras[$insumo_id] = 0;
@@ -443,10 +436,41 @@ class NecessidadesController
 
         if (empty($insumoIds)) return [];
 
-        // === Expansão recursiva de insumos não compráveis ===
         $resultado = [];
+        $debugRodadas = []; // Para guardar os itens processados
+        $maxRodadas = 10;
+        $rodada = 0;
 
         do {
+            $rodada++;
+            if ($rodada > $maxRodadas) {
+                // Junta todas as rodadas em um único array e conta as ocorrências
+                $todos = [];
+                foreach ($debugRodadas as $listaRodada) {
+                    foreach ($listaRodada as $insumoId) {
+                        if (!isset($todos[$insumoId])) $todos[$insumoId] = 0;
+                        $todos[$insumoId]++;
+                    }
+                }
+
+                // Ordena por maior número de ocorrências (repetições)
+                arsort($todos);
+
+                $debugFormatado = [
+                    'rodadas_executadas' => $rodada - 1,
+                    'itens_por_rodada' => $debugRodadas,
+                    'repeticoes_detectadas' => $todos,
+                    'suspeitos_com_mais_de_1_ocorrencia' => array_filter($todos, fn($v) => $v > 1),
+                ];
+
+                echo "🚨 Loop detectado após {$maxRodadas} rodadas! Análise de insumos:\n";
+                echo json_encode($debugFormatado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+                return array_values($resultado); // Ou return []; se quiser abortar
+            }
+
+            $debugRodadas[] = array_keys($insumoIds); // Guarda os itens dessa rodada
+
             $placeholders = implode(',', array_fill(0, count($insumoIds), '?'));
             $stmt = $pdo->prepare("
             SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria, p.compravel

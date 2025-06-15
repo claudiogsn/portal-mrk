@@ -1095,6 +1095,26 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+            case 'updateCompravel':
+                if (isset($requestData['system_unit_id'], $requestData['itens']) && is_array($requestData['itens'])) {
+                    $response = ProductionController::updateCompravel(
+                        $requestData['system_unit_id'],
+                        $requestData['itens']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios: system_unit_id e itens (array de objetos com codigo_produto e compravel)'];
+                }
+                break;
+
+            case 'listProdutosCompraveis':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = ProductionController::listProdutosCompraveis($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro obrigatório: system_unit_id'];
+                }
+                break;
             case 'getProductionById':
                 if (isset($requestData['unit_id'])) {
                     if (isset($requestData['id'])) {

@@ -79,5 +79,77 @@ class ProductionController {
             return ['success' => false, 'message' => 'Erro ao listar produções: ' . $e->getMessage()];
         }
     }
+
+    public static function updateCompravel($system_unit_id, $itens): array
+    {
+        global $pdo;
+
+        if (!is_array($itens)) {
+            return ['success' => false, 'message' => 'Parâmetro "itens" deve ser um array'];
+        }
+
+        $updated = [];
+
+        try {
+            $stmt = $pdo->prepare("
+            UPDATE products 
+            SET compravel = :compravel 
+            WHERE system_unit_id = :unit_id AND codigo = :codigo
+        ");
+
+            foreach ($itens as $item) {
+                if (!isset($item['codigo_produto'], $item['compravel'])) continue;
+
+                $stmt->execute([
+                    ':unit_id' => $system_unit_id,
+                    ':codigo' => $item['codigo_produto'],
+                    ':compravel' => (int)$item['compravel']
+                ]);
+
+                $updated[] = $item['codigo_produto'];
+            }
+
+            return [
+                'success' => true,
+                'message' => 'Atualização concluída.',
+                'atualizados' => $updated
+            ];
+
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public static function listProdutosCompraveis($system_unit_id): array
+    {
+        global $pdo;
+
+        try {
+            $stmt = $pdo->prepare("
+            SELECT codigo, nome, compravel 
+            FROM products 
+            WHERE system_unit_id = :unit_id
+        ");
+            $stmt->execute([':unit_id' => $system_unit_id]);
+
+            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'produtos' => $produtos
+            ];
+
+        } catch (PDOException $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao listar produtos: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
 }
 ?>
