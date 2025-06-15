@@ -46,7 +46,7 @@
           </menuitem>
         </menu>
       </menuitem>
-      <menuitem label="Produtos">
+      <menuitem label="Fichas">
         <icon>fas:list fa-fw</icon>
         <menu>
           <menuitem label="Fichas de Produção">
