@@ -377,43 +377,55 @@ class NecessidadesController
     {
         global $pdo;
 
-        // Passo 1: Obter todas as unidades filiais da matriz
+        // Passo 1: Buscar filiais da matriz (ainda necessário?)
         $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
         $stmt->execute([$matriz_id]);
         $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($filiais)) return [];
 
-        if (empty($filiais)) {
-            return [];
+        // === AGRUPA VENDAS ===
+        $quantidadesPorProduto = [];
+        foreach ($vendas as $item) {
+            $quantidadesPorProduto[$item['insumo_id']] = floatval($item['compras']);
         }
+
+        $produtosIds = array_keys($quantidadesPorProduto);
+
+        // === Busca produção em lote ===
+        $placeholders = implode(',', array_fill(0, count($produtosIds), '?'));
+        $stmt = $pdo->prepare("
+        SELECT codigo, producao 
+        FROM products 
+        WHERE codigo IN ($placeholders) AND system_unit_id = ?
+    ");
+        $stmt->execute([...$produtosIds, $matriz_id]);
+        $producoes = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
         $compras = [];
         $insumoIds = [];
 
-        foreach ($vendas as $item) {
-            $produto = $item['insumo_id'];
-            $quantidadeVendas = floatval($item['compras']);
-
-            $stmtProd = $pdo->prepare("SELECT producao FROM products WHERE codigo = ? AND system_unit_id = ?");
-            $stmtProd->execute([$produto, $matriz_id]);
-            $producao = $stmtProd->fetchColumn();
-
-            if ($producao === false) continue;
-
-            if ((int)$producao === 0) {
-                $compras[$produto] = $quantidadeVendas;
+        // === Expande produtos que precisam de produção ===
+        foreach ($quantidadesPorProduto as $produto => $qtdVenda) {
+            $producao = isset($producoes[$produto]) ? intval($producoes[$produto]) : 0;
+            if ($producao === 0) {
+                $compras[$produto] = $qtdVenda;
                 $insumoIds[$produto] = $produto;
                 continue;
             }
 
+            // Busca saldo de uma vez? Aqui ainda está 1x1
             $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
-            $saldoAtual = floatval($saldoData['quantidade']);
-            $necessario = $quantidadeVendas - $saldoAtual;
+            $saldoAtual = floatval($saldoData['quantidade'] ?? 0);
+            $necessario = $qtdVenda - $saldoAtual;
+
             if ($necessario <= 0) continue;
 
-            $stmtFicha = $pdo->prepare("SELECT product_id, insumo_id, quantity, rendimento FROM productions WHERE system_unit_id = :matriz_id and product_id = :product_id");
-            $stmtFicha->bindParam(":product_id", $produto, PDO::PARAM_INT);
-            $stmtFicha->bindParam(":matriz_id", $matriz_id, PDO::PARAM_INT);
-            $stmtFicha->execute();
+            $stmtFicha = $pdo->prepare("
+            SELECT insumo_id, quantity, rendimento 
+            FROM productions 
+            WHERE system_unit_id = ? AND product_id = ?
+        ");
+            $stmtFicha->execute([$matriz_id, $produto]);
             $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($fichas as $ficha) {
@@ -423,39 +435,34 @@ class NecessidadesController
 
                 $qtd_compra = ($qtd_ficha * $necessario) / $rendimento;
 
-                if (!isset($compras[$insumo_id])) {
-                    $compras[$insumo_id] = 0;
-                }
+                if (!isset($compras[$insumo_id])) $compras[$insumo_id] = 0;
                 $compras[$insumo_id] += $qtd_compra;
                 $insumoIds[$insumo_id] = $insumo_id;
             }
         }
 
-        if (empty($insumoIds)) {
-            return [];
-        }
+        if (empty($insumoIds)) return [];
 
-        // LOOP: enquanto houver produtos não compráveis, substitui pelas fichas técnicas
+        // === Expansão recursiva de insumos não compráveis ===
+        $resultado = [];
+
         do {
-            $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
+            $placeholders = implode(',', array_fill(0, count($insumoIds), '?'));
             $stmt = $pdo->prepare("
             SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria, p.compravel
             FROM products p
             INNER JOIN categorias cc ON p.categoria = cc.codigo AND cc.system_unit_id = p.system_unit_id
-            WHERE p.codigo IN ($insumoPlaceholders)
-            AND p.system_unit_id = ?
+            WHERE p.codigo IN ($placeholders) AND p.system_unit_id = ?
         ");
-
-            $params = array_merge(array_values($insumoIds), [$matriz_id]);
-            $stmt->execute($params);
+            $stmt->execute([...array_values($insumoIds), $matriz_id]);
             $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $resultado = [];
             $naoCompraveis = [];
 
             foreach ($produtosInfo as $produto) {
                 $id = $produto['insumo_id'];
                 $quantidade = round($compras[$id], 2);
+
                 if ((int)$produto['compravel'] === 1) {
                     $resultado[$id] = [
                         'insumo_id' => $id,
@@ -465,31 +472,29 @@ class NecessidadesController
                     ];
                 } else {
                     $naoCompraveis[$id] = $quantidade;
-                    unset($resultado[$id]);
-                    unset($compras[$id]);
-                    unset($insumoIds[$id]);
+                    unset($resultado[$id], $compras[$id], $insumoIds[$id]);
                 }
             }
 
-            if (!empty($naoCompraveis)) {
-                foreach ($naoCompraveis as $produto => $quantidadeNecessaria) {
-                    $stmtFicha = $pdo->prepare("SELECT insumo_id, quantity, rendimento FROM productions WHERE system_unit_id = ? AND product_id = ?");
-                    $stmtFicha->execute([$matriz_id, $produto]);
-                    $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($naoCompraveis as $produto => $quantidadeNecessaria) {
+                $stmtFicha = $pdo->prepare("
+                SELECT insumo_id, quantity, rendimento 
+                FROM productions 
+                WHERE system_unit_id = ? AND product_id = ?
+            ");
+                $stmtFicha->execute([$matriz_id, $produto]);
+                $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
 
-                    foreach ($fichas as $ficha) {
-                        $insumo_id = $ficha['insumo_id'];
-                        $qtd_ficha = floatval($ficha['quantity']);
-                        $rendimento = floatval($ficha['rendimento']) ?: 1;
+                foreach ($fichas as $ficha) {
+                    $insumo_id = $ficha['insumo_id'];
+                    $qtd_ficha = floatval($ficha['quantity']);
+                    $rendimento = floatval($ficha['rendimento']) ?: 1;
 
-                        $qtd_compra = ($qtd_ficha * $quantidadeNecessaria) / $rendimento;
+                    $qtd_compra = ($qtd_ficha * $quantidadeNecessaria) / $rendimento;
 
-                        if (!isset($compras[$insumo_id])) {
-                            $compras[$insumo_id] = 0;
-                        }
-                        $compras[$insumo_id] += $qtd_compra;
-                        $insumoIds[$insumo_id] = $insumo_id;
-                    }
+                    if (!isset($compras[$insumo_id])) $compras[$insumo_id] = 0;
+                    $compras[$insumo_id] += $qtd_compra;
+                    $insumoIds[$insumo_id] = $insumo_id;
                 }
             }
 
