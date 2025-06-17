@@ -184,7 +184,7 @@ $(document).ready(function () {
                                     </div>
                                     <div id="collapse_ficha_${product.codigo}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading_ficha_${product.codigo}">
                                         <div class="panel-body">
-                                            <table class="table table-bordered table-striped">
+                                            <table class="table table-striped">
                                                 <thead>
                                                     <tr>
                                                         <th>Insumo</th>

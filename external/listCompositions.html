@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Gestão de Fichas de Produção</title>
+    <title>Gestão de Fichas de Composição</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
@@ -12,45 +12,19 @@
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <style>
-        .form-control {
-            display: block;
-            width: 100%;
-            height: 34px;
-            padding: 6px 12px;
-            font-size: 14px;
-            line-height: 1.42857143;
-            color: #555;
-            background-color: #fff;
-            background-image: none;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-            -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
-            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-        }
-        .form-control:focus {
-            border-color: #66afe9;
-            outline: 0;
-            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-        }
-    </style>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
     <br>
     <div class="card">
-        <div class="header"><h2>Fichas de Produção</h2></div>
+        <div class="header"><h2>Fichas Técnicas (Composições)</h2></div>
         <div class="row" style="margin: 15px 0;">
             <div class="col-md-4">
                 <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome do produto">
             </div>
             <div class="col-md-3">
-                <select id="filtroCompravel" class="form-control">
-                    <option value="">Comprável: Todos</option>
+                <select id="filtroComposicao" class="form-control">
+                    <option value="">Composição: Todos</option>
                     <option value="1">Sim</option>
                     <option value="0">Não</option>
                 </select>
@@ -68,16 +42,19 @@
             <table class="table table-striped" id="tabela-produtos">
                 <thead>
                 <tr>
-                    <th style="width: 28px; padding: 0;" class="text-center"></th>
-                    <th>Código</th>
-                    <th>Produto</th>
-                    <th>Comprável</th>
+                    <th class="text-center"></th>
+                    <th id="sortCodigo" style="cursor: pointer;">
+                        Código <i class="fa fa-sort"></i>
+                    </th>
+                    <th id="sortNome" style="cursor: pointer;">
+                        Produto <i class="fa fa-sort"></i>
+                    </th>
+                    <th>Composição</th>
                     <th>Ficha Técnica</th>
                 </tr>
                 </thead>
                 <tbody></tbody>
             </table>
-
         </div>
     </div>
 </div>
@@ -91,16 +68,6 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="produtoCodigo">
-
-                <!-- Rendimento -->
-                <div class="row">
-                    <div class="col-md-4">
-                        <label>Rendimento</label>
-                        <input type="number" step="0.01" id="rendimento" class="form-control">
-                    </div>
-                </div>
-
-                <hr>
 
                 <!-- Tabela de Insumos -->
                 <div class="row">
@@ -152,14 +119,34 @@
     const token = new URLSearchParams(window.location.search).get('token');
     const system_unit_id = new URLSearchParams(window.location.search).get('system_unit_id');
 
+    let todosProdutos = [];
+
+    let sortField = '';
+    let sortAsc = true;
+
+    $('#sortCodigo').click(() => {
+        sortField = 'codigo';
+        sortAsc = sortField !== 'codigo' ? true : !sortAsc;
+        aplicarFiltros();
+    });
+
+    $('#sortNome').click(() => {
+        sortField = 'nome';
+        sortAsc = sortField !== 'nome' ? true : !sortAsc;
+        aplicarFiltros();
+    });
+
+
     $(document).ready(() => {
         carregarProdutos();
+
+        $('#filtroNome').on('input', aplicarFiltros);
+        $('#filtroComposicao, #filtroFicha').on('change', aplicarFiltros);
 
         $('#adicionarInsumo').click(() => {
             const insumoId = $('#selectInsumo').val();
             const insumoNome = $('#selectInsumo option:selected').text();
             const quantidade = parseFloat($('#quantidadeInsumo').val());
-
             if (!insumoId || !quantidade || quantidade <= 0) return;
 
             $('#tabela-insumos tbody').append(`
@@ -167,16 +154,12 @@
                     <td>${insumoNome}</td>
                     <td><input type="number" class="form-control quantidade" value="${quantidade}" /></td>
                     <td class="text-center">
-                        <a href="#" class="removerInsumo" title="Remover">
-                            <i class="fa fa-trash red" style="color: red"></i>
-                        </a>
+                        <a href="#" class="removerInsumo" title="Remover"><i class="fa fa-trash red" style="color: red"></i></a>
                     </td>
                 </tr>
             `);
-
             $('#quantidadeInsumo').val('');
         });
-
 
         $('#tabela-insumos').on('click', '.removerInsumo', function () {
             $(this).closest('tr').remove();
@@ -184,7 +167,6 @@
 
         $('#salvarFicha').click(async () => {
             const product_id = $('#produtoCodigo').val();
-            const rendimento = parseFloat($('#rendimento').val()) || 1;
             const insumos = [];
 
             $('#tabela-insumos tbody tr').each(function () {
@@ -198,9 +180,13 @@
             try {
                 Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
                 await axios.post(baseUrl, {
-                    method: 'saveFichaTecnica',
+                    method: 'saveComposition',
                     token,
-                    data: { system_unit_id, product_id, rendimento, insumos }
+                    data: {
+                        unit_id: system_unit_id,
+                        product_id,
+                        insumos
+                    }
                 });
                 Swal.close();
                 $('#modalFicha').modal('hide');
@@ -211,44 +197,58 @@
         });
     });
 
-    let todosProdutos = [];
-
     async function carregarProdutos() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'listProdutosComFichaStatus',
+                method: 'listProdutosComComposicaoStatus',
                 token,
-                data: { system_unit_id }
+                data: { unit_id: system_unit_id }
             });
-
             todosProdutos = res.data.produtos;
-            aplicarFiltros(); // Renderiza com filtros
+            aplicarFiltros();
         } catch {
-            Swal.fire('Erro', 'Falha ao carregar produtos.', 'error');
+            Swal.fire('Erro', 'Erro ao carregar produtos.', 'error');
         }
     }
 
     function aplicarFiltros() {
         const nomeFiltro = $('#filtroNome').val().toLowerCase();
-        const compravelFiltro = $('#filtroCompravel').val();
+        const composicaoFiltro = $('#filtroComposicao').val();
         const fichaFiltro = $('#filtroFicha').val();
 
         const tbody = $('#tabela-produtos tbody');
         tbody.empty();
 
-        const filtrados = todosProdutos.filter(p => {
+        let filtrados = todosProdutos.filter(p => {
             const nomeCond = p.nome.toLowerCase().includes(nomeFiltro);
-            const compravelCond = compravelFiltro === "" || String(p.compravel) === compravelFiltro;
+            const composicaoCond = composicaoFiltro === "" || String(p.composicao) === composicaoFiltro;
             const fichaCond = fichaFiltro === "" || String(p.tem_ficha) === fichaFiltro;
-            return nomeCond && compravelCond && fichaCond;
+            return nomeCond && composicaoCond && fichaCond;
         });
 
+        // Ordenação
+        if (sortField) {
+            filtrados.sort((a, b) => {
+                const valA = a[sortField];
+                const valB = b[sortField];
+
+                if (typeof valA === 'number') {
+                    return sortAsc ? valA - valB : valB - valA;
+                }
+
+                return sortAsc
+                    ? String(valA).localeCompare(String(valB))
+                    : String(valB).localeCompare(String(valA));
+            });
+        }
+
+        // Renderização da tabela
         for (const p of filtrados) {
             const temFicha = p.tem_ficha == 1
                 ? '<span class="label label-success">Sim</span>'
                 : '<span class="label label-danger">Não</span>';
 
-            const compravel = p.compravel == 1
+            const composicao = p.composicao == 1
                 ? '<span class="label label-info">Sim</span>'
                 : '<span class="label label-default">Não</span>';
 
@@ -261,7 +261,7 @@
                 </td>
                 <td>${p.codigo}</td>
                 <td>${p.nome}</td>
-                <td class="text-center">${compravel}</td>
+                <td class="text-center">${composicao}</td>
                 <td class="text-center">${temFicha}</td>
             </tr>
         `;
@@ -269,15 +269,9 @@
         }
     }
 
-    $('#filtroNome').on('input', aplicarFiltros);
-    $('#filtroCompravel, #filtroFicha').on('change', aplicarFiltros);
-
-
-
     async function abrirFicha(codigo, nome) {
         $('#modalTituloFicha').text(`Ficha Técnica – ${codigo} - ${nome}`);
         $('#produtoCodigo').val(codigo);
-        $('#rendimento').val(1);
         $('#tabela-insumos tbody').empty();
         $('#selectInsumo').empty();
 
@@ -286,9 +280,9 @@
         try {
             const [resFicha, resInsumos] = await Promise.all([
                 axios.post(baseUrl, {
-                    method: 'getFichaTecnica',
+                    method: 'getComposicaoByProduto',
                     token,
-                    data: { system_unit_id, product_id: codigo }
+                    data: { unit_id: system_unit_id, product_id: codigo }
                 }),
                 axios.post(baseUrl, {
                     method: 'listInsumosDisponiveis',
@@ -300,22 +294,16 @@
             const ficha = resFicha.data;
 
             if (Array.isArray(ficha) && ficha.length > 0) {
-                $('#rendimento').val(ficha[0].rendimento || 1);
-
                 ficha.forEach(insumo => {
                     $('#tabela-insumos tbody').append(`
-                    <tr data-id="${insumo.insumo_id}">
-                        <td>${insumo.insumo_nome}</td>
-                        <td>
-                            <input type="number" class="form-control quantidade" value="${insumo.quantity}" />
-                        </td>
-                        <td class="text-center">
-                            <a href="#" class="removerInsumo" title="Remover">
-                                <i class="fa fa-trash red" style="color: red"></i>
-                            </a>
-                        </td>
-                    </tr>
-                `);
+                        <tr data-id="${insumo.insumo_id}">
+                            <td>${insumo.insumo_nome}</td>
+                            <td><input type="number" class="form-control quantidade" value="${insumo.quantity}" /></td>
+                            <td class="text-center">
+                                <a href="#" class="removerInsumo" title="Remover"><i class="fa fa-trash red" style="color: red"></i></a>
+                            </td>
+                        </tr>
+                    `);
                 });
             }
 

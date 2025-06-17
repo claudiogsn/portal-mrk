@@ -80,6 +80,80 @@ class ComposicaoController {
         }
     }
 
+    public static function listProdutosComComposicaoStatus($system_unit_id) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        SELECT 
+            p.codigo, p.nome, p.composicao,
+            CASE WHEN EXISTS (
+                SELECT 1 FROM compositions c WHERE c.product_id = p.codigo AND c.system_unit_id = p.system_unit_id
+            ) THEN 1 ELSE 0 END AS tem_ficha
+        FROM products p
+        WHERE p.system_unit_id = :unit AND p.codigo < 9999 AND p.composicao = 1
+        ORDER BY p.nome
+    ");
+        $stmt->execute(['unit' => $system_unit_id]);
+        return ['success' => true, 'produtos' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public static function getComposicaoByProduto($product_id, $system_unit_id) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        SELECT p.codigo AS insumo_id, p.nome AS insumo_nome, c.quantity
+        FROM compositions c
+        JOIN products p ON p.codigo = c.insumo_id AND p.system_unit_id = c.system_unit_id
+        WHERE c.product_id = :product_id AND c.system_unit_id = :system_unit_id
+    ");
+        $stmt->execute([
+            'product_id' => $product_id,
+            'system_unit_id' => $system_unit_id
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function saveComposition($data) {
+        global $pdo;
+
+        $product_id = $data['product_id'];
+        $system_unit_id = $data['system_unit_id'];
+        $insumos = $data['insumos'];
+
+        try {
+            $pdo->beginTransaction();
+
+            // Deleta as antigas
+            $pdo->prepare("DELETE FROM compositions WHERE product_id = ? AND system_unit_id = ?")
+                ->execute([$product_id, $system_unit_id]);
+
+            // Insere as novas
+            $stmt = $pdo->prepare("
+            INSERT INTO compositions (product_id, insumo_id, quantity, system_unit_id)
+            VALUES (?, ?, ?, ?)
+        ");
+
+            foreach ($insumos as $insumo) {
+                $stmt->execute([
+                    $product_id,
+                    $insumo['insumo_id'],
+                    $insumo['quantity'],
+                    $system_unit_id
+                ]);
+            }
+
+            $pdo->commit();
+            return ['success' => true, 'message' => 'Composição salva com sucesso.'];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
+        }
+    }
+
+
+
+
     public static function listFichaTecnica($product_codigo, $system_unit_id) {
         global $pdo;
 

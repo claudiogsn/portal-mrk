@@ -428,6 +428,40 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
                 }
                 break;
+            case 'listProdutosComComposicaoStatus':
+                if (isset($requestData['unit_id'])) {
+                    $response = ComposicaoController::listProdutosComComposicaoStatus($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            case 'getComposicaoByProduto':
+                if (isset($requestData['unit_id']) && isset($requestData['product_id'])) {
+                    $response = ComposicaoController::getComposicaoByProduto($requestData['product_id'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros unit_id ou product_id ausente'];
+                }
+                break;
+
+            case 'saveComposition':
+                if (isset($requestData['product_id']) && isset($requestData['unit_id']) && isset($requestData['insumos'])) {
+                    $data = [
+                        'product_id' => $requestData['product_id'],
+                        'system_unit_id' => $requestData['unit_id'],
+                        'insumos' => $requestData['insumos']
+                    ];
+                    $response = ComposicaoController::saveComposition($data);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros product_id, unit_id ou insumos ausente'];
+                }
+                break;
+
+
+
             case 'importCompositions':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
                     $response = ComposicaoController::importCompositions(

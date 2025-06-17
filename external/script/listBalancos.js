@@ -232,7 +232,7 @@ $('#btnExportarSelecionados').click(async function () {
             </head>
             <body>
                 <h2>Detalhes do Balanço - Doc: ${docNumber}</h2>
-                <table class="table table-bordered">${printContents}</table>
+                <table class="table table-striped">${printContents}</table>
             </body>
             </html>
         `;

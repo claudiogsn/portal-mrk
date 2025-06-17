@@ -49,6 +49,10 @@
       <menuitem label="Fichas">
         <icon>fas:list fa-fw</icon>
         <menu>
+          <menuitem label="Fichas de Técnicas">
+            <action>ListCompositions</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Fichas de Produção">
             <action>ListProductions</action>
             <icon>fas:circle fa-fw</icon>
