@@ -552,7 +552,7 @@
                 const preco = parseFloat(p.preco_custo);
                 const saldo = parseFloat(p.saldo);
 
-                p.preco_custo = isNaN(preco) ? '-' : `R$ ${preco.toFixed(2)}`;
+                p.preco_custo = isNaN(preco) ? 'R$ 0.00' : `R$ ${preco.toFixed(2)}`;
                 p.saldo = isNaN(saldo) ? '-' : saldo.toFixed(2);
             } else {
                 p.preco_custo = '-';
