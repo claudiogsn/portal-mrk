@@ -8,7 +8,7 @@ class ProductController {
         global $pdo;
 
         // Campos da nova estrutura da tabela, exceto 'codigo'
-        $requiredFields = ['nome', 'preco', 'und', 'venda', 'composicao', 'insumo', 'system_unit_id', 'categoria'];
+        $requiredFields = ['nome', 'preco', 'und', 'venda', 'composicao', 'insumo', 'system_unit_id', 'categoria', 'status'];
 
         // Verifica se todos os campos obrigatórios estão presentes
         foreach ($requiredFields as $field) {
@@ -44,6 +44,17 @@ class ProductController {
         $saldo = isset($data['saldo']) ? $data['saldo'] : null; // Novo campo
         $ultimo_doc = isset($data['ultimo_doc']) ? $data['ultimo_doc'] : null; // Novo campo
 
+
+        // Verificar se o código já existe
+        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM products WHERE system_unit_id = :system_unit_id AND codigo = :codigo");
+        $stmtCheck->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmtCheck->bindParam(':codigo', $codigo, PDO::PARAM_INT);
+        $stmtCheck->execute();
+        if ($stmtCheck->fetchColumn() > 0) {
+            return ['success' => false, 'message' => 'Código de produto já está em uso.'];
+        }
+
+
         // Inserção no banco de dados com os novos campos
         $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco, und, venda, composicao, insumo, system_unit_id, categoria, preco_custo, saldo, ultimo_doc) 
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -61,8 +72,6 @@ class ProductController {
         }
     }
 
-
-
     public static function updateProduct($codigo, $data, $system_unit_id) {
         global $pdo;
 
@@ -70,7 +79,7 @@ class ProductController {
         $values = [];
         foreach ($data as $key => $value) {
             // Excluindo campos que não podem ser atualizados
-            if ($key != 'id' && $key != 'system_unit_id') {
+            if ($key != 'id' && $key != 'system_unit_id' && $key != 'codigo') {
                 $sql .= "$key = :$key, ";
                 $values[":$key"] = $value;
             }
@@ -94,7 +103,7 @@ class ProductController {
         global $pdo;
 
         $stmt = $pdo->prepare("SELECT * FROM products WHERE codigo = :codigo AND system_unit_id = :system_unit_id");
-        $stmt->bindParam('codigo', $codigo, PDO::PARAM_INT);
+        $stmt->bindParam(':codigo', $codigo, PDO::PARAM_INT);
         $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
         $stmt->execute();
 
@@ -114,6 +123,50 @@ class ProductController {
         } else {
             return array('success' => false, 'message' => 'Falha ao excluir produto');
         }
+    }
+
+    public static function listProdutosDetalhado($unit_id) {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        SELECT 
+            id, codigo, nome, und, preco, preco_custo, categoria,
+            venda, composicao, insumo,compravel, estoque_minimo, saldo, status
+        FROM products
+        WHERE system_unit_id = :unit_id
+        ORDER BY nome
+    ");
+        $stmt->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return ['success' => true, 'produtos' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public static function getProximoCodigoProduto($unit_id, $is_insumo)
+    {
+        global $pdo;
+
+        if ($is_insumo) {
+            $stmt = $pdo->prepare("SELECT MAX(codigo) as max_codigo FROM products WHERE system_unit_id = ? AND codigo >= 10000");
+            $stmt->execute([$unit_id]);
+            $min_start = 10000;
+        } else {
+            $stmt = $pdo->prepare("SELECT MAX(codigo) as max_codigo FROM products WHERE system_unit_id = ? AND codigo < 9999");
+            $stmt->execute([$unit_id]);
+            $min_start = 1;
+        }
+
+        $max = $stmt->fetch(PDO::FETCH_ASSOC);
+        $proximo = ($max && $max['max_codigo']) ? ((int)$max['max_codigo'] + 1) : $min_start;
+
+        return ['proximo_codigo' => $proximo];
+    }
+    public static function checkCodigoDisponivel($codigo, $unit_id)
+    {
+        global $pdo;
+        $stmt = $pdo->prepare("SELECT codigo FROM products WHERE system_unit_id = ? AND codigo = ?");
+        $stmt->execute([$unit_id, $codigo]);
+        return ['disponivel' => $stmt->rowCount() === 0];
     }
 
     public static function listProducts($system_unit_id) {
@@ -245,7 +298,7 @@ class ProductController {
             }
         } catch (Exception $e) {
             return array('success' => false, 'message' => 'Erro ao atualizar saldo: ' . $e->getMessage());
-            
+
         }
     }
 
@@ -531,6 +584,111 @@ class ProductController {
             ];
         }
     }
+
+
+    public static function deleteProduto($codigo, $unit_id)
+    {
+        global $pdo;
+
+        try {
+            // Verificar se o produto existe
+            $stmt = $pdo->prepare("SELECT * FROM products WHERE system_unit_id = ? AND codigo = ?");
+            $stmt->execute([$unit_id, $codigo]);
+            $produto = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$produto) {
+                http_response_code(404);
+                return ['success' => false, 'message' => 'Produto não encontrado'];
+            }
+
+            // Verificar se existe movimentação
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM movimentacao WHERE system_unit_id = ? AND produto = ?");
+            $stmt->execute([$unit_id, $codigo]);
+            $temMovimentacao = $stmt->fetchColumn() > 0;
+
+            // Verificar e apagar fichas de composição/ficha técnica
+            $msgs = [];
+
+            $composicoesComoProduto = $pdo->prepare("DELETE FROM compositions WHERE system_unit_id = ? AND product_id = ?");
+            $composicoesComoProduto->execute([$unit_id, $codigo]);
+            if ($composicoesComoProduto->rowCount() > 0) {
+                $msgs[] = 'Ficha de Composição removida';
+            }
+
+            $composicoesComoInsumo = $pdo->prepare("DELETE FROM compositions WHERE system_unit_id = ? AND insumo_id = ?");
+            $composicoesComoInsumo->execute([$unit_id, $codigo]);
+            if ($composicoesComoInsumo->rowCount() > 0) {
+                $msgs[] = 'Utilização como insumo em composição removida';
+            }
+
+            $productionsComoProduto = $pdo->prepare("DELETE FROM productions WHERE system_unit_id = ? AND product_id = ?");
+            $productionsComoProduto->execute([$unit_id, $codigo]);
+            if ($productionsComoProduto->rowCount() > 0) {
+                $msgs[] = 'Ficha de Produção removida';
+            }
+
+            $productionsComoInsumo = $pdo->prepare("DELETE FROM productions WHERE system_unit_id = ? AND insumo_id = ?");
+            $productionsComoInsumo->execute([$unit_id, $codigo]);
+            if ($productionsComoInsumo->rowCount() > 0) {
+                $msgs[] = 'Utilização como insumo em ficha de produção removida';
+            }
+
+            if ($temMovimentacao) {
+                // Apenas inativa o produto
+                $update = $pdo->prepare("UPDATE products SET status = 0 WHERE system_unit_id = ? AND codigo = ?");
+                $update->execute([$unit_id, $codigo]);
+                $msgs[] = 'Produto inativado pois possui movimentações registradas';
+            } else {
+                // Remove o produto
+                $delete = $pdo->prepare("DELETE FROM products WHERE system_unit_id = ? AND codigo = ?");
+                $delete->execute([$unit_id, $codigo]);
+                $msgs[] = 'Produto excluído com sucesso';
+            }
+
+            return ['success' => true, 'message' => implode('. ', $msgs)];
+        } catch (Exception $e) {
+            http_response_code(500);
+            return ['success' => false, 'message' => 'Erro ao excluir produto: ' . $e->getMessage()];
+        }
+    }
+
+    public static function getUltimasMovimentacoesProduto($system_unit_id, $codigo_produto)
+    {
+        global $pdo;
+
+        if (!$system_unit_id || !$codigo_produto) {
+            return ['success' => false, 'message' => 'Parâmetros obrigatórios ausentes.'];
+        }
+
+        $sql = "
+        SELECT 
+            m.data,
+            m.tipo,
+            m.tipo_mov,
+            m.doc,
+            m.quantidade
+        FROM movimentacao m
+        WHERE m.status = 1
+          AND m.produto = :codigo
+          AND m.system_unit_id = :unit_id
+        ORDER BY m.data DESC
+        LIMIT 6
+    ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindParam(':codigo', $codigo_produto, PDO::PARAM_STR);
+        $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'success' => true,
+            'movimentacoes' => $result
+        ];
+    }
+
+
 
 
 

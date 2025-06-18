@@ -1306,6 +1306,30 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+            case 'listProdutosDetalhado':
+                if (isset($requestData['unit_id'])) {
+                    $response = ProductController::listProdutosDetalhado($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+            case 'getProximoCodigoProduto':
+                if (isset($requestData['unit_id']) && isset($requestData['is_insumo'])) {
+                    $response = ProductController::getProximoCodigoProduto($requestData['unit_id'], $requestData['is_insumo']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros unit_id ou is_insumo ausente'];
+                }
+                break;
+            case 'checkCodigoDisponivel':
+                if (isset($requestData['unit_id']) && isset($requestData['codigo'])) {
+                    $response = ProductController::checkCodigoDisponivel($requestData['codigo'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros unit_id ou is_insumo ausente'];
+                }
+                break;
             case 'listModelosWithProducts':
                 if (isset($requestData['unit_id'])) {
                     $response = ModeloBalancoController::listModelosWithProducts($requestData['unit_id']);
@@ -1347,6 +1371,24 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'deleteProduto':
+                if (isset($requestData['unit_id']) && isset($requestData['codigo'])) {
+                    $response = ProductController::deleteProduto($requestData['codigo'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'Parâmetros unit_id ou codigo ausente'];
+                }
+                break;
+            case 'getUltimasMovimentacoesProduto':
+                if (!isset($requestData['system_unit_id']) || !isset($requestData['codigo_produto'])) {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros unit_id ou codigo_produto ausentes'];
+                    break;
+                }
+                $response = ProductController::getUltimasMovimentacoesProduto($requestData['system_unit_id'], $requestData['codigo_produto']);
+                break;
+
+
             case 'listProductsByCategory':
                 if (isset($requestData['unit_id'])) {
                     $response = ProductController::listProductsByCategory($requestData['unit_id']);

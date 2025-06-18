@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Produtos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        select[multiple] {
+            height: 90px;
+        }
+        /* Header azul estilo AdminBSB */
+        .modal-header {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 15px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        /* Divisor azul claro entre colunas */
+        .divider-col {
+            border-left: 3px solid #2196F3;
+            height: auto;
+            min-height: 100%;
+            margin-top: 10px;
+        }
+
+        .modal-body .row {
+            display: flex;
+            align-items: stretch; /* força colunas a terem a mesma altura */
+        }
+
+        .divider-col {
+            border-left: 1px solid #2196F3;
+            width: 3px;
+        }
+
+
+
+        .modal-dialog {
+            width: 90%;
+            margin: 30px auto;
+        }
+
+        .modal-body {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .nav-tabs > li > a {
+            padding: 6px 12px;
+        }
+
+        .input-error {
+            border: 1px solid red !important;
+        }
+
+
+        @media (max-width: 768px) {
+            .modal-dialog {
+                width: 95%;
+                margin: 10px auto;
+            }
+
+            .tab-content {
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Produtos
+                <button class="btn btn-success btn-sm pull-right" onclick="abrirModalNovo()">
+                    <i class="fa fa-plus"></i> Novo Produto
+                </button>
+            </h2>
+        </div>
+        <div class="row" style="margin: 15px 0;">
+            <div class="col-md-4">
+                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+            </div>
+            <div class="col-md-3">
+                <select id="filtroStatus" class="form-control">
+                    <option value="">Status: Todos</option>
+                    <option value="1">Ativo</option>
+                    <option value="0">Inativo</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label>Filtrar por Tags:</label>
+                <div class="demo-checkbox">
+                    <input type="checkbox" id="filtroVenda" />
+                    <label for="filtroVenda">Venda</label>
+
+                    <input type="checkbox" id="filtroComposicao" />
+                    <label for="filtroComposicao">Composição</label>
+
+                    <input type="checkbox" id="filtroInsumo" />
+                    <label for="filtroInsumo">Insumo</label>
+
+                    <input type="checkbox" id="filtroCompravel" />
+                    <label for="filtroCompravel">Comprável</label>
+                </div>
+            </div>
+
+
+        </div>
+        <div class="body">
+            <table class="table table-striped" id="tabela-produtos">
+                <thead>
+                <tr>
+                    <th style="width: 28px; padding: 0;" class="text-center"></th>
+                    <th style="width: 28px; padding: 0;" class="text-center"></th>
+                    <th style="cursor:pointer" onclick="ordenarPor('codigo')">Código <i id="icon-codigo" class="fa fa-sort"></i></th>
+                    <th style="cursor:pointer" onclick="ordenarPor('nome')">Nome <i id="icon-nome" class="fa fa-sort"></i></th>
+                    <th>Tags</th>
+                    <th>Und</th>
+                    <th>Saldo</th>
+                    <th>Preço Custo</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Produto -->
+<div class="modal fade" id="modalProduto" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document" style="width: 90%; max-width: 1200px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="modalTituloProduto">Produto</h4>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="produtoId">
+
+                <div class="row">
+                    <!-- Coluna do formulário -->
+                    <div class="col-md-6 col-sm-12">
+                        <div class="demo-checkbox">
+                            <input type="checkbox" id="venda" class="chk-col-blue" />
+                            <label for="venda">Venda</label>
+
+                            <input type="checkbox" id="insumo" class="chk-col-blue" />
+                            <label for="insumo">Insumo</label>
+
+                            <input type="checkbox" id="composicao" class="chk-col-blue" />
+                            <label for="composicao">Composição</label>
+                        </div>
+
+                        <div class="row" style="margin-top: 10px;">
+                            <div class="col-md-6">
+                                <label for="codigo">Código *</label>
+                                <div style="position: relative;">
+                                    <input type="number" id="codigo" class="form-control">
+                                    <span id="erroCodigo" class="text-danger" style="position: absolute; top: 35px; left: 0; font-size: 12px; display: none;">Erro</span>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label>&nbsp;</label><br>
+                                <a href="javascript:void(0);" id="gerarCodigo" title="Gerar Código">
+                                    <i class="fa fa-plus"></i> Gerar
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 10px;">
+                            <label for="nome">Nome *</label>
+                            <input type="text" id="nome" class="form-control" placeholder="Nome do produto">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="categoria">Categoria *</label>
+                            <select id="categoria" class="form-control">
+                                <option value="">Selecione</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="und">Unidade *</label>
+                            <select id="und" class="form-control">
+                                <option value="UND">Unidades (UND)</option>
+                                <option value="L">Litros (L)</option>
+                                <option value="PCT">Pacotes (PCT)</option>
+                                <option value="KG">Quilogramas (KG)</option>
+                            </select>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <span id="labelPrecoCusto" class="label label-default" style="margin-right: 5px;">Preço de Custo: R$ 0,00</span>
+                            <span id="labelSaldo" class="label label-info" style="margin-right: 5px;">Saldo: 0,00</span>
+                            <span id="labelCompravel" class="label label-warning">Comprável: Não</span>
+                        </div>
+
+                    </div>
+
+                    <div class="col-md-1 hidden-sm hidden-xs divider-col">&nbsp;</div>
+
+                    <!-- Coluna das tabs -->
+                    <div class="col-md-6 col-sm-12">
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="active"><a href="#composicaoTab" role="tab" data-toggle="tab">Ficha Técnica</a></li>
+                            <li><a href="#fichaTab" role="tab" data-toggle="tab">Ficha de Produção</a></li>
+                            <li><a href="#movimentacoesTab" role="tab" data-toggle="tab">Últimas Movimentações</a></li>
+
+                        </ul>
+                        <div class="tab-content" style="margin-top: 10px; max-height: 400px; overflow-y: auto;">
+                            <div class="tab-pane active" id="composicaoTab">
+                                <table class="table table-striped">
+                                    <thead>
+                                    <tr><th>Insumo</th><th>Quantidade</th></tr>
+                                    </thead>
+                                    <tbody id="tabelaComposicao"></tbody>
+                                </table>
+                            </div>
+                            <div class="tab-pane" id="fichaTab">
+                                <table class="table table-condensed">
+                                    <thead>
+                                    <tr><th>Insumo</th><th>Quantidade</th></tr>
+                                    </thead>
+                                    <tbody id="tabelaFicha"></tbody>
+                                </table>
+                            </div>
+                            <div class="tab-pane" id="movimentacoesTab">
+                                <table class="table table-condensed">
+                                    <thead>
+                                    <tr><th>Data</th><th>Tipo</th><th>Doc</th><th>Qtd</th></tr>
+                                    </thead>
+                                    <tbody id="tabelaMovimentacoes"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- fim .row -->
+            </div>
+
+            <div class="modal-footer">
+                <button id="salvarProduto" class="btn btn-primary">Salvar</button>
+                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const token = new URLSearchParams(window.location.search).get('token');
+    const system_unit_id = new URLSearchParams(window.location.search).get('system_unit_id');
+    let todosProdutos = [];
+    let ordenacaoCampo = 'codigo';
+    let ordenacaoAsc = true;
+
+    function ordenarPor(campo) {
+        if (ordenacaoCampo === campo) {
+            ordenacaoAsc = !ordenacaoAsc;
+        } else {
+            ordenacaoCampo = campo;
+            ordenacaoAsc = true;
+        }
+
+        // Atualiza ícones
+        $('#icon-codigo, #icon-nome').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
+        const iconId = `#icon-${campo}`;
+        $(iconId).removeClass('fa-sort').addClass(ordenacaoAsc ? 'fa-sort-up' : 'fa-sort-down');
+
+        aplicarFiltros(); // re-renderiza ordenado
+    }
+
+
+    $(document).ready(() => {
+
+        $('#filtroVenda, #filtroComposicao, #filtroInsumo, #filtroCompravel').on('change', aplicarFiltros);
+
+        $('#filtroTags').on('change', aplicarFiltros);
+
+
+        $('#gerarCodigo').click(async () => {
+            const isInsumo = $('#insumo').is(':checked');
+            const res = await axios.post(baseUrl, {
+                method: 'getProximoCodigoProduto',
+                token,
+                data: { unit_id: system_unit_id, is_insumo: isInsumo ? 1 : 0 }
+            });
+            $('#codigo').val(res.data.proximo_codigo).trigger('blur');
+        });
+
+        $('#insumo').change(() => {
+            if ($('#insumo').is(':checked')) $('#composicao').prop('checked', false);
+        });
+
+        $('#composicao').change(() => {
+            if ($('#composicao').is(':checked')) $('#insumo').prop('checked', false);
+        });
+
+        $('#codigo').on('blur', async function () {
+            const codigo = $(this).val();
+            const isInsumo = $('#insumo').is(':checked');
+            const $input = $(this);
+            const $erroSpan = $('#erroCodigo');
+
+            $input.removeClass('input-error');
+            $erroSpan.hide();
+
+            if (!codigo) return;
+
+            if (isInsumo && codigo.length < 5) {
+                $input.addClass('input-error');
+                $erroSpan.text('Insumos devem ter código com no mínimo 5 dígitos').show();
+                return;
+            }
+
+            if (!isInsumo && codigo.length > 4) {
+                $input.addClass('input-error');
+                $erroSpan.text('Produtos de venda devem ter código até 4 dígitos').show();
+                return;
+            }
+
+            if (!$('#produtoId').val()) {
+                try {
+                    const res = await axios.post(baseUrl, {
+                        method: 'checkCodigoDisponivel',
+                        token,
+                        data: { codigo, unit_id: system_unit_id }
+                    });
+
+                    if (!res.data.disponivel) {
+                        $input.addClass('input-error');
+                        $erroSpan.text('Código já utilizado. Escolha outro.').show();
+                    }
+                } catch {
+                    $input.addClass('input-error');
+                    $erroSpan.text('Erro ao verificar código').show();
+                }
+            }
+        });
+
+
+        $('#salvarProduto').click(async () => {
+            const data = {
+                id: $('#produtoId').val(),
+                unit_id: system_unit_id,
+                codigo: $('#codigo').val(),
+                nome: $('#nome').val(),
+                und: $('#und').val(),
+                categoria: $('#categoria').val(),
+                venda: $('#venda').is(':checked') ? 1 : 0,
+                composicao: $('#composicao').is(':checked') ? 1 : 0,
+                insumo: $('#insumo').is(':checked') ? 1 : 0
+            };
+
+            try {
+                Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+                const method = data.id ? 'updateProduto' : 'createProduto';
+                await axios.post(baseUrl, { method, token, data });
+                Swal.close();
+                $('#modalProduto').modal('hide');
+                carregarProdutos();
+            } catch {
+                Swal.fire('Erro', 'Erro ao salvar produto', 'error');
+            }
+        });
+
+        carregarProdutos();
+        $('#filtroNome, #filtroStatus').on('input change', aplicarFiltros);
+    });
+
+    function abrirModalNovo() {
+        $('#modalTituloProduto').text('Novo Produto');
+        $('#produtoId').val('');
+        $('#codigo, #nome').val('');
+        $('#categoria').val('');
+        $('#und').val('UND');
+        $('#venda, #composicao, #insumo').prop('checked', false);
+        $('#gerarCodigo').show(); // mostra botão de gerar código
+        $('#codigo').prop('disabled', false); // reabilita campo código
+        loadCategories();
+        $('#tabelaFicha, #tabelaComposicao').empty();
+        $('#modalProduto').modal('show');
+    }
+
+    async function abrirModalEditar(produto) {
+        $('#gerarCodigo').hide(); // esconde o botão de gerar código
+
+        $('#labelPrecoCusto').text(`Preço de Custo: R$ ${parseFloat(produto.preco_custo || 0).toFixed(2)}`);
+        $('#labelSaldo').text(`Saldo: ${parseFloat(produto.saldo || 0).toFixed(2)}`);
+        $('#labelCompravel')
+            .text(`Comprável: ${produto.compravel == 1 ? 'Sim' : 'Não'}`)
+            .removeClass('label-success label-default')
+            .addClass(produto.compravel == 1 ? 'label-success' : 'label-default');
+
+        $('#modalTituloProduto').text('Editar Produto');
+        $('#produtoId').val(produto.id);
+        $('#codigo').val(produto.codigo).prop('disabled', true);
+        $('#nome').val(produto.nome);
+        $('#und').val(produto.und);
+        $('#categoria').val(produto.categoria);
+        $('#venda').prop('checked', produto.venda == 1);
+        $('#composicao').prop('checked', produto.composicao == 1);
+        $('#insumo').prop('checked', produto.insumo == 1);
+        loadCategories(produto.categoria);
+
+        const [ficha, composicao, movimentacoes] = await Promise.all([
+            axios.post(baseUrl, { method: 'getFichaTecnica', token, data: { system_unit_id, product_id: produto.codigo } }),
+            axios.post(baseUrl, { method: 'getComposicaoByProduto', token, data: { unit_id: system_unit_id, product_id: produto.codigo } }),
+            axios.post(baseUrl, { method: 'getUltimasMovimentacoesProduto', token, data: { system_unit_id, codigo_produto: produto.codigo } })
+        ]);
+
+
+        const fichaHTML = ficha.data.map(item =>
+            `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity).toFixed(3)}</td></tr>`).join('');
+        $('#tabelaFicha').html(fichaHTML);
+
+        const compHTML = composicao.data.map(item =>
+            `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity).toFixed(3)}</td></tr>`).join('');
+        $('#tabelaComposicao').html(compHTML);
+
+        const movHTML = movimentacoes.data.movimentacoes.map(m =>
+            `<tr>
+            <td>${m.data.split('-').reverse().join('/')}</td>
+            <td>${m.tipo_mov}</td>
+            <td>${m.doc}</td>
+            <td>${parseFloat(m.quantidade).toFixed(2)}</td>
+             </tr>`).join('');
+        $('#tabelaMovimentacoes').html(movHTML);
+
+
+        $('#modalProduto').modal('show');
+    }
+
+    async function excluirProduto(codigo) {
+        const confirm = await Swal.fire({
+            title: 'Confirma exclusão?',
+            text: 'O sistema irá verificar movimentações e inativar ou excluir o produto.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, continuar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        try {
+            Swal.fire({ title: 'Processando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            const response = await axios.post(baseUrl, {
+                method: 'deleteProduto',
+                token,
+                data: { codigo, unit_id: system_unit_id }
+            });
+
+            Swal.close();
+            Swal.fire('Resultado', response.data.message, 'info');
+            carregarProdutos();
+
+        } catch (error) {
+            Swal.fire('Erro', 'Erro ao excluir/inativar produto.', 'error');
+            console.error(error);
+        }
+    }
+
+
+    async function carregarProdutos() {
+        const res = await axios.post(baseUrl, {
+            method: 'listProdutosDetalhado',
+            token,
+            data: { unit_id: system_unit_id }
+        });
+        todosProdutos = res.data.produtos;
+        aplicarFiltros();
+    }
+
+    function aplicarFiltros() {
+        const nomeFiltro = $('#filtroNome').val().toLowerCase();
+        const statusFiltro = $('#filtroStatus').val();
+
+        const filtrarVenda = $('#filtroVenda').is(':checked');
+        const filtrarComposicao = $('#filtroComposicao').is(':checked');
+        const filtrarInsumo = $('#filtroInsumo').is(':checked');
+        const filtrarCompravel = $('#filtroCompravel').is(':checked');
+
+        const tbody = $('#tabela-produtos tbody');
+        tbody.empty();
+
+        const filtrados = todosProdutos.filter(p => {
+            const nomeCond = p.nome.toLowerCase().includes(nomeFiltro);
+            const statusCond = statusFiltro === '' || String(p.status) === statusFiltro;
+
+            const tagsCond =
+                (!filtrarVenda || p.venda == 1) &&
+                (!filtrarComposicao || p.composicao == 1) &&
+                (!filtrarInsumo || p.insumo == 1) &&
+                (!filtrarCompravel || p.compravel == 1);
+
+            return nomeCond && statusCond && tagsCond;
+        });
+
+        filtrados.sort((a, b) => {
+            let valA = a[ordenacaoCampo] || '';
+            let valB = b[ordenacaoCampo] || '';
+
+// Se estiver ordenando por código, converte para número
+            if (ordenacaoCampo === 'codigo') {
+                valA = Number(valA);
+                valB = Number(valB);
+            } else {
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+            }
+
+
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+
+            if (valA < valB) return ordenacaoAsc ? -1 : 1;
+            if (valA > valB) return ordenacaoAsc ? 1 : -1;
+            return 0;
+        });
+
+
+        for (const p of filtrados) {
+            const status = p.status == 1
+                ? '<span class="label label-success">Ativo</span>'
+                : '<span class="label label-default">Inativo</span>';
+
+            let tags = '';
+            if (p.venda == 1) tags += '<span class="label label-primary" style="margin-right:2px;">Venda</span>';
+            if (p.composicao == 1) tags += '<span class="label label-info" style="margin-right:2px;">Composição</span>';
+            if (p.insumo == 1) tags += '<span class="label label-warning" style="margin-right:2px;">Insumo</span>';
+            if (p.compravel == 1) tags += '<span class="label label-purple" style="margin-right:2px; background-color: #7e57c2;">Comprável</span>';
+
+            if(p.insumo == 1){
+                p.saldo = parseFloat(p.saldo || 0).toFixed(2);
+                p.preco_custo = `R$ ${parseFloat(p.preco_custo || 0).toFixed(2)}`;
+            }else {
+                p.saldo = '-';
+                p.preco_custo = '-';
+            }
+
+            tbody.append(`
+                <tr>
+                    <td class="text-center">
+                        <a href="#" title="Editar" onclick='abrirModalEditar(${JSON.stringify(p)})'>
+                            <i class="far fa-edit blue" style="color: #0d6aad"></i>
+                        </a>
+                    </td>
+                    <td class="text-center">
+                        <a href="#" onclick="excluirProduto('${p.codigo}')" title="Excluir/Inativar">
+                            <i class="fa fa-power-off orange" style="color: orange"></i>
+                        </a>
+                    </td>
+                    <td>${p.codigo}</td>
+                    <td>${p.nome}</td>
+                    <td>${tags}</td>
+                    <td>${p.und || '-'}</td>
+                    <td>${p.saldo}</td>
+                    <td>${p.preco_custo}</td>
+                    <td class="text-center">${status}</td>
+
+                </tr>
+            `);
+
+        }
+    }
+
+
+    async function loadCategories(selectedCategory = null) {
+        const response = await axios.post(baseUrl, {
+            method: 'listCategorias',
+            token,
+            data: { unit_id: system_unit_id }
+        });
+
+        const select = $('#categoria');
+        select.empty().append('<option value="">Selecione</option>');
+        response.data.categorias.forEach(c => {
+            select.append(`<option value="${c.codigo}">${c.nome}</option>`);
+        });
+
+        if (selectedCategory) {
+            select.val(selectedCategory);
+        }
+    }
+</script>
+</body>
+</html>

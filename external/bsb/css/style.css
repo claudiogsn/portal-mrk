@@ -5013,7 +5013,6 @@ section.content {
       color: #555; }
   .input-group input[type="text"],
   .input-group .form-control {
-    border: none;
     box-shadow: none;
     padding-left: 0; }
   .input-group .form-control:focus {
@@ -5047,13 +5046,7 @@ section.content {
   margin-bottom: 25px; }
   .form-group .form-control {
     width: 100%;
-    border: none;
-    box-shadow: none;
-    -webkit-border-radius: 0;
-    -moz-border-radius: 0;
-    -ms-border-radius: 0;
-    border-radius: 0;
-    padding-left: 0; }
+  }
   .form-group .help-info {
     float: right;
     font-size: 12px;
