@@ -401,7 +401,6 @@
 
     async function abrirModalEditar(produto) {
         $('#gerarCodigo').hide(); // esconde o botão de gerar código
-
         $('#labelPrecoCusto').text(`Preço de Custo: R$ ${parseFloat(produto.preco_custo || 0).toFixed(2)}`);
         $('#labelSaldo').text(`Saldo: ${parseFloat(produto.saldo || 0).toFixed(2)}`);
         $('#labelCompravel')
@@ -549,13 +548,17 @@
             if (p.insumo == 1) tags += '<span class="label label-warning" style="margin-right:2px;">Insumo</span>';
             if (p.compravel == 1) tags += '<span class="label label-purple" style="margin-right:2px; background-color: #7e57c2;">Comprável</span>';
 
-            if(p.insumo == 1){
-                p.saldo = parseFloat(p.saldo || 0).toFixed(2);
-                p.preco_custo = `R$ ${parseFloat(p.preco_custo || 0).toFixed(2)}`;
-            }else {
-                p.saldo = '-';
+            if (p.insumo == 1) {
+                const preco = parseFloat(p.preco_custo);
+                const saldo = parseFloat(p.saldo);
+
+                p.preco_custo = isNaN(preco) ? '-' : `R$ ${preco.toFixed(2)}`;
+                p.saldo = isNaN(saldo) ? '-' : saldo.toFixed(2);
+            } else {
                 p.preco_custo = '-';
+                p.saldo = '-';
             }
+
 
             tbody.append(`
                 <tr>
