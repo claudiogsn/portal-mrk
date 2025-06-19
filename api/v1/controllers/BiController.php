@@ -261,7 +261,7 @@ class BiController {
     }
     public static function getUnitsNotGrouped() {
         global $pdo;
-        $stmt = $pdo->prepare("SELECT * FROM system_unit WHERE id NOT IN (SELECT system_unit_id FROM grupo_estabelecimento_rel)");
+        $stmt = $pdo->prepare("SELECT * FROM system_unit where status = 1");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

@@ -118,9 +118,6 @@ class DashboardController
         );
     }
 
-
-
-
     private static function gerarHtmlComparativoLoja(
         string            $nomeLoja,
         DateTimeInterface $inicioAtual,
