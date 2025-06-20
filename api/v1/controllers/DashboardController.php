@@ -825,7 +825,7 @@ class DashboardController
             $lojasMap = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
                 $nomeLoja = $loja['name'];
 
                 $stmt = $pdo->prepare("
@@ -883,7 +883,7 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
 
                 $stmt = $pdo->prepare("
                 SELECT
@@ -948,7 +948,8 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
+                error_log("Processando loja: $lojaId - {$loja['name']}");
                 $stmt = $pdo->prepare("
                 SELECT DISTINCT dataContabil AS data
                 FROM movimento_caixa
@@ -1012,7 +1013,7 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
 
                 $sqlTotal = "SELECT SUM(vlTotalRecebido) as total 
                          FROM movimento_caixa 
@@ -1079,7 +1080,7 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
 
                 $sqlTotal = "SELECT SUM(valorRecebido) as total 
                          FROM meios_pagamento 
@@ -1146,7 +1147,7 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
 
                 $sql = "
                 SELECT
@@ -1218,7 +1219,7 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = (int)$loja['custom_code'];
+                $lojaId = $loja['custom_code'];
 
                 $sql = "
                         SELECT

@@ -49,7 +49,7 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['getGroupsToProcess','getUnitsToProcess','generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
+    $noAuthMethods = ['ZigRegisterBilling','getUnitsIntegrationZigBilling','getGroupsToProcess','getUnitsToProcess','generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -163,10 +163,26 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getUnits':
                 $response = BiController::getUnits();
                 break;
-            case 'getUnitsNotGrouped':
-                $response = BiController::getUnitsNotGrouped();
+            case 'getUnitsIntegrationZigBilling':
+                $response = BiController::getUnitsIntegrationZigBilling();
                 break;
-
+            case 'getUnitsIntegrationZigStock':
+                $response = BiController::getUnitsIntegrationZigStock();
+                break;
+            case 'getUnitsIntegrationMenewStock':
+                $response = BiController::getUnitsIntegrationMenewStock();
+                break;
+            case 'getUnitsIntegrationMenewBilling':
+                $response = BiController::getUnitsIntegrationMenewBilling();
+                break;
+            case 'ZigRegisterBilling':
+                if (isset($requestData)) {
+                $response = BiController::ZigRegisterBilling($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro sales ausente'];
+                }
+                break;
             case 'generateDashboardData':
                 if (isset($requestData['system_unit_id'], $requestData['start_date'], $requestData['end_date'])) {
                     $response = BiController::generateDashboardData($requestData['system_unit_id'], $requestData['start_date'], $requestData['end_date']);

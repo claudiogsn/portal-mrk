@@ -1,16 +1,14 @@
 <?php
 
-
 ini_set('post_max_size', '100M');
 ini_set('upload_max_filesize', '100M');
 ini_set('max_execution_time', '600');
 ini_set('max_input_time', '600');
 ini_set('memory_limit', '512M');
 
-require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
+require_once __DIR__ . '/../database/db.php';
 
 class BiController {
-
     public static function createGroup($nome, $slug = null, $ativo = 1, $bi = 0) {
         global $pdo;
 
@@ -1062,6 +1060,183 @@ class BiController {
 
         return $data;
     }
+    public static function getUnitsIntegrationZigBilling() {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+            su.id, 
+            su.custom_code as lojaId,
+            su.name,
+            su.token_zig
+            FROM 
+                system_unit AS su
+            WHERE 
+                su.custom_code IS NOT NULL
+                AND su.zig_integration_faturamento = 1
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getUnitsIntegrationZigStock() {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+            su.id, 
+            su.custom_code,
+            su.name
+            FROM 
+                system_unit AS su
+            WHERE 
+                su.custom_code IS NOT NULL
+                AND su.menew_integration_faturamento = 1
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getUnitsIntegrationMenewStock() {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+            su.id, 
+            su.custom_code,
+            su.name
+            FROM 
+                system_unit AS su
+            WHERE 
+                su.custom_code IS NOT NULL
+                AND su.menew_integration_estoque = 1
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function getUnitsIntegrationMenewBilling() {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT 
+            su.id, 
+            su.custom_code,
+            su.name
+            FROM 
+                system_unit AS su
+            WHERE 
+                su.custom_code IS NOT NULL
+                AND su.menew_integration_faturamento = 1
+        ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function ZigRegisterBilling($params)
+    {
+        global $pdo;
+
+        if (!isset($params['sales']) || !is_array($params['sales'])) {
+            return ['success' => false, 'message' => 'Dados inválidos.'];
+        }
+
+        $registros = $params['sales'];
+        $inserted = 0;
+
+        foreach ($registros as $r) {
+            try {
+                if (!isset($r['paymentId'], $r['eventId'], $r['eventDate'], $r['lojaId'], $r['redeId'], $r['value'])) {
+                    continue;
+                }
+
+                $num_controle = $r['paymentId'] . '-' . $r['eventId'];
+                $dataContabil = substr($r['eventDate'], 0, 10);
+                $dataFechamento = substr($r['eventDate'], 0, 19);
+                $vlTotalRecebido = number_format(floatval($r['value']) / 100, 2, '.', '');
+                $idUnico = self::gerarCodigoUnico('movimento_caixa', 'id');
+
+                error_log('Processando registro: ' . json_encode([
+                        'id' => $idUnico,
+                        'num_controle' => $num_controle,
+                        'lojaId' => $r['lojaId'],
+                        'redeId' => $r['redeId'],
+                        'dataContabil' => $dataContabil,
+                        'dataFechamento' => $dataFechamento,
+                        'vlTotalRecebido' => $vlTotalRecebido,
+                    ]));
+
+                $stmt = $pdo->prepare("
+                INSERT INTO movimento_caixa (
+                    id,
+                    num_controle,
+                    lojaId,
+                    redeId,
+                    dataContabil,
+                    dataFechamento,
+                    modoVenda,
+                    idModoVenda,
+                    cancelado,
+                    vlTotalRecebido
+                ) VALUES (
+                    :id,
+                    :num_controle,
+                    :lojaId,
+                    :redeId,
+                    :dataContabil,
+                    :dataFechamento,
+                    :modoVenda,
+                    :idModoVenda,
+                    :cancelado,
+                    :vlTotalRecebido
+                )
+                ON DUPLICATE KEY UPDATE 
+                    vlTotalRecebido = VALUES(vlTotalRecebido),
+                    cancelado = VALUES(cancelado)
+            ");
+
+                $stmt->execute([
+                    ':id' => $idUnico,
+                    ':num_controle' => $num_controle,
+                    ':lojaId' => $r['lojaId'],
+                    ':redeId' => $r['redeId'],
+                    ':dataContabil' => $dataContabil,
+                    ':dataFechamento' => $dataFechamento,
+                    ':modoVenda' => 'MESA',
+                    ':idModoVenda' => 1,
+                    ':cancelado' => 0,
+                    ':vlTotalRecebido' => $vlTotalRecebido,
+                ]);
+
+                $inserted++;
+            } catch (Exception $e) {
+                error_log('Erro ao inserir: ' . $e->getMessage());
+            }
+        }
+
+        return [
+            'success' => true,
+            'message' => "$inserted registros processados com sucesso."
+        ];
+    }
+
+    private static function gerarCodigoUnico($tabela, $coluna, $tamanho = 6)
+    {
+        global $pdo;
+
+        $caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $max = strlen($caracteres) - 1;
+
+        do {
+            $codigo = '';
+            for ($i = 0; $i < $tamanho; $i++) {
+                $codigo .= $caracteres[random_int(0, $max)];
+            }
+
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM {$tabela} WHERE {$coluna} = :codigo");
+            $stmt->execute([':codigo' => $codigo]);
+            $existe = $stmt->fetchColumn();
+        } while ($existe > 0);
+
+        return $codigo;
+    }
+
 
 }
 

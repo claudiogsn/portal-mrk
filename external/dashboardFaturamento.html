@@ -359,7 +359,7 @@
 
     }
     function aplicarFiltroLoja() {
-        const selectedLoja = parseInt(document.getElementById('filtroLoja').value) || null;
+        const selectedLoja = document.getElementById('filtroLoja').value || null;
 
         const filtradoResumo = resumoPorGrupo.filter(l => !selectedLoja || l.lojaId === selectedLoja);
         const filtradoResumoDiario = resumoDiarioGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
