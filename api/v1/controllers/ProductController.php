@@ -585,6 +585,145 @@ class ProductController {
         }
     }
 
+    public static function importarProdutosZig($system_unit_id, $produtos, $usuario_id): array
+
+    {
+        global $pdo;
+
+        error_log("### Início da função importarProdutosZig ###");
+        error_log("Parâmetros recebidos - system_unit_id: $system_unit_id, usuario_id: $usuario_id, produtos: " . count($produtos));
+        // Verifica se os parâmetros necessários estão presentes
+
+
+        try {
+            if (empty($system_unit_id) || empty($usuario_id) || !is_array($produtos)) {
+                throw new Exception('Parâmetros inválidos.');
+            }
+
+            $pdo->beginTransaction();
+
+            // Buscar categorias
+            $stmtCat = $pdo->prepare("SELECT id, codigo, nome FROM categorias WHERE system_unit_id = ?");
+            $stmtCat->execute([$system_unit_id]);
+            $categoriasExistentes = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapCategorias = [];
+            $maiorCodigoCategoria = 0;
+            foreach ($categoriasExistentes as $cat) {
+                $nomeNorm = strtoupper(trim($cat['nome']));
+                $mapCategorias[$nomeNorm] = [
+                    'id' => $cat['id'],
+                    'codigo' => $cat['codigo']
+                ];
+                if ($cat['codigo'] > $maiorCodigoCategoria) {
+                    $maiorCodigoCategoria = $cat['codigo'];
+                }
+            }
+
+            // Buscar maior código de produto já existente (com até 4 dígitos)
+            $stmtMaxCodigo = $pdo->prepare("SELECT MAX(codigo) as max_codigo FROM products WHERE system_unit_id = ? AND LENGTH(codigo) <= 4");
+            $stmtMaxCodigo->execute([$system_unit_id]);
+            $maxCodigoRow = $stmtMaxCodigo->fetch(PDO::FETCH_ASSOC);
+            $proximoCodigo = max(1, intval($maxCodigoRow['max_codigo']) + 1);
+
+            // Inserção de categoria
+            $stmtInsertCategoria = $pdo->prepare("
+            INSERT INTO categorias (system_unit_id, codigo, nome)
+            VALUES (:system_unit_id, :codigo, :nome)
+        ");
+
+            // Inserção de produto
+            $stmtInsertProduto = $pdo->prepare("
+            INSERT INTO products (
+                system_unit_id, codigo, nome, und, preco, categoria, insumo, venda, sku_zig
+            ) VALUES (
+                :system_unit_id, :codigo, :nome, :und, :preco_venda, :categoria_codigo, :insumo, :venda, :sku_zig
+            )
+        ");
+
+            $produtosImportados = 0;
+
+            foreach ($produtos as $p) {
+                if (!isset($p['categoria_nome'], $p['nome'], $p['sku_zig'], $p['preco_venda'])) {
+                    continue;
+                }
+
+                $nomeCategoria = strtoupper(trim($p['categoria_nome']));
+                if (in_array($nomeCategoria, ['DESATIVADOS', 'INTEGRADOR PADRAO'])) {
+                    continue;
+                }
+
+                // Verifica/cria categoria
+                if (!isset($mapCategorias[$nomeCategoria])) {
+                    $novoCodigo = ++$maiorCodigoCategoria;
+                    $stmtInsertCategoria->execute([
+                        ':system_unit_id' => $system_unit_id,
+                        ':codigo' => $novoCodigo,
+                        ':nome' => $nomeCategoria
+                    ]);
+                    $mapCategorias[$nomeCategoria] = [
+                        'id' => $pdo->lastInsertId(),
+                        'codigo' => $novoCodigo
+                    ];
+                }
+
+                $stmtInsertProduto->execute([
+                    ':system_unit_id' => $system_unit_id,
+                    ':codigo' => $proximoCodigo,
+                    ':nome' => mb_substr($p['nome'], 0, 50),
+                    ':und' => 'UND',
+                    ':preco_venda' => floatval($p['preco_venda']) / 100,
+                    ':categoria_codigo' => $mapCategorias[$nomeCategoria]['codigo'],
+                    ':insumo' => 0,
+                    ':venda' => 1,
+                    ':sku_zig' => $p['sku_zig']
+                ]);
+
+                $proximoCodigo++;
+                $produtosImportados++;
+            }
+
+            $pdo->commit();
+
+            return [
+                'status' => 'success',
+                'message' => 'Importação Zig concluída com sucesso.',
+                'categorias_importadas' => count($mapCategorias),
+                'produtos_importados' => $produtosImportados
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+
+
+    public static function getProdutosComSkuZig($params)
+    {
+        global $pdo;
+
+        if (!isset($params['system_unit_id'])) {
+            return ['success' => false, 'message' => 'Parâmetro system_unit_id obrigatório'];
+        }
+
+        $stmt = $pdo->prepare("
+        SELECT codigo, sku_zig
+        FROM products
+        WHERE sku_zig IS NOT NULL
+        AND system_unit_id = :system_unit_id
+    ");
+        $stmt->execute([
+            ':system_unit_id' => $params['system_unit_id']
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+
+
+
 
     public static function deleteProduto($codigo, $unit_id)
     {

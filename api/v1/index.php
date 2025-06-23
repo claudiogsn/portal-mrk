@@ -51,7 +51,9 @@ if (isset($data['method']) && isset($data['data'])) {
     // Métodos que não precisam de autenticação
     $noAuthMethods = ['ZigUpdateStatics',
         'ZigRegisterBilling',
+        'upsertBiSalesZig',
         'getUnitsIntegrationZigBilling',
+        'getProdutosComSkuZig',
         'getUnitsIntegrationZigStock',
         'getUnitsIntegrationMenewStock',
         'getUnitsIntegrationMenewBilling',
@@ -200,6 +202,14 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'ZigRegisterBilling':
                 if (isset($requestData)) {
                 $response = BiController::ZigRegisterBilling($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro sales ausente'];
+                }
+                break;
+            case 'upsertBiSalesZig':
+                if (isset($requestData)) {
+                $response = BiController::upsertBiSalesZig($requestData);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro sales ausente'];
@@ -1422,6 +1432,36 @@ if (isset($data['method']) && isset($data['data'])) {
                         $requestData['system_unit_id'],
                         $requestData['itens'],
                         $requestData['usuario_id']
+                    );
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+            case 'importarProdutosZig':
+                if ($requestData['system_unit_id'] && $requestData['itens'] && $requestData['usuario_id']) {
+                    $response = ProductController::importarProdutosZig(
+                        $requestData['system_unit_id'],
+                        $requestData['itens'],
+                        $requestData['usuario_id']
+                    );
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+            case 'getProdutosComSkuZig':
+                if ($requestData) {
+                    $response = ProductController::getProdutosComSkuZig(
+                        $requestData
                     );
                     http_response_code(200);
                 } else {

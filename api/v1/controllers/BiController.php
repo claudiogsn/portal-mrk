@@ -1091,6 +1091,7 @@ class BiController {
         SELECT 
             su.id AS system_unit_id, 
             su.custom_code AS lojaId,
+            su.token_zig,
             su.name,
             rel.grupo_id
         FROM 
@@ -1099,7 +1100,7 @@ class BiController {
             system_unit AS su ON rel.system_unit_id = su.id
         WHERE 
             su.custom_code IS NOT NULL
-            AND su.menew_integration_faturamento = 1
+            AND su.zig_integration_estoque = 1
             AND rel.grupo_id = :group_id
     ");
         $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
@@ -1307,7 +1308,6 @@ class BiController {
             return ['success' => false, 'message' => 'Erro interno ao atualizar.'];
         }
     }
-
     private static function gerarCodigoUnico($tabela, $coluna, $tamanho = 6)
     {
         global $pdo;
@@ -1328,6 +1328,73 @@ class BiController {
 
         return $codigo;
     }
+    public static function upsertBiSalesZig($params)
+    {
+        global $pdo;
+
+        $required = [
+            'data_movimento', 'cod_material', 'quantidade',
+            'valor_bruto', 'valor_unitario', 'valor_unitario_liquido',
+            'valor_liquido', 'custom_code', 'system_unit_id'
+        ];
+
+        foreach ($required as $field) {
+            if (!isset($params[$field])) {
+                return ['success' => false, 'message' => "Campo obrigatório ausente: $field"];
+            }
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+            INSERT INTO _bi_sales (
+                data_movimento,
+                cod_material,
+                quantidade,
+                valor_bruto,
+                valor_unitario,
+                valor_unitario_liquido,
+                valor_liquido,
+                custom_code,
+                system_unit_id
+            ) VALUES (
+                :data_movimento,
+                :cod_material,
+                :quantidade,
+                :valor_bruto,
+                :valor_unitario,
+                :valor_unitario_liquido,
+                :valor_liquido,
+                :custom_code,
+                :system_unit_id
+            )
+            ON DUPLICATE KEY UPDATE
+                quantidade = VALUES(quantidade),
+                valor_bruto = VALUES(valor_bruto),
+                valor_unitario = VALUES(valor_unitario),
+                valor_unitario_liquido = VALUES(valor_unitario_liquido),
+                valor_liquido = VALUES(valor_liquido),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+
+            $stmt->execute([
+                ':data_movimento' => $params['data_movimento'],
+                ':cod_material' => $params['cod_material'],
+                ':quantidade' => $params['quantidade'],
+                ':valor_bruto' => $params['valor_bruto'],
+                ':valor_unitario' => $params['valor_unitario'],
+                ':valor_unitario_liquido' => $params['valor_unitario_liquido'],
+                ':valor_liquido' => $params['valor_liquido'],
+                ':custom_code' => $params['custom_code'],
+                ':system_unit_id' => $params['system_unit_id'],
+            ]);
+
+            return ['success' => true, 'message' => 'Registro inserido ou atualizado com sucesso.'];
+        } catch (Exception $e) {
+            error_log("Erro em upsertBiSalesZig: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Erro ao gravar _bi_sales.'];
+        }
+    }
+
 
 
 }

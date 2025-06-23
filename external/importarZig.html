@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Importar Produtos Zig</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<h2>Importar Produtos Zig (XLSX)</h2>
+<input type="file" id="fileInput" accept=".xlsx" />
+<button onclick="enviarProdutos()">Enviar</button>
+
+<pre id="output"></pre>
+
+<script>
+    let produtosFormatados = [];
+
+    function limparTexto(str) {
+        return str
+            ?.toString()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+            .replace(/[^A-Z0-9 ]/gi, "")                     // Remove especiais
+            .replace(/\s+/g, ' ')                            // Espaços múltiplos
+            .replace(/\n|\r|\t/g, '')                        // Quebras de linha
+            .trim()
+            .toUpperCase();
+    }
+
+    function enviarProdutos() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+        if (!file) {
+            alert("Selecione um arquivo .xlsx");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(sheet);
+
+            // Extrair os campos relevantes e limpar
+            produtosFormatados = json.map((item, index) => {
+                return {
+                    nome: limparTexto(item["Nome"] || ""),
+                    categoria_nome: limparTexto(item["Categoria"] || "SEM CATEGORIA"),
+                    preco_venda: parseFloat(item["Preço"] || 0),
+                    sku_zig: (item["SKU"] || "").toString().trim()
+                };
+            });
+
+            const payload = {
+                method: "importarProdutosZig",
+                token: "71q6a5fpfk87u4a4i4mj09pqdj",
+                data: {
+                    system_unit_id: "24",
+                    usuario_id: "1",
+                    itens: produtosFormatados
+                }
+            };
+
+            axios.post("http://localhost/portal-mrk/api/v1/index.php", payload)
+                .then(res => {
+                    document.getElementById("output").textContent = JSON.stringify(res.data, null, 2);
+                    alert("Produtos enviados com sucesso!");
+                })
+                .catch(err => {
+                    document.getElementById("output").textContent = "Erro: " + err;
+                    alert("Erro ao enviar produtos.");
+                });
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
+</script>
+</body>
+</html>
