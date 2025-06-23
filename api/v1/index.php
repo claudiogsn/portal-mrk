@@ -50,9 +50,11 @@ if (isset($data['method']) && isset($data['data'])) {
 
     // Métodos que não precisam de autenticação
     $noAuthMethods = ['ZigUpdateStatics',
-        'getUnitsIntegrationMenewBilling',
         'ZigRegisterBilling',
         'getUnitsIntegrationZigBilling',
+        'getUnitsIntegrationZigStock',
+        'getUnitsIntegrationMenewStock',
+        'getUnitsIntegrationMenewBilling',
         'getGroupsToProcess',
         'getUnitsToProcess',
         'generateResumoFinanceiroPorGrupo',
@@ -184,13 +186,13 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = BiController::getUnits();
                 break;
             case 'getUnitsIntegrationZigBilling':
-                $response = BiController::getUnitsIntegrationZigBilling();
+                $response = BiController::getUnitsIntegrationZigBilling($requestData['group_id']);
                 break;
             case 'getUnitsIntegrationZigStock':
-                $response = BiController::getUnitsIntegrationZigStock();
+                $response = BiController::getUnitsIntegrationZigStock($requestData['group_id']);
                 break;
             case 'getUnitsIntegrationMenewStock':
-                $response = BiController::getUnitsIntegrationMenewStock();
+                $response = BiController::getUnitsIntegrationMenewStock($requestData['group_id']);
                 break;
             case 'getUnitsIntegrationMenewBilling':
                 $response = BiController::getUnitsIntegrationMenewBilling($requestData['group_id']);

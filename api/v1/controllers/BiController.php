@@ -1060,54 +1060,72 @@ class BiController {
 
         return $data;
     }
-    public static function getUnitsIntegrationZigBilling() {
+    public static function getUnitsIntegrationZigBilling($group_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT 
-            su.id, 
-            su.custom_code as lojaId,
+        $stmt = $pdo->prepare("
+        SELECT 
+            su.id AS system_unit_id, 
+            su.custom_code AS lojaId,
             su.name,
-            su.token_zig
-            FROM 
-                system_unit AS su
-            WHERE 
-                su.custom_code IS NOT NULL
-                AND su.zig_integration_faturamento = 1
-        ");
+            su.token_zig,
+            rel.grupo_id
+        FROM 
+            grupo_estabelecimento_rel AS rel
+        JOIN 
+            system_unit AS su ON rel.system_unit_id = su.id
+        WHERE 
+            su.custom_code IS NOT NULL
+            AND su.zig_integration_faturamento = 1
+            AND rel.grupo_id = :group_id
+    ");
+        $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    public static function getUnitsIntegrationZigStock() {
+    public static function getUnitsIntegrationZigStock($group_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT 
-            su.id, 
-            su.custom_code,
-            su.name
-            FROM 
-                system_unit AS su
-            WHERE 
-                su.custom_code IS NOT NULL
-                AND su.menew_integration_faturamento = 1
-        ");
+        $stmt = $pdo->prepare("
+        SELECT 
+            su.id AS system_unit_id, 
+            su.custom_code AS lojaId,
+            su.name,
+            rel.grupo_id
+        FROM 
+            grupo_estabelecimento_rel AS rel
+        JOIN 
+            system_unit AS su ON rel.system_unit_id = su.id
+        WHERE 
+            su.custom_code IS NOT NULL
+            AND su.menew_integration_faturamento = 1
+            AND rel.grupo_id = :group_id
+    ");
+        $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    public static function getUnitsIntegrationMenewStock() {
+    public static function getUnitsIntegrationMenewStock($group_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT 
-            su.id, 
-            su.custom_code,
-            su.name
-            FROM 
-                system_unit AS su
-            WHERE 
-                su.custom_code IS NOT NULL
-                AND su.menew_integration_estoque = 1
-        ");
+        $stmt = $pdo->prepare("
+        SELECT 
+            su.id AS system_unit_id, 
+            su.custom_code AS lojaId,
+            su.name,
+            rel.grupo_id
+        FROM 
+            grupo_estabelecimento_rel AS rel
+        JOIN 
+            system_unit AS su ON rel.system_unit_id = su.id
+        WHERE 
+            su.custom_code IS NOT NULL
+            AND su.menew_integration_estoque = 1
+            AND rel.grupo_id = :group_id
+    ");
+        $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1115,27 +1133,26 @@ class BiController {
     public static function getUnitsIntegrationMenewBilling($group_id) {
         global $pdo;
 
-
-        $stmt = $pdo->prepare("SELECT 
-            su.id as system_unit_id, 
-            su.custom_code,
-            su.name
-            FROM 
-                grupo_estabelecimento_rel AS rel 
-            JOIN 
-                system_unit AS su ON rel.system_unit_id = su.id 
-            WHERE 
-                su.custom_code IS NOT NULL
-                and rel.grupo_id = :group_id
-                AND su.menew_integration_faturamento = 1
-        ");
-
+        $stmt = $pdo->prepare("
+        SELECT 
+            su.id AS system_unit_id, 
+            su.custom_code AS lojaId,
+            su.name,
+            rel.grupo_id
+        FROM 
+            grupo_estabelecimento_rel AS rel 
+        JOIN 
+            system_unit AS su ON rel.system_unit_id = su.id 
+        WHERE 
+            su.custom_code IS NOT NULL
+            AND su.menew_integration_faturamento = 1
+            AND rel.grupo_id = :group_id
+    ");
         $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function ZigRegisterBilling($params)
     {
         global $pdo;
@@ -1239,8 +1256,7 @@ class BiController {
             'message' => "$inserted registros diários processados com sucesso."
         ];
     }
-
-        public static function ZigUpdateStatics($data, $lojaId, $descontos, $gorjeta, $total_clientes)
+    public static function ZigUpdateStatics($data, $lojaId, $descontos, $gorjeta, $total_clientes)
     {
         global $pdo;
 
@@ -1291,7 +1307,6 @@ class BiController {
             return ['success' => false, 'message' => 'Erro interno ao atualizar.'];
         }
     }
-
 
     private static function gerarCodigoUnico($tabela, $coluna, $tamanho = 6)
     {
