@@ -49,7 +49,27 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['ZigRegisterBilling','getUnitsIntegrationZigBilling','getGroupsToProcess','getUnitsToProcess','generateResumoFinanceiroPorGrupo','gerarPdfSemanal','generateResumoEstoquePorGrupoNAuth','generateResumoFinanceiroPorLoja', 'validateCPF', 'persistMovimentoCaixa', 'validateCNPJ', 'getModelByTag', 'saveBalanceItems', 'getUnitsByGroup', 'registerJobExecution', 'persistSales', 'consolidateSalesByGroup', 'importMovBySalesCons'];
+    $noAuthMethods = ['ZigUpdateStatics',
+        'getUnitsIntegrationMenewBilling',
+        'ZigRegisterBilling',
+        'getUnitsIntegrationZigBilling',
+        'getGroupsToProcess',
+        'getUnitsToProcess',
+        'generateResumoFinanceiroPorGrupo',
+        'gerarPdfSemanal',
+        'generateResumoEstoquePorGrupoNAuth',
+        'generateResumoFinanceiroPorLoja',
+        'validateCPF',
+        'persistMovimentoCaixa',
+        'validateCNPJ',
+        'getModelByTag',
+        'saveBalanceItems',
+        'getUnitsByGroup',
+        'registerJobExecution',
+        'persistSales',
+        'consolidateSalesByGroup',
+        'importMovBySalesCons'
+    ];
 
     if (!in_array($method, $noAuthMethods)) {
         if (!isset($requestToken)) {
@@ -173,7 +193,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = BiController::getUnitsIntegrationMenewStock();
                 break;
             case 'getUnitsIntegrationMenewBilling':
-                $response = BiController::getUnitsIntegrationMenewBilling();
+                $response = BiController::getUnitsIntegrationMenewBilling($requestData['group_id']);
                 break;
             case 'ZigRegisterBilling':
                 if (isset($requestData)) {
@@ -183,6 +203,29 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro sales ausente'];
                 }
                 break;
+            case 'ZigUpdateStatics':
+                if (
+                    isset(
+                        $requestData['data'],
+                        $requestData['lojaId'],
+                        $requestData['descontos'],
+                        $requestData['gorjeta'],
+                        $requestData['total_clientes']
+                    )
+                ) {
+                    $response = BiController::ZigUpdateStatics(
+                        $requestData['data'],
+                        $requestData['lojaId'],
+                        $requestData['descontos'],
+                        $requestData['gorjeta'],
+                        $requestData['total_clientes']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes: data, lojaId, descontos, gorjeta ou total_clientes.'];
+                }
+                break;
+
             case 'generateDashboardData':
                 if (isset($requestData['system_unit_id'], $requestData['start_date'], $requestData['end_date'])) {
                     $response = BiController::generateDashboardData($requestData['system_unit_id'], $requestData['start_date'], $requestData['end_date']);

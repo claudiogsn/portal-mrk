@@ -685,7 +685,7 @@ class BiController {
                         ':lojaId' => $mov['lojaId'],
                         ':documento' => $cons['documento'],
                         ':tipo' => $cons['tipo'],
-                        ':nome' => $cons['nome']
+                        ':nome' => $cons['nome'] ?? 'Consumidor Desconhecido'
                     ]);
                 }
             }
@@ -1112,23 +1112,30 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    public static function getUnitsIntegrationMenewBilling() {
+    public static function getUnitsIntegrationMenewBilling($group_id) {
         global $pdo;
 
+
         $stmt = $pdo->prepare("SELECT 
-            su.id, 
+            su.id as system_unit_id, 
             su.custom_code,
             su.name
             FROM 
-                system_unit AS su
+                grupo_estabelecimento_rel AS rel 
+            JOIN 
+                system_unit AS su ON rel.system_unit_id = su.id 
             WHERE 
                 su.custom_code IS NOT NULL
+                and rel.grupo_id = :group_id
                 AND su.menew_integration_faturamento = 1
         ");
+
+        $stmt->bindParam(':group_id', $group_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     public static function ZigRegisterBilling($params)
     {
         global $pdo;
@@ -1138,28 +1145,45 @@ class BiController {
         }
 
         $registros = $params['sales'];
+        $agrupados = [];
+
+        // Agrupa por data e loja
+        foreach ($registros as $r) {
+            if (!isset($r['paymentId'], $r['eventId'], $r['eventDate'], $r['lojaId'], $r['redeId'], $r['value'])) {
+                continue;
+            }
+
+            $data = substr($r['eventDate'], 0, 10); // YYYY-MM-DD
+            $chave = $r['lojaId'] . '_' . $data;
+
+            if (!isset($agrupados[$chave])) {
+                $agrupados[$chave] = [
+                    'lojaId' => $r['lojaId'],
+                    'redeId' => $r['redeId'],
+                    'dataContabil' => $data,
+                    'vlTotal' => 0
+                ];
+            }
+
+            $agrupados[$chave]['vlTotal'] += floatval($r['value']) / 100;
+        }
+
         $inserted = 0;
 
-        foreach ($registros as $r) {
+        foreach ($agrupados as $chave => $dados) {
             try {
-                if (!isset($r['paymentId'], $r['eventId'], $r['eventDate'], $r['lojaId'], $r['redeId'], $r['value'])) {
-                    continue;
-                }
-
-                $num_controle = $r['paymentId'] . '-' . $r['eventId'];
-                $dataContabil = substr($r['eventDate'], 0, 10);
-                $dataFechamento = substr($r['eventDate'], 0, 19);
-                $vlTotalRecebido = number_format(floatval($r['value']) / 100, 2, '.', '');
+                $num_controle = $dados['lojaId'] . '-' . $dados['dataContabil'];
+                $dataFechamento = $dados['dataContabil'] . ' 23:59:59';
+                $vlTotalReceber = number_format($dados['vlTotal'], 2, '.', '');
                 $idUnico = self::gerarCodigoUnico('movimento_caixa', 'id');
 
-                error_log('Processando registro: ' . json_encode([
+                error_log('Processando agrupado: ' . json_encode([
                         'id' => $idUnico,
                         'num_controle' => $num_controle,
-                        'lojaId' => $r['lojaId'],
-                        'redeId' => $r['redeId'],
-                        'dataContabil' => $dataContabil,
-                        'dataFechamento' => $dataFechamento,
-                        'vlTotalRecebido' => $vlTotalRecebido,
+                        'lojaId' => $dados['lojaId'],
+                        'redeId' => $dados['redeId'],
+                        'dataContabil' => $dados['dataContabil'],
+                        'vlTotalReceber' => $vlTotalReceber
                     ]));
 
                 $stmt = $pdo->prepare("
@@ -1173,7 +1197,7 @@ class BiController {
                     modoVenda,
                     idModoVenda,
                     cancelado,
-                    vlTotalRecebido
+                    vlTotalReceber
                 ) VALUES (
                     :id,
                     :num_controle,
@@ -1184,37 +1208,90 @@ class BiController {
                     :modoVenda,
                     :idModoVenda,
                     :cancelado,
-                    :vlTotalRecebido
+                    :vlTotalReceber
                 )
                 ON DUPLICATE KEY UPDATE 
-                    vlTotalRecebido = VALUES(vlTotalRecebido),
+                    vlTotalReceber = VALUES(vlTotalReceber),
                     cancelado = VALUES(cancelado)
             ");
 
                 $stmt->execute([
                     ':id' => $idUnico,
                     ':num_controle' => $num_controle,
-                    ':lojaId' => $r['lojaId'],
-                    ':redeId' => $r['redeId'],
-                    ':dataContabil' => $dataContabil,
+                    ':lojaId' => $dados['lojaId'],
+                    ':redeId' => $dados['redeId'],
+                    ':dataContabil' => $dados['dataContabil'],
                     ':dataFechamento' => $dataFechamento,
                     ':modoVenda' => 'MESA',
                     ':idModoVenda' => 1,
                     ':cancelado' => 0,
-                    ':vlTotalRecebido' => $vlTotalRecebido,
+                    ':vlTotalReceber' => $vlTotalReceber
                 ]);
 
                 $inserted++;
             } catch (Exception $e) {
-                error_log('Erro ao inserir: ' . $e->getMessage());
+                error_log('Erro ao inserir agrupado: ' . $e->getMessage());
             }
         }
 
         return [
             'success' => true,
-            'message' => "$inserted registros processados com sucesso."
+            'message' => "$inserted registros diários processados com sucesso."
         ];
     }
+
+        public static function ZigUpdateStatics($data, $lojaId, $descontos, $gorjeta, $total_clientes)
+    {
+        global $pdo;
+
+        try {
+            // Buscar vlTotalReceber para loja e data
+            $stmt = $pdo->prepare("
+            SELECT vlTotalReceber 
+            FROM movimento_caixa 
+            WHERE lojaId = :lojaId AND dataContabil = :dataContabil 
+            LIMIT 1
+        ");
+            $stmt->execute([
+                ':lojaId' => $lojaId,
+                ':dataContabil' => $data,
+            ]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                return ['success' => false, 'message' => 'Registro não encontrado para loja e data.'];
+            }
+
+            $vlTotalReceber = floatval($row['vlTotalReceber']);
+            $vlTotalRecebido = $vlTotalReceber + floatval($descontos);
+
+            // Atualiza os campos adicionais
+            $update = $pdo->prepare("
+            UPDATE movimento_caixa
+            SET 
+                vlTotalRecebido = :vlTotalRecebido,
+                vlDesconto = :vlDesconto,
+                vlServicoRecebido = :vlServicoRecebido,
+                numPessoas = :numPessoas
+            WHERE lojaId = :lojaId AND dataContabil = :dataContabil
+        ");
+
+            $update->execute([
+                ':vlTotalRecebido' => number_format($vlTotalRecebido, 2, '.', ''),
+                ':vlDesconto' => number_format($descontos, 2, '.', ''),
+                ':vlServicoRecebido' => number_format($gorjeta, 2, '.', ''),
+                ':numPessoas' => intval($total_clientes),
+                ':lojaId' => $lojaId,
+                ':dataContabil' => $data,
+            ]);
+
+            return ['success' => true, 'message' => 'Estatísticas atualizadas com sucesso.'];
+        } catch (Exception $e) {
+            error_log('Erro em ZigUpdateStatics: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Erro interno ao atualizar.'];
+        }
+    }
+
 
     private static function gerarCodigoUnico($tabela, $coluna, $tamanho = 6)
     {
