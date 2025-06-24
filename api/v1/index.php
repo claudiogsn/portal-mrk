@@ -69,6 +69,7 @@ if (isset($data['method']) && isset($data['data'])) {
         'getModelByTag',
         'saveBalanceItems',
         'getUnitsByGroup',
+        'getUnitsNotGrouped',
         'registerJobExecution',
         'persistSales',
         'consolidateSalesByGroup',
@@ -96,6 +97,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro group_id ausente'];
                 }
+                break;
+            case 'getUnitsNotGrouped':
+                    $response = BiController::getUnitsNotGrouped();
                 break;
             case 'getUnitsToProcess':
                     $response = BiController::getUnitsToProcess();
