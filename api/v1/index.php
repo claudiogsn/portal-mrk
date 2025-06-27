@@ -1357,7 +1357,7 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'createProduct':
                 $response = ProductController::createProduct($requestData);
                 break;
-            case 'updateProduct':
+            case 'updateProduto':
                 if (isset($requestData)) {
                     $response = ProductController::updateProduto($requestData);
                 } else {
