@@ -72,20 +72,31 @@ class ProductController {
         }
     }
 
-    public static function updateProduct($codigo, $data, $system_unit_id) {
+    public static function updateProduto($data) {
         global $pdo;
 
+        // Extrai os campos obrigatórios
+        $codigo = $data['codigo'] ?? null;
+        $system_unit_id = $data['unit_id'] ?? null;
+
+        if (!$codigo || !$system_unit_id) {
+            return ['error' => 'Código do produto e unidade são obrigatórios.'];
+        }
+
+        // Monta a query dinamicamente, ignorando campos não atualizáveis
         $sql = "UPDATE products SET ";
         $values = [];
         foreach ($data as $key => $value) {
-            // Excluindo campos que não podem ser atualizados
-            if ($key != 'id' && $key != 'system_unit_id' && $key != 'codigo') {
+            if (!in_array($key, ['id', 'unit_id', 'codigo'])) {
                 $sql .= "$key = :$key, ";
                 $values[":$key"] = $value;
             }
         }
+
+        // Remove última vírgula
         $sql = rtrim($sql, ", ");
         $sql .= " WHERE codigo = :codigo AND system_unit_id = :system_unit_id";
+
         $values[':codigo'] = $codigo;
         $values[':system_unit_id'] = $system_unit_id;
 
@@ -93,9 +104,9 @@ class ProductController {
         $stmt->execute($values);
 
         if ($stmt->rowCount() > 0) {
-            return array('success' => true, 'message' => 'Detalhes do produto atualizados com sucesso');
+            return ['success' => true, 'message' => 'Detalhes do produto atualizados com sucesso.'];
         } else {
-            return array('error' => 'Falha ao atualizar detalhes do produto');
+            return ['error' => 'Falha ao atualizar ou nenhum campo foi alterado.'];
         }
     }
 
@@ -447,7 +458,6 @@ class ProductController {
         }
     }
 
-
     public static function importarProdutosPorLoja($system_unit_id, $produtos, $usuario_id): array
     {
         global $pdo;
@@ -698,7 +708,6 @@ class ProductController {
         }
     }
 
-
     public static function getProdutosComSkuZig($params)
     {
         global $pdo;
@@ -719,11 +728,6 @@ class ProductController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-
-
-
-
 
     public static function deleteProduto($codigo, $unit_id)
     {
@@ -826,12 +830,6 @@ class ProductController {
             'movimentacoes' => $result
         ];
     }
-
-
-
-
-
-
 
 }
 ?>

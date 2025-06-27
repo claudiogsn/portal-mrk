@@ -1358,8 +1358,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = ProductController::createProduct($requestData);
                 break;
             case 'updateProduct':
-                if (isset($requestData['codigo'])) {
-                    $response = ProductController::updateProduct($requestData['codigo'], $requestData, $requestData['system_unit_id']);
+                if (isset($requestData)) {
+                    $response = ProductController::updateProduto($requestData);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro codigo ausente'];
