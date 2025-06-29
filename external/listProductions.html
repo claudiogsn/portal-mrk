@@ -12,6 +12,8 @@
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
         .form-control {
             display: block;
@@ -57,7 +59,7 @@
             </div>
             <div class="col-md-3">
                 <select id="filtroFicha" class="form-control">
-                    <option value="">Ficha Técnica: Todos</option>
+                    <option value="">Ficha de Produção: Todos</option>
                     <option value="1">Sim</option>
                     <option value="0">Não</option>
                 </select>
@@ -72,7 +74,7 @@
                     <th>Código</th>
                     <th>Produto</th>
                     <th>Comprável</th>
-                    <th>Ficha Técnica</th>
+                    <th>Ficha de Produção</th>
                 </tr>
                 </thead>
                 <tbody></tbody>
@@ -87,7 +89,7 @@
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title" id="modalTituloFicha">Ficha Técnica</h4>
+                <h4 class="modal-title" id="modalTituloFicha">Ficha de Produção</h4>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="produtoCodigo">
@@ -275,10 +277,17 @@
 
 
     async function abrirFicha(codigo, nome) {
-        $('#modalTituloFicha').text(`Ficha Técnica – ${codigo} - ${nome}`);
+        $('#modalTituloFicha').text(`Ficha de Produção – ${codigo} - ${nome}`);
         $('#produtoCodigo').val(codigo);
         $('#rendimento').val(1);
         $('#tabela-insumos tbody').empty();
+
+
+        // Se já tem Select2 ativo, destruir com segurança
+        if ($('#selectInsumo').hasClass('select2-hidden-accessible')) {
+            $('#selectInsumo').select2('destroy');
+        }
+
         $('#selectInsumo').empty();
 
         Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
@@ -318,15 +327,24 @@
                 `);
                 });
             }
+            $('#selectInsumo').append(new Option('Selecione o Insumo', '', true, true)).trigger('change');
+
 
             resInsumos.data.forEach(insumo => {
                 $('#selectInsumo').append(new Option(`${insumo.codigo} - ${insumo.nome}`, insumo.codigo));
             });
 
+            // Inicializa o Select2
+            $('#selectInsumo').select2({
+                dropdownParent: $('#modalFicha'),
+                width: '100%',
+                placeholder: 'Selecione um insumo'
+            });
+
             Swal.close();
             $('#modalFicha').modal('show');
         } catch {
-            Swal.fire('Erro', 'Erro ao carregar ficha técnica.', 'error');
+            Swal.fire('Erro', 'Erro ao carregar ficha de produção.', 'error');
         }
     }
 </script>

@@ -12,6 +12,8 @@
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
@@ -273,6 +275,12 @@
         $('#modalTituloFicha').text(`Ficha Técnica – ${codigo} - ${nome}`);
         $('#produtoCodigo').val(codigo);
         $('#tabela-insumos tbody').empty();
+
+        // Se já tem Select2 ativo, destruir com segurança
+        if ($('#selectInsumo').hasClass('select2-hidden-accessible')) {
+            $('#selectInsumo').select2('destroy');
+        }
+
         $('#selectInsumo').empty();
 
         Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
@@ -296,19 +304,27 @@
             if (Array.isArray(ficha) && ficha.length > 0) {
                 ficha.forEach(insumo => {
                     $('#tabela-insumos tbody').append(`
-                        <tr data-id="${insumo.insumo_id}">
-                            <td>${insumo.insumo_nome}</td>
-                            <td><input type="number" class="form-control quantidade" value="${insumo.quantity}" /></td>
-                            <td class="text-center">
-                                <a href="#" class="removerInsumo" title="Remover"><i class="fa fa-trash red" style="color: red"></i></a>
-                            </td>
-                        </tr>
-                    `);
+                    <tr data-id="${insumo.insumo_id}">
+                        <td>${insumo.insumo_nome}</td>
+                        <td><input type="number" class="form-control quantidade" value="${insumo.quantity}" /></td>
+                        <td class="text-center">
+                            <a href="#" class="removerInsumo" title="Remover"><i class="fa fa-trash red" style="color: red"></i></a>
+                        </td>
+                    </tr>
+                `);
                 });
             }
+            $('#selectInsumo').append(new Option('Selecione o Insumo', '', true, true)).trigger('change');
 
             resInsumos.data.forEach(insumo => {
                 $('#selectInsumo').append(new Option(`${insumo.codigo} - ${insumo.nome}`, insumo.codigo));
+            });
+
+            // Inicializa o Select2
+            $('#selectInsumo').select2({
+                dropdownParent: $('#modalFicha'),
+                width: '100%',
+                placeholder: 'Selecione um insumo'
             });
 
             Swal.close();
