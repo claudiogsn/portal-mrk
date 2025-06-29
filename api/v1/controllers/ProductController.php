@@ -142,7 +142,7 @@ class ProductController {
         $stmt = $pdo->prepare("
         SELECT 
             id, codigo, nome, und, preco, preco_custo, categoria,
-            venda, composicao, insumo,compravel, estoque_minimo, saldo, status
+            venda, composicao, insumo,compravel, estoque_minimo, saldo, status,sku_zig as codigo_pdv
         FROM products
         WHERE system_unit_id = :unit_id
         ORDER BY nome

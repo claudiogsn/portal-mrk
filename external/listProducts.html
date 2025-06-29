@@ -182,6 +182,12 @@
                                 </a>
                             </div>
                         </div>
+                        <br>
+
+                        <div class="form-group">
+                            <label for="codigo_pdv">Código PDV</label>
+                            <input type="text" id="codigo_pdv" class="form-control" placeholder="Código utilizado no PDV">
+                        </div>
 
                         <div class="form-group" style="margin-top: 10px;">
                             <label for="nome">Nome *</label>
@@ -359,6 +365,7 @@
         $('#salvarProduto').click(async () => {
             const data = {
                 id: $('#produtoId').val(),
+                sku_zig: $('#codigo_pdv').val(),
                 unit_id: system_unit_id,
                 codigo: $('#codigo').val(),
                 nome: $('#nome').val(),
@@ -388,6 +395,7 @@
     function abrirModalNovo() {
         $('#modalTituloProduto').text('Novo Produto');
         $('#produtoId').val('');
+        $('#codigo_pdv').val('');
         $('#codigo, #nome').val('');
         $('#categoria').val('');
         $('#und').val('UND');
@@ -410,6 +418,7 @@
 
         $('#modalTituloProduto').text('Editar Produto');
         $('#produtoId').val(produto.id);
+        $('#codigo_pdv').val(produto.codigo_pdv || '');
         $('#codigo').val(produto.codigo).prop('disabled', true);
         $('#nome').val(produto.nome);
         $('#und').val(produto.und);
