@@ -13,9 +13,9 @@ class ImportarProdutos extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/listProducts.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
+            $link = "http://localhost/portal-mrk/external/importarProdutos.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/listProducts.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
+            $link = "https://portal.mrksolucoes.com.br/external/importarProdutos.html?username={$username}&token={$token}&unit_id={$unit_id}&unit_name={$unit_name}";
         }
 
         $iframe = new TElement('iframe');
