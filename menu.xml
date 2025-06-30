@@ -36,6 +36,10 @@
             <action>ProductsList</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Importar Produtos">
+            <action>ImportarProdutos</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Importar Insumos">
             <action>ImportarInsumos</action>
             <icon>fas:circle fa-fw</icon>

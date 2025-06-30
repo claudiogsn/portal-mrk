@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Importar Produtos de Venda</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/style.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/themes/all-themes.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        .loja {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="block-header"><h2></h2></div>
+    <div class="row clearfix">
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Importação de Produtos de Venda</h2>
+                </div>
+                <div class="body">
+                    <p>
+                        <strong>Loja:</strong>
+                        <span class="label bg-blue loja" id="lojaInfo">carregando...</span>
+                    </p>
+
+                    <p><strong>Este é um processo de importação de produtos baseado em um arquivo Excel exportado do sistema Menew.</strong></p>
+                    <ol>
+                        <li>Acesse o <strong>Portal Menew</strong>.</li>
+                        <li>Vá até <strong>Gerencia &gt; Operacional &gt; Produtos</strong>.</li>
+                        <li>Selecione o <strong>Estabelecimento</strong> que deseja importar.</li>
+                        <li>Clique no <strong>ícone do Excel</strong> para exportar os dados.</li>
+                        <li>Salve o arquivo, geralmente salvo como <em>DataGrid (...).xlsx</em>.</li>
+                        <li>Volte para esta tela, clique em <strong>Selecionar Arquivo</strong> e escolha o arquivo baixado.</li>
+                        <li>Por fim, clique em <strong>Importar Produtos de Venda</strong>.</li>
+                    </ol>
+                    <p style="color: red; font-style: italic;">
+                        * Atenção: Ao realizar esta importação, todos os produtos já cadastrados nesta loja serão <strong>sobrescritos</strong> com os dados do Excel selecionado.
+                    </p>
+
+                    <form id="importForm">
+                        <div class="form-group">
+                            <label for="excelFile">Arquivo Excel (.xlsx)</label>
+                            <input type="file" id="excelFile" class="form-control" accept=".xls,.xlsx" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary waves-effect">Importar Produtos de Venda</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.js"></script>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+    const username = urlParams.get('username');
+    const unit_name = urlParams.get('unit_name');
+
+    function formatarPreco(precoStr) {
+        if (!precoStr || precoStr === '') return 0;
+        return parseFloat(
+            precoStr.toString().replace('R$', '').replace(/\./g, '').replace(',', '.')
+        ) || 0;
+    }
+
+    function atualizarInfoLoja() {
+        const lojaSpan = document.getElementById('lojaInfo');
+        if (unit_id && unit_name) {
+            lojaSpan.innerText = `${unit_id} - ${decodeURIComponent(unit_name)}`;
+        } else {
+            lojaSpan.innerText = 'não informado';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', atualizarInfoLoja);
+
+    document.getElementById('importForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const input = document.getElementById('excelFile');
+        const file = input.files[0];
+
+        if (!file) {
+            Swal.fire('Erro', 'Selecione um arquivo Excel.', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+
+            if (!json || json.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Arquivo protegido ou inválido',
+                    text: 'Este arquivo pode estar em modo protegido. Abra no Excel, clique em "Ativar Edição" e salve como novo .xlsx antes de importar.',
+                });
+                return;
+            }
+
+            const itens = json.map((row) => {
+                const codigo = row['Código'];
+                const nome = row['Nome'];
+                const tipoRaw = row['Tipo'] || '';
+                const tipoStr = tipoRaw.toLowerCase();
+                const categoria = row['Categoria'];
+                const precoStr = row['Preço'];
+
+                if (!codigo || !nome || !precoStr) return null;
+
+                const venda = tipoStr.includes('venda') ? 1 : 0;
+                const composicao = tipoStr.includes('composição') ? 1 : 0;
+
+                return {
+                    codigo,
+                    nome,
+                    categoria_nome: categoria,
+                    preco_venda: formatarPreco(precoStr),
+                    venda,
+                    composicao
+                };
+            }).filter(Boolean);
+
+
+
+            if (itens.length === 0) {
+                Swal.fire('Erro', 'Nenhum item válido encontrado.', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Importando produtos...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'importarProdutosVenda',
+                    token,
+                    data: {
+                        system_unit_id: unit_id,
+                        itens,
+                        usuario_id: username
+                    }
+                });
+
+                Swal.close();
+
+                if (response.data.status === 'success') {
+                    Swal.fire('Sucesso', `Importados ${response.data.produtos_importados} produtos.`, 'success');
+                } else {
+                    Swal.fire('Erro', response.data.message || 'Erro na importação.', 'error');
+                }
+            } catch (err) {
+                Swal.close();
+                Swal.fire('Erro', 'Erro de comunicação com o servidor.', 'error');
+                console.error(err);
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+</script>
+</body>
+</html>
