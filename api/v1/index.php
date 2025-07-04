@@ -31,6 +31,7 @@ require_once 'controllers/ModeloBalancoController.php';
 require_once 'controllers/BiController.php';
 require_once 'controllers/ConsolidationEstoqueController.php';
 require_once 'controllers/ProducaoController.php';
+require_once 'controllers/NotaFiscalEntradaController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -1451,6 +1452,22 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ProductController::importarProdutosVenda(
                         $requestData['system_unit_id'],
                         $requestData['itens'],
+                        $requestData['usuario_id']
+                    );
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+            case 'importarNotasFiscaisEntrada':
+                if ($requestData['system_unit_id'] && $requestData['notas'] && $requestData['usuario_id']) {
+                    $response = NotaFiscalEntradaController::importarNotasFiscaisEntrada(
+                        $requestData['system_unit_id'],
+                        $requestData['notas'],
                         $requestData['usuario_id']
                     );
                     http_response_code(200);

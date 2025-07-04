@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Importar Notas Fiscais de Entrada</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/style.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="https://unpkg.com/filepond/dist/filepond.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/filepond/dist/filepond.min.js"></script>
+    <style>
+        .loja {
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <div class="block-header">
+        <br>
+    </div>
+
+    <div class="row clearfix">
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Importar arquivo Excel</h2>
+                </div>
+                <div class="body">
+                    <p><strong>Loja:</strong> <span class="label bg-blue loja" id="lojaInfo">carregando...</span></p>
+
+                    <p><strong>Este é um processo de importação de produtos baseado em um arquivo Excel exportado do sistema Menew.</strong></p>
+                    <ol>
+                        <li>Acesse o <strong>Portal Menew</strong>.</li>
+                        <li>Vá até <strong>Estoque &gt; Relatórios Web &gt; Lista de Compras</strong>.</li>
+                        <li>Selecione o <strong>Estabelecimento, Centro de Custo = Todos e o período</strong> que deseja importar.</li>
+                        <li>Clique em <strong>Atualizar</strong> e aguarde o carregamento.</li>
+                        <li>Clique no <strong>ícone do Excel</strong> para exportar os dados.</li>
+                        <li>Salve o arquivo, geralmente salvo como <em>Relatório - Estoque Web - Lista de Compras (...).xlsx</em>.</li>
+                        <li>Volte para esta tela, clique em <strong>Selecionar Arquivo</strong> e escolha o arquivo baixado.</li>
+                        <li>Por fim, clique em <strong>Importar Produtos</strong>.</li>
+                    </ol>
+
+                    <form id="importForm">
+                        <div class="form-group" style="width: 600px;">
+                            <label for="fileInput">Arquivo Excel (.xlsx)</label>
+                            <input type="file" class="filepond" id="fileInput" name="file" accept=".xls,.xlsx">
+                        </div>
+                        <button type="submit" class="btn btn-primary waves-effect">Importar Notas</button>
+                    </form>
+
+                    <p class="text-danger" style="margin-top: 20px;">
+                        * Somente os cabeçalhos das notas serão importados. Itens não serão considerados.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.js"></script>
+
+<script>
+    FilePond.registerPlugin();
+
+    const pond = FilePond.create(document.querySelector('.filepond'), {
+        labelIdle: 'Arraste ou clique para selecionar o arquivo Excel',
+        acceptedFileTypes: [
+            'application/vnd.ms-excel', // .xls
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' // .xlsx
+        ],
+        fileValidateTypeLabelExpectedTypes: 'Apenas arquivos .xls ou .xlsx são permitidos'
+    });
+
+
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+    const username = urlParams.get('username');
+    const unit_name = urlParams.get('unit_name');
+
+    function atualizarInfoLoja() {
+        const lojaSpan = document.getElementById('lojaInfo');
+        if (unit_id && unit_name) {
+            lojaSpan.innerText = `${unit_id} - ${decodeURIComponent(unit_name)}`;
+        } else {
+            lojaSpan.innerText = 'não informado';
+        }
+    }
+
+    function formatarValor(valorStr) {
+        if (!valorStr) return 0;
+        return parseFloat(
+            valorStr.toString().replace('R$', '').replace(/\./g, '').replace(',', '.')
+        ) || 0;
+    }
+
+    function formatarData(dataStr) {
+        if (!dataStr || typeof dataStr !== 'string') return null;
+        const partes = dataStr.split('/');
+        if (partes.length === 3) {
+            return `${partes[2]}-${partes[1]}-${partes[0]}`;
+        }
+        return dataStr;
+    }
+
+    document.addEventListener('DOMContentLoaded', atualizarInfoLoja);
+
+    document.getElementById('importForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const arquivos = pond.getFiles();
+        if (!arquivos || arquivos.length === 0) {
+            Swal.fire('Erro', 'Selecione um arquivo Excel.', 'error');
+            return;
+        }
+
+        const file = arquivos[0].file;
+        const reader = new FileReader();
+
+        reader.onload = async function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+            const notas = [];
+
+            json.forEach(row => {
+                if (row['Documento'] && row['V. Total']) {
+                    notas.push({
+                        documento: row['Documento'].toString(),
+                        data_entrada: formatarData(row['Data Entrada']),
+                        data_emissao: formatarData(row['Data Emissão']),
+                        fornecedor: row['Fornecedor'],
+                        valor_total: formatarValor(row['V. Total'])
+                    });
+                }
+            });
+
+            if (notas.length === 0) {
+                Swal.fire('Erro', 'Nenhuma nota fiscal válida encontrada.', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Importando notas fiscais...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'importarNotasFiscaisEntrada',
+                    token: token,
+                    data: {
+                        system_unit_id: unit_id,
+                        usuario_id: username,
+                        notas: notas
+                    }
+                });
+
+                Swal.close();
+
+                if (response.data.status === 'success') {
+                    Swal.fire('Sucesso', `Importadas ${response.data.notas_importadas} notas fiscais.`, 'success');
+                    pond.removeFiles();
+                } else {
+                    Swal.fire('Erro', response.data.message || 'Erro na importação.', 'error');
+                }
+            } catch (err) {
+                Swal.close();
+                Swal.fire('Erro', 'Erro de comunicação com o servidor.', 'error');
+                console.error(err);
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    });
+</script>
+</body>
+</html>

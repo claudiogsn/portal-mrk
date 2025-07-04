@@ -117,6 +117,10 @@
             <action>PrevisaoCompras</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Importar Notas Fiscais Entrada">
+            <action>ImportarNotasFiscaisEntrada</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Transferências">
