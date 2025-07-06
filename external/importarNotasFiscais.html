@@ -24,12 +24,10 @@
 
 <body class="theme-blue">
 <div class="container-fluid">
-    <div class="block-header">
-        <br>
-    </div>
+    <div class="block-header"><br></div>
 
     <div class="row clearfix">
-        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+        <div class="col-xs-12">
             <div class="card">
                 <div class="header">
                     <h2>Importar arquivo Excel</h2>
@@ -41,12 +39,9 @@
                     <ol>
                         <li>Acesse o <strong>Portal Menew</strong>.</li>
                         <li>Vá até <strong>Estoque &gt; Relatórios Web &gt; Lista de Compras</strong>.</li>
-                        <li>Selecione o <strong>Estabelecimento, Centro de Custo = Todos e o período</strong> que deseja importar.</li>
-                        <li>Clique em <strong>Atualizar</strong> e aguarde o carregamento.</li>
-                        <li>Clique no <strong>ícone do Excel</strong> para exportar os dados.</li>
-                        <li>Salve o arquivo, geralmente salvo como <em>Relatório - Estoque Web - Lista de Compras (...).xlsx</em>.</li>
-                        <li>Volte para esta tela, clique em <strong>Selecionar Arquivo</strong> e escolha o arquivo baixado.</li>
-                        <li>Por fim, clique em <strong>Importar Produtos</strong>.</li>
+                        <li>Selecione o <strong>Estabelecimento, Centro de Custo = Todos e o período</strong> desejado.</li>
+                        <li>Exporte o relatório em Excel.</li>
+                        <li>Volte para esta tela, selecione o arquivo e clique em <strong>Importar Produtos</strong>.</li>
                     </ol>
 
                     <form id="importForm">
@@ -58,7 +53,7 @@
                     </form>
 
                     <p class="text-danger" style="margin-top: 20px;">
-                        * Somente os cabeçalhos das notas serão importados. Itens não serão considerados.
+                        * Os cabeçalhos das notas e os itens serão importados.
                     </p>
                 </div>
             </div>
@@ -76,12 +71,11 @@
     const pond = FilePond.create(document.querySelector('.filepond'), {
         labelIdle: 'Arraste ou clique para selecionar o arquivo Excel',
         acceptedFileTypes: [
-            'application/vnd.ms-excel', // .xls
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' // .xlsx
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         ],
         fileValidateTypeLabelExpectedTypes: 'Apenas arquivos .xls ou .xlsx são permitidos'
     });
-
 
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
@@ -89,7 +83,7 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const unit_id = urlParams.get('unit_id');
+    const unit_id = parseInt(urlParams.get('unit_id'));
     const username = urlParams.get('username');
     const unit_name = urlParams.get('unit_name');
 
@@ -104,18 +98,13 @@
 
     function formatarValor(valorStr) {
         if (!valorStr) return 0;
-        return parseFloat(
-            valorStr.toString().replace('R$', '').replace(/\./g, '').replace(',', '.')
-        ) || 0;
+        return parseFloat(valorStr.toString().replace('R$', '').replace(/\./g, '').replace(',', '.')) || 0;
     }
 
     function formatarData(dataStr) {
         if (!dataStr || typeof dataStr !== 'string') return null;
         const partes = dataStr.split('/');
-        if (partes.length === 3) {
-            return `${partes[2]}-${partes[1]}-${partes[0]}`;
-        }
-        return dataStr;
+        return partes.length === 3 ? `${partes[2]}-${partes[1]}-${partes[0]}` : dataStr;
     }
 
     document.addEventListener('DOMContentLoaded', atualizarInfoLoja);
@@ -136,56 +125,86 @@
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
             const notas = [];
+            const produtos = [];
+            let notaAtual = {};
+            let seq = 1;
 
-            json.forEach(row => {
-                if (row['Documento'] && row['V. Total']) {
-                    notas.push({
-                        documento: row['Documento'].toString(),
-                        data_entrada: formatarData(row['Data Entrada']),
-                        data_emissao: formatarData(row['Data Emissão']),
-                        fornecedor: row['Fornecedor'],
-                        valor_total: formatarValor(row['V. Total'])
+            for (let i = 0; i < json.length; i++) {
+                const row = json[i];
+
+                if (row[0] && !isNaN(row[0])) {
+                    notaAtual = {
+                        documento: row[0].toString(),
+                        data_entrada: formatarData(row[1]),
+                        data_emissao: formatarData(row[2]),
+                        fornecedor: row[3],
+                        valor_total: formatarValor(row[5])
+                    };
+                    notas.push(notaAtual);
+                    seq = 1;
+                }
+
+                if (notaAtual && row[1] && !isNaN(row[1]) && row[4]) {
+                    produtos.push({
+                        system_unit_id: unit_id,
+                        doc: notaAtual.documento,
+                        produto: parseInt(row[1]),
+                        seq: seq++,
+                        qtde: parseFloat(row[4]),
+                        data_entrada: notaAtual.data_entrada,
+                        data_emissao: notaAtual.data_emissao,
+                        valor: parseFloat(row[6]) || 0,
                     });
                 }
-            });
+            }
 
-            if (notas.length === 0) {
-                Swal.fire('Erro', 'Nenhuma nota fiscal válida encontrada.', 'error');
+            if (notas.length === 0 || produtos.length === 0) {
+                Swal.fire('Erro', 'Não foi possível identificar notas ou itens.', 'error');
                 return;
             }
 
             Swal.fire({
-                title: 'Importando notas fiscais...',
+                title: 'Importando...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
 
             try {
-                const response = await axios.post(baseUrl, {
-                    method: 'importarNotasFiscaisEntrada',
-                    token: token,
-                    data: {
-                        system_unit_id: unit_id,
-                        usuario_id: username,
-                        notas: notas
-                    }
-                });
+                const [resNotas, resProdutos] = await Promise.all([
+                    axios.post(baseUrl, {
+                        method: 'importarNotasFiscaisEntrada',
+                        token: token,
+                        data: {
+                            system_unit_id: unit_id,
+                            usuario_id: username,
+                            notas: notas
+                        }
+                    }),
+                    axios.post(baseUrl, {
+                        method: 'importCompras',
+                        token: token,
+                        data: {
+                            usuario_id: username,
+                            produtos: produtos
+                        }
+                    })
+                ]);
 
                 Swal.close();
 
-                if (response.data.status === 'success') {
-                    Swal.fire('Sucesso', `Importadas ${response.data.notas_importadas} notas fiscais.`, 'success');
+                if (resNotas.data.status === 'success' && resProdutos.data.success) {
+                    Swal.fire('Sucesso', `Notas e produtos importados com sucesso.`, 'success');
                     pond.removeFiles();
                 } else {
-                    Swal.fire('Erro', response.data.message || 'Erro na importação.', 'error');
+                    Swal.fire('Erro', 'Erro ao importar notas ou produtos.', 'error');
                 }
-            } catch (err) {
+            } catch (error) {
+                console.error(error);
                 Swal.close();
                 Swal.fire('Erro', 'Erro de comunicação com o servidor.', 'error');
-                console.error(err);
             }
         };
 

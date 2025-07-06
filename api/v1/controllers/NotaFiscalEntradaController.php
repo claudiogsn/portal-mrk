@@ -32,13 +32,13 @@ class NotaFiscalEntradaController {
             $notasImportadas = 0;
 
             foreach ($notas as $nota) {
-                if (!isset($nota['documento'], $nota['data_entrada'], $nota['data_emissao'], $nota['fornecedor'], $nota['valor_total'])) {
+                if (!isset($nota['documento'], $nota['data_entrada'], $nota['fornecedor'], $nota['valor_total'])) {
                     throw new Exception("Nota malformada: " . json_encode($nota));
                 }
 
                 $documento = trim($nota['documento']);
                 $dataEntrada = $nota['data_entrada']; // formato 'YYYY-MM-DD'
-                $dataEmissao = $nota['data_emissao'];
+                $dataEmissao = $nota['data_emissao'] ?? $dataEntrada; // se não houver data de emissão, usa a data de entrada
                 $fornecedor = mb_substr(trim($nota['fornecedor']), 0, 100);
                 $valorTotal = str_replace(',', '.', $nota['valor_total']);
 

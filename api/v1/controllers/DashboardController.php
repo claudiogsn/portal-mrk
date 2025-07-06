@@ -19,6 +19,324 @@ class DashboardController
         return (($atual - $anterior) / abs($anterior)) * 100;
     }
 
+    private static function gerarGraficoBase64(array $labels, array $fats, array $compras): string
+    {
+
+
+        $chart = [
+            'type' => 'bar',
+            'data' => [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Faturamento',
+                        'data' => $fats,
+                        'backgroundColor' => '#007bff'
+                    ],
+                    [
+                        'label' => 'Compras',
+                        'data' => $compras,
+                        'backgroundColor' => '#dc3545'
+                    ]
+                ]
+            ],
+            'options' => [
+                'plugins' => [
+                    'legend' => ['position' => 'top'],
+                    'datalabels' => [
+                        'anchor' => 'end',
+                        'align' => 'end',
+                        'color' => '#000',
+                        'font' => ['weight' => 'bold'],
+                        'display' => true
+                    ]
+                ],
+                'title' => [
+                    'display' => true,
+                    'text' => 'Comparativo Faturamento vs Compras'
+                ],
+                'scales' => [
+                    'y' => ['beginAtZero' => true],
+                    'x' => [
+                        'ticks' => ['autoSkip' => false]
+                    ]
+                ]
+            ]
+        ];
+
+        $payload = json_encode([
+            'chart' => $chart,
+            'width' => 800,
+            'height' => 400,
+            'format' => 'png',
+            'backgroundColor' => 'white',
+            'plugins' => ['datalabels']
+        ], JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init('https://quickchart.io/chart');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+
+        $imageData = curl_exec($ch);
+
+        if ($imageData === false || strlen($imageData) < 1000) {
+            error_log('Erro ao gerar imagem do gráfico com QuickChart: ' . curl_error($ch));
+            error_log('Resposta recebida: ' . substr($imageData ?? '', 0, 500));
+            error_log('Payload enviado (JSON): ' . $payload);
+            curl_close($ch);
+            return '';
+        } else {
+            error_log('Imagem do gráfico gerada com sucesso.');
+            error_log('Payload enviado (JSON): ' . $payload);
+        }
+
+        curl_close($ch);
+        return 'data:image/png;base64,' . base64_encode($imageData);
+    }
+
+
+
+    private static function gerarHtmlComparativoComprasPorLoja(
+        DateTimeInterface $inicioAtual,
+        DateTimeInterface $fimAtual,
+        DateTimeInterface $inicioAnterior,
+        DateTimeInterface $fimAnterior,
+        array $dadosAtuais,
+        array $dadosAnteriores,
+        array $comprasAtual,
+        array $comprasAnterior
+    ): string {
+        $labels = [];
+        $fatValues = [];
+        $compraValues = [];
+        // Indexar faturamento atual por nome da loja
+        $mapFaturamentoAtual = [];
+        foreach ($dadosAtuais as $item) {
+            $nome = strtoupper($item['nomeLoja']);
+            $mapFaturamentoAtual[$nome] = (float)($item['faturamento_liquido'] ?? 0);
+        }
+
+        // Indexar faturamento anterior por nome da loja
+        $mapFaturamentoAnterior = [];
+        foreach ($dadosAnteriores as $item) {
+            $nome = strtoupper($item['nomeLoja']);
+            $mapFaturamentoAnterior[$nome] = (float)($item['faturamento_liquido'] ?? 0);
+        }
+
+        // Indexar compras atuais por nome da loja
+        $mapComprasAtual = [];
+        foreach ($comprasAtual as $item) {
+            $nome = strtoupper($item['nomeLoja']);
+            $mapComprasAtual[$nome] = array_sum(array_column($item['notas'], 'valor_total'));
+        }
+
+        // Indexar compras anteriores por nome da loja
+        $mapComprasAnterior = [];
+        foreach ($comprasAnterior as $item) {
+            $nome = strtoupper($item['nomeLoja']);
+            $mapComprasAnterior[$nome] = array_sum(array_column($item['notas'], 'valor_total'));
+        }
+
+        // Unificar nomes
+        $nomesLojas = array_unique(array_merge(
+            array_keys($mapFaturamentoAtual),
+            array_keys($mapFaturamentoAnterior),
+            array_keys($mapComprasAtual),
+            array_keys($mapComprasAnterior)
+        ));
+
+        // Iniciar HTML
+        $html = "<div style='font-family: Arial, sans-serif;'>";
+        $html .= "<div style='position: relative; margin-bottom: 16px;'>
+        <div style='position: absolute; top: 0; right: 0;'>
+            <img src='https://portal.mrksolucoes.com.br/external/reports/logo.png' alt='Logo' style='max-height: 80px;' />
+        </div>
+        <div>
+            <h2 style='margin: 0;'>Portal MRK</h2>
+            <h3 style='margin: 0;'>Relatório Semanal - Faturamento X Compras</h3>
+            <p style='margin: 4px 0 0 0; font-size: 14px;'>
+                Comparativo entre <strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong>
+                e <strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong>
+            </p>
+        </div>
+    </div><br>";
+
+        $html .= "<center><h3 style='margin-top: 40px;'>Resumo</h3></center>";
+
+
+        foreach ($nomesLojas as $nome) {
+            $fatAtual = $mapFaturamentoAtual[$nome] ?? 0;
+            $fatAnterior = $mapFaturamentoAnterior[$nome] ?? 0;
+            $compraAtual = $mapComprasAtual[$nome] ?? 0;
+            $compraAnterior = $mapComprasAnterior[$nome] ?? 0;
+
+            $fatAtualFmt = 'R$ ' . number_format($fatAtual, 2, ',', '.');
+            $fatAnteriorFmt = 'R$ ' . number_format($fatAnterior, 2, ',', '.');
+            $compraAtualFmt = 'R$ ' . number_format($compraAtual, 2, ',', '.');
+            $compraAnteriorFmt = 'R$ ' . number_format($compraAnterior, 2, ',', '.');
+
+            $varFat = self::calcularVariacao($fatAtual, $fatAnterior);
+            $varCompra = self::calcularVariacao($compraAtual, $compraAnterior);
+
+            $varFatFmt = number_format($varFat, 2, ',', '.') . '%';
+            $varCompraFmt = number_format($varCompra, 2, ',', '.') . '%';
+
+            $classFat = $varFat >= 0 ? 'color: green;' : 'color: red;';
+            $classCompra = $varCompra >= 0 ? 'color: green;' : 'color: red;';
+
+            $html .= "
+        <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;'>
+            <thead>
+                <tr style='border-bottom: 1px solid #000; background-color: #f0f0f0;'>
+                    <th style='text-align: left; padding: 6px;'>{$nome}</th>
+                    <th style='text-align: right; padding: 6px;'>Semana Atual</th>
+                    <th style='text-align: right; padding: 6px;'>Semana Anterior</th>
+                    <th style='text-align: right; padding: 6px;'>Var (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style='padding: 6px;'>Faturamento Bruto</td>
+                    <td style='text-align: right;'>{$fatAtualFmt}</td>
+                    <td style='text-align: right;'>{$fatAnteriorFmt}</td>
+                    <td style='text-align: right; {$classFat}'>{$varFatFmt}</td>
+                </tr>
+                <tr>
+                    <td style='padding: 6px;'>Compras</td>
+                    <td style='text-align: right;'>{$compraAtualFmt}</td>
+                    <td style='text-align: right;'>{$compraAnteriorFmt}</td>
+                    <td style='text-align: right; {$classCompra}'>{$varCompraFmt}</td>
+                </tr>
+            </tbody>
+        </table>";
+
+            $labels[] = $nome;
+            $fatValues[] = round($mapFaturamentoAtual[$nome] ?? 0, 2);
+            $compraValues[] = round($mapComprasAtual[$nome] ?? 0, 2);
+
+        }
+
+        $totalFatAtual = array_sum($fatValues);
+        $totalFatAnterior = array_sum(array_map(fn($nome) => $mapFaturamentoAnterior[$nome] ?? 0, $labels));
+        $totalCompraAtual = array_sum($compraValues);
+        $totalCompraAnterior = array_sum(array_map(fn($nome) => $mapComprasAnterior[$nome] ?? 0, $labels));
+
+        $totalFatAtualFmt = 'R$ ' . number_format($totalFatAtual, 2, ',', '.');
+        $totalFatAnteriorFmt = 'R$ ' . number_format($totalFatAnterior, 2, ',', '.');
+        $totalCompraAtualFmt = 'R$ ' . number_format($totalCompraAtual, 2, ',', '.');
+        $totalCompraAnteriorFmt = 'R$ ' . number_format($totalCompraAnterior, 2, ',', '.');
+
+        $varTotalFat = self::calcularVariacao($totalFatAtual, $totalFatAnterior);
+        $varTotalCompra = self::calcularVariacao($totalCompraAtual, $totalCompraAnterior);
+
+        $varTotalFatFmt = number_format($varTotalFat, 2, ',', '.') . '%';
+        $varTotalCompraFmt = number_format($varTotalCompra, 2, ',', '.') . '%';
+
+        $classTotalFat = $varTotalFat >= 0 ? 'color: green;' : 'color: red;';
+        $classTotalCompra = $varTotalCompra >= 0 ? 'color: green;' : 'color: red;';
+
+        $html .= "
+            <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;'>
+                <thead>
+                    <tr style='border-bottom: 1px solid #000; background-color: #e0e0e0;'>
+                        <th style='text-align: left; padding: 6px;'>Consolidado Grupo</th>
+                        <th style='text-align: right; padding: 6px;'>Semana Atual</th>
+                        <th style='text-align: right; padding: 6px;'>Semana Anterior</th>
+                        <th style='text-align: right; padding: 6px;'>Var (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style='padding: 6px;'>Faturamento Bruto</td>
+                        <td style='text-align: right;'>{$totalFatAtualFmt}</td>
+                        <td style='text-align: right;'>{$totalFatAnteriorFmt}</td>
+                        <td style='text-align: right; {$classTotalFat}'>{$varTotalFatFmt}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 6px;'>Compras</td>
+                        <td style='text-align: right;'>{$totalCompraAtualFmt}</td>
+                        <td style='text-align: right;'>{$totalCompraAnteriorFmt}</td>
+                        <td style='text-align: right; {$classTotalCompra}'>{$varTotalCompraFmt}</td>
+                    </tr>
+                </tbody>
+            </table>";
+
+
+        $graficoSrc = self::gerarGraficoBase64($labels, $fatValues, $compraValues);
+
+        // Adiciona o gráfico ao HTML
+        $html .= "<center><div style='text-align: center;'>
+            <h3 style='margin-bottom: 10px;'>Comparativo Gráfico: Faturamento vs Compras</h3>
+            <img src='{$graficoSrc}' style='max-width: 100%; height: auto;' />
+        </div></center>";
+
+        $html .= "<center><h3 style='margin-top: 40px;'>Notas Detalhadas por Loja</h3></center>";
+
+        foreach ($comprasAtual as $loja) {
+            $nomeLoja = strtoupper($loja['nomeLoja']);
+            $notas = $loja['notas'] ?? [];
+
+            if (empty($notas)) continue;
+
+            // Agrupa por fornecedor
+            $agrupado = [];
+            $totalLoja = 0;
+
+            foreach ($notas as $nota) {
+                $fornecedor = $nota['fornecedor'];
+                $valor = (float)($nota['valor_total'] ?? 0);
+                $totalLoja += $valor;
+
+                if (!isset($agrupado[$fornecedor])) {
+                    $agrupado[$fornecedor] = ['total' => 0, 'qtd' => 0];
+                }
+
+                $agrupado[$fornecedor]['total'] += $valor;
+                $agrupado[$fornecedor]['qtd'] += 1;
+            }
+
+            $html .= "<h4 style='margin-bottom: 8px; margin-top: 24px;'>$nomeLoja</h4>";
+            $html .= "
+    <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;'>
+        <thead>
+            <tr style='border-bottom: 1px solid #000; background-color: #f9f9f9;'>
+                <th style='text-align: left; padding: 6px;'>Fornecedor</th>
+                <th style='text-align: center; padding: 6px;'>Notas</th>
+                <th style='text-align: right; padding: 6px;'>Valor</th>
+                <th style='text-align: right; padding: 6px;'>%</th>
+            </tr>
+        </thead>
+        <tbody>";
+
+            foreach ($agrupado as $fornecedor => $info) {
+                $valorFmt = 'R$ ' . number_format($info['total'], 2, ',', '.');
+                $percentual = $totalLoja > 0 ? ($info['total'] / $totalLoja * 100) : 0;
+                $percentualFmt = number_format($percentual, 2, ',', '.') . '%';
+                $qtdFmt = $info['qtd'];
+
+                $html .= "
+        <tr>
+            <td style='padding: 6px;'>$fornecedor</td>
+            <td style='text-align: center;'>$qtdFmt</td>
+            <td style='text-align: right;'>$valorFmt</td>
+            <td style='text-align: right;'>$percentualFmt</td>
+        </tr>";
+            }
+
+            $html .= "</tbody></table>";
+        }
+
+
+        $html .= "<p style='text-align: right; font-size: 12px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
+        $html .= "</div>";
+
+        return $html;
+    }
+
+
+
     private static function gerarHtmlConsolidadoGrupo(
         DateTimeInterface $inicioAtual,
         DateTimeInterface $fimAtual,
@@ -297,6 +615,10 @@ class DashboardController
         $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
         $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
 
+        // Buscar compras
+        $comprasAtual = self::generateNotasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $comprasAnterior = self::generateNotasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
         if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
             return ['success' => false, 'message' => 'Erro ao buscar dados das semanas.'];
         }
@@ -359,35 +681,46 @@ class DashboardController
 
 
 
-            $html .= self::gerarHtmlComparativoLoja(
-                $dadosLojaAtual['nomeLoja'],
-                $inicioAtual, $fimAtual,
-                $inicioAnterior, $fimAnterior,
-                $dadosLojaAtual,
-                $dadosLojaAnterior,
-                $ranking,
-                $mvAnterior[$lojaId] ?? [],
-                $mvAtual[$lojaId] ?? []
-            );
+//            $html .= self::gerarHtmlComparativoLoja(
+//                $dadosLojaAtual['nomeLoja'],
+//                $inicioAtual, $fimAtual,
+//                $inicioAnterior, $fimAnterior,
+//                $dadosLojaAtual,
+//                $dadosLojaAnterior,
+//                $ranking,
+//                $mvAnterior[$lojaId] ?? [],
+//                $mvAtual[$lojaId] ?? []
+//            );
 
         }
 
-        // Página Consolidado Geral
-        $html .= self::gerarHtmlConsolidadoGrupo(
-            $inicioAtual,
-            $fimAtual,
-            $inicioAnterior,
-            $fimAnterior,
+//        // Página Consolidado Geral
+//        $html .= self::gerarHtmlConsolidadoGrupo(
+//            $inicioAtual,
+//            $fimAtual,
+//            $inicioAnterior,
+//            $fimAnterior,
+//            $resumoAtual['data'],
+//            $resumoAnterior['data'],
+//            $rankingsPorLoja,
+//            $mvAnterior,
+//            $mvAtual
+//        );
+
+        // Página Consolidado Compras
+        $html .= self::gerarHtmlComparativoComprasPorLoja(
+            $inicioAtual, $fimAtual,
+            $inicioAnterior, $fimAnterior,
             $resumoAtual['data'],
             $resumoAnterior['data'],
-            $rankingsPorLoja,
-            $mvAnterior,
-            $mvAtual
+            $comprasAtual['data'],
+            $comprasAnterior['data']
         );
 
         // Gerar PDF
         $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
-        $dompdf->loadHtml('<html><body>' . $html . '</body></html>');
+
+        $dompdf->loadHtml('<html><head><meta charset="UTF-8"></head><body>' . $html . '</body></html>');
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
@@ -1579,6 +1912,173 @@ class DashboardController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
+
+    public static function generateNotasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $saida = [];
+
+            foreach ($lojas as $loja) {
+                $unitId = $loja['system_unit_id'];
+
+                $stmt = $pdo->prepare("
+                SELECT 
+                    *
+                FROM nota_fiscal_entrada
+                WHERE system_unit_id = :unitId
+                  AND data_emissao BETWEEN :inicio AND :fim
+                ORDER BY fornecedor DESC
+            ");
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim' => $dt_fim
+                ]);
+
+                $notas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $saida[] = [
+                    'lojaId' => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'notas' => $notas
+                ];
+            }
+
+            return ['success' => true, 'data' => $saida];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    public static function generateComprasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $saida = [];
+
+            foreach ($lojas as $loja) {
+                $unitId = $loja['system_unit_id'];
+
+                // Agrupa itens por produto
+                $stmt = $pdo->prepare("
+                SELECT 
+                    m.produto AS codigo,
+                    SUM(m.quantidade) AS quantidade_total,
+                    SUM(m.valor) AS valor_total
+                FROM movimentacao m
+                WHERE m.system_unit_id = :unitId
+                  AND m.tipo = 'c'
+                  AND m.tipo_mov = 'entrada'
+                  AND m.data_emissao BETWEEN :inicio AND :fim
+                GROUP BY m.produto
+            ");
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim' => $dt_fim
+                ]);
+
+                $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if (empty($itens)) continue;
+
+                // Mapeia produtos da loja
+                $codigos = array_column($itens, 'codigo');
+                $placeholders = implode(',', array_fill(0, count($codigos), '?'));
+
+                $stmtProd = $pdo->prepare("
+                SELECT codigo, nome, und 
+                FROM products 
+                WHERE system_unit_id = ? AND codigo IN ($placeholders)
+            ");
+                $stmtProd->execute(array_merge([$unitId], $codigos));
+
+                $produtosInfo = [];
+                foreach ($stmtProd->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                    $produtosInfo[$p['codigo']] = $p;
+                }
+
+                // Enriquecer cada item com nome e unidade
+                $dados = [];
+                foreach ($itens as $item) {
+                    $codigo = $item['codigo'];
+                    $quantidade = (float)$item['quantidade_total'];
+                    $valorTotal = (float)$item['valor_total'];
+                    $custoMedio = $quantidade > 0 ? $valorTotal / $quantidade : 0;
+
+                    $dados[] = [
+                        'codigo'      => $codigo,
+                        'descricao'   => $produtosInfo[$codigo]['nome'] ?? 'N/D',
+                        'und'         => $produtosInfo[$codigo]['und'] ?? '',
+                        'quantidade'  => round($quantidade, 2),
+                        'valor_total' => round($valorTotal, 2),
+                        'custo_medio' => round($custoMedio, 4)
+                    ];
+                }
+
+                $saida[] = [
+                    'lojaId'   => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'itens'    => $dados
+                ];
+            }
+
+            return ['success' => true, 'data' => $saida];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
+    public static function generateSomaNotasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $saida = [];
+
+            foreach ($lojas as $loja) {
+                $unitId = $loja['system_unit_id'];
+
+                $stmt = $pdo->prepare("
+                SELECT 
+                    COUNT(*) AS total_notas,
+                    SUM(valor_total) AS soma_valor_total
+                FROM nota_fiscal_entrada
+                WHERE system_unit_id = :unitId
+                  AND data_emissao BETWEEN :inicio AND :fim
+            ");
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim' => $dt_fim
+                ]);
+
+                $resumo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $saida[] = [
+                    'lojaId' => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'quantidadeNotas' => (int) ($resumo['total_notas'] ?? 0),
+                    'valorTotal' => (float) ($resumo['soma_valor_total'] ?? 0),
+                ];
+            }
+
+            return ['success' => true, 'data' => $saida];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
+
+
 
 
 }

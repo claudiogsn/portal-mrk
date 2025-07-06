@@ -279,9 +279,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            case 'importComprasCSV':
-                if (isset($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao'])) {
-                    $response = MovimentacaoController::importComprasCSV($requestData['usuario_id'], $requestData['itens'], $requestData['data_importacao']);
+            case 'importCompras':
+                if (isset($requestData['usuario_id'], $requestData['produtos'])) {
+                    $response = MovimentacaoController::importCompras($requestData['usuario_id'], $requestData['produtos']);
                     http_response_code(200);
                 } else {
                     http_response_code(400);
@@ -1022,6 +1022,31 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'generateCmvPorCategoria':
                 if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
                     $response = DashboardController::generateCmvPorCategoria(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+            case 'generateNotasPorGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateNotasPorGrupo(
+                        $requestData['grupoId'],
+                        $requestData['dt_inicio'],
+                        $requestData['dt_fim']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros grupoId, dt_inicio e dt_fim são obrigatórios.'];
+                }
+                break;
+
+            case 'generateComprasPorGrupo':
+                if (isset($requestData['grupoId']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {
+                    $response = DashboardController::generateComprasPorGrupo(
                         $requestData['grupoId'],
                         $requestData['dt_inicio'],
                         $requestData['dt_fim']

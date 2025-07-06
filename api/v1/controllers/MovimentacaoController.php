@@ -861,82 +861,60 @@ class MovimentacaoController
         }
     }
 
-    public static function importComprasCSV(
-        $usuarioId,
-        $produtos,
-        $data_importacao
-    ): array
-    {
+    public static function importCompras($usuarioId, $produtos): array {
         global $pdo;
 
         try {
-            // Inicia uma transação para melhorar a performance
             $pdo->beginTransaction();
 
-            // Mapeia todos os códigos de estabelecimento para system_unit_id
-            $estabelecimentos = array_column($produtos, "estabelecimento");
-            $placeholders = rtrim(
-                str_repeat("?,", count($estabelecimentos)),
-                ","
-            );
-
-            $query = "SELECT custom_code, id as system_unit_id
-                  FROM system_unit 
-                  WHERE custom_code IN ($placeholders)";
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($estabelecimentos);
-
-            $unitMap = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-            // Prepara a query de inserção com atualização em caso de duplicidade
             $insertQuery = "
-        INSERT INTO movimentacao (
-            system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, quantidade, usuario_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE 
-            status = VALUES(status),
-            data = VALUES(data),
-            quantidade = VALUES(quantidade),
-            usuario_id = VALUES(usuario_id)
+            INSERT INTO movimentacao (
+                system_unit_id, status, doc, tipo, tipo_mov, produto, seq,
+                data, data_emissao, data_original, quantidade, valor, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                status = VALUES(status),
+                data = VALUES(data),
+                data_emissao = VALUES(data_emissao),
+                data_original = VALUES(data_original),
+                quantidade = VALUES(quantidade),
+                valor = VALUES(valor),
+                usuario_id = VALUES(usuario_id)
         ";
+
             $insertStmt = $pdo->prepare($insertQuery);
 
             foreach ($produtos as $produto) {
-                $systemUnitId = $unitMap[$produto["estabelecimento"]] ?? null;
-
-                if (!$systemUnitId) {
-                    throw new Exception(
-                        "Estabelecimento não encontrado: {$produto["estabelecimento"]}"
-                    );
-                }
-
-                // Insere ou atualiza a movimentação
                 $insertStmt->execute([
-                    $systemUnitId,
-                    1, // Status = Concluído
+                    $produto["system_unit_id"],
+                    1,
                     $produto["doc"],
-                    $produto["tipo"],
-                    "entrada", // Tipo de movimento
+                    "c",
+                    "entrada",
                     $produto["produto"],
                     $produto["seq"],
-                    $data_importacao,
+                    $produto["data_entrada"],
+                    $produto["data_emissao"] ?? $produto["data_entrada"],
+                    $produto["data_entrada"],
                     $produto["qtde"],
-                    $usuarioId,
+                    $produto["valor"],
+                    $usuarioId
                 ]);
             }
 
-            // Confirma a transação
             $pdo->commit();
+
             return [
                 "success" => true,
-                "message" =>
-                    "Movimentações salvas e estoque atualizado com sucesso!",
+                "message" => "Movimentações salvas com sucesso."
             ];
         } catch (Exception $e) {
             $pdo->rollBack();
             return ["success" => false, "message" => $e->getMessage()];
         }
     }
+
+
 
     public static function importMovBySales($systemUnitId, $data): string
     // NÃO USADA
