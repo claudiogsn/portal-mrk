@@ -183,9 +183,9 @@
   <menuitem label="_t{Administration}">
     <icon>fas:home fa-fw</icon>
     <menu>
-      <menuitem label="Dashboard">
-        <action>SystemAdministrationDashboard</action>
-        <icon>fas:tachometer-alt fa-fw</icon>
+      <menuitem label="Disparos Whatsapp">
+        <action>ListarContatos</action>
+        <icon>fab fa:whatsapp fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Programs}">
         <action>SystemProgramList</action>
@@ -199,10 +199,6 @@
         <action>GrupoEstabelecimento</action>
         <icon>fas:university fa-fw</icon>
       </menuitem>
-      <menuitem label="_t{Roles}">
-        <action>SystemRoleList</action>
-        <icon>fas:user-tag fa-fw</icon>
-      </menuitem>
       <menuitem label="_t{Users}">
         <action>SystemUserList</action>
         <icon>fas:user fa-fw</icon>
@@ -211,37 +207,13 @@
         <action>SystemGroupList</action>
         <icon>fas:users fa-fw</icon>
       </menuitem>
-      <menuitem label="_t{Contacts}">
-        <action>SystemContactsList</action>
-        <icon>far:address-card fa-fw</icon>
-      </menuitem>
-      <menuitem label="_t{Database explorer}">
-        <action>SystemDatabaseExplorer</action>
-        <icon>fas:database fa-fw</icon>
-      </menuitem>
-      <menuitem label="_t{SQL Panel}">
-        <action>SystemSQLPanel</action>
-        <icon>fas:table fa-fw</icon>
-      </menuitem>
       <menuitem label="_t{Menu editor}">
         <action>SystemMenuEditor</action>
         <icon>far:edit fa-fw</icon>
       </menuitem>
-      <menuitem label="_t{Files diff}">
-        <action>SystemFilesDiff</action>
-        <icon>fas:file-medical-alt fa-fw</icon>
-      </menuitem>
-      <menuitem label="PHP Info">
-        <action>SystemPHPInfoView</action>
-        <icon>fas:info-circle fa-fw</icon>
-      </menuitem>
       <menuitem label="System Information">
         <action>SystemInformationView</action>
         <icon>fas:desktop fa-fw</icon>
-      </menuitem>
-      <menuitem label="_t{Preferences}">
-        <action>SystemPreferenceForm#method=onEdit</action>
-        <icon>fas:cog fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
