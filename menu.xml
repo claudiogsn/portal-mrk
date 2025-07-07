@@ -185,11 +185,11 @@
     <menu>
       <menuitem label="Automação">
         <action>ListarDisparos</action>
-        <icon>fas fa-robot fa-fw</icon>
+        <icon>fas:robot fa-fw</icon>
       </menuitem>
       <menuitem label="Disparos Whatsapp">
         <action>ListarContatos</action>
-        <icon>fas:rocket fa-fw</icon>
+        <icon>fas:comment-dots fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Programs}">
         <action>SystemProgramList</action>
