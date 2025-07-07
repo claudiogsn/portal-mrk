@@ -110,17 +110,18 @@
     </div>
 </div>
 <div class="modal fade" id="modalLogsRealtime" tabindex="-1" role="dialog" aria-labelledby="logsModalLabel">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
-            <div class="modal-header">
+            <div class="modal-header d-flex justify-content-between align-items-center w-100">
                 <h4 class="modal-title" id="logsModalLabel">Logs em Tempo Real</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                <div id="contadorLogs" class="text-muted small ml-3" style="min-width: 250px;"></div>
+                <button type="button" class="close ml-2" data-dismiss="modal" aria-label="Fechar">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped table-bordered mb-0">
+                    <table class="table table-striped table-hover mb-0">
                         <thead class="bg-dark text-white">
                         <tr>
                             <th style="width: 180px;">Horário</th>
@@ -131,11 +132,11 @@
                         <tbody id="logsTabela"></tbody>
                     </table>
                 </div>
-                <div id="contadorLogs" class="p-2 text-right text-muted" style="font-size: 12px;"></div>
             </div>
         </div>
     </div>
 </div>
+
 
 
 
@@ -156,7 +157,6 @@
 
         $('#filtroDisparo').on('input', filtrarDisparos);
     });
-
     let intervaloLogs = null;
     let logsAntigos = new Set();
 
@@ -175,24 +175,33 @@
             .then(response => {
                 const todosLogs = response.data;
                 let novos = 0;
+                let htmlNovo = '';
 
                 if (Array.isArray(todosLogs)) {
                     todosLogs.forEach(logStr => {
                         if (!logsAntigos.has(logStr)) {
                             logsAntigos.add(logStr);
                             const row = formatarLogComoLinha(logStr);
-                            if (row) $('#logsTabela').append(row);
+                            if (row) htmlNovo = row + htmlNovo;
                             novos++;
                         }
                     });
 
-                    $('#contadorLogs').text(`${novos} novo(s) log(s) carregado(s) às ${new Date().toLocaleTimeString()}`);
+                    if (htmlNovo) {
+                        $('#logsTabela').prepend(htmlNovo);
+                    }
+
+                    const agora = new Date();
+                    const hora = agora.getHours().toString().padStart(2, '0');
+                    const min = agora.getMinutes().toString().padStart(2, '0');
+                    const seg = agora.getSeconds().toString().padStart(2, '0');
+                    $('#contadorLogs').text(`${novos} novo(s) log(s) carregado(s) às ${hora}:${min}:${seg}`);
                 } else {
-                    $('#logsTabela').append(`<tr><td colspan="3">⚠️ Formato inesperado de resposta</td></tr>`);
+                    $('#logsTabela').prepend(`<tr><td colspan="3">⚠️ Formato inesperado de resposta</td></tr>`);
                 }
             })
             .catch(() => {
-                $('#logsTabela').append(`<tr><td colspan="3">❌ Erro ao buscar logs</td></tr>`);
+                $('#logsTabela').prepend(`<tr><td colspan="3">❌ Erro ao buscar logs</td></tr>`);
             });
     }
 
@@ -207,9 +216,10 @@
             <td>${mensagem}</td>
         </tr>`;
         } else {
-            return `<tr><td colspan="3">${logStr}</td></tr>`; // fallback para formato inesperado
+            return `<tr><td colspan="3">${logStr}</td></tr>`;
         }
     }
+
 
 
 
