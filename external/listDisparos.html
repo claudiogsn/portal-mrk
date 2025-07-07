@@ -118,12 +118,25 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <pre id="logsConteudo" style="background: #111; color: #0f0; padding: 10px; font-size: 12px;"></pre>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered mb-0">
+                        <thead class="bg-dark text-white">
+                        <tr>
+                            <th style="width: 180px;">Horário</th>
+                            <th>Fonte</th>
+                            <th>Mensagem</th>
+                        </tr>
+                        </thead>
+                        <tbody id="logsTabela"></tbody>
+                    </table>
+                </div>
+                <div id="contadorLogs" class="p-2 text-right text-muted" style="font-size: 12px;"></div>
             </div>
         </div>
     </div>
 </div>
+
 
 
 <script>
@@ -145,14 +158,12 @@
     });
 
     let intervaloLogs = null;
+    let logsAntigos = new Set();
 
     $('#btnLogsRealtime').on('click', function () {
         $('#modalLogsRealtime').modal('show');
         carregarLogsEmTempoReal();
-
-        intervaloLogs = setInterval(() => {
-            carregarLogsEmTempoReal();
-        }, 10000); // a cada 10s
+        intervaloLogs = setInterval(carregarLogsEmTempoReal, 10000);
     });
 
     $('#modalLogsRealtime').on('hidden.bs.modal', function () {
@@ -162,17 +173,44 @@
     function carregarLogsEmTempoReal() {
         axios.get('https://portal.mrksolucoes.com.br/jobs/stdout')
             .then(response => {
-                const logs = response.data;
-                if (Array.isArray(logs)) {
-                    $('#logsConteudo').text(logs.join('\n'));
+                const todosLogs = response.data;
+                let novos = 0;
+
+                if (Array.isArray(todosLogs)) {
+                    todosLogs.forEach(logStr => {
+                        if (!logsAntigos.has(logStr)) {
+                            logsAntigos.add(logStr);
+                            const row = formatarLogComoLinha(logStr);
+                            if (row) $('#logsTabela').append(row);
+                            novos++;
+                        }
+                    });
+
+                    $('#contadorLogs').text(`${novos} novo(s) log(s) carregado(s) às ${new Date().toLocaleTimeString()}`);
                 } else {
-                    $('#logsConteudo').text('⚠️ Formato inesperado de resposta.');
+                    $('#logsTabela').append(`<tr><td colspan="3">⚠️ Formato inesperado de resposta</td></tr>`);
                 }
             })
             .catch(() => {
-                $('#logsConteudo').text('❌ Erro ao buscar logs.');
+                $('#logsTabela').append(`<tr><td colspan="3">❌ Erro ao buscar logs</td></tr>`);
             });
     }
+
+    function formatarLogComoLinha(logStr) {
+        const regex = /^\[(.*?)\] \[(.*?)\] - (.*)$/;
+        const match = logStr.match(regex);
+        if (match) {
+            const [, horario, fonte, mensagem] = match;
+            return `<tr>
+            <td style="white-space: nowrap;">${horario}</td>
+            <td>${fonte}</td>
+            <td>${mensagem}</td>
+        </tr>`;
+        } else {
+            return `<tr><td colspan="3">${logStr}</td></tr>`; // fallback para formato inesperado
+        }
+    }
+
 
 
     async function listarDisparos() {
