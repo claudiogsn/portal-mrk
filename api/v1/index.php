@@ -1792,6 +1792,47 @@ if (isset($data['method']) && isset($data['data'])) {
                 http_response_code(200);
                 break;
 
+            // ===================== DISPAROS =====================
+            case 'createOrUpdateDisparo':
+                $response = DisparosController::createOrUpdateDisparo($requestData);
+                break;
+
+            case 'toggleDisparoAtivo':
+                if (isset($requestData['id'])) {
+                    $response = DisparosController::toggleDisparoAtivo($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
+            case 'getDisparoById':
+                if (isset($requestData['id'])) {
+                    $response = DisparosController::getDisparoById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
+            case 'listAllDisparos':
+                $response = DisparosController::listAllDisparos();
+                break;
+
+// ===================== LOGS DE DISPAROS =====================
+            case 'listDisparosLogs':
+                $response = DisparosController::listDisparosLogs();
+                break;
+
+            case 'listDisparosLogsByDisparo':
+                if (isset($requestData['id'])) {
+                    $response = DisparosController::listDisparosLogsByDisparo($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
 
             default:
                 http_response_code(405);

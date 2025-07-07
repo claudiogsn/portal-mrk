@@ -163,7 +163,7 @@ class DisparosController
     {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT id, nome FROM disparos WHERE ativo = 1 ORDER BY nome ASC");
+        $stmt = $pdo->prepare("SELECT id, nome FROM disparos WHERE ativo = 1 and whatsapp = 1 ORDER BY nome ASC");
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -260,4 +260,126 @@ class DisparosController
             ':depois' => $dados_novos ? json_encode($dados_novos) : null
         ]);
     }
+
+    // ===================== DISPAROS =====================
+
+    public static function createOrUpdateDisparo($data)
+    {
+        global $pdo;
+
+        $sql = "
+        INSERT INTO disparos (id, nome, tipo_recorrencia, cron_expr, metodo, whatsapp, ativo)
+        VALUES (:id, :nome, :tipo_recorrencia, :cron_expr, :metodo, :whatsapp, :ativo)
+        ON DUPLICATE KEY UPDATE
+            nome = VALUES(nome),
+            tipo_recorrencia = VALUES(tipo_recorrencia),
+            cron_expr = VALUES(cron_expr),
+            metodo = VALUES(metodo),
+            whatsapp = VALUES(whatsapp),
+            ativo = VALUES(ativo),
+            updated_at = CURRENT_TIMESTAMP
+    ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':id' => $data['id'] ?? null,
+            ':nome' => $data['nome'],
+            ':tipo_recorrencia' => $data['tipo_recorrencia'],
+            ':cron_expr' => $data['cron_expr'],
+            ':metodo' => $data['metodo'],
+            ':whatsapp' => $data['whatsapp'] ?? 0,
+            ':ativo' => $data['ativo'] ?? 1,
+        ]);
+
+        return ['success' => true, 'message' => 'Disparo salvo com sucesso.'];
+    }
+
+    public static function toggleDisparoAtivo($id)
+    {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT ativo FROM disparos WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $disparo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$disparo) {
+            return ['success' => false, 'message' => 'Disparo não encontrado'];
+        }
+
+        $novoStatus = $disparo['ativo'] ? 0 : 1;
+
+        $stmt = $pdo->prepare("UPDATE disparos SET ativo = :ativo WHERE id = :id");
+        $stmt->execute([':ativo' => $novoStatus, ':id' => $id]);
+
+        return ['success' => true, 'message' => 'Status do disparo atualizado.', 'ativo' => $novoStatus];
+    }
+
+    public static function getDisparoById($id)
+    {
+        global $pdo;
+
+        $stmt = $pdo->prepare("SELECT * FROM disparos WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public static function listAllDisparos()
+    {
+        global $pdo;
+
+        $stmt = $pdo->query("SELECT * FROM disparos ORDER BY nome ASC");
+        return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public static function listDisparosLogs()
+    {
+        global $pdo;
+
+        $sql = "
+        SELECT 
+            l.id,
+            l.disparo_id,
+            d.nome AS nome_disparo,
+            l.status,
+            l.mensagem,
+            l.criado_em
+        FROM disparos_logs l
+        LEFT JOIN disparos d ON d.id = l.disparo_id
+        ORDER BY l.criado_em DESC
+        LIMIT 100
+    ";
+
+        $stmt = $pdo->query($sql);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return ['success' => true, 'logs' => $logs];
+    }
+
+    public static function listDisparosLogsByDisparo($id_disparo)
+    {
+        global $pdo;
+
+        $sql = "
+        SELECT 
+            l.id,
+            l.disparo_id,
+            d.nome AS nome_disparo,
+            l.status,
+            l.mensagem,
+            l.criado_em
+        FROM disparos_logs l
+        LEFT JOIN disparos d ON d.id = l.disparo_id
+        WHERE l.disparo_id = :id_disparo
+        ORDER BY l.criado_em DESC
+    ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':id_disparo' => $id_disparo]);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return ['success' => true, 'logs' => $logs];
+    }
+
+
 }

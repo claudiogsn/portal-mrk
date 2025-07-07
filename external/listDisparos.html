@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciamento de Disparos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header"><h2>Gerenciamento de Disparos</h2></div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-6">
+                    <input type="text" id="filtroDisparo" class="form-control" placeholder="Filtrar por nome ou método">
+                </div>
+
+                <div class="col-md-6 text-right">
+                    <button id="btnLogsRealtime" class="btn btn-warning waves-effect"> Logs </button>
+                </div>
+
+
+                <div class="col-md-6 text-right">
+                    <button class="btn btn-success" id="btnNovoDisparo">Novo Disparo</button>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabela-disparos">
+                    <thead>
+                    <tr>
+                        <th style="width: 40px;"></th> <!-- editar -->
+                        <th style="width: 40px;"></th> <!-- ativar/inativar -->
+                        <th>Nome</th>
+                        <th>Método</th>
+                        <th>Cron</th>
+                        <th>Tipo</th>
+                        <th>WhatsApp</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Disparo -->
+<div class="modal fade" id="modalDisparo" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="formDisparo" onsubmit="return false">
+            <div class="modal-content">
+                <div class="modal-header"><h4 class="modal-title">Cadastro de Disparo</h4></div>
+                <div class="modal-body">
+                    <input type="hidden" id="disparoId">
+                    <label>Nome</label>
+                    <input type="text" class="form-control" id="disparoNome" required>
+
+                    <label>Método</label>
+                    <input type="text" class="form-control" id="disparoMetodo" required>
+
+                    <label>Expressão Cron</label>
+                    <input type="text" class="form-control" id="disparoCron" required placeholder="Ex: */5 * * * *">
+
+                    <label>Tipo de Recorrência</label>
+                    <select class="form-control" id="disparoTipo">
+                        <option value="diario">Diário</option>
+                        <option value="semanal">Semanal</option>
+                        <option value="mensal">Mensal</option>
+                        <option value="custom">Custom</option>
+                    </select>
+
+                    <label>WhatsApp?</label>
+                    <select class="form-control" id="disparoWhatsapp">
+                        <option value="0">Não</option>
+                        <option value="1">Sim</option>
+                    </select>
+
+                    <label>Ativo?</label>
+                    <select class="form-control" id="disparoAtivo">
+                        <option value="1">Sim</option>
+                        <option value="0">Não</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="salvarDisparo()">Salvar</button>
+                    <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="modal fade" id="modalLogsRealtime" tabindex="-1" role="dialog" aria-labelledby="logsModalLabel">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h4 class="modal-title" id="logsModalLabel">Logs em Tempo Real</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <pre id="logsConteudo" style="background: #111; color: #0f0; padding: 10px; font-size: 12px;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+
+    $(document).ready(() => {
+        listarDisparos();
+
+        $('#btnNovoDisparo').click(() => {
+            $('#formDisparo')[0].reset();
+            $('#disparoId').val('');
+            $('#modalDisparo').modal('show');
+        });
+
+        $('#filtroDisparo').on('input', filtrarDisparos);
+    });
+
+    let intervaloLogs = null;
+
+    $('#btnLogsRealtime').on('click', function () {
+        $('#modalLogsRealtime').modal('show');
+        carregarLogsEmTempoReal();
+
+        intervaloLogs = setInterval(() => {
+            carregarLogsEmTempoReal();
+        }, 10000); // a cada 10s
+    });
+
+    $('#modalLogsRealtime').on('hidden.bs.modal', function () {
+        clearInterval(intervaloLogs);
+    });
+
+    function carregarLogsEmTempoReal() {
+        axios.get('https://portal.mrksolucoes.com.br/jobs/stdout')
+            .then(response => {
+                const logs = response.data;
+                if (Array.isArray(logs)) {
+                    $('#logsConteudo').text(logs.join('\n'));
+                } else {
+                    $('#logsConteudo').text('⚠️ Formato inesperado de resposta.');
+                }
+            })
+            .catch(() => {
+                $('#logsConteudo').text('❌ Erro ao buscar logs.');
+            });
+    }
+
+
+    async function listarDisparos() {
+        const res = await axios.post(baseUrl, {
+            method: 'listAllDisparos',
+            token,
+            data: {}
+        });
+
+        const tbody = $('#tabela-disparos tbody');
+        tbody.empty();
+
+        res.data.data.forEach(d => {
+            const status = d.ativo == 1
+                ? '<span class="label label-success">Ativo</span>'
+                : '<span class="label label-danger">Inativo</span>';
+            const whats = d.whatsapp == 1 ? 'Sim' : 'Não';
+
+            tbody.append(`
+                <tr data-nome="${d.nome.toLowerCase()}" data-metodo="${d.metodo.toLowerCase()}">
+                    <td class="text-center">
+                        <a href="#" onclick='editarDisparo(${JSON.stringify(d)})'><i class="fa fa-edit blue"></i></a>
+                    </td>
+                    <td class="text-center">
+                        <a href="#" onclick='toggleDisparo(${d.id}, ${d.ativo})'><i class="fa fa-power-off orange"></i></a>
+                    </td>
+                    <td>${d.nome}</td>
+                    <td>${d.metodo}</td>
+                    <td>${d.cron_expr}</td>
+                    <td>${d.tipo_recorrencia}</td>
+                    <td>${whats}</td>
+                    <td>${status}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function filtrarDisparos() {
+        const termo = $('#filtroDisparo').val().toLowerCase();
+        $('#tabela-disparos tbody tr').each(function () {
+            const nome = $(this).data('nome') || '';
+            const metodo = $(this).data('metodo') || '';
+            const match = nome.includes(termo) || metodo.includes(termo);
+            $(this).toggle(match);
+        });
+    }
+
+    function editarDisparo(disparo) {
+        $('#disparoId').val(disparo.id);
+        $('#disparoNome').val(disparo.nome);
+        $('#disparoMetodo').val(disparo.metodo);
+        $('#disparoCron').val(disparo.cron_expr);
+        $('#disparoTipo').val(disparo.tipo_recorrencia);
+        $('#disparoWhatsapp').val(disparo.whatsapp);
+        $('#disparoAtivo').val(disparo.ativo);
+        $('#modalDisparo').modal('show');
+    }
+
+    async function toggleDisparo(id, atual) {
+        const confirm = await Swal.fire({
+            title: atual ? 'Desativar disparo?' : 'Ativar disparo?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirm.isConfirmed) return;
+
+        await axios.post(baseUrl, {
+            method: 'toggleDisparoAtivo',
+            token,
+            data: { id }
+        });
+
+        listarDisparos();
+    }
+
+    async function salvarDisparo() {
+        const data = {
+            id: $('#disparoId').val(),
+            nome: $('#disparoNome').val(),
+            metodo: $('#disparoMetodo').val(),
+            cron_expr: $('#disparoCron').val(),
+            tipo_recorrencia: $('#disparoTipo').val(),
+            whatsapp: $('#disparoWhatsapp').val(),
+            ativo: $('#disparoAtivo').val()
+        };
+
+        Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+        try {
+            await axios.post(baseUrl, {
+                method: 'createOrUpdateDisparo',
+                token,
+                data
+            });
+
+            Swal.close();
+            $('#modalDisparo').modal('hide');
+            listarDisparos();
+        } catch {
+            Swal.fire('Erro', 'Não foi possível salvar o disparo.', 'error');
+        }
+    }
+</script>
+</body>
+</html>
