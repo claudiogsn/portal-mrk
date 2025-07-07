@@ -185,7 +185,7 @@
     <menu>
       <menuitem label="Disparos Whatsapp">
         <action>ListarContatos</action>
-        <icon>fab fa:whatsapp fa-fw</icon>
+        <icon>fas:rocket fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Programs}">
         <action>SystemProgramList</action>
