@@ -51,7 +51,8 @@ if (isset($data['method']) && isset($data['data'])) {
     }
 
     // Métodos que não precisam de autenticação
-    $noAuthMethods = ['ZigUpdateStatics',
+    $noAuthMethods = ['getContatosByDisparo',
+        'ZigUpdateStatics',
         'ZigRegisterBilling',
         'upsertBiSalesZig',
         'getUnitsIntegrationZigBilling',
@@ -1760,6 +1761,15 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getRelacionamentosByContato':
                 if (isset($requestData['id_contato'])) {
                     $response = DisparosController::getRelacionamentosByContato($requestData['id_contato']);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campo obrigatório: id_contato.'];
+                }
+                break;
+            case 'getContatosByDisparo':
+                if (isset($requestData['id_disparo'])) {
+                    $response = DisparosController::getContatosByDisparo($requestData['id_disparo']);
                     http_response_code(200);
                 } else {
                     http_response_code(400);

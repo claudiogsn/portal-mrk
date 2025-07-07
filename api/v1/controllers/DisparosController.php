@@ -180,6 +180,56 @@ class DisparosController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public static function getContatosByDisparo($id_disparo): array
+    {
+        global $pdo;
+
+        try {
+            // Buscar os contatos e grupos vinculados a um disparo específico
+            $stmt = $pdo->prepare("
+            SELECT 
+                c.id AS id_contato,
+                c.nome AS nome_contato,
+                c.telefone,
+                g.id AS id_grupo,
+                g.nome AS nome_grupo
+            FROM disparos_contatos_rel rel
+            JOIN contatos_disparos c ON c.id = rel.id_contato
+            LEFT JOIN grupo_estabelecimento g ON g.id = rel.id_grupo
+            WHERE rel.id_disparo = :id_disparo
+              AND c.ativo = 1
+            ORDER BY c.nome, g.nome
+        ");
+            $stmt->execute([':id_disparo' => $id_disparo]);
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Agrupar grupos por contato
+            $contatos = [];
+            foreach ($resultados as $linha) {
+                $id = $linha['id_contato'];
+                if (!isset($contatos[$id])) {
+                    $contatos[$id] = [
+                        'nome' => $linha['nome_contato'],
+                        'telefone' => $linha['telefone'],
+                        'grupos' => []
+                    ];
+                }
+
+                if ($linha['id_grupo']) {
+                    $contatos[$id]['grupos'][] = [
+                        'id' => $linha['id_grupo'],
+                        'nome' => $linha['nome_grupo']
+                    ];
+                }
+            }
+
+            return ['success' => true, 'data' => array_values($contatos)];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
+        }
+    }
+
+
 
 
     // ===================== LOG INTELIGENTE =====================
