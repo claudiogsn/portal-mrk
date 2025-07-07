@@ -32,6 +32,7 @@ require_once 'controllers/BiController.php';
 require_once 'controllers/ConsolidationEstoqueController.php';
 require_once 'controllers/ProducaoController.php';
 require_once 'controllers/NotaFiscalEntradaController.php';
+require_once 'controllers/DisparosController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -1701,6 +1702,86 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ou data ausente'];
                 }
                 break;
+            case 'salvarContato':
+                if (isset($requestData['nome'], $requestData['telefone'])) {
+                    $response = DisparosController::salvarContato($requestData);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campos obrigatórios: nome, telefone.'];
+                }
+                break;
+
+            case 'toggleContatoAtivo':
+                if (isset($requestData['id'])) {
+                    $response = DisparosController::toggleContatoAtivo($requestData['id']);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campo obrigatório: id.'];
+                }
+                break;
+
+            case 'getContatoById':
+                if (isset($requestData['id'])) {
+                    $response = DisparosController::getContatoById($requestData['id']);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campo obrigatório: id.'];
+                }
+                break;
+
+            case 'getContato':
+                if (isset($requestData['telefone'])) {
+                    $response = DisparosController::getContato($requestData['telefone']);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campo obrigatório: telefone.'];
+                }
+                break;
+
+            case 'listContatos':
+                $response = DisparosController::listContatos();
+                http_response_code(200);
+                break;
+
+            case 'salvarRelacionamentosPorContato':
+                if (isset($requestData['relacionamentos'], $requestData['usuario_id']) && is_array($requestData['relacionamentos'])) {
+                    $response = DisparosController::salvarRelacionamentosPorContato($requestData['relacionamentos'], $requestData['usuario_id']);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campos obrigatórios: relacionamentos (array), usuario_id.'];
+                }
+                break;
+
+            case 'getRelacionamentosByContato':
+                if (isset($requestData['id_contato'])) {
+                    $response = DisparosController::getRelacionamentosByContato($requestData['id_contato']);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = ['status' => 'error', 'message' => 'Campo obrigatório: id_contato.'];
+                }
+                break;
+
+            case 'listRelacionamentos':
+                $response = DisparosController::listRelacionamentos();
+                http_response_code(200);
+                break;
+
+            case 'listarDisparos':
+                $response = DisparosController::listDisparos();
+                http_response_code(200);
+                break;
+
+            case 'listarGrupos':
+                $response = DisparosController::listGrupos();
+                http_response_code(200);
+                break;
+
 
             default:
                 http_response_code(405);

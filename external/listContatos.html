@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Contatos para Disparo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header"><h2>Contatos para Disparo</h2></div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="filtroTexto" class="form-control" placeholder="Filtrar por nome ou telefone">
+                </div>
+                <div class="col-md-4">
+                    <select id="filtroStatus" class="form-control">
+                        <option value="">Todos os status</option>
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                    </select>
+                </div>
+                <div class="col-md-4 text-right">
+                    <button class="btn btn-success" id="btnNovoContato">Novo Contato</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-contatos" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                    <tr>
+                        <th style="width: 28px; padding: 0;" class="text-center"></th> <!-- Editar -->
+                        <th style="width: 28px; padding: 0;" class="text-center"></th> <!-- Ativar/Inativar -->
+                        <th style="width: 28px; padding: 0;" class="text-center"></th> <!-- Ativar/Inativar -->
+                        <th style="text-align: left;">Nome</th>
+                        <th style="text-align: center;">Telefone</th>
+                        <th style="text-align: center;">Ativo</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalContato" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form id="formContato" onsubmit="return false">
+            <div class="modal-content">
+                <div class="modal-header"><h4 class="modal-title">Contato</h4></div>
+                <div class="modal-body">
+                    <input type="hidden" id="contatoId">
+                    <label>Nome</label>
+                    <input type="text" class="form-control" id="contatoNome" required>
+                    <label>Telefone <small>(Ex: 83 99999-9999)</small></label>
+                    <input type="text" class="form-control" id="contatoTelefone" required>
+                    <small id="verificandoTel" class="text-info" style="display:none;">Verificando telefone...</small>
+                    <small id="telDisponivel" class="text-success" style="display:none;">Telefone disponível!</small>
+                    <small id="telDuplicado" class="text-danger" style="display:none;">Telefone já cadastrado!</small>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="btnSalvarContato" disabled>Salvar</button>
+                    <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Relacionamentos -->
+<div class="modal fade" id="modalRelacionamentos" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <form id="formRelacionamentos" onsubmit="return false">
+            <div class="modal-content">
+                <!-- Cabeçalho do Modal -->
+                <div class="modal-header d-flex justify-content-between align-items-center">
+                    <h4 class="modal-title">Adicionar Disparos</h4>
+                    <br>
+                    <button type="button" class="btn btn-sm btn-success" onclick="abrirFormularioAdicionar()">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+
+                <!-- Corpo do Modal -->
+                <div class="modal-body">
+                    <input type="hidden" id="relContatoId">
+
+                    <!-- Tabela de Relacionamentos -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabelaRelacionamentos">
+                            <thead>
+                            <tr>
+                                <th style="width: 40px;"></th>
+                                <th>Disparo</th>
+                                <th>Grupo</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Formulário de Novo Relacionamento -->
+                    <div id="formAdicionarRelacionamento" class="mt-4 p-3 border rounded" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>Disparo</label>
+                                <select class="form-control" id="novoDisparo"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label>Grupos</label>
+                                <select id="selectGruposMultiplos" class="form-control select2" multiple="multiple"></select>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-right">
+                            <button class="btn btn-primary btn-sm" onclick="adicionarRelacionamento()">
+                                <i class="fas fa-check"></i> Adicionar à Lista
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rodapé do Modal -->
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="salvarRelacionamentos()">
+                        Salvar Todos
+                    </button>
+                    <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    const usuarioId = new URLSearchParams(window.location.search).get('user_id') || '';
+
+    let telefoneValido = false;
+    let relacionamentos = [];
+    let gruposDisponiveis = [];
+    let disparosDisponiveis = [];
+
+    $(document).ready(() => {
+        $('#contatoTelefone').mask('00 00000-0000');
+        $('#selectGruposMultiplos').select2({ placeholder: 'Selecione os grupos', width: '100%' });
+
+        listarContatos();
+
+        $('#btnNovoContato').click(() => {
+            $('#contatoId').val('');
+            $('#contatoNome').val('');
+            $('#contatoTelefone').val('');
+            $('#btnSalvarContato').prop('disabled', true);
+            $('#modalContato').modal('show');
+        });
+
+        $('#filtroTexto, #filtroStatus').on('input change', filtrarContatos);
+        $('#contatoTelefone').on('input', verificarTelefoneEmTempoReal);
+
+        $('#btnSalvarContato').click(async () => {
+            const nome = $('#contatoNome').val();
+            const telefoneBruto = $('#contatoTelefone').val();
+            const telefoneSanitizado = '55' + telefoneBruto.replace(/\D/g, '');
+
+            if (!telefoneValido || !nome || !telefoneSanitizado) return;
+
+            const data = { nome, telefone: telefoneSanitizado };
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                await axios.post(baseUrl, {
+                    method: 'salvarContato',
+                    token,
+                    data
+                });
+
+                Swal.close();
+                $('#modalContato').modal('hide');
+                listarContatos();
+            } catch {
+                Swal.fire('Erro', 'Não foi possível salvar o contato.', 'error');
+            }
+        });
+    });
+
+    async function listarContatos() {
+        const res = await axios.post(baseUrl, { method: 'listContatos', token, data: {} });
+        const tbody = $('#tabela-contatos tbody');
+        tbody.empty();
+
+        res.data.contatos.forEach(contato => {
+            const ativo = contato.ativo == 1
+                ? '<span class="label label-success" style="font-size:10pt;">Sim</span>'
+                : '<span class="label label-danger" style="font-size:10pt;">Não</span>';
+
+            tbody.append(`
+                <tr data-nome="${contato.nome.toLowerCase()}" data-telefone="${contato.telefone}" data-ativo="${contato.ativo}">
+                    <td class="text-center">
+                        <a href="#" onclick="editarContato('${contato.telefone}', '${contato.nome}', ${contato.ativo})" title="Editar">
+                            <i class="far fa-edit blue"></i>
+                        </a>
+                    </td>
+                    <td class="text-center">
+                        <a href="#" onclick="abrirRelacionamentos(${contato.id})" title="Relacionamentos">
+                            <i class="fa fa-link green"></i>
+                        </a>
+                    </td>
+                    <td class="text-center">
+                        <a href="#" onclick="toggleAtivo('${contato.id}', ${contato.ativo})" title="${contato.ativo == 1 ? 'Desativar' : 'Ativar'}">
+                            <i class="fa fa-power-off orange"></i>
+                        </a>
+                    </td>
+                    <td>${contato.nome}</td>
+                    <td class="text-center">${formatarTelefone(contato.telefone)}</td>
+                    <td class="text-center">${ativo}</td>
+                </tr>
+            `);
+        });
+    }
+
+    function editarContato(telefone, nome, ativo) {
+        $('#contatoId').val(telefone);
+        $('#contatoNome').val(nome);
+        $('#contatoTelefone').val(formatarTelefone(telefone));
+        $('#btnSalvarContato').prop('disabled', true);
+        $('#modalContato').modal('show');
+        verificarTelefoneEmTempoReal();
+    }
+
+    async function toggleAtivo(id, statusAtual) {
+        const confirm = await Swal.fire({
+            title: statusAtual == 1 ? 'Desativar contato?' : 'Ativar contato?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirm.isConfirmed) return;
+
+        await axios.post(baseUrl, {
+            method: 'toggleContatoAtivo',
+            token,
+            data: { id }
+        });
+
+        listarContatos();
+    }
+
+    function formatarTelefone(tel) {
+        return tel.replace(/^55/, '').replace(/^(\d{2})(\d{5})(\d{4})$/, '$1 $2-$3');
+    }
+
+    async function verificarTelefoneEmTempoReal() {
+        const input = $('#contatoTelefone').val();
+        const numeros = input.replace(/\D/g, '');
+        const telSan = '55' + numeros;
+
+        $('#verificandoTel').show();
+        $('#telDuplicado').hide();
+        $('#telDisponivel').hide();
+        $('#btnSalvarContato').prop('disabled', true);
+        telefoneValido = false;
+
+        if (numeros.length !== 11) {
+            $('#verificandoTel').hide();
+            return;
+        }
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getContato',
+                token,
+                data: { telefone: telSan }
+            });
+
+            const editando = $('#contatoId').val() === telSan;
+
+            if (res.data && res.data.telefone && !editando) {
+                $('#telDuplicado').show();
+            } else {
+                telefoneValido = true;
+                $('#telDisponivel').show();
+            }
+        } catch {}
+
+        $('#verificandoTel').hide();
+        $('#btnSalvarContato').prop('disabled', !telefoneValido);
+    }
+
+    function filtrarContatos() {
+        const texto = $('#filtroTexto').val().toLowerCase();
+        const status = $('#filtroStatus').val();
+
+        $('#tabela-contatos tbody tr').each(function () {
+            const nome = $(this).data('nome') || '';
+            const tel = $(this).data('telefone') || '';
+            const ativo = ($(this).data('ativo') || '').toString();
+
+            const correspondeTexto = nome.includes(texto) || String(tel).includes(texto);
+            const correspondeStatus = status === '' || status === ativo;
+
+            $(this).toggle(correspondeTexto && correspondeStatus);
+        });
+    }
+
+    function abrirFormularioAdicionar() {
+        $('#formAdicionarRelacionamento').slideDown();
+
+        $('#novoDisparo').html('<option value="">Selecione</option>');
+        disparosDisponiveis.forEach(d => {
+            $('#novoDisparo').append(`<option value="${d.id}">${d.nome}</option>`);
+        });
+
+        $('#selectGruposMultiplos').empty();
+        gruposDisponiveis.forEach(g => {
+            $('#selectGruposMultiplos').append(new Option(g.nome, g.id));
+        });
+        $('#selectGruposMultiplos').val(null).trigger('change');
+    }
+
+    function adicionarRelacionamento() {
+        const idDisparo = parseInt($('#novoDisparo').val());
+        const idsGrupo = $('#selectGruposMultiplos').val().map(id => parseInt(id));
+
+        if (!idDisparo || !idsGrupo.length) {
+            Swal.fire('Atenção', 'Selecione um disparo e ao menos um grupo.', 'warning');
+            return;
+        }
+
+        idsGrupo.forEach(idGrupo => {
+            const existe = relacionamentos.some(r => r.id_disparo === idDisparo && r.id_grupo === idGrupo);
+            if (!existe) {
+                relacionamentos.push({ id_disparo: idDisparo, id_grupo: idGrupo });
+            }
+        });
+
+        renderizarTabelaRelacionamentos();
+        $('#formAdicionarRelacionamento').slideUp();
+    }
+
+    function removerRelacionamento(index) {
+        relacionamentos.splice(index, 1);
+        renderizarTabelaRelacionamentos();
+    }
+
+    function renderizarTabelaRelacionamentos() {
+        const tbody = $('#tabelaRelacionamentos tbody');
+        tbody.empty();
+
+        relacionamentos.forEach((rel, i) => {
+            const nomeDisparo = disparosDisponiveis.find(d => d.id === rel.id_disparo)?.nome || '-';
+            const nomeGrupo = gruposDisponiveis.find(g => g.id === rel.id_grupo)?.nome || '-';
+
+            tbody.append(`
+                <tr>
+                    <td class="text-center">
+                        <a href="#" onclick="removerRelacionamento(${i})" title="Remover">
+                            <i class="fa fa-trash red"></i>
+                        </a>
+                    </td>
+                    <td>${nomeDisparo}</td>
+                    <td>${nomeGrupo}</td>
+                </tr>
+            `);
+        });
+    }
+
+    async function abrirRelacionamentos(contatoId) {
+        $('#relContatoId').val(contatoId);
+        $('#formAdicionarRelacionamento').hide();
+
+        const [relRes, gruposRes, disparosRes] = await Promise.all([
+            axios.post(baseUrl, { method: 'getRelacionamentosByContato', token, data: { id_contato: contatoId } }),
+            axios.post(baseUrl, { method: 'listarGrupos', token, data: { usuario_id: usuarioId } }),
+            axios.post(baseUrl, { method: 'listarDisparos', token, data: { usuario_id: usuarioId } })
+        ]);
+
+        gruposDisponiveis = gruposRes.data;
+        disparosDisponiveis = disparosRes.data;
+        relacionamentos = relRes.data.map(r => ({
+            id_disparo: parseInt(r.id_disparo),
+            id_grupo: parseInt(r.id_grupo)
+        }));
+
+        renderizarTabelaRelacionamentos();
+        $('#modalRelacionamentos').modal('show');
+    }
+
+    async function salvarRelacionamentos() {
+        const id_contato = $('#relContatoId').val();
+        const relacionamentosFormatados = relacionamentos.map(rel => ({
+            id_contato: parseInt(id_contato),
+            id_disparo: rel.id_disparo,
+            id_grupo: rel.id_grupo
+        }));
+
+        Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+        try {
+            await axios.post(baseUrl, {
+                method: 'salvarRelacionamentosPorContato',
+                token,
+                data: {
+                    usuario_id: usuarioId,
+                    relacionamentos: relacionamentosFormatados
+                }
+            });
+
+            Swal.close();
+            $('#modalRelacionamentos').modal('hide');
+            Swal.fire('Sucesso', 'Relacionamentos salvos com sucesso!', 'success');
+        } catch {
+            Swal.fire('Erro', 'Falha ao salvar os relacionamentos.', 'error');
+        }
+    }
+</script>
+</body>
+</html>

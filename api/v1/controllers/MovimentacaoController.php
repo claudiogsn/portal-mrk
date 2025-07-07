@@ -853,6 +853,7 @@ class MovimentacaoController
             ];
         } catch (Exception $e) {
             // Rollback em caso de erro
+            // Rollback em caso de erro
             $pdo->rollBack();
             return [
                 "success" => false,

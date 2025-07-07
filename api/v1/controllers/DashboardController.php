@@ -106,7 +106,9 @@ class DashboardController
         array $dadosAtuais,
         array $dadosAnteriores,
         array $comprasAtual,
-        array $comprasAnterior
+        array $comprasAnterior,
+        array $itensAtual,
+        array $itensAnterior
     ): string {
         $labels = [];
         $fatValues = [];
@@ -138,6 +140,7 @@ class DashboardController
             $nome = strtoupper($item['nomeLoja']);
             $mapComprasAnterior[$nome] = array_sum(array_column($item['notas'], 'valor_total'));
         }
+
 
         // Unificar nomes
         $nomesLojas = array_unique(array_merge(
@@ -272,7 +275,7 @@ class DashboardController
             <img src='{$graficoSrc}' style='max-width: 100%; height: auto;' />
         </div></center>";
 
-        $html .= "<center><h3 style='margin-top: 40px;'>Notas Detalhadas por Loja</h3></center>";
+        $html .= "<center><h3 style='margin-top: 40px;'>Compras da semana por fornecedor</h3></center>";
 
         foreach ($comprasAtual as $loja) {
             $nomeLoja = strtoupper($loja['nomeLoja']);
@@ -280,7 +283,6 @@ class DashboardController
 
             if (empty($notas)) continue;
 
-            // Agrupa por fornecedor
             $agrupado = [];
             $totalLoja = 0;
 
@@ -297,23 +299,31 @@ class DashboardController
                 $agrupado[$fornecedor]['qtd'] += 1;
             }
 
+            // Adiciona campo percentual para ordenação
+            foreach ($agrupado as $fornecedor => &$info) {
+                $info['percentual'] = $totalLoja > 0 ? ($info['total'] / $totalLoja * 100) : 0;
+            }
+            unset($info);
+
+            // Ordena por percentual decrescente
+            uasort($agrupado, fn($a, $b) => $b['percentual'] <=> $a['percentual']);
+
             $html .= "<h4 style='margin-bottom: 8px; margin-top: 24px;'>$nomeLoja</h4>";
             $html .= "
-    <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;'>
-        <thead>
-            <tr style='border-bottom: 1px solid #000; background-color: #f9f9f9;'>
-                <th style='text-align: left; padding: 6px;'>Fornecedor</th>
-                <th style='text-align: center; padding: 6px;'>Notas</th>
-                <th style='text-align: right; padding: 6px;'>Valor</th>
-                <th style='text-align: right; padding: 6px;'>%</th>
-            </tr>
-        </thead>
-        <tbody>";
+        <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;'>
+            <thead>
+                <tr style='border-bottom: 1px solid #000; background-color: #f9f9f9;'>
+                    <th style='text-align: left; padding: 6px;'>Fornecedor</th>
+                    <th style='text-align: center; padding: 6px;'>Notas</th>
+                    <th style='text-align: right; padding: 6px;'>Valor</th>
+                    <th style='text-align: right; padding: 6px;'>%</th>
+                </tr>
+            </thead>
+            <tbody>";
 
             foreach ($agrupado as $fornecedor => $info) {
                 $valorFmt = 'R$ ' . number_format($info['total'], 2, ',', '.');
-                $percentual = $totalLoja > 0 ? ($info['total'] / $totalLoja * 100) : 0;
-                $percentualFmt = number_format($percentual, 2, ',', '.') . '%';
+                $percentualFmt = number_format($info['percentual'], 2, ',', '.') . '%';
                 $qtdFmt = $info['qtd'];
 
                 $html .= "
@@ -327,6 +337,67 @@ class DashboardController
 
             $html .= "</tbody></table>";
         }
+
+
+        $html .= "<center><h3 style='margin-top: 40px;'>Lista de Compras por Insumo</h3></center>";
+
+        foreach ($itensAtual as $loja) {
+            $nomeLoja = strtoupper($loja['nomeLoja']);
+            $itens = $loja['itens'] ?? [];
+
+            if (empty($itens)) continue;
+
+            $totalLoja = array_sum(array_column($itens, 'valor_total'));
+
+            // Adiciona o campo percentual ao array
+            foreach ($itens as &$item) {
+                $valor = (float)($item['valor_total'] ?? 0);
+                $item['percentual'] = $totalLoja > 0 ? ($valor / $totalLoja * 100) : 0;
+            }
+            unset($item);
+
+            // Ordena por percentual desc
+            usort($itens, fn($a, $b) => $b['percentual'] <=> $a['percentual']);
+
+            $html .= "<h4 style='margin-bottom: 8px; margin-top: 24px;'>$nomeLoja</h4>";
+            $html .= "
+        <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;'>
+            <thead>
+                <tr style='border-bottom: 1px solid #000; background-color: #f9f9f9;'>
+                    <th style='text-align: left; padding: 6px;'>Und.</th>
+                    <th style='text-align: left; padding: 6px;'>Descrição</th>
+                    <th style='text-align: right; padding: 6px;'>Qtde.</th>
+                    <th style='text-align: right; padding: 6px;'>Custo Médio</th>
+                    <th style='text-align: right; padding: 6px;'>Valor Total (R$)</th>
+                    <th style='text-align: right; padding: 6px;'>%</th>
+                </tr>
+            </thead>
+            <tbody>";
+
+            foreach ($itens as $item) {
+                $und         = $item['und'] ?? '';
+                $desc        = $item['descricao'] ?? '';
+                $qtd         = number_format($item['quantidade'], 2, ',', '.');
+                $custoMedio  = 'R$ ' . number_format($item['custo_medio'], 2, ',', '.');
+                $valor       = (float)($item['valor_total'] ?? 0);
+                $valorFmt    = 'R$ ' . number_format($valor, 2, ',', '.');
+                $percentualFmt = number_format($item['percentual'], 2, ',', '.') . '%';
+
+                $html .= "
+        <tr>
+            <td style='padding: 6px;'>$und</td>
+            <td style='padding: 6px;'>$desc</td>
+            <td style='text-align: right;'>$qtd</td>
+            <td style='text-align: right;'>$custoMedio</td>
+            <td style='text-align: right;'>$valorFmt</td>
+            <td style='text-align: right;'>$percentualFmt</td>
+        </tr>";
+            }
+
+            $html .= "</tbody></table>";
+        }
+
+
 
 
         $html .= "<p style='text-align: right; font-size: 12px; color: #777;'>Gerado em " . date('d/m/Y H:i') . "</p>";
@@ -619,6 +690,10 @@ class DashboardController
         $comprasAtual = self::generateNotasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
         $comprasAnterior = self::generateNotasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
 
+        $itensAtual = self::generateComprasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $itensAnterior = self::generateComprasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+
         if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
             return ['success' => false, 'message' => 'Erro ao buscar dados das semanas.'];
         }
@@ -714,7 +789,9 @@ class DashboardController
             $resumoAtual['data'],
             $resumoAnterior['data'],
             $comprasAtual['data'],
-            $comprasAnterior['data']
+            $comprasAnterior['data'],
+            $itensAtual['data'],
+            $itensAnterior['data']
         );
 
         // Gerar PDF
