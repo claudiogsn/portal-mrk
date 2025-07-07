@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Gerenciamento de Disparos</title>
+    <title>Gerenciamento de Automações</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
@@ -12,21 +12,20 @@
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- jQuery UI (necessário para jqCron funcionar) -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <!-- jqCron (direto do GitHub Pages do autor) -->
+    <link href="bsb/plugins/jqcron/jqCron.css" rel="stylesheet">
+    <script src="bsb/plugins/jqcron/jqCron.js"></script>
+    <script src="bsb/plugins/jqcron/jqCron.pt-br.js"></script>
 
-    <style>
-        .form-control { margin-bottom: 10px; }
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button {
-                font-size: 12px !important;
-            }
-        }
-    </style>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
     <br>
     <div class="card">
-        <div class="header"><h2>Gerenciamento de Disparos</h2></div>
+        <div class="header"><h2>Gerenciamento de Automações</h2></div>
         <div class="body">
             <div class="row">
                 <div class="col-md-6">
@@ -35,7 +34,7 @@
                 <div class="col-md-6 text-right mb-2">
                     <button id="btnLogsRealtime" class="btn btn-warning" style="margin-right: 8px;">Logs</button>
                     <button id="btnReloadJobs" class="btn btn-primary" style="margin-right: 8px;">Recarregar Agendador</button>
-                    <button class="btn btn-success">Novo Disparo</button>
+                    <button id="btnNovoDisparo" class="btn btn-success">Nova Automação</button>
                 </div>
 
             </div>
@@ -48,6 +47,7 @@
                     <thead>
                     <tr>
                         <th style="width: 40px;"></th> <!-- editar -->
+                        <th style="width: 40px;"></th> <!-- ativar/inativar -->
                         <th style="width: 40px;"></th> <!-- ativar/inativar -->
                         <th>Nome</th>
                         <th>Método</th>
@@ -69,18 +69,21 @@
     <div class="modal-dialog" role="document">
         <form id="formDisparo" onsubmit="return false">
             <div class="modal-content">
-                <div class="modal-header"><h4 class="modal-title">Cadastro de Disparo</h4></div>
+                <div class="modal-header"><h4 class="modal-title">Cadastro de Automações</h4></div>
                 <div class="modal-body">
                     <input type="hidden" id="disparoId">
                     <label>Nome</label>
                     <input type="text" class="form-control" id="disparoNome" required>
-
-                    <label>Método</label>
+                    <br>
+                    <label>Método NodeJS</label>
                     <input type="text" class="form-control" id="disparoMetodo" required>
-
+                    <br>
                     <label>Expressão Cron</label>
-                    <input type="text" class="form-control" id="disparoCron" required placeholder="Ex: */5 * * * *">
-
+                    <br>
+                    <div id="cronEditor"></div>
+                    <br>
+                    <input type="text" class="form-control" id="disparoCron" readonly required>
+                    <br>
                     <label>Tipo de Recorrência</label>
                     <select class="form-control" id="disparoTipo">
                         <option value="diario">Diário</option>
@@ -88,13 +91,13 @@
                         <option value="mensal">Mensal</option>
                         <option value="custom">Custom</option>
                     </select>
-
-                    <label>WhatsApp?</label>
+                    <br>
+                    <label>Faz envio via WhatsApp?</label>
                     <select class="form-control" id="disparoWhatsapp">
                         <option value="0">Não</option>
                         <option value="1">Sim</option>
                     </select>
-
+                    <br>
                     <label>Ativo?</label>
                     <select class="form-control" id="disparoAtivo">
                         <option value="1">Sim</option>
@@ -137,8 +140,33 @@
     </div>
 </div>
 
-
-
+<!-- Modal Logs por Disparo -->
+<div class="modal fade" id="modalLogsDisparo" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h4 class="modal-title">Logs do Disparo</h4>
+                <br>
+                <span id="tituloDisparoLog" class="ml-3"></span>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                        <tr>
+                            <th>Horário</th>
+                            <th>Status</th>
+                            <th>Mensagem</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tabelaLogsDisparo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -156,6 +184,37 @@
         });
 
         $('#filtroDisparo').on('input', filtrarDisparos);
+
+        $('#cronEditor').jqCron({
+            bind_to: $('#disparoCron'),
+            default_value: '0 0 * * *',
+            multiple_dom: true,
+            multiple_month: true,
+            multiple_mins: true,
+            multiple_dow: true,
+            multiple_hours: true,
+            numeric_zero_pad: true,
+            lang: 'pt_br'
+        });
+
+        // Fecha qualquer menu aberto ao clicar fora do componente
+        $(document).on('click', function (e) {
+            const $target = $(e.target);
+            if (!$target.closest('.jqCron-container').length) {
+                $('.jqCron-selector-list').hide();
+            }
+        });
+
+        // Corrigido: delegação de evento para botões que aparecem depois do .jqCron ser montado
+        $(document).on('click', '.jqCron-selector-title', function (e) {
+            e.stopPropagation(); // evita que o clique propague e feche imediatamente
+            const $list = $(this).next('.jqCron-selector-list');
+            $('.jqCron-selector-list').not($list).hide(); // fecha outros menus
+            $list.toggle(); // toggle no atual
+        });
+
+
+
     });
     let intervaloLogs = null;
     let logsAntigos = new Set();
@@ -242,6 +301,9 @@
             tbody.append(`
                 <tr data-nome="${d.nome.toLowerCase()}" data-metodo="${d.metodo.toLowerCase()}">
                     <td class="text-center">
+                        <a href="#" onclick="abrirLogsDisparo(${d.id}, '${d.nome}')"><i class="fa fa-terminal green" ></i></a>
+                    </td>
+                    <td class="text-center">
                         <a href="#" onclick='editarDisparo(${JSON.stringify(d)})'><i class="fa fa-edit blue"></i></a>
                     </td>
                     <td class="text-center">
@@ -252,9 +314,12 @@
                     <td>${d.cron_expr}</td>
                     <td>${d.tipo_recorrencia}</td>
                     <td>${whats}</td>
-                    <td>${status}</td>
+                    <td>
+                        ${status}
+                    </td>
                 </tr>
             `);
+
         });
     }
 
@@ -326,6 +391,52 @@
             Swal.fire('Erro', 'Não foi possível salvar o disparo.', 'error');
         }
     }
+
+    async function abrirLogsDisparo(disparoId, nome) {
+        $('#tituloDisparoLog').text(nome);
+        $('#modalLogsDisparo').modal('show');
+        $('#filtroLogDisparo').val('');
+        $('#tabelaLogsDisparo').html('<tr><td colspan="3">Carregando...</td></tr>');
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listDisparosLogsByDisparo',
+                token,
+                data: { id_disparo: disparoId }
+            });
+
+            const logs = res.data.logs || [];
+            const tbody = $('#tabelaLogsDisparo');
+            tbody.empty();
+
+            logs.forEach(log => {
+                const statusLabel = log.status === 'ok'
+                    ? '<span class="label label-success">OK</span>'
+                    : '<span class="label label-danger">Erro</span>';
+
+                tbody.append(`
+                <tr>
+                    <td style="white-space: nowrap;">${log.criado_em}</td>
+                    <td>${statusLabel}</td>
+                    <td>${log.mensagem}</td>
+                </tr>
+            `);
+            });
+
+            // filtro local
+            $('#filtroLogDisparo').on('input', function () {
+                const termo = $(this).val().toLowerCase();
+                $('#tabelaLogsDisparo tr').each(function () {
+                    const msg = $(this).find('td').eq(2).text().toLowerCase();
+                    $(this).toggle(msg.includes(termo));
+                });
+            });
+
+        } catch (err) {
+            $('#tabelaLogsDisparo').html('<tr><td colspan="3">Erro ao buscar logs</td></tr>');
+        }
+    }
+
 
     $('#btnReloadJobs').on('click', async () => {
         Swal.fire({

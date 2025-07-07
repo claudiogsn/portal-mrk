@@ -1825,8 +1825,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
             case 'listDisparosLogsByDisparo':
-                if (isset($requestData['id'])) {
-                    $response = DisparosController::listDisparosLogsByDisparo($requestData['id']);
+                if (isset($requestData['id_disparo'])) {
+                    $response = DisparosController::listDisparosLogsByDisparo($requestData['id_disparo']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro id ausente'];
