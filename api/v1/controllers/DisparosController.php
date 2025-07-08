@@ -267,32 +267,51 @@ class DisparosController
     {
         global $pdo;
 
-        $sql = "
-        INSERT INTO disparos (id, nome, tipo_recorrencia, cron_expr, metodo, whatsapp, ativo)
-        VALUES (:id, :nome, :tipo_recorrencia, :cron_expr, :metodo, :whatsapp, :ativo)
-        ON DUPLICATE KEY UPDATE
-            nome = VALUES(nome),
-            tipo_recorrencia = VALUES(tipo_recorrencia),
-            cron_expr = VALUES(cron_expr),
-            metodo = VALUES(metodo),
-            whatsapp = VALUES(whatsapp),
-            ativo = VALUES(ativo),
-            updated_at = CURRENT_TIMESTAMP
-    ";
+        if (empty($data['id'])) {
+            // INSERT (sem ID)
+            $sql = "
+            INSERT INTO disparos (nome, tipo_recorrencia, cron_expr, metodo, whatsapp, ativo)
+            VALUES (:nome, :tipo_recorrencia, :cron_expr, :metodo, :whatsapp, :ativo)
+        ";
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':id' => $data['id'] ?? null,
-            ':nome' => $data['nome'],
-            ':tipo_recorrencia' => $data['tipo_recorrencia'],
-            ':cron_expr' => $data['cron_expr'],
-            ':metodo' => $data['metodo'],
-            ':whatsapp' => $data['whatsapp'] ?? 0,
-            ':ativo' => $data['ativo'] ?? 1,
-        ]);
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':nome' => $data['nome'],
+                ':tipo_recorrencia' => $data['tipo_recorrencia'],
+                ':cron_expr' => $data['cron_expr'],
+                ':metodo' => $data['metodo'],
+                ':whatsapp' => $data['whatsapp'] ?? 0,
+                ':ativo' => $data['ativo'] ?? 1,
+            ]);
+        } else {
+            // UPDATE
+            $sql = "
+            UPDATE disparos SET
+                nome = :nome,
+                tipo_recorrencia = :tipo_recorrencia,
+                cron_expr = :cron_expr,
+                metodo = :metodo,
+                whatsapp = :whatsapp,
+                ativo = :ativo,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':id' => $data['id'],
+                ':nome' => $data['nome'],
+                ':tipo_recorrencia' => $data['tipo_recorrencia'],
+                ':cron_expr' => $data['cron_expr'],
+                ':metodo' => $data['metodo'],
+                ':whatsapp' => $data['whatsapp'] ?? 0,
+                ':ativo' => $data['ativo'] ?? 1,
+            ]);
+        }
 
         return ['success' => true, 'message' => 'Disparo salvo com sucesso.'];
     }
+
 
     public static function toggleDisparoAtivo($id)
     {
