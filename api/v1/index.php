@@ -63,7 +63,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'getGroupsToProcess',
         'getUnitsToProcess',
         'generateResumoFinanceiroPorGrupo',
-        'gerarPdfSemanal',
+        'gerarPdfSemanalFaturamento',
+        'gerarPdfSemanalCompras',
         'generateResumoEstoquePorGrupoNAuth',
         'generateResumoFinanceiroPorLoja',
         'validateCPF',
@@ -815,9 +816,17 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];
                 }
                 break;
-            case 'gerarPdfSemanal':
+            case 'gerarPdfSemanalFaturamento':
                 if (isset($requestData['group_id'])) {
-                    $response = DashboardController::gerarRelatorioFinanceiroSemanalPorGrupo($requestData['group_id']);
+                    $response = DashboardController::gerarPdfSemanalFaturamento($requestData['group_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id e nome_loja são obrigatórios.'];
+                }
+                break;
+            case 'gerarPdfSemanalCompras':
+                if (isset($requestData['group_id'])) {
+                    $response = DashboardController::gerarPdfSemanalCompras($requestData['group_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id e nome_loja são obrigatórios.'];

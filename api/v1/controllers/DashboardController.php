@@ -672,7 +672,7 @@ class DashboardController
     }
 
 
-    public static function gerarRelatorioFinanceiroSemanalPorGrupo($grupoId): array
+    public static function gerarPdfSemanalFaturamento($grupoId): array
     {
         $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
 
@@ -685,13 +685,6 @@ class DashboardController
         // Buscar resumos financeiros
         $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
         $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
-
-        // Buscar compras
-        $comprasAtual = self::generateNotasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
-        $comprasAnterior = self::generateNotasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
-
-        $itensAtual = self::generateComprasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
-        $itensAnterior = self::generateComprasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
 
 
         if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
@@ -756,31 +749,85 @@ class DashboardController
 
 
 
-//            $html .= self::gerarHtmlComparativoLoja(
-//                $dadosLojaAtual['nomeLoja'],
-//                $inicioAtual, $fimAtual,
-//                $inicioAnterior, $fimAnterior,
-//                $dadosLojaAtual,
-//                $dadosLojaAnterior,
-//                $ranking,
-//                $mvAnterior[$lojaId] ?? [],
-//                $mvAtual[$lojaId] ?? []
-//            );
+            $html .= self::gerarHtmlComparativoLoja(
+                $dadosLojaAtual['nomeLoja'],
+                $inicioAtual, $fimAtual,
+                $inicioAnterior, $fimAnterior,
+                $dadosLojaAtual,
+                $dadosLojaAnterior,
+                $ranking,
+                $mvAnterior[$lojaId] ?? [],
+                $mvAtual[$lojaId] ?? []
+            );
 
         }
 
-//        // Página Consolidado Geral
-//        $html .= self::gerarHtmlConsolidadoGrupo(
-//            $inicioAtual,
-//            $fimAtual,
-//            $inicioAnterior,
-//            $fimAnterior,
-//            $resumoAtual['data'],
-//            $resumoAnterior['data'],
-//            $rankingsPorLoja,
-//            $mvAnterior,
-//            $mvAtual
-//        );
+        // Página Consolidado Geral
+        $html .= self::gerarHtmlConsolidadoGrupo(
+            $inicioAtual,
+            $fimAtual,
+            $inicioAnterior,
+            $fimAnterior,
+            $resumoAtual['data'],
+            $resumoAnterior['data'],
+            $rankingsPorLoja,
+            $mvAnterior,
+            $mvAtual
+        );
+
+
+        // Gerar PDF
+        $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
+
+        $dompdf->loadHtml('<html><head><meta charset="UTF-8"></head><body>' . $html . '</body></html>');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $fileName = 'fatuaramento_semanal_' . $grupoId . '_' . date('Ymd_His') . '.pdf';
+        $filePath = __DIR__ . '/../public/reports/' . $fileName;
+        $publicUrl = 'https://portal.mrksolucoes.com.br/api/v1/public/reports/' . $fileName;
+
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 0777, true);
+        }
+
+        file_put_contents($filePath, $dompdf->output());
+
+        return [
+            'success' => true,
+            'url' => $publicUrl
+        ];
+    }
+
+
+    public static function gerarPdfSemanalCompras($grupoId): array
+    {
+        $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+
+        $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
+        $fimAtual = $hoje->modify('last sunday'); // domingo passado
+
+        $inicioAnterior = $inicioAtual->modify('-7 days');
+        $fimAnterior = $fimAtual->modify('-7 days');
+
+        // Buscar resumos financeiros
+        $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        // Buscar compras
+        $comprasAtual = self::generateNotasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $comprasAnterior = self::generateNotasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        $itensAtual = self::generateComprasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $itensAnterior = self::generateComprasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+
+        if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
+            return ['success' => false, 'message' => 'Erro ao buscar dados das semanas.'];
+        }
+
+        // Montar HTML por loja
+        $html = '';
 
         // Página Consolidado Compras
         $html .= self::gerarHtmlComparativoComprasPorLoja(
@@ -801,7 +848,7 @@ class DashboardController
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $fileName = 'relatorio_semanal_grupo_' . $grupoId . '_' . date('Ymd_His') . '.pdf';
+        $fileName = 'compras_semanal_' . $grupoId . '_' . date('Ymd_His') . '.pdf';
         $filePath = __DIR__ . '/../public/reports/' . $fileName;
         $publicUrl = 'https://portal.mrksolucoes.com.br/api/v1/public/reports/' . $fileName;
 
@@ -816,6 +863,7 @@ class DashboardController
             'url' => $publicUrl
         ];
     }
+
 
     public static function getLojaIdBySystemUnitId($systemUnitId): array
     {
@@ -1745,13 +1793,14 @@ class DashboardController
                 $resumo[] = [
                     'lojaId' => $system_unit_id,
                     'nomeLoja' => $loja['name'],
-                    'faturamento_bruto' => round($faturamentoBruto, 2),
-                    'cmv' => round($res['cmv'], 2),
-                    'percentual_cmv' => round($percentualCmv, 2),
-                    'total_compras' => round($res['total_compras'], 2),
-                    'total_saidas' => round($res['total_saidas'], 2),
-                    'desperdicio' => round($res['desperdicio'], 2)
+                    'faturamento_bruto' => round($faturamentoBruto ?? 0, 2),
+                    'cmv' => round($res['cmv'] ?? 0, 2),
+                    'percentual_cmv' => round($percentualCmv ?? 0, 2),
+                    'total_compras' => round($res['total_compras'] ?? 0, 2),
+                    'total_saidas' => round($res['total_saidas'] ?? 0, 2),
+                    'desperdicio' => round($res['desperdicio'] ?? 0, 2),
                 ];
+
             }
 
             return ['success' => true, 'data' => $resumo];
