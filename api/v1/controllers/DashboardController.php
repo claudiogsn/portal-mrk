@@ -96,7 +96,24 @@ class DashboardController
         return 'data:image/png;base64,' . base64_encode($imageData);
     }
 
+    public static function getIntervalosSemanais(): array
+    {
+        $tz = new DateTimeZone('America/Sao_Paulo');
+        $hoje = new DateTimeImmutable('now', $tz);
 
+        $fimAtual = $hoje->modify('last sunday'); // domingo passado
+        $inicioAtual = $fimAtual->modify('-6 days'); // segunda passada
+
+        $fimAnterior = $fimAtual->modify('-7 days'); // domingo anterior
+        $inicioAnterior = $inicioAtual->modify('-7 days'); // segunda anterior
+
+        return [
+            'dt_inicio' => $inicioAtual->format('Y-m-d 00:00:00'),
+            'dt_fim' => $fimAtual->format('Y-m-d 23:59:59'),
+            'dt_inicio_anterior' => $inicioAnterior->format('Y-m-d 00:00:00'),
+            'dt_fim_anterior' => $fimAnterior->format('Y-m-d 23:59:59'),
+        ];
+    }
 
     private static function gerarHtmlComparativoComprasPorLoja(
         DateTimeInterface $inicioAtual,
@@ -117,14 +134,14 @@ class DashboardController
         $mapFaturamentoAtual = [];
         foreach ($dadosAtuais as $item) {
             $nome = strtoupper($item['nomeLoja']);
-            $mapFaturamentoAtual[$nome] = (float)($item['faturamento_liquido'] ?? 0);
+            $mapFaturamentoAtual[$nome] = (float)($item['faturamento_bruto'] ?? 0);
         }
 
         // Indexar faturamento anterior por nome da loja
         $mapFaturamentoAnterior = [];
         foreach ($dadosAnteriores as $item) {
             $nome = strtoupper($item['nomeLoja']);
-            $mapFaturamentoAnterior[$nome] = (float)($item['faturamento_liquido'] ?? 0);
+            $mapFaturamentoAnterior[$nome] = (float)($item['faturamento_bruto'] ?? 0);
         }
 
         // Indexar compras atuais por nome da loja
