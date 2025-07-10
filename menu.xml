@@ -191,7 +191,7 @@
         <action>ListarContatos</action>
         <icon>fa:whatsapp fa-fw</icon>
       </menuitem>
-      <menuitem label="_t{Programs}">
+      <menuitem label="_t{Modules}">
         <action>SystemProgramList</action>
         <icon>far:file-code fa-fw</icon>
       </menuitem>
