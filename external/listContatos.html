@@ -276,7 +276,7 @@
                     </td>
                     <td class="text-center">
                         <a href="#" onclick="toggleAtivo('${contato.id}', ${contato.ativo})" title="${contato.ativo == 1 ? 'Desativar' : 'Ativar'}">
-                            <i class="fa fa-power-off red"></i>
+                            <i class="${contato.ativo == 1 ? 'fa fa-power-off red' : 'fa fa-power-off green'}"></i>
                         </a>
                     </td>
                     <td>${contato.nome}</td>

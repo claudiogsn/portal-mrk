@@ -308,7 +308,7 @@
                         <a href="#" onclick='editarDisparo(${JSON.stringify(d)})' title="Editar"><i class="fa fa-edit blue"></i></a>
                     </td>
                     <td class="text-center">
-                        <a href="#" onclick='toggleDisparo(${d.id}, ${d.ativo})' title="${d.ativo == 1 ? 'Desativar' : 'Ativar'}"><i class="fa fa-power-off red"></i></a>
+                        <a href="#" onclick='toggleDisparo(${d.id}, ${d.ativo})' title="${d.ativo == 1 ? 'Desativar' : 'Ativar'}"><i class="${d.ativo == 1 ? 'fa fa-power-off red' : 'fa fa-power-off green'}"></i></a>
                     </td>
                     <td>${d.nome}</td>
                     <td>${d.metodo}</td>
