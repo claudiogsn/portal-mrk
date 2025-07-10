@@ -302,13 +302,13 @@
             tbody.append(`
                 <tr data-nome="${d.nome.toLowerCase()}" data-metodo="${d.metodo.toLowerCase()}">
                     <td class="text-center">
-                        <a href="#" onclick="abrirLogsDisparo(${d.id}, '${d.nome}')"><i class="fa fa-terminal green" ></i></a>
+                        <a href="#" onclick="abrirLogsDisparo(${d.id}, '${d.nome}')" title="Logs"><i class="fa fa-terminal green" ></i></a>
                     </td>
                     <td class="text-center">
-                        <a href="#" onclick='editarDisparo(${JSON.stringify(d)})'><i class="fa fa-edit blue"></i></a>
+                        <a href="#" onclick='editarDisparo(${JSON.stringify(d)})' title="Editar"><i class="fa fa-edit blue"></i></a>
                     </td>
                     <td class="text-center">
-                        <a href="#" onclick='toggleDisparo(${d.id}, ${d.ativo})'><i class="fa fa-power-off orange"></i></a>
+                        <a href="#" onclick='toggleDisparo(${d.id}, ${d.ativo})' title="${d.ativo == 1 ? 'Desativar' : 'Ativar'}"><i class="fa fa-power-off red"></i></a>
                     </td>
                     <td>${d.nome}</td>
                     <td>${d.metodo}</td>
