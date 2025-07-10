@@ -45,16 +45,10 @@ class SystemUnitController
             // INSERT
             $sql = "
                 INSERT INTO system_unit (
-                    id, name, custom_code, intg_financeiro,
-                    token_zig, rede_zig,
-                    zig_integration_faturamento, zig_integration_estoque,
-                    menew_integration_estoque, menew_integration_faturamento,
+                    name, custom_code,
                     status
                 ) VALUES (
-                    :id, :name, :custom_code, :intg_financeiro,
-                    :token_zig, :rede_zig,
-                    :zig_integration_faturamento, :zig_integration_estoque,
-                    :menew_integration_estoque, :menew_integration_faturamento,
+                    :name, :custom_code
                     :status
                 )
             ";
@@ -62,16 +56,8 @@ class SystemUnitController
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-            ':id' => $params['id'],
             ':name' => $params['name'],
             ':custom_code' => $params['custom_code'],
-            ':intg_financeiro' => $params['intg_financeiro'],
-            ':token_zig' => $params['token_zig'],
-            ':rede_zig' => $params['rede_zig'],
-            ':zig_integration_faturamento' => $params['zig_integration_faturamento'],
-            ':zig_integration_estoque' => $params['zig_integration_estoque'],
-            ':menew_integration_estoque' => $params['menew_integration_estoque'],
-            ':menew_integration_faturamento' => $params['menew_integration_faturamento'],
             ':status' => $params['status'] ?? 1,
         ]);
 
