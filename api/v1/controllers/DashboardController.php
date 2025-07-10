@@ -115,6 +115,30 @@ class DashboardController
         ];
     }
 
+    public static function getIntervalosDiarios(): array
+    {
+        $tz = new DateTimeZone('America/Sao_Paulo');
+        $hoje = new DateTimeImmutable('now', $tz);
+
+        // Ontem
+        $ontem = $hoje->modify('-1 day');
+        $inicioOntem = $ontem->setTime(0, 0, 0);
+        $fimOntem = $ontem->setTime(23, 59, 59);
+
+        // Mesmo dia da semana passada
+        $seteDiasAtras = $ontem->modify('-7 days');
+        $inicioSemanaPassada = $seteDiasAtras->setTime(0, 0, 0);
+        $fimSemanaPassada = $seteDiasAtras->setTime(23, 59, 59);
+
+        return [
+            'dt_inicio' => $inicioOntem->format('Y-m-d H:i:s'),
+            'dt_fim' => $fimOntem->format('Y-m-d H:i:s'),
+            'dt_inicio_anterior' => $inicioSemanaPassada->format('Y-m-d H:i:s'),
+            'dt_fim_anterior' => $fimSemanaPassada->format('Y-m-d H:i:s'),
+        ];
+    }
+
+
     private static function gerarHtmlComparativoComprasPorLoja(
         DateTimeInterface $inicioAtual,
         DateTimeInterface $fimAtual,

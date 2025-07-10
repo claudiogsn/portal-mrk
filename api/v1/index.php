@@ -79,7 +79,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'persistSales',
         'consolidateSalesByGroup',
         'importMovBySalesCons',
-        'getIntervalosSemanais'
+        'getIntervalosSemanais',
+        'getIntervalosDiarios'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
@@ -836,6 +837,9 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getIntervalosSemanais':
                     $response = DashboardController::getIntervalosSemanais();
+                break;
+            case 'getIntervalosDiarios':
+                    $response = DashboardController::getIntervalosDiarios();
                 break;
             case 'getResumoMeiosPagamento':
                 if (isset($requestData['lojaid']) && isset($requestData['dt_inicio']) && isset($requestData['dt_fim'])) {

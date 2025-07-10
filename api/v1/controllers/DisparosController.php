@@ -163,7 +163,7 @@ class DisparosController
     {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT id, nome FROM disparos WHERE ativo = 1 and whatsapp = 1 ORDER BY nome ASC");
+        $stmt = $pdo->prepare("SELECT * FROM disparos WHERE ativo = 1 and whatsapp = 1 ORDER BY nome ASC");
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
