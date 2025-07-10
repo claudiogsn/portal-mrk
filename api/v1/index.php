@@ -33,6 +33,7 @@ require_once 'controllers/ConsolidationEstoqueController.php';
 require_once 'controllers/ProducaoController.php';
 require_once 'controllers/NotaFiscalEntradaController.php';
 require_once 'controllers/DisparosController.php';
+require_once 'controllers/SystemUnitController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -1850,6 +1851,35 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
+
+                // ===================== UNIDADES DE SISTEMA =====================
+
+            case 'salvarSystemUnit':
+                $response = SystemUnitController::salvarSystemUnit($requestData);
+                break;
+
+            case 'toggleSystemUnitStatus':
+                if (isset($requestData['id'])) {
+                    $response = SystemUnitController::toggleStatus($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
+            case 'getSystemUnitById':
+                if (isset($requestData['id'])) {
+                    $response = SystemUnitController::getSystemUnitById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
+            case 'listSystemUnits':
+                $response = SystemUnitController::listSystemUnits();
+                break;
+
 
 
             default:

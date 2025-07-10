@@ -196,7 +196,7 @@
         <icon>far:file-code fa-fw</icon>
       </menuitem>
       <menuitem label="Estabelecimentos">
-        <action>SystemUnitList</action>
+        <action>Estabelecimento</action>
         <icon>fas:university fa-fw</icon>
       </menuitem>
       <menuitem label="Grupo de Estabelecimentos">
