@@ -25,44 +25,61 @@ class SystemUnitController
             return ['success' => false, 'message' => 'O campo "name" é obrigatório'];
         }
 
-        // Se ID estiver presente, faz UPDATE
         if (!empty($params['id'])) {
+            // UPDATE
             $sql = "
-                UPDATE system_unit SET
-                    name = :name,
-                    custom_code = :custom_code,
-                    intg_financeiro = :intg_financeiro,
-                    token_zig = :token_zig,
-                    rede_zig = :rede_zig,
-                    zig_integration_faturamento = :zig_integration_faturamento,
-                    zig_integration_estoque = :zig_integration_estoque,
-                    menew_integration_estoque = :menew_integration_estoque,
-                    menew_integration_faturamento = :menew_integration_faturamento,
-                    status = :status
-                WHERE id = :id
-            ";
+            UPDATE system_unit SET
+                name = :name,
+                custom_code = :custom_code,
+                intg_financeiro = :intg_financeiro,
+                token_zig = :token_zig,
+                rede_zig = :rede_zig,
+                zig_integration_faturamento = :zig_integration_faturamento,
+                zig_integration_estoque = :zig_integration_estoque,
+                menew_integration_estoque = :menew_integration_estoque,
+                menew_integration_faturamento = :menew_integration_faturamento,
+                status = :status
+            WHERE id = :id
+        ";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':id' => $params['id'],
+                ':name' => $params['name'],
+                ':custom_code' => $params['custom_code'],
+                ':intg_financeiro' => $params['intg_financeiro'],
+                ':token_zig' => $params['token_zig'],
+                ':rede_zig' => $params['rede_zig'],
+                ':zig_integration_faturamento' => $params['zig_integration_faturamento'],
+                ':zig_integration_estoque' => $params['zig_integration_estoque'],
+                ':menew_integration_estoque' => $params['menew_integration_estoque'],
+                ':menew_integration_faturamento' => $params['menew_integration_faturamento'],
+                ':status' => $params['status'] ?? 1,
+            ]);
         } else {
-            // INSERT
-            $sql = "
-                INSERT INTO system_unit (
-                    name, custom_code,
-                    status
+            // SELECT MAX(id) + 1
+            $stmt = $pdo->query("SELECT MAX(id) AS max_id FROM system_unit");
+            $maxId = (int)$stmt->fetchColumn();
+            $newId = $maxId + 1;
+
+            $sql = "INSERT INTO system_unit (
+                    id, name, custom_code, status
                 ) VALUES (
-                    :name, :custom_code
-                    :status
-                )
-            ";
+                    :id, :name, :custom_code, :status
+                )";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':id' => $newId,
+                ':name' => $params['name'],
+                ':custom_code' => $params['custom_code'],
+                ':status' => $params['status'] ?? 1,
+            ]);
+
+            $params['id'] = $newId;
         }
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':name' => $params['name'],
-            ':custom_code' => $params['custom_code'],
-            ':status' => $params['status'] ?? 1,
-        ]);
-
-        return ['success' => true, 'message' => 'Unidade salva com sucesso'];
+        return ['success' => true, 'message' => 'Unidade salva com sucesso', 'id' => $params['id']];
     }
+
 
     public static function toggleStatus($id)
     {
