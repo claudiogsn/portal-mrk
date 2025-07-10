@@ -189,7 +189,7 @@
       </menuitem>
       <menuitem label="Disparos Whatsapp">
         <action>ListarContatos</action>
-        <icon>fas:comment-dots fa-fw</icon>
+        <icon>fa:whatsapp fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Programs}">
         <action>SystemProgramList</action>
