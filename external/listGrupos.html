@@ -214,12 +214,12 @@
                       </td>
                       <td class="text-center">
                         <a href="#" title="Associar Estabelecimentos" onclick="abrirModalAssociar(${grupo.id})">
-                          <i class="fa fa-home" style="color: green"></i>
+                          <i class="fa fa-home green"></i>
                         </a>
                       </td>
                       <td class="text-center">
                         <a href="#" title="${grupo.ativo == '1' ? 'Desativar' : 'Ativar'} Grupo" onclick="toggleAtivoGrupo(${grupo.id}, ${grupo.ativo})">
-                          <i class="fa fa-power-off" style="color: orange"></i>
+                          <i class="${grupo.ativo == 1 ? 'fa fa-power-off red' : 'fa fa-power-off green'}"></i>
                         </a>
                       </td>
                       <td class="text-center">${grupo.id}</td>
