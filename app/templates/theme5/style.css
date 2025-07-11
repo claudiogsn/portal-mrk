@@ -20,10 +20,11 @@ body{
     z-index: -1;
     width: 100%;
     height: 100%;
-    background-image: url('app/templates/theme5/images/wave.png');
-    background-size: cover;
-    background-position: center; 
-    background-repeat: no-repeat; 
+    /*background-image: url('app/templates/theme5/images/wave.png');*/
+	/*background-color: #015e9b !important;*/
+   background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 
@@ -221,9 +222,9 @@ a:hover{
 		display: none;
 	}
 
-	.wave{
-		display: none;
-	}
+	/*.wave{*/
+	/*	display: none;*/
+	/*}*/
 
 	.login-content{
 		justify-content: center;

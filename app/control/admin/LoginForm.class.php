@@ -26,7 +26,7 @@ class LoginForm extends TPage
         $this->style = 'clear:both';
         // creates the form
         $this->form = new BootstrapFormBuilder('form_login');
-        $this->form->setFormTitle( 'LOG IN' );
+        $this->form->setFormTitle( 'Faça seu login para acessar' );
         
         // create the form fields
         $login = new TEntry('login');
@@ -52,19 +52,19 @@ class LoginForm extends TPage
         }
         
         // define the sizes
-        $login->setSize('70%', 40);
-        $password->setSize('70%', 40);
+        $login->setSize('90%', 40);
+        $password->setSize('90%', 40);
 
-        $login->style = 'height:35px; font-size:14px;float:left;border-bottom-left-radius: 0;border-top-left-radius: 0;';
-        $password->style = 'height:35px;font-size:14px;float:left;border-bottom-left-radius: 0;border-top-left-radius: 0;';
+        $login->style = 'height:50px; font-size:14px;float:left;border-bottom-left-radius: 0;border-top-left-radius: 0;';
+        $password->style = 'height:50px;font-size:14px;float:left;border-bottom-left-radius: 0;border-top-left-radius: 0;';
         
         $login->placeholder = _t('User');
         $password->placeholder = _t('Password');
         
         $login->autofocus = 'autofocus';
 
-        $user   = '<span class="login-avatar"><span class="fa fa-user"></span></span>';
-        $locker = '<span class="login-avatar"><span class="fa fa-lock"></span></span>';
+        $user   = '';
+        $locker = '';
         $unit   = '<span class="login-avatar"><span class="fa fa-university"></span></span>';
         $lang   = '<span class="login-avatar"><span class="fa fa-globe"></span></span>';
         
