@@ -280,7 +280,7 @@
         <icon>fas:database fa-fw</icon>
       </menuitem>
       <menuitem label="_t{Request Log}">
-        <action>SystemRequestLogList</action>
+        <action>SystemUnitList</action>
         <icon>fas:globe fa-fw</icon>
       </menuitem>
       <menuitem label="_t{PHP Log}">

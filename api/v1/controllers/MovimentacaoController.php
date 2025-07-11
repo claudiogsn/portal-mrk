@@ -155,8 +155,7 @@ class MovimentacaoController
                     ELSE 'Outro'
                 END AS tipo_movimentacao,
                 us.name as username,
-                m.data,
-                m.created_at
+                m.data
             FROM
                 movimentacao m
             LEFT JOIN
