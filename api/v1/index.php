@@ -85,7 +85,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'getIntervalosSemanais',
         'getIntervalosDiarios',
         'getUserDetails',
-        'getUnitsUser'
+        'getUnitsUser',
+        'getMenuMobile'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
@@ -118,6 +119,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro user ausente'];
                 }
                 break;
+                case 'getMenuMobile':
+                    if (isset($requestData['user_id']) && ($requestData['system_unit_id'])) {
+                        $response = UserController::getMenuMobile($requestData['user_id'],$requestData['system_unit_id']);
+                    } else {
+                        http_response_code(400);
+                        $response = ['error' => 'Parâmetro user ausente'];
+                    }
+                    break;
             // Métodos para BiController
             case 'getUnitsByGroup':
                 if (isset($requestData['group_id'])) {
