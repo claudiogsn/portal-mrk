@@ -1,51 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title>Leitor de Código de Barras</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <style>
-        #camera { width: 100%; max-width: 400px; margin: auto; }
-        #output { margin-top: 20px; font-size: 20px; text-align: center; }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center px-4">
 
-<h2 style="text-align:center;">Leitor de Código de Barras via Webcam</h2>
-<div id="camera"></div>
-<div id="output">Aguardando leitura...</div>
+    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Leitor de Código de Barras via Webcam</h2>
 
-<script>
-    Quagga.init({
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector('#camera'),
-            constraints: {
-                width: 400,
-                height: 300,
-                facingMode: "environment" // traseira no mobile
+    <div id="camera" class="w-full max-w-md bg-black rounded-lg overflow-hidden shadow-md border border-gray-300 aspect-video"></div>
+
+    <div id="output" class="mt-6 text-lg text-center text-blue-600 font-medium">
+        Aguardando leitura...
+    </div>
+
+    <script>
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#camera'),
+                constraints: {
+                    width: 400,
+                    height: 300,
+                    facingMode: "environment"
+                }
+            },
+            decoder: {
+                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
             }
-        },
-        decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // suportados
-        }
-    }, function(err) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        Quagga.start();
-    });
+        }, function(err) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            Quagga.start();
+        });
 
-    Quagga.onDetected(function(result) {
-        const code = result.codeResult.code;
-        document.getElementById('output').innerText = 'Código detectado: ' + code;
-
-        // Opcional: parar após leitura
-        Quagga.stop();
-    });
-</script>
+        Quagga.onDetected(function(result) {
+            const code = result.codeResult.code;
+            document.getElementById('output').innerText = 'Código detectado: ' + code;
+            Quagga.stop();
+        });
+    </script>
 
 </body>
 </html>
