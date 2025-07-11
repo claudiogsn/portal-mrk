@@ -176,8 +176,7 @@ class MovimentacaoController
                 m.doc,
                 m.tipo,
                 us.name,
-                m.data,
-                m.created_at
+                m.data
         ";
 
         $stmt = $pdo->prepare($query);
