@@ -8,29 +8,30 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center px-4">
 
-    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Leitor de Código de Barras via Webcam</h2>
+    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Leitor de Código de Barras</h2>
 
-    <div id="camera" class="w-full max-w-md bg-black rounded-lg overflow-hidden shadow-md border border-gray-300 aspect-video"></div>
+    <div id="camera" class="w-full max-w-xs h-[75vh] bg-black rounded-lg overflow-hidden shadow-md border border-gray-300"></div>
 
-    <div id="output" class="mt-6 text-lg text-center text-blue-600 font-medium">
-        Aguardando leitura...
-    </div>
+    <input id="output" readonly class="mt-6 w-full max-w-xs text-lg text-center text-blue-600 font-medium border border-blue-300 rounded p-2 bg-white" placeholder="Aguardando leitura..." />
 
     <script>
+        let lastCode = '';
+
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: document.querySelector('#camera'),
                 constraints: {
-                    width: 400,
-                    height: 300,
+                    width: { ideal: 480 },
+                    height: { ideal: 720 },
                     facingMode: "environment"
                 }
             },
             decoder: {
                 readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
-            }
+            },
+            locate: true
         }, function(err) {
             if (err) {
                 console.error(err);
@@ -41,8 +42,21 @@
 
         Quagga.onDetected(function(result) {
             const code = result.codeResult.code;
-            document.getElementById('output').innerText = 'Código detectado: ' + code;
-            Quagga.stop();
+
+            // evita leituras duplicadas
+            if (code !== lastCode) {
+                lastCode = code;
+                document.getElementById('output').value = code;
+
+                // vibra se possível
+                if (navigator.vibrate) navigator.vibrate(200);
+
+                // libera leitura novamente após 2 segundos
+                setTimeout(() => {
+                    lastCode = '';
+                    document.getElementById('output').value = '';
+                }, 2000);
+            }
         });
     </script>
 
