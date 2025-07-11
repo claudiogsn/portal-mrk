@@ -34,6 +34,8 @@ require_once 'controllers/ProducaoController.php';
 require_once 'controllers/NotaFiscalEntradaController.php';
 require_once 'controllers/DisparosController.php';
 require_once 'controllers/SystemUnitController.php';
+require_once 'controllers/UserController.php';
+
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -81,7 +83,9 @@ if (isset($data['method']) && isset($data['data'])) {
         'consolidateSalesByGroup',
         'importMovBySalesCons',
         'getIntervalosSemanais',
-        'getIntervalosDiarios'
+        'getIntervalosDiarios',
+        'getUserDetails',
+        'getUnitsUser'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
@@ -97,6 +101,23 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
+            // Métodos para UserController
+            case 'getUserDetails':
+                if (isset($requestData['user'])) {
+                    $response = UserController::getUserDetails($requestData['user']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro user ausente'];
+                }
+                break;
+            case 'getUnitsUser':
+                if (isset($requestData['user'])) {
+                    $response = UserController::getUnitsUser($requestData['user']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro user ausente'];
+                }
+                break;
             // Métodos para BiController
             case 'getUnitsByGroup':
                 if (isset($requestData['group_id'])) {
