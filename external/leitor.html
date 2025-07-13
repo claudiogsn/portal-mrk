@@ -1,51 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title>Leitor de Código de Barras</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <style>
-        #camera { width: 100%; max-width: 400px; margin: auto; }
-        #output { margin-top: 20px; font-size: 20px; text-align: center; }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center px-4">
 
-<h2 style="text-align:center;">Leitor de Código de Barras via Webcam</h2>
-<div id="camera"></div>
-<div id="output">Aguardando leitura...</div>
+    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Leitor de Código de Barras</h2>
 
-<script>
-    Quagga.init({
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector('#camera'),
-            constraints: {
-                width: 400,
-                height: 300,
-                facingMode: "environment" // traseira no mobile
-            }
-        },
-        decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // suportados
+    <div id="camera" class="w-full max-w-sm aspect-[3/4] bg-black rounded-lg overflow-hidden shadow-md border border-gray-300"></div>
+
+    <input id="output" readonly class="mt-4 w-full max-w-sm text-lg text-center text-blue-600 font-medium border border-blue-300 rounded p-2 bg-white" placeholder="Aguardando leitura..." />
+
+    <button id="resetBtn" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition hidden">
+        Ler novamente
+    </button>
+
+    <script>
+        let lastCode = '';
+        let readingPaused = false;
+
+        function startScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#camera'),
+                    constraints: {
+                        facingMode: "environment",
+                        aspectRatio: { ideal: 3 / 4 }
+                    }
+                },
+                decoder: {
+                    readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
+                },
+                locate: true
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                Quagga.start();
+                readingPaused = false;
+                document.getElementById('resetBtn').classList.add('hidden');
+            });
+
+            Quagga.onDetected(function(result) {
+                if (readingPaused) return;
+
+                const code = result.codeResult.code;
+
+                if (code !== lastCode) {
+                    lastCode = code;
+                    document.getElementById('output').value = code;
+
+                    // Feedback tátil
+                    if (navigator.vibrate) navigator.vibrate(200);
+
+                    readingPaused = true;
+                    document.getElementById('resetBtn').classList.remove('hidden');
+                }
+            });
         }
-    }, function(err) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        Quagga.start();
-    });
 
-    Quagga.onDetected(function(result) {
-        const code = result.codeResult.code;
-        document.getElementById('output').innerText = 'Código detectado: ' + code;
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('output').value = '';
+            lastCode = '';
+            readingPaused = false;
+            document.getElementById('resetBtn').classList.add('hidden');
+        });
 
-        // Opcional: parar após leitura
-        Quagga.stop();
-    });
-</script>
+        // Inicia
+        startScanner();
+    </script>
 
 </body>
 </html>
