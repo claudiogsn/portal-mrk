@@ -132,18 +132,31 @@ class BiController {
     public static function getGroupsToProcess() {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT 
-            su.id, 
-            su.nome
-            FROM 
-                grupo_estabelecimento AS su
+        $stmt = $pdo->prepare("
+        SELECT 
+            g.id, 
+            g.nome
+        FROM 
+            grupo_estabelecimento g
+        WHERE EXISTS (
+            SELECT 1
+            FROM grupo_estabelecimento_rel r
+            JOIN system_unit su ON su.id = r.system_unit_id
             WHERE 
-                su.bi = 1
-        ");
+                r.grupo_id = g.id
+                AND (
+                    su.zig_integration_faturamento = '1' OR
+                    su.zig_integration_estoque = '1' OR
+                    su.menew_integration_estoque = '1' OR
+                    su.menew_integration_faturamento = '1'
+                )
+        )
+    ");
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
     public static function ListUnitsByGroup($group_id) {
         global $pdo;
 
