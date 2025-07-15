@@ -183,6 +183,8 @@ class DashboardController
         }
 
 
+
+
         // Unificar nomes
         $nomesLojas = array_unique(array_merge(
             array_keys($mapFaturamentoAtual),
@@ -210,6 +212,7 @@ class DashboardController
         $html .= "<center><h3 style='margin-top: 40px;'>Resumo</h3></center>";
 
 
+
         foreach ($nomesLojas as $nome) {
             $fatAtual = $mapFaturamentoAtual[$nome] ?? 0;
             $fatAnterior = $mapFaturamentoAnterior[$nome] ?? 0;
@@ -229,14 +232,22 @@ class DashboardController
 
             $classFat = $varFat >= 0 ? 'color: green;' : 'color: red;';
             $classCompra = $varCompra >= 0 ? 'color: green;' : 'color: red;';
+            $percAtual = $fatAtual > 0 ? ($compraAtual / $fatAtual * 100) : 0;
+            $percAnterior = $fatAnterior > 0 ? ($compraAnterior / $fatAnterior * 100) : 0;
+            $varCompraSobreFat = self::calcularVariacao($percAtual, $percAnterior);
+            $classCompraSobreFat = $varCompraSobreFat >= 0 ? 'color: green;' : 'color: red;';
+
+            $percAtualFmt = number_format($percAtual, 2, ',', '.') . '%';
+            $percAnteriorFmt = number_format($percAnterior, 2, ',', '.') . '%';
+            $varCompraSobreFatFmt = number_format($varCompraSobreFat, 2, ',', '.') . '%';
 
             $html .= "
         <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;'>
             <thead>
                 <tr style='border-bottom: 1px solid #000; background-color: #f0f0f0;'>
                     <th style='text-align: left; padding: 6px;'>{$nome}</th>
-                    <th style='text-align: right; padding: 6px;'>Semana Atual</th>
-                    <th style='text-align: right; padding: 6px;'>Semana Anterior</th>
+                    <th style='text-align: right; padding: 6px;'><strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong></th>
+                    <th style='text-align: right; padding: 6px;'><strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong></th>
                     <th style='text-align: right; padding: 6px;'>Var (%)</th>
                 </tr>
             </thead>
@@ -253,6 +264,13 @@ class DashboardController
                     <td style='text-align: right;'>{$compraAnteriorFmt}</td>
                     <td style='text-align: right; {$classCompra}'>{$varCompraFmt}</td>
                 </tr>
+                <tr>
+                    <td style='padding: 6px;'>% Compras / Faturamento</td>
+                    <td style='text-align: right;'>{$percAtualFmt}</td>
+                    <td style='text-align: right;'>{$percAnteriorFmt}</td>
+                    <td style='text-align: right; {$classCompraSobreFat}'>{$varCompraSobreFatFmt}</td>
+                </tr>
+
             </tbody>
         </table>";
 
@@ -281,31 +299,52 @@ class DashboardController
         $classTotalFat = $varTotalFat >= 0 ? 'color: green;' : 'color: red;';
         $classTotalCompra = $varTotalCompra >= 0 ? 'color: green;' : 'color: red;';
 
-        $html .= "
-            <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;'>
-                <thead>
-                    <tr style='border-bottom: 1px solid #000; background-color: #e0e0e0;'>
-                        <th style='text-align: left; padding: 6px;'>Consolidado Grupo</th>
-                        <th style='text-align: right; padding: 6px;'>Semana Atual</th>
-                        <th style='text-align: right; padding: 6px;'>Semana Anterior</th>
-                        <th style='text-align: right; padding: 6px;'>Var (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style='padding: 6px;'>Faturamento Bruto</td>
-                        <td style='text-align: right;'>{$totalFatAtualFmt}</td>
-                        <td style='text-align: right;'>{$totalFatAnteriorFmt}</td>
-                        <td style='text-align: right; {$classTotalFat}'>{$varTotalFatFmt}</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 6px;'>Compras</td>
-                        <td style='text-align: right;'>{$totalCompraAtualFmt}</td>
-                        <td style='text-align: right;'>{$totalCompraAnteriorFmt}</td>
-                        <td style='text-align: right; {$classTotalCompra}'>{$varTotalCompraFmt}</td>
-                    </tr>
-                </tbody>
-            </table>";
+        $percTotalAtual = $totalFatAtual > 0 ? ($totalCompraAtual / $totalFatAtual * 100) : 0;
+        $percTotalAnterior = $totalFatAnterior > 0 ? ($totalCompraAnterior / $totalFatAnterior * 100) : 0;
+        $varTotalCompraSobreFat = self::calcularVariacao($percTotalAtual, $percTotalAnterior);
+        $classTotalCompraSobreFat = $varTotalCompraSobreFat >= 0 ? 'color: green;' : 'color: red;';
+
+        $percTotalAtualFmt = number_format($percTotalAtual, 2, ',', '.') . '%';
+        $percTotalAnteriorFmt = number_format($percTotalAnterior, 2, ',', '.') . '%';
+        $varTotalCompraSobreFatFmt = number_format($varTotalCompraSobreFat, 2, ',', '.') . '%';
+
+
+        $mostrarConsolidado = count($labels) > 1;
+
+        if ($mostrarConsolidado) {
+            $html .= "
+        <table style='width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;'>
+            <thead>
+                <tr style='border-bottom: 1px solid #000; background-color: #e0e0e0;'>
+                    <th style='text-align: left; padding: 6px;'>Consolidado Grupo</th>
+                    <th style='text-align: right; padding: 6px;'><strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong></th>
+                    <th style='text-align: right; padding: 6px;'><strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong></th>
+                    <th style='text-align: right; padding: 6px;'>Var (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style='padding: 6px;'>Faturamento Bruto</td>
+                    <td style='text-align: right;'>{$totalFatAtualFmt}</td>
+                    <td style='text-align: right;'>{$totalFatAnteriorFmt}</td>
+                    <td style='text-align: right; {$classTotalFat}'>{$varTotalFatFmt}</td>
+                </tr>
+                <tr>
+                    <td style='padding: 6px;'>Compras</td>
+                    <td style='text-align: right;'>{$totalCompraAtualFmt}</td>
+                    <td style='text-align: right;'>{$totalCompraAnteriorFmt}</td>
+                    <td style='text-align: right; {$classTotalCompra}'>{$varTotalCompraFmt}</td>
+                </tr>
+                <tr>
+                    <td style='padding: 6px;'>% Compras / Faturamento</td>
+                    <td style='text-align: right;'>{$percTotalAtualFmt}</td>
+                    <td style='text-align: right;'>{$percTotalAnteriorFmt}</td>
+                    <td style='text-align: right; {$classTotalCompraSobreFat}'>{$varTotalCompraSobreFatFmt}</td>
+                </tr>
+            </tbody>
+        </table>";
+        }
+
 
 
         $graficoSrc = self::gerarGraficoBase64($labels, $fatValues, $compraValues);
@@ -381,33 +420,36 @@ class DashboardController
 
 
         $html .= "<center><h3 style='margin-top: 40px;'>Lista de Compras por Insumo</h3></center>";
-
+        
         foreach ($itensAtual as $loja) {
             $nomeLoja = strtoupper($loja['nomeLoja']);
-            $itens = $loja['itens'] ?? [];
+            $categorias = $loja['categorias'] ?? [];
 
-            if (empty($itens)) continue;
-
-            $totalLoja = array_sum(array_column($itens, 'valor_total'));
-
-            // Adiciona o campo percentual ao array
-            foreach ($itens as &$item) {
-                $valor = (float)($item['valor_total'] ?? 0);
-                $item['percentual'] = $totalLoja > 0 ? ($valor / $totalLoja * 100) : 0;
-            }
-            unset($item);
-
-            // Ordena por percentual desc
-            usort($itens, fn($a, $b) => $b['percentual'] <=> $a['percentual']);
+            if (empty($categorias)) continue;
 
             $html .= "<h4 style='margin-bottom: 8px; margin-top: 24px;'>$nomeLoja</h4>";
-            $html .= "
-        <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;'>
+
+            foreach ($categorias as $categoria => $itens) {
+                if (empty($itens)) continue;
+
+                $totalCategoria = array_sum(array_column($itens, 'valor_total'));
+
+                foreach ($itens as &$item) {
+                    $valor = (float)($item['valor_total'] ?? 0);
+                    $item['percentual'] = $totalCategoria > 0 ? ($valor / $totalCategoria * 100) : 0;
+                }
+                unset($item);
+
+                usort($itens, fn($a, $b) => $b['percentual'] <=> $a['percentual']);
+
+                $html .= "<h5 style='margin: 12px 0 4px 0;'>Categoria: $categoria</h5>";
+                $html .= "
+        <table style='width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;'>
             <thead>
                 <tr style='border-bottom: 1px solid #000; background-color: #f9f9f9;'>
-                    <th style='text-align: left; padding: 6px;'>Und.</th>
                     <th style='text-align: left; padding: 6px;'>Descrição</th>
                     <th style='text-align: right; padding: 6px;'>Qtde.</th>
+                    <th style='text-align: left; padding: 6px;'>Und.</th>
                     <th style='text-align: right; padding: 6px;'>Custo Médio</th>
                     <th style='text-align: right; padding: 6px;'>Valor Total (R$)</th>
                     <th style='text-align: right; padding: 6px;'>%</th>
@@ -415,27 +457,28 @@ class DashboardController
             </thead>
             <tbody>";
 
-            foreach ($itens as $item) {
-                $und         = $item['und'] ?? '';
-                $desc        = $item['descricao'] ?? '';
-                $qtd         = number_format($item['quantidade'], 2, ',', '.');
-                $custoMedio  = 'R$ ' . number_format($item['custo_medio'], 2, ',', '.');
-                $valor       = (float)($item['valor_total'] ?? 0);
-                $valorFmt    = 'R$ ' . number_format($valor, 2, ',', '.');
-                $percentualFmt = number_format($item['percentual'], 2, ',', '.') . '%';
+                foreach ($itens as $item) {
+                    $und         = $item['und'] ?? '';
+                    $desc        = $item['descricao'] ?? '';
+                    $qtd         = number_format($item['quantidade'], 2, ',', '.');
+                    $custoMedio  = 'R$ ' . number_format($item['custo_medio'], 2, ',', '.');
+                    $valor       = (float)($item['valor_total'] ?? 0);
+                    $valorFmt    = 'R$ ' . number_format($valor, 2, ',', '.');
+                    $percentualFmt = number_format($item['percentual'], 2, ',', '.') . '%';
 
-                $html .= "
-        <tr>
-            <td style='padding: 6px;'>$und</td>
-            <td style='padding: 6px;'>$desc</td>
-            <td style='text-align: right;'>$qtd</td>
-            <td style='text-align: right;'>$custoMedio</td>
-            <td style='text-align: right;'>$valorFmt</td>
-            <td style='text-align: right;'>$percentualFmt</td>
-        </tr>";
+                    $html .= "
+            <tr>
+                <td style='padding: 6px;'>$desc</td>
+                <td style='text-align: right;'>$qtd</td>
+                <td style='padding: 6px;'>$und</td>
+                <td style='text-align: right;'>$custoMedio</td>
+                <td style='text-align: right;'>$valorFmt</td>
+                <td style='text-align: right;'>$percentualFmt</td>
+            </tr>";
+                }
+
+                $html .= "</tbody></table>";
             }
-
-            $html .= "</tbody></table>";
         }
 
 
@@ -840,13 +883,16 @@ class DashboardController
         ];
     }
 
-
     public static function gerarPdfSemanalCompras($grupoId): array
     {
         $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
 
         $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
         $fimAtual = $hoje->modify('last sunday'); // domingo passado
+
+//        $inicioAtual = new DateTime('2025-07-01');
+//        $fimAtual = new DateTime('2025-07-07');
+
 
         $inicioAnterior = $inicioAtual->modify('-7 days');
         $fimAnterior = $fimAtual->modify('-7 days');
@@ -904,7 +950,6 @@ class DashboardController
             'url' => $publicUrl
         ];
     }
-
 
     public static function getLojaIdBySystemUnitId($systemUnitId): array
     {
@@ -2120,6 +2165,88 @@ class DashboardController
         }
     }
 
+//    public static function generateComprasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
+//    {
+//        global $pdo;
+//
+//        try {
+//            $lojas = BiController::getUnitsByGroup($grupoId);
+//            $saida = [];
+//
+//            foreach ($lojas as $loja) {
+//                $unitId = $loja['system_unit_id'];
+//
+//                // Agrupa itens por produto
+//                $stmt = $pdo->prepare("
+//                SELECT
+//                    m.produto AS codigo,
+//                    SUM(m.quantidade) AS quantidade_total,
+//                    SUM(m.valor) AS valor_total
+//                FROM movimentacao m
+//                WHERE m.system_unit_id = :unitId
+//                  AND m.tipo = 'c'
+//                  AND m.tipo_mov = 'entrada'
+//                  AND m.data_emissao BETWEEN :inicio AND :fim
+//                GROUP BY m.produto
+//            ");
+//                $stmt->execute([
+//                    ':unitId' => $unitId,
+//                    ':inicio' => $dt_inicio,
+//                    ':fim' => $dt_fim
+//                ]);
+//
+//                $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+//
+//                if (empty($itens)) continue;
+//
+//                // Mapeia produtos da loja
+//                $codigos = array_column($itens, 'codigo');
+//                $placeholders = implode(',', array_fill(0, count($codigos), '?'));
+//
+//                $stmtProd = $pdo->prepare("
+//                SELECT codigo, nome, und
+//                FROM products
+//                WHERE system_unit_id = ? AND codigo IN ($placeholders)
+//            ");
+//                $stmtProd->execute(array_merge([$unitId], $codigos));
+//
+//                $produtosInfo = [];
+//                foreach ($stmtProd->fetchAll(PDO::FETCH_ASSOC) as $p) {
+//                    $produtosInfo[$p['codigo']] = $p;
+//                }
+//
+//                // Enriquecer cada item com nome e unidade
+//                $dados = [];
+//                foreach ($itens as $item) {
+//                    $codigo = $item['codigo'];
+//                    $quantidade = (float)$item['quantidade_total'];
+//                    $valorTotal = (float)$item['valor_total'];
+//                    $custoMedio = $quantidade > 0 ? $valorTotal / $quantidade : 0;
+//
+//                    $dados[] = [
+//                        'codigo'      => $codigo,
+//                        'descricao'   => $produtosInfo[$codigo]['nome'] ?? 'N/D',
+//                        'und'         => $produtosInfo[$codigo]['und'] ?? '',
+//                        'quantidade'  => round($quantidade, 2),
+//                        'valor_total' => round($valorTotal, 2),
+//                        'custo_medio' => round($custoMedio, 4)
+//                    ];
+//                }
+//
+//                $saida[] = [
+//                    'lojaId'   => $unitId,
+//                    'nomeLoja' => $loja['name'],
+//                    'itens'    => $dados
+//                ];
+//            }
+//
+//            return ['success' => true, 'data' => $saida];
+//        } catch (Exception $e) {
+//            return ['success' => false, 'message' => $e->getMessage()];
+//        }
+//    }
+
+
     public static function generateComprasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
         global $pdo;
@@ -2151,17 +2278,19 @@ class DashboardController
                 ]);
 
                 $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
                 if (empty($itens)) continue;
 
-                // Mapeia produtos da loja
+                // Buscar dados dos produtos com categoria
                 $codigos = array_column($itens, 'codigo');
                 $placeholders = implode(',', array_fill(0, count($codigos), '?'));
 
                 $stmtProd = $pdo->prepare("
-                SELECT codigo, nome, und 
-                FROM products 
-                WHERE system_unit_id = ? AND codigo IN ($placeholders)
+                SELECT 
+                    p.codigo, p.nome, p.und, p.categoria,
+                    c.nome AS categoria_nome
+                FROM products p
+                LEFT JOIN categorias c ON c.codigo = p.categoria AND c.system_unit_id = p.system_unit_id
+                WHERE p.system_unit_id = ? AND p.codigo IN ($placeholders)
             ");
                 $stmtProd->execute(array_merge([$unitId], $codigos));
 
@@ -2170,18 +2299,21 @@ class DashboardController
                     $produtosInfo[$p['codigo']] = $p;
                 }
 
-                // Enriquecer cada item com nome e unidade
-                $dados = [];
+                // Agrupar os itens por categoria
+                $categorias = [];
                 foreach ($itens as $item) {
                     $codigo = $item['codigo'];
                     $quantidade = (float)$item['quantidade_total'];
                     $valorTotal = (float)$item['valor_total'];
                     $custoMedio = $quantidade > 0 ? $valorTotal / $quantidade : 0;
 
-                    $dados[] = [
+                    $info = $produtosInfo[$codigo] ?? [];
+                    $categoriaNome = $info['categoria_nome'] ?? 'Sem Categoria';
+
+                    $categorias[$categoriaNome][] = [
                         'codigo'      => $codigo,
-                        'descricao'   => $produtosInfo[$codigo]['nome'] ?? 'N/D',
-                        'und'         => $produtosInfo[$codigo]['und'] ?? '',
+                        'descricao'   => $info['nome'] ?? 'N/D',
+                        'und'         => $info['und'] ?? '',
                         'quantidade'  => round($quantidade, 2),
                         'valor_total' => round($valorTotal, 2),
                         'custo_medio' => round($custoMedio, 4)
@@ -2189,9 +2321,9 @@ class DashboardController
                 }
 
                 $saida[] = [
-                    'lojaId'   => $unitId,
-                    'nomeLoja' => $loja['name'],
-                    'itens'    => $dados
+                    'lojaId'    => $unitId,
+                    'nomeLoja'  => $loja['name'],
+                    'categorias' => $categorias
                 ];
             }
 
@@ -2200,6 +2332,7 @@ class DashboardController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
+
 
 
     public static function generateSomaNotasPorGrupo($grupoId, $dt_inicio, $dt_fim): array

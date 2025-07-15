@@ -1160,6 +1160,12 @@ a.nav-link:not(.active):hover {
     height:35px;
 }
 
+.login-box {
+    background-color: red !important;
+    border-radius: 8px !important;
+    box-shadow: 0px 0px 10px #00000055 !important;
+}
+
 /** footer **/
 .main-footer {
     margin-left:300px !important;

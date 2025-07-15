@@ -140,7 +140,7 @@ class BiController {
             grupo_estabelecimento g
         WHERE EXISTS (
             SELECT 1
-            FROM grupo_estabelecimento_rel r
+            FROM grupo_estabelecimento_rel r    
             JOIN system_unit su ON su.id = r.system_unit_id
             WHERE 
                 r.grupo_id = g.id
@@ -156,7 +156,6 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function ListUnitsByGroup($group_id) {
         global $pdo;
 
@@ -1407,9 +1406,5 @@ class BiController {
             return ['success' => false, 'message' => 'Erro ao gravar _bi_sales.'];
         }
     }
-
-
-
 }
-
 ?>

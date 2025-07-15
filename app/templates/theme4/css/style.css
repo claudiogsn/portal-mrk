@@ -7685,6 +7685,11 @@ fieldset[disabled] .form-control {
   color: #2196F3; }
 
 /* Login Page ================================== */
+.login-box {
+  border-radius: 8px !important;
+  box-shadow: 0px 0px 10px #00000055 !important;
+}
+
 .login-page {
   background-color: #00BCD4;
   padding-left: 0;
