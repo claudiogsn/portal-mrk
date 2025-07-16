@@ -1694,18 +1694,18 @@ class DashboardController
                 $lojaId = $loja['custom_code'];
 
                 $sql = "
-                SELECT
-                    p.nome AS nome_produto,
-                    s.cod_material,
-                    SUM(s.quantidade) AS total_quantidade,
-                    SUM(s.valor_liquido) AS total_valor
-                FROM _bi_sales s
-                INNER JOIN products p
-                    ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id
-                WHERE s.custom_code = :lojaId
-                  AND s.data_movimento BETWEEN :dt_inicio AND :dt_fim
-                GROUP BY s.cod_material, p.nome
-            ";
+                    SELECT
+                        COALESCE(p.nome, 'Produto não cadastrado') AS nome_produto,
+                        s.cod_material,
+                        SUM(s.quantidade) AS total_quantidade,
+                        SUM(s.valor_liquido) AS total_valor
+                    FROM _bi_sales s
+                    LEFT JOIN products p
+                        ON s.cod_material = p.codigo AND s.system_unit_id = p.system_unit_id
+                    WHERE s.custom_code = :lojaId
+                      AND s.data_movimento BETWEEN :dt_inicio AND :dt_fim
+                    GROUP BY s.cod_material
+                ";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
                     ':lojaId' => $lojaId,
