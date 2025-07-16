@@ -529,13 +529,10 @@
 
         $('#modalExecucaoManual').modal('hide');
 
-        // 🟡 Abre o modal de logs com status de carregando
+        // 🟡 Mostra o modal de logs e status inicial
         $('#modalLogsRealtime').modal('show');
         $('#contadorLogs').html(`<i class="fa fa-spinner fa-spin"></i> Executando disparo manual...`);
-        $('#contadorLogs').html(`<i class="fa fa-spinner fa-spin"></i> Executando disparo manual...`);
-        $('#contadorLogs').html(`<i class="fa fa-spinner fa-spin"></i> Executando disparo manual...`);
         carregarLogsEmTempoReal();
-
         intervaloLogs = setInterval(carregarLogsEmTempoReal, 10000);
 
         try {
@@ -550,6 +547,7 @@
             $('#contadorLogs').html(`<i class="fa fa-times red"></i> Erro ao executar disparo manual`);
         }
     }
+
 
 
 
