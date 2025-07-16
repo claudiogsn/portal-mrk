@@ -527,7 +527,16 @@
             return Swal.fire('Atenção', 'O período deve ter no máximo 10 dias.', 'warning');
         }
 
-        Swal.fire({ title: 'Executando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        $('#modalExecucaoManual').modal('hide');
+
+        // 🟡 Abre o modal de logs com status de carregando
+        $('#modalLogsRealtime').modal('show');
+        $('#contadorLogs').html(`<i class="fa fa-spinner fa-spin"></i> Executando disparo manual...`);
+        $('#contadorLogs').html(`<i class="fa fa-spinner fa-spin"></i> Executando disparo manual...`);
+        $('#contadorLogs').html(`<i class="fa fa-spinner fa-spin"></i> Executando disparo manual...`);
+        carregarLogsEmTempoReal();
+
+        intervaloLogs = setInterval(carregarLogsEmTempoReal, 10000);
 
         try {
             const res = await axios.post(endpoint, {
@@ -536,13 +545,12 @@
                 dt_fim
             });
 
-            Swal.close();
-            $('#modalExecucaoManual').modal('hide');
-            Swal.fire('Sucesso', 'Disparo executado manualmente.', 'success');
+            $('#contadorLogs').html(`<i class="fa fa-check green"></i> Disparo finalizado com sucesso em ${new Date().toLocaleTimeString('pt-BR')}`);
         } catch (err) {
-            Swal.fire('Erro', 'Erro ao executar disparo manual.', 'error');
+            $('#contadorLogs').html(`<i class="fa fa-times red"></i> Erro ao executar disparo manual`);
         }
     }
+
 
 
 
