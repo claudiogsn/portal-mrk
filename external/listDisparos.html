@@ -32,6 +32,11 @@
                 <div class="col-md-6">
                     <input type="text" id="filtroDisparo" class="form-control mb-2" placeholder="Filtrar por nome ou método">
                 </div>
+                <div class="col-md-6">
+                    <input type="checkbox" id="filtroApenasAtivos" class="chk-col-blue" checked="">
+                    <label for="filtroApenasAtivos">Apenas Ativos</label>
+                </div>
+
                 <div class="col-md-6 text-right mb-2">
                     <button id="btnLogsRealtime" class="btn btn-warning" style="margin-right: 8px;">Logs</button>
                     <button id="btnReloadJobs" class="btn btn-primary" style="margin-right: 8px;">Recarregar Agendador</button>
@@ -47,9 +52,10 @@
                 <table class="table table-striped table-hover" id="tabela-disparos">
                     <thead>
                     <tr>
-                        <th style="width: 40px;"></th> <!-- editar -->
-                        <th style="width: 40px;"></th> <!-- ativar/inativar -->
-                        <th style="width: 40px;"></th> <!-- ativar/inativar -->
+                        <th style="width: 18px;"></th> <!-- editar -->
+                        <th style="width: 18px;"></th> <!-- ativar/inativar -->
+                        <th style="width: 18px;"></th> <!-- ativar/inativar -->
+                        <th style="width: 18px;"></th> <!-- ativar/inativar -->
                         <th>Nome</th>
                         <th>Método</th>
                         <th>Cron</th>
@@ -140,6 +146,29 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="modalExecucaoManual" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header"><h4 class="modal-title">Executar Disparo Manualmente</h4></div>
+            <div class="modal-body">
+                <input type="hidden" id="execucaoEndpoint">
+                <label>Grupo</label>
+                <select id="selectGrupoEnvio" class="form-control" required></select>
+                <br>
+                <label>Data Inicial</label>
+                <input type="date" class="form-control" id="dataInicio" required>
+                <br>
+                <label>Data Final</label>
+                <input type="date" class="form-control" id="dataFim" required>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="executarDisparoManual()">Executar</button>
+                <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Modal Logs por Disparo -->
 <div class="modal fade" id="modalLogsDisparo" tabindex="-1" role="dialog">
@@ -176,6 +205,9 @@
     const token = new URLSearchParams(window.location.search).get('token') || '';
 
     $(document).ready(() => {
+
+        $('#filtroApenasAtivos').on('change', filtrarDisparos);
+
         listarDisparos();
 
         $('#btnNovoDisparo').click(() => {
@@ -302,7 +334,10 @@
             tbody.append(`
                 <tr data-nome="${d.nome.toLowerCase()}" data-metodo="${d.metodo.toLowerCase()}">
                     <td class="text-center">
-                        <a href="#" onclick="abrirLogsDisparo(${d.id}, '${d.nome}')" title="Logs"><i class="fa fa-terminal green" ></i></a>
+                        ${d.endpoint ? `<a href="#" onclick='abrirModalExecucaoManual(${JSON.stringify(d)})' title="Executar"><i class="fa-solid fa-play orange"></i></i></a>` : '<i class="fa-solid fa-play grey"></i>'}
+                    </td>
+                    <td class="text-center">
+                        <a href="#" onclick="abrirLogsDisparo(${d.id}, '${d.nome}')" title="Logs"><i class="fa fa-list green" ></i></a>
                     </td>
                     <td class="text-center">
                         <a href="#" onclick='editarDisparo(${JSON.stringify(d)})' title="Editar"><i class="fa fa-edit blue"></i></a>
@@ -322,17 +357,27 @@
             `);
 
         });
+
+        filtrarDisparos();
+
     }
 
     function filtrarDisparos() {
         const termo = $('#filtroDisparo').val().toLowerCase();
+        const apenasAtivos = $('#filtroApenasAtivos').is(':checked');
+
         $('#tabela-disparos tbody tr').each(function () {
             const nome = $(this).data('nome') || '';
             const metodo = $(this).data('metodo') || '';
-            const match = nome.includes(termo) || metodo.includes(termo);
-            $(this).toggle(match);
+            const ativo = $(this).find('td:last').text().trim().toLowerCase() === 'ativo';
+
+            const matchTermo = nome.includes(termo) || metodo.includes(termo);
+            const matchStatus = !apenasAtivos || ativo;
+
+            $(this).toggle(matchTermo && matchStatus);
         });
     }
+
 
     function editarDisparo(disparo) {
         $('#disparoId').val(disparo.id);
@@ -437,6 +482,69 @@
             $('#tabelaLogsDisparo').html('<tr><td colspan="3">Erro ao buscar logs</td></tr>');
         }
     }
+
+    async function abrirModalExecucaoManual(disparo) {
+        if (!disparo.endpoint) {
+            Swal.fire('Erro', 'Este disparo não possui endpoint configurado.', 'warning');
+            return;
+        }
+
+        $('#execucaoEndpoint').val(disparo.endpoint);
+        $('#dataInicio').val('');
+        $('#dataFim').val('');
+
+        try {
+            const gruposRes = await axios.post(baseUrl, {
+                method: 'listarGrupos',
+                token,
+                data: { usuario_id: 1}
+            });
+
+            const grupos = gruposRes.data;
+            $('#selectGrupoEnvio').html('<option value="">Selecione</option>');
+            grupos.forEach(g => {
+                $('#selectGrupoEnvio').append(`<option value="${g.id}">${g.nome}</option>`);
+            });
+
+            $('#modalExecucaoManual').modal('show');
+        } catch {
+            Swal.fire('Erro', 'Falha ao carregar os grupos.', 'error');
+        }
+    }
+
+    async function executarDisparoManual() {
+        const endpoint = $('#execucaoEndpoint').val();
+        const group_id = $('#selectGrupoEnvio').val();
+        const dt_inicio = $('#dataInicio').val();
+        const dt_fim = $('#dataFim').val();
+
+        if (!endpoint || !group_id || !dt_inicio || !dt_fim) {
+            return Swal.fire('Atenção', 'Preencha todos os campos.', 'warning');
+        }
+
+        const dias = (new Date(dt_fim) - new Date(dt_inicio)) / (1000 * 60 * 60 * 24);
+        if (dias < 0 || dias > 10) {
+            return Swal.fire('Atenção', 'O período deve ter no máximo 10 dias.', 'warning');
+        }
+
+        Swal.fire({ title: 'Executando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(endpoint, {
+                group_id,
+                dt_inicio,
+                dt_fim
+            });
+
+            Swal.close();
+            $('#modalExecucaoManual').modal('hide');
+            Swal.fire('Sucesso', 'Disparo executado manualmente.', 'success');
+        } catch (err) {
+            Swal.fire('Erro', 'Erro ao executar disparo manual.', 'error');
+        }
+    }
+
+
 
 
     $('#btnReloadJobs').on('click', async () => {

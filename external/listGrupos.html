@@ -257,8 +257,15 @@
 
             $select.empty();
 
+            // Pega os IDs dos que já estão no grupo
+            const idsNoGrupo = new Set(noGrupoRes.data.map(loja => loja.system_unit_id));
+
+// Filtra os disponíveis para remover duplicados
+            const disponiveisFiltrados = disponiveisRes.data.filter(loja => !idsNoGrupo.has(loja.id));
+
+// Junta os dois conjuntos sem duplicação
             const allOptions = [
-                ...disponiveisRes.data.map(loja => ({
+                ...disponiveisFiltrados.map(loja => ({
                     id: loja.id,
                     label: formatLoja(loja)
                 })),
@@ -267,6 +274,7 @@
                     label: formatLoja(loja)
                 }))
             ];
+
 
             const selectedIds = new Set(noGrupoRes.data.map(l => l.system_unit_id));
 
@@ -280,10 +288,23 @@
             }
 
             $select.multiSelect({
-                selectableHeader: '<div class="custom-header text-center"><strong>Disponíveis</strong></div>',
+                selectableHeader: `
+                <div class="custom-header text-center"><strong>Disponíveis</strong></div>
+                <input type="text" id="filtroDisponiveis" class="form-control" placeholder="Filtrar disponíveis...">`,
                 selectionHeader: '<div class="custom-header text-center"><strong>Selecionados</strong></div>',
                 keepOrder: true
             });
+
+            setTimeout(() => {
+                $('#filtroDisponiveis').on('input', function () {
+                    const termo = $(this).val().toLowerCase();
+
+                    $('#multiSelectEstabelecimentos').next('.ms-container').find('.ms-selectable li').each(function () {
+                        const texto = $(this).text().toLowerCase();
+                        $(this).toggle(texto.includes(termo));
+                    });
+                });
+            }, 200); // Espera o multiSelect renderizar
 
             Swal.close();
             $('#modalLojasGrupo').modal('show');
