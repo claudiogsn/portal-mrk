@@ -202,9 +202,9 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'https://portal.mrksolucoes.com.br/api/v1/index.php';
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -263,32 +263,42 @@
         return uniqueDates;
     }
 
-    async function calcularNecessidades() {
-        const selectedUnitId = document.getElementById('unit-select').value;
-        const allSelectedProducts = importedProductCodes;
-        const dates = calcularUltimas4DatasPorSemana();
+        async function calcularNecessidades() {
+            const selectedUnitId = document.getElementById('unit-select').value;
+            const allSelectedProducts = importedProductCodes;
+            const dates = calcularUltimas4DatasPorSemana();
 
-        if (!selectedUnitId || !dates || allSelectedProducts.length === 0) {
-            Swal.fire('Atenção', 'Preencha todos os campos e selecione um modelo com produtos.', 'warning');
-            return;
-        }
-
-        // 👉 Loader 1: enquanto calcula consumo
-        Swal.fire({
-            title: 'Calculando consumo...',
-            html: 'Aguarde um momento',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
+            if (!selectedUnitId || !dates || allSelectedProducts.length === 0) {
+                Swal.fire('Atenção', 'Preencha todos os campos e selecione um modelo com produtos.', 'warning');
+                return;
             }
-        });
 
-        try {
-            const response = await fetch(baseUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    method: 'getInsumoConsumption',
+            // 👉 Loader: enquanto calcula consumo
+            Swal.fire({
+                title: 'Calculando consumo...',
+                html: 'Aguarde um momento',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            try {
+                // 🔍 1. Verifica configuração de consumo_media3
+                const configResp = await axios.post(baseUrl, {
+                    method: 'getConfigGroupByUnitId',
+                    token: token,
+                    data: {
+                        system_unit_id: selectedUnitId
+                    }
+                });
+
+                const useTop3 = configResp?.data?.consumo_media3 == 1;
+                const metodo = useTop3 ? 'getInsumoConsumptionTop3' : 'getInsumoConsumption';
+
+                // 📦 2. Consulta consumo com método apropriado
+                const response = await axios.post(baseUrl, {
+                    method: metodo,
                     token: token,
                     data: {
                         system_unit_id: selectedUnitId,
@@ -296,39 +306,36 @@
                         productCodes: allSelectedProducts,
                         username: username
                     }
-                })
-            });
+                });
 
-            const result = await response.json();
+                const result = response.data;
 
-            // Verifica se a propriedade consumos existe e é um array
-            if (!result || !Array.isArray(result.consumos)) {
-                throw new Error("Resposta inesperada da API");
-            }
-
-            const consumos = result.consumos;
-            unitName = result.unidade;
-            userName = result.usuario;
-
-
-            Swal.close(); // fecha o loader
-
-            // Agrupar os produtos por categoria
-            const produtosAgrupados = consumos.reduce((acc, produto) => {
-                if (!acc[produto.categoria]) {
-                    acc[produto.categoria] = [];
+                if (!result || !Array.isArray(result.consumos)) {
+                    throw new Error("Resposta inesperada da API");
                 }
-                acc[produto.categoria].push(produto);
-                return acc;
-            }, {});
 
-            renderItensByCategory(produtosAgrupados);
+                const consumos = result.consumos;
+                unitName = result.unidade;
+                userName = result.usuario;
 
-        } catch (error) {
-            console.error('Erro ao calcular necessidades:', error);
-            Swal.fire('Erro', 'Falha ao calcular compras.', 'error');
+                Swal.close(); // fecha o loader
+
+                // Agrupar produtos por categoria
+                const produtosAgrupados = consumos.reduce((acc, produto) => {
+                    if (!acc[produto.categoria]) {
+                        acc[produto.categoria] = [];
+                    }
+                    acc[produto.categoria].push(produto);
+                    return acc;
+                }, {});
+
+                renderItensByCategory(produtosAgrupados);
+
+            } catch (error) {
+                console.error('Erro ao calcular necessidades:', error);
+                Swal.fire('Erro', 'Falha ao calcular compras.', 'error');
+            }
         }
-    }
 
     function renderItensByCategory(itens) {
                 const tbody = $('#result-table tbody');

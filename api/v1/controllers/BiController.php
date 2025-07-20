@@ -709,6 +709,121 @@ class BiController {
             return ['status' => 'error', 'message' => 'Erro ao persistir movimentos: ' . $e->getMessage()];
         }
     }
+    public static function GetInfoConsolidationEstoqueSemBalanco($system_unit_id, $data)
+    {
+        global $pdo;
+
+        try {
+            // Verifica se já existe consolidação
+            $stmt = $pdo->prepare(
+                "SELECT * FROM diferencas_estoque 
+             WHERE data = :data AND system_unit_id = :system_unit_id"
+            );
+            $stmt->execute([':data' => $data, ':system_unit_id' => $system_unit_id]);
+            $consolidated_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($consolidated_data)) {
+                return [
+                    'status' => 'success',
+                    'message' => 'Consolidação já realizada para este dia.',
+                    'data' => $consolidated_data
+                ];
+            }
+
+            // 1. Buscar todos os produtos que tiveram movimentações no dia
+            $stmt = $pdo->prepare(
+                "SELECT DISTINCT produto
+             FROM movimentacao
+             WHERE data = :data AND system_unit_id = :system_unit_id AND status = 1"
+            );
+            $stmt->execute([':data' => $data, ':system_unit_id' => $system_unit_id]);
+            $produtos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (empty($produtos)) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Nenhuma movimentação encontrada para o dia informado.',
+                    'data' => []
+                ];
+            }
+
+            $result = [];
+
+            foreach ($produtos as $produto) {
+                // Consulta contagem realizada (último balanço do dia)
+                $stmt = $pdo->prepare(
+                    "SELECT quantidade 
+                 FROM movimentacao 
+                 WHERE data = :data AND system_unit_id = :system_unit_id 
+                 AND status = 1 AND tipo = 'b' AND produto = :produto 
+                 ORDER BY id DESC LIMIT 1"
+                );
+                $stmt->execute([
+                    ':data' => $data,
+                    ':system_unit_id' => $system_unit_id,
+                    ':produto' => $produto
+                ]);
+                $contagem_realizada = floatval($stmt->fetchColumn() ?? 0);
+
+                // Consulta saldo atual do produto
+                $stmt = $pdo->prepare(
+                    "SELECT saldo, nome 
+                 FROM products 
+                 WHERE system_unit_id = :system_unit_id AND codigo = :produto"
+                );
+                $stmt->execute([':system_unit_id' => $system_unit_id, ':produto' => $produto]);
+                $produto_info = $stmt->fetch(PDO::FETCH_ASSOC);
+                $saldo_inicial = floatval($produto_info['saldo'] ?? 0);
+                $nome_produto = $produto_info['nome'] ?? 'Produto Desconhecido';
+
+                // Entradas
+                $stmt = $pdo->prepare(
+                    "SELECT SUM(quantidade) 
+                 FROM movimentacao 
+                 WHERE data = :data AND system_unit_id = :system_unit_id 
+                 AND status = 1 AND tipo_mov = 'entrada' AND produto = :produto"
+                );
+                $stmt->execute([':data' => $data, ':system_unit_id' => $system_unit_id, ':produto' => $produto]);
+                $entradas = floatval($stmt->fetchColumn() ?? 0);
+
+                // Saídas
+                $stmt = $pdo->prepare(
+                    "SELECT SUM(quantidade) 
+                 FROM movimentacao 
+                 WHERE data = :data AND system_unit_id = :system_unit_id 
+                 AND status = 1 AND tipo_mov = 'saida' AND produto = :produto"
+                );
+                $stmt->execute([':data' => $data, ':system_unit_id' => $system_unit_id, ':produto' => $produto]);
+                $saidas = floatval($stmt->fetchColumn() ?? 0);
+
+                // Cálculo do saldo final e diferença
+                $saldo_final = $saldo_inicial + $entradas - $saidas;
+                $diferenca = $contagem_realizada - $saldo_final;
+
+                $result[] = [
+                    'produto' => $produto,
+                    'nome_produto' => $nome_produto,
+                    'saldo_anterior' => number_format($saldo_inicial, 2, ',', ''),
+                    'entradas' => number_format($entradas, 2, ',', ''),
+                    'saidas' => number_format($saidas, 2, ',', ''),
+                    'contagem_ideal' => number_format($saldo_final, 2, ',', ''),
+                    'contagem_realizada' => number_format($contagem_realizada, 2, ',', ''),
+                    'diferenca' => number_format($diferenca, 2, ',', '')
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'message' => 'Informações consolidadas com sucesso.',
+                'data' => $result
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Erro ao consolidar informações de estoque: ' . $e->getMessage()
+            ];
+        }
+    }
     public static function GetInfoConsolidationEstoque($system_unit_id, $data) {
         global $pdo;
 

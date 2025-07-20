@@ -50,7 +50,11 @@ class NecessidadesController
     {
         global $pdo;
 
-        // Passo 1: Obter todas as unidades filiais da matriz
+        // 🔹 Passo 0: Verificar configuração do grupo
+        $configGrupo = SystemUnitController::getConfigGroupByUnitId($matriz_id);
+        $media3 = $configGrupo && isset($configGrupo['consumo_media3']) && $configGrupo['consumo_media3'] == 1;
+
+        // 🔹 Passo 1: Obter todas as unidades filiais da matriz
         $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
         $stmt->execute([$matriz_id]);
         $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -59,7 +63,7 @@ class NecessidadesController
             return [];
         }
 
-        // Passo 2: Obter nomes dos insumos da matriz e filiais, priorizando a matriz
+        // 🔹 Passo 2: Obter nomes dos insumos (prioriza matriz)
         $all_unit_ids = array_merge([$matriz_id], $filiais);
         $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
         $unitPlaceholders = implode(',', array_fill(0, count($all_unit_ids), '?'));
@@ -70,32 +74,26 @@ class NecessidadesController
         INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
         WHERE p.codigo IN ($insumoPlaceholders) 
         AND p.system_unit_id IN ($unitPlaceholders)
-        ORDER BY p.system_unit_id = ? DESC");
-
+        ORDER BY p.system_unit_id = ? DESC
+    ");
         $params = array_merge($insumoIds, $all_unit_ids, [$matriz_id]);
         $stmt->execute($params);
 
-        // Processar produtos para priorizar o nome da matriz
+        // Processar produtos
         $produtos = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $codigo = $row['insumo_id'];
-            if (!isset($produtos[$codigo])) {
+            if (!isset($produtos[$codigo]) || $row['system_unit_id'] == $matriz_id) {
                 $produtos[$codigo] = $row;
-            } else {
-                // Substitui apenas se for da matriz
-                if ($row['system_unit_id'] == $matriz_id) {
-                    $produtos[$codigo] = $row;
-                }
             }
         }
 
-        // Inicializar consumo dos insumos
+        // 🔹 Inicializar estrutura de consumo
         $insumoConsumption = [];
         foreach ($insumoIds as $insumo_id) {
-            $nome = isset($produtos[$insumo_id]) ? $produtos[$insumo_id]['nome'] : 'Insumo não encontrado';
-            $categoria = isset($produtos[$insumo_id]) ? $produtos[$insumo_id]['categoria'] : 'Categoria não encontrada';
+            $nome = $produtos[$insumo_id]['nome'] ?? 'Insumo não encontrado';
+            $categoria = $produtos[$insumo_id]['categoria'] ?? 'Categoria não encontrada';
 
-            // Obter saldo da matriz
             $saldo_matriz_data = self::getProductStock($matriz_id, $insumo_id);
             $saldo_matriz = $saldo_matriz_data['saldo'] ?? 0;
 
@@ -112,62 +110,138 @@ class NecessidadesController
             ];
         }
 
-        // Passo 3: Calcular consumo para cada filial e agregar
+        // 🔹 Passo 3: Agregar consumo das filiais
         foreach ($filiais as $filial_id) {
-            $dadosFilial = self::getInsumoConsumption($filial_id, $dates, $insumoIds, $type);
+            if ($media3) {
+                $dadosFilial = self::getInsumoConsumptionTop3($filial_id, $dates, $insumoIds, $type);
+            } else {
+                $dadosFilial = self::getInsumoConsumption($filial_id, $dates, $insumoIds, $type, 0);
+            }
 
             if (!isset($dadosFilial['consumos']) || !is_array($dadosFilial['consumos'])) {
                 continue;
             }
 
             foreach ($dadosFilial['consumos'] as $insumo) {
+                if (!isset($insumo['codigo'])) continue;
 
-                if (!isset($insumo['codigo'])) {
-                    continue;
-                }
+                $id = $insumo['codigo'];
+                if (!isset($insumoConsumption[$id])) continue;
 
-                $insumo_id = $insumo['codigo'];
-
-                if (!isset($insumoConsumption[$insumo_id])) {
-                    continue;
-                }
-
-                $sales = (float)$insumo['sales'];
-                $saldo = (float)$insumo['saldo'];
-
-                $insumoConsumption[$insumo_id]['sales'] += $sales;
-                $insumoConsumption[$insumo_id]['saldo_lojas'] += $saldo;
+                $insumoConsumption[$id]['sales'] += (float) $insumo['sales'];
+                $insumoConsumption[$id]['saldo_lojas'] += (float) $insumo['saldo'];
             }
         }
 
-        // Passo 4: Calcular margem, recomendado e saldo total consolidados
+        // 🔹 Passo 4: Calcular margens, recomendados e totais
         foreach ($insumoConsumption as &$insumo) {
             $sales = $insumo['sales'];
             $saldo = $insumo['saldo_lojas'];
             $saldo_matriz = $insumo['saldo_matriz'];
-
-            // Calcular saldo total (saldo lojas + saldo matriz)
             $saldo_total = $saldo + $saldo_matriz;
+
             $insumo['saldo_total'] = number_format($saldo_total, 2, '.', '');
-
-            $margem = 0;
-            if ($type === 'media') {
-                $recomendado = max(0, ceil($sales - $saldo_total));
-            } else {
-                // Lógica para outros tipos (se necessário)
-                $recomendado = 0;
-            }
-
-            // Formatar valores
             $insumo['sales'] = number_format($sales, 2, '.', '');
-            $insumo['margem'] = number_format($margem, 2, '.', '');
             $insumo['saldo_lojas'] = number_format($saldo, 2, '.', '');
             $insumo['saldo_matriz'] = number_format($saldo_matriz, 2, '.', '');
-            $insumo['recomendado'] = $recomendado;
+            $insumo['margem'] = number_format(0, 2, '.', '');
+
+            if ($type === 'media' || $media3) {
+                $insumo['recomendado'] = max(0, ceil($sales - $saldo_total));
+            } else {
+                $insumo['recomendado'] = 0;
+            }
         }
 
         return array_values($insumoConsumption);
     }
+
+    public static function getInsumoConsumptionTop3($system_unit_id, $dates, $insumoIds, $user_id): array
+    {
+        global $pdo;
+
+        // Nome da unidade
+        $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+        $stmt->execute([$system_unit_id]);
+        $unitName = $stmt->fetchColumn() ?: '';
+
+        // Nome do usuário
+        $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $userName = $stmt->fetchColumn() ?: '';
+
+        $dates = array_unique($dates);
+
+        // Busca nomes e categorias dos insumos
+        $stmt = $pdo->prepare("
+        SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria, und as unidade
+        FROM products p
+        INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
+        WHERE p.codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
+        AND p.system_unit_id = ?
+    ");
+        $params = array_merge($insumoIds, [$system_unit_id]);
+        $stmt->execute($params);
+
+        // Inicializa consumo com estrutura
+        $insumoConsumption = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $id = $row['insumo_id'];
+            $insumoConsumption[$id] = [
+                'codigo' => $id,
+                'sales' => 0,
+                'margem' => 0,
+                'saldo' => 0,
+                'necessidade' => 0,
+                'unidade' => $row['unidade'],
+                'nome' => $row['nome'],
+                'categoria' => $row['categoria'],
+                '__consumos' => [] // ← array para armazenar consumo por data
+            ];
+        }
+
+        // Itera pelas datas e armazena os consumos individuais
+        foreach ($dates as $date) {
+            $consumoData = self::fetchTotalConsumption($system_unit_id, $insumoIds, $date);
+
+            foreach ($consumoData as $row) {
+                $id = $row['insumo_id'];
+                if (isset($insumoConsumption[$id])) {
+                    $insumoConsumption[$id]['__consumos'][] = floatval($row['total_consumo']);
+                }
+            }
+        }
+
+        // Processa saldo e média por insumo (média das 3 maiores)
+        foreach ($insumoIds as $id) {
+            $consumos = $insumoConsumption[$id]['__consumos'];
+            sort($consumos); // ordena do menor para maior
+            $top3 = array_slice(array_reverse($consumos), 0, 3); // pega as 3 maiores
+            $mediaTop3 = count($top3) > 0 ? array_sum($top3) / count($top3) : 0;
+            $insumoConsumption[$id]['sales'] = number_format($mediaTop3, 2, '.', '');
+
+            // Saldo atual
+            $stockData = self::getProductStock($system_unit_id, $id);
+            $insumoConsumption[$id]['saldo'] = number_format($stockData['saldo'] ?? 0, 2, '.', '');
+
+            // Recomendado
+            if ($insumoConsumption[$id]['unidade'] === 'UND') {
+                $insumoConsumption[$id]['recomendado'] = max(0, ceil($mediaTop3 - $insumoConsumption[$id]['saldo']));
+            } else {
+                $insumoConsumption[$id]['recomendado'] = max(0, round($mediaTop3 - $insumoConsumption[$id]['saldo'], 2));
+            }
+
+            // Remove campo temporário
+            unset($insumoConsumption[$id]['__consumos']);
+        }
+
+        return [
+            'unidade' => $unitName,
+            'usuario' => $userName,
+            'consumos' => array_values($insumoConsumption)
+        ];
+    }
+
 
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $user_id, $type = 'media'): array
     {

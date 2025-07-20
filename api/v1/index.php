@@ -481,6 +481,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
                 }
                 break;
+            case 'getInsumoConsumptionTop3':
+                if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes']) && isset($requestData['username'])) {
+                    $response = NecessidadesController::getInsumoConsumptionTop3($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
+                }
+                break;
             case 'getInsumoConsumptionMatriz':
                 if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes'])) {
                     $response = NecessidadesController::getInsumoConsumptionMatriz($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes']);
@@ -1744,6 +1752,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro system_unit_id ou data ausente'];
                 }
                 break;
+            case 'GetInfoConsolidationEstoqueSemBalanco':
+                if (isset($requestData['system_unit_id']) && isset($requestData['data'])) {
+                    $response = BiController::GetInfoConsolidationEstoqueSemBalanco($requestData['system_unit_id'], $requestData['data']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id ou data ausente'];
+                }
+                break;
             case 'persistStockDifferences':
                 if (isset($requestData['system_unit_id']) && isset($requestData['date']) && isset($requestData['data'])) {
                     $response = BiController::persistStockDifferences($requestData['system_unit_id'], $requestData['date'], $requestData['data']);
@@ -1905,6 +1921,16 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
+
+            case 'getConfigGroupByUnitId':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = SystemUnitController::getConfigGroupByUnitId($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
 
             case 'listSystemUnits':
                 $response = SystemUnitController::listSystemUnits();

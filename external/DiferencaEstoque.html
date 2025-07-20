@@ -249,9 +249,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function () {
-        const baseUrl = window.location.hostname !== 'localhost' ?
-            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-            'https://portal.mrksolucoes.com.br/api/v1/index.php';
+            const baseUrl = window.location.hostname !== 'localhost'
+                ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+                : 'http://localhost/portal-mrk/api/v1/index.php';
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const unitId = urlParams.get('unit_id');
@@ -312,8 +312,25 @@
                 });
 
                 try {
+                    // 🔍 1. Buscar a configuração do grupo
+                    const configResp = await axios.post(baseUrl, {
+                        method: 'getConfigGroupByUnitId',
+                        token: token,
+                        data: {
+                            system_unit_id: unitId
+                        }
+                    });
+
+                    const config = configResp?.data;
+                    const useConsolidacao = config?.consolidacao_diaria == 1;
+
+                    const metodo = useConsolidacao
+                        ? 'GetInfoConsolidationEstoque'
+                        : 'GetInfoConsolidationEstoqueSemBalanco';
+
+                    // 📦 2. Buscar os dados com o método correto
                     const response = await axios.post(baseUrl, {
-                        method: 'GetInfoConsolidationEstoque',
+                        method: metodo,
                         token: token,
                         data: {
                             system_unit_id: unitId,
@@ -338,9 +355,8 @@
                             text: 'Este dia já foi consolidado!'
                         });
 
-                        // Mostra o botão normalmente
                         confirmButton.style.display = 'inline-block';
-                        currentDetails = response.data.data; // Armazena os detalhes
+                        currentDetails = response.data.data;
                         renderDetailsGrid(currentDetails, date);
 
                         confirmButton.onclick = () => {
@@ -360,9 +376,8 @@
 
                         $('#detailsModal').modal('show');
                     } else {
-                        // Mostra o botão normalmente
                         confirmButton.style.display = 'inline-block';
-                        currentDetails = response.data.data; // Armazena os detalhes
+                        currentDetails = response.data.data;
                         renderDetailsGrid(currentDetails, date);
 
                         confirmButton.onclick = () => {
@@ -383,6 +398,7 @@
                         $('#detailsModal').modal('show');
                     }
                 } catch (error) {
+                    console.error('Erro ao carregar detalhes:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Erro',

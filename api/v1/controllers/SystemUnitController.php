@@ -118,4 +118,30 @@ class SystemUnitController
         $stmt = $pdo->query("SELECT * FROM system_unit ORDER BY id ASC");
         return ['success' => true, 'unidades' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
     }
+
+    public static function getConfigGroupByUnitId(int $system_unit_id): ?array
+    {
+        global $pdo;
+
+        try {
+            // Consulta o grupo mais antigo associado à unidade
+            $stmt = $pdo->prepare("
+            SELECT ge.*
+            FROM grupo_estabelecimento_rel ger
+            INNER JOIN grupo_estabelecimento ge ON ge.id = ger.grupo_id
+            WHERE ger.system_unit_id = :system_unit_id
+            ORDER BY ge.id ASC
+            LIMIT 1
+        ");
+            $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $grupo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return $grupo ?: null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
 }
