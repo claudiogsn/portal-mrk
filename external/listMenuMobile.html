@@ -317,6 +317,35 @@
         }
     }
 
+    async function removerPermissao(id) {
+        const confirmar = await Swal.fire({
+            title: 'Remover permissão?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, remover',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmar.isConfirmed) return;
+
+        try {
+            Swal.showLoading();
+
+            await axios.post(baseUrl, {
+                method: 'deleteMenuPermission',
+                token,
+                data: { id }
+            });
+
+            Swal.close();
+            await abrirPermissoes(currentMenuId);
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao remover permissão.', 'error');
+        }
+    }
+
+
 
 </script>
 </body>

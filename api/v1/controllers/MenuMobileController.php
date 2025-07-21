@@ -198,6 +198,24 @@ class MenuMobileController
         ];
     }
 
+    public static function deleteMenuPermission($data): array
+    {
+        global $pdo;
+
+        if (empty($data)) {
+            return ["success" => false, "message" => "ID da permissão é obrigatório."];
+        }
+
+        try {
+            $stmt = $pdo->prepare("DELETE FROM menu_mobile_access WHERE id = ?");
+            $stmt->execute([$data]);
+
+            return ["success" => true, "message" => "Permissão removida com sucesso."];
+        } catch (Exception $e) {
+            return ["success" => false, "message" => "Erro ao remover permissão: " . $e->getMessage()];
+        }
+    }
+
 
 
 }

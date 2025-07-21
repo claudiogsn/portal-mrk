@@ -1989,6 +1989,14 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'deleteMenuPermission':
+                if (isset($requestData['id'])) {
+                    $response = MenuMobileController::deleteMenuPermission($requestData['id']);
+                } else {
+                    $response = ["success" => false, "message" => "ID do menu não informado."];
+                }
+                break;
+
 
             case 'listSystemUnits':
                 $response = SystemUnitController::listSystemUnits();
