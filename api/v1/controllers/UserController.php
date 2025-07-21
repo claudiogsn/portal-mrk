@@ -14,9 +14,17 @@ class UserController {
     {
         global $pdo;
 
-        // Busca os detalhes do usuário
-        $stmt = $pdo->prepare("SELECT id, name, login, function_name, system_unit_id FROM system_users WHERE login = :user AND active = 'Y' LIMIT 1");
-        $stmt->bindParam(':user', $user, PDO::PARAM_STR);
+        // Verifica se é ID numérico
+        $isId = is_numeric($user);
+
+        if ($isId) {
+            $stmt = $pdo->prepare("SELECT id, name, login, function_name, system_unit_id FROM system_users WHERE id = :user AND active = 'Y' LIMIT 1");
+            $stmt->bindParam(':user', $user, PDO::PARAM_INT);
+        } else {
+            $stmt = $pdo->prepare("SELECT id, name, login, function_name, system_unit_id FROM system_users WHERE login = :user AND active = 'Y' LIMIT 1");
+            $stmt->bindParam(':user', $user, PDO::PARAM_STR);
+        }
+
         $stmt->execute();
         $userDetails = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -38,14 +46,14 @@ class UserController {
 
         // Busca o último acesso sem logout
         $stmtLog = $pdo->prepare("
-            SELECT sessionid
-            FROM system_access_log
-            WHERE login = :user
-            AND logout_time = '0000-00-00 00:00:00'
-            ORDER BY login_time DESC
-            LIMIT 1
-        ");
-        $stmtLog->bindParam(':user', $user, PDO::PARAM_STR);
+        SELECT sessionid
+        FROM system_access_log
+        WHERE login = :login
+        AND logout_time is null
+        ORDER BY login_time DESC
+        LIMIT 1
+    ");
+        $stmtLog->bindParam(':login', $userDetails['login'], PDO::PARAM_STR);
         $stmtLog->execute();
         $lastAccess = $stmtLog->fetch(PDO::FETCH_ASSOC);
 
@@ -54,6 +62,7 @@ class UserController {
 
         return ['success' => true, 'userDetails' => $userDetails];
     }
+
 
     public static function getUnitsUser($user_id)
     {

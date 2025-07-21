@@ -955,7 +955,7 @@ class DashboardController
     {
         global $pdo;
 
-        $sql = "SELECT custom_code,name from system_unit WHERE id = :systemUnitId LIMIT 1";
+        $sql = "SELECT * from system_unit WHERE id = :systemUnitId LIMIT 1";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':systemUnitId', $systemUnitId, PDO::PARAM_INT);
@@ -963,20 +963,7 @@ class DashboardController
 
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (isset($result['custom_code'])) {
-            $response = [
-                'success' => true,
-                'lojaId' => $result['custom_code'],
-                'name' => $result['name']
-            ];
-        } else {
-            $response = [
-                'success' => false,
-                'name' => $result['name']
-            ];
-        }
-
-        return $response;
+        return $result;
     }
 
     public static function generateHourlySalesByStore($start_datetime, $end_datetime): array

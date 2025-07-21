@@ -1699,6 +1699,140 @@ class MovimentacaoController
         }
     }
 
+    public static function savePerdaItems($data): array
+    {
+        global $pdo;
+
+        $requiredFields = ["system_unit_id", "itens", "user", "date_perda"];
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
+                return [
+                    "success" => false,
+                    "message" => "O campo '$field' é obrigatório.",
+                ];
+            }
+        }
+
+        if (!is_array($data["itens"]) || count($data["itens"]) === 0) {
+            return [
+                "success" => false,
+                "message" => "É necessário incluir ao menos um item.",
+            ];
+        }
+
+        $system_unit_id = $data["system_unit_id"];
+        $itens = $data["itens"];
+        $data_perda = $data["date_perda"];
+        $usuario_id = $data["user"];
+
+        $ultimoDoc = self::getLastMov($system_unit_id, "p");
+        $doc = self::incrementDoc($ultimoDoc, "p");
+
+        $tipo = "p";
+        $tipo_mov = "saida";
+        $status = 1;
+
+        $itensSalvos = [];
+
+        try {
+            $pdo->beginTransaction();
+
+            foreach ($itens as $item) {
+                foreach (["codigo", "seq", "quantidade"] as $field) {
+                    if (!isset($item[$field])) {
+                        $pdo->rollBack();
+                        return [
+                            "success" => false,
+                            "message" => "O campo '$field' é obrigatório para cada item.",
+                        ];
+                    }
+                }
+
+                $codigo = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = $item["quantidade"];
+                $valor = $item["valor"] ?? null;
+
+                // Buscar nome e unidade do produto
+                $stmtProd = $pdo->prepare("SELECT nome, und FROM products WHERE system_unit_id = :unit_id AND codigo = :codigo LIMIT 1");
+                $stmtProd->execute([
+                    ':unit_id' => $system_unit_id,
+                    ':codigo' => $codigo
+                ]);
+                $produto = $stmtProd->fetch(PDO::FETCH_ASSOC);
+
+                $nomeProduto = $produto['nome'] ?? 'Produto não encontrado';
+                $unidade = $produto['und'] ?? '-';
+
+                $stmt = $pdo->prepare("
+                INSERT INTO movimentacao 
+                (system_unit_id, system_unit_id_destino, status, doc, tipo, tipo_mov, produto, seq, data, data_original, valor, quantidade, usuario_id) 
+                VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+                $stmt->execute([
+                    $system_unit_id,
+                    $status,
+                    $doc,
+                    $tipo,
+                    $tipo_mov,
+                    $codigo,
+                    $seq,
+                    $data_perda,
+                    $data_perda,
+                    $valor,
+                    $quantidade,
+                    $usuario_id,
+                ]);
+
+                if ($stmt->rowCount() == 0) {
+                    $pdo->rollBack();
+                    return [
+                        "success" => false,
+                        "message" => "Falha ao lançar perda do item $codigo.",
+                    ];
+                }
+
+                $itensSalvos[] = [
+                    'codigo'     => $codigo,
+                    'nome'       => $nomeProduto,
+                    'quantidade' => number_format($quantidade, 3, ',', '.'),
+                    'unidade'    => $unidade
+                ];
+            }
+
+            // Busca nome da loja
+            $stmtLoja = $pdo->prepare("SELECT name FROM system_unit WHERE id = :id");
+            $stmtLoja->execute([':id' => $system_unit_id]);
+            $loja = $stmtLoja->fetch(PDO::FETCH_ASSOC);
+            $nomeLoja = $loja['name'] ?? 'Loja não encontrada';
+
+            // Busca nome do usuário
+            $stmtUser = $pdo->prepare("SELECT name FROM system_users WHERE id = :id");
+            $stmtUser->execute([':id' => $usuario_id]);
+            $usuario = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            $nomeUsuario = $usuario['name'] ?? 'Usuário não encontrado';
+
+            $pdo->commit();
+
+            return [
+                "success" => true,
+                "message" => "Perdas lançadas com sucesso.",
+                "doc" => $doc,
+                "unit_name" => $nomeLoja,
+                "user_name" => $nomeUsuario,
+                "datetime" => date('d/m/Y H:i:s'),
+                "itens" => $itensSalvos
+            ];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return [
+                "success" => false,
+                "message" => "Erro ao lançar perdas: " . $e->getMessage(),
+            ];
+        }
+    }
+
+
 
 
 
