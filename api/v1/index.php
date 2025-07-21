@@ -35,6 +35,7 @@ require_once 'controllers/NotaFiscalEntradaController.php';
 require_once 'controllers/DisparosController.php';
 require_once 'controllers/SystemUnitController.php';
 require_once 'controllers/UserController.php';
+require_once 'controllers/MenuMobileController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -119,14 +120,17 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro user ausente'];
                 }
                 break;
-                case 'getMenuMobile':
-                    if (isset($requestData['user_id']) && ($requestData['system_unit_id'])) {
-                        $response = UserController::getMenuMobile($requestData['user_id'],$requestData['system_unit_id']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'Parâmetro user ausente'];
-                    }
-                    break;
+            case 'getUsers':
+                    $response = UserController::getUsers();
+                break;
+            case 'getMenuMobile':
+                if (isset($requestData['user_id']) && ($requestData['system_unit_id'])) {
+                    $response = UserController::getMenuMobile($requestData['user_id'],$requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro user ausente'];
+                }
+                break;
             // Métodos para BiController
             case 'getUnitsByGroup':
                 if (isset($requestData['group_id'])) {
@@ -1936,6 +1940,51 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listMenus':
+                $response = MenuMobileController::listMenus();
+                break;
+
+            case 'createMenu':
+                $response = MenuMobileController::createMenu($requestData);
+                break;
+
+            case 'updateMenu':
+                $response = MenuMobileController::updateMenu($requestData);
+                break;
+
+            case 'deleteMenu':
+                if (isset($requestData['id'])) {
+                    $response = MenuMobileController::deleteMenu($requestData['id']);
+                } else {
+                    $response = ['success' => false, 'message' => 'ID não informado'];
+                }
+                break;
+
+            case 'getMenuById':
+                if (isset($requestData['id'])) {
+                    $response = MenuMobileController::getMenuById($requestData['id']);
+                } else {
+                    $response = ['success' => false, 'message' => 'ID não informado'];
+                }
+                break;
+            case 'toggleMenuStatus':
+                if (isset($requestData['id'])) {
+                    $response = MenuMobileController::toggleStatus($requestData['id']);
+                } else {
+                    $response = ["success" => false, "message" => "ID não informado."];
+                }
+                break;
+            case 'createOrUpdateMenuPermission':
+                    $response = MenuMobileController::createOrUpdateMenuPermission($requestData);
+                break;
+
+            case 'getPermissionsByMenu':
+                if (isset($requestData['menu_id'])) {
+                    $response = MenuMobileController::getPermissionsByMenu($requestData['menu_id']);
+                } else {
+                    $response = ["success" => false, "message" => "ID do menu não informado."];
                 }
                 break;
 

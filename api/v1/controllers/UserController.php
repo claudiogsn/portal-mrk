@@ -109,6 +109,21 @@ class UserController {
         return ['success' => true, 'menus' => $menus];
     }
 
+    public static function getUsers()
+    {
+        global $pdo;
+
+        $stmt = $pdo->query("SELECT * FROM system_users WHERE active = 'Y' ORDER BY name ASC");
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!$users) {
+            return ['success' => false, 'message' => 'Nenhum usuário encontrado.'];
+        }
+
+        return ['success' => true, 'users' => $users];
+
+    }
+
 
 }
 ?>

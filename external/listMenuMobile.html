@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Menus</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        .form-control { margin-bottom: 10px; }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header"><h2>Menus</h2></div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-6"><input type="text" id="filtroMenus" class="form-control" placeholder="Filtrar por nome, label ou rota"></div>
+                <div class="col-md-6 text-right"><button class="btn btn-success" id="btnNovoMenu">Novo Menu</button></div>
+            </div>
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabelaMenus">
+                    <thead>
+                    <tr>
+                        <th>Ações</th>
+                        <th>Label</th>
+                        <th>Rota</th>
+                        <th>Ícone</th>
+                        <th>Ordem</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Menu -->
+<div class="modal fade" id="modalMenu" tabindex="-1">
+    <div class="modal-dialog">
+        <form onsubmit="return false">
+            <div class="modal-content">
+                <div class="modal-header"><h4 class="modal-title">Menu</h4></div>
+                <div class="modal-body">
+                    <input type="hidden" id="menuId">
+                    <input class="form-control" id="menuName" placeholder="Nome (interno)" required>
+                    <input class="form-control" id="menuLabel" placeholder="Label (visível)" required>
+                    <input class="form-control" id="menuDescription" placeholder="Descrição">
+                    <input class="form-control" id="menuRoute" placeholder="Rota (ex: /dashboard)">
+                    <input class="form-control" id="menuIcon" placeholder="Ícone (ex: fa-home)">
+                    <input type="number" class="form-control" id="menuOrdem" placeholder="Ordem">
+                    <select class="form-control" id="menuStatus">
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="btnSalvarMenu">Salvar</button>
+                    <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de Permissões -->
+<div class="modal fade" id="modalPermissoes" tabindex="-1">
+    <div class="modal-dialog">
+        <form onsubmit="return false">
+            <div class="modal-content">
+                <div class="modal-header"><h4 class="modal-title">Permissões do Menu</h4></div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5>Usuários com Permissão</h5>
+                        <button class="btn btn-success btn-sm" onclick="abrirFormNovoUsuarioPermissao()">
+                            <i class="fa fa-plus"></i> Novo Usuário
+                        </button>
+                    </div>
+
+                    <!-- Formulário de novo usuário (inicialmente oculto) -->
+                    <div id="formNovoUsuarioPermissao" style="display: none;" class="mb-3">
+                        <label>Usuário</label>
+                        <select id="novoUsuarioPermissao" class="form-control select2"></select>
+                        <div class="text-right mt-2">
+                            <button class="btn btn-primary btn-sm" onclick="confirmarNovoUsuarioPermissao()">Continuar</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabela -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Ação</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabelaUsuariosPermissao"></tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="btnSalvarPermissao">Salvar Permissão</button>
+                    <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPermissaoUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <form onsubmit="return false">
+            <div class="modal-content">
+                <div class="modal-header"><h4 class="modal-title">Permissões do Usuário</h4></div>
+                <div class="modal-body">
+                    <input type="hidden" id="permissaoUserId">
+                    <input type="hidden" id="permissaoMenuId">
+                    <label>Adicionar Unidade</label>
+                    <select class="form-control select2" id="selectUnidadesUsuario"></select>
+                    <div class="text-right mt-2">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="adicionarPermissaoUsuario()">Adicionar</button>
+                    </div>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                            <tr>
+                                <th>Unidade</th>
+                                <th>Ação</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tabelaUnidadesUsuario"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    let currentMenuId = null;
+
+    $(document).ready(function () {
+        $('.select2').select2({ width: '100%' });
+        listarMenus();
+
+        $('#filtroMenus').on('input', filtrarMenus);
+
+        $('#btnNovoMenu').click(() => {
+            $('#menuId').val('');
+            $('#modalMenu input, #modalMenu select').val('');
+            $('#modalMenu').modal('show');
+        });
+
+        $('#btnSalvarMenu').click(async () => {
+            const data = {
+                id: $('#menuId').val(),
+                name: $('#menuName').val(),
+                label: $('#menuLabel').val(),
+                description: $('#menuDescription').val(),
+                route: $('#menuRoute').val(),
+                icon: $('#menuIcon').val(),
+                ordem: $('#menuOrdem').val(),
+                status: $('#menuStatus').val()
+            };
+
+            const method = data.id ? 'updateMenu' : 'createMenu';
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+
+            try {
+                await axios.post(baseUrl, { method, token, data });
+                Swal.close();
+                $('#modalMenu').modal('hide');
+                listarMenus();
+            } catch {
+                Swal.fire('Erro', 'Não foi possível salvar.', 'error');
+            }
+        });
+
+        $('#btnSalvarPermissao').click(async () => {
+            const menu_id = $('#menuPermissaoId').val();
+            const system_user_id = $('#selectUsuarios').val();
+            const system_unit_id = $('#selectUnidades').val();
+
+            if (!menu_id || !system_user_id || !system_unit_id) return;
+
+            try {
+                await axios.post(baseUrl, {
+                    method: 'createOrUpdateMenuPermission',
+                    token,
+                    data: [{ menu_id, system_user_id, system_unit_id }]
+                });
+
+                Swal.fire('Sucesso', 'Permissão salva.', 'success');
+                $('#modalPermissoes').modal('hide');
+            } catch {
+                Swal.fire('Erro', 'Erro ao salvar permissão.', 'error');
+            }
+        });
+    });
+
+    async function listarMenus() {
+        const res = await axios.post(baseUrl, { method: 'listMenus', token, data: {} });
+        const tbody = $('#tabelaMenus tbody');
+        tbody.empty();
+
+        res.data.data.forEach(menu => {
+            const statusBadge = menu.status == 1
+                ? '<span class="label label-success">Ativo</span>'
+                : '<span class="label label-danger">Inativo</span>';
+
+            tbody.append(`
+            <tr data-label="${menu.label.toLowerCase()}" data-rota="${menu.route}">
+                <td>
+                    <a href="#" onclick="editarMenu(${menu.id})" title="Editar"><i class="fa fa-edit blue"></i></a>
+                    &nbsp;
+                    <a href="#" onclick="toggleStatus(${menu.id})" title="Ativar/Inativar"><i class="fa fa-power-off orange"></i></a>
+                    &nbsp;
+                    <a href="#" onclick="excluirMenu(${menu.id})" title="Excluir"><i class="fa fa-trash red"></i></a>
+                    &nbsp;
+                    <a href="#" onclick="abrirPermissoes(${menu.id})" title="Permissões"><i class="fa fa-users green"></i></a>
+                </td>
+                <td>${menu.label}</td>
+                <td>${menu.route}</td>
+                <td><i class="fa ${menu.icon}"></i></td>
+                <td>${menu.ordem}</td>
+                <td>${statusBadge}</td>
+            </tr>
+        `);
+        });
+    }
+
+    function filtrarMenus() {
+        const filtro = $('#filtroMenus').val().toLowerCase();
+        $('#tabelaMenus tbody tr').each(function () {
+            const label = $(this).data('label');
+            const rota = $(this).data('rota');
+            $(this).toggle(label.includes(filtro) || rota.includes(filtro));
+        });
+    }
+
+    async function editarMenu(id) {
+        const res = await axios.post(baseUrl, { method: 'getMenuById', token, data: { id } });
+        const menu = res.data.data;
+
+        $('#menuId').val(menu.id);
+        $('#menuName').val(menu.name);
+        $('#menuLabel').val(menu.label);
+        $('#menuDescription').val(menu.description);
+        $('#menuRoute').val(menu.route);
+        $('#menuIcon').val(menu.icon);
+        $('#menuOrdem').val(menu.ordem);
+        $('#menuStatus').val(menu.status);
+        $('#modalMenu').modal('show');
+    }
+
+    async function toggleStatus(id) {
+        await axios.post(baseUrl, { method: 'toggleMenuStatus', token, data: { id } });
+        listarMenus();
+    }
+
+    async function excluirMenu(id) {
+        const confirm = await Swal.fire({ title: 'Excluir menu?', icon: 'warning', showCancelButton: true });
+        if (!confirm.isConfirmed) return;
+
+        await axios.post(baseUrl, { method: 'deleteMenu', token, data: { id } });
+        listarMenus();
+    }
+
+    let todosUsuarios = [];     // todos vindos do getUsers
+    let usuariosComPermissao = []; // preenchidos com os vinculados
+
+    async function abrirPermissoes(menuId) {
+        currentMenuId = menuId;
+        $('#menuPermissaoId').val(menuId);
+        $('#formNovoUsuarioPermissao').hide();
+        $('#novoUsuarioPermissao').empty().trigger('change');
+        $('#tabelaUsuariosPermissao').empty();
+
+        try {
+            const [permsRes, usersRes] = await Promise.all([
+                axios.post(baseUrl, { method: 'getPermissionsByMenu', token, data: { menu_id: menuId } }),
+                axios.post(baseUrl, { method: 'getUsers', token, data: {} }),
+            ]);
+
+            const permissoes = permsRes.data.data || [];
+            todosUsuarios = usersRes.data.users || [];
+
+            const agrupado = {};
+            usuariosComPermissao = [];
+
+            permissoes.forEach(p => {
+                if (!agrupado[p.system_user_id]) {
+                    agrupado[p.system_user_id] = { nome: p.usuario_nome, system_user_id: p.system_user_id };
+                    usuariosComPermissao.push(p.system_user_id);
+                }
+            });
+
+            Object.values(agrupado).forEach(u => {
+                $('#tabelaUsuariosPermissao').append(`
+                <tr>
+                    <td>${u.nome}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-info" onclick="abrirPermissaoUsuario(${u.system_user_id}, ${menuId})">
+                            <i class="fa fa-gear"></i> Editar Permissões
+                        </button>
+                    </td>
+                </tr>
+            `);
+            });
+
+            $('#modalPermissoes').modal('show');
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Não foi possível carregar permissões.', 'error');
+        }
+    }
+
+    function abrirFormNovoUsuarioPermissao() {
+        $('#formNovoUsuarioPermissao').slideDown();
+        $('#novoUsuarioPermissao').empty();
+
+        const disponiveis = todosUsuarios.filter(u => !usuariosComPermissao.includes(u.id));
+        if (disponiveis.length === 0) {
+            Swal.fire('Aviso', 'Todos os usuários já estão com permissão.', 'info');
+            return;
+        }
+
+        $('#novoUsuarioPermissao').append('<option value="">Selecione</option>');
+        disponiveis.forEach(u => {
+            $('#novoUsuarioPermissao').append(`<option value="${u.id}">${u.name}</option>`);
+        });
+
+        // reativa Select2 com busca
+        $('#novoUsuarioPermissao').val(null).trigger('change').select2({ width: '100%' });
+    }
+
+    function confirmarNovoUsuarioPermissao() {
+        const userId = $('#novoUsuarioPermissao').val()?.trim(); // pode ser "5" ou ""
+        const menuId = $('#menuPermissaoId').val();
+
+        if (!userId || userId === "" || isNaN(userId)) {
+            Swal.fire('Atenção', 'Selecione o usuário.', 'warning');
+            return;
+        }
+
+        console.log('Valor selecionado:', userId);
+
+
+        $('#formNovoUsuarioPermissao').hide();
+        abrirPermissaoUsuario(parseInt(userId), parseInt(menuId));
+    }
+
+
+
+
+
+    async function abrirPermissaoUsuario(userId, menuId) {
+        $('#permissaoUserId').val(userId);
+        $('#permissaoMenuId').val(menuId);
+        $('#selectUnidadesUsuario').empty();
+        $('#tabelaUnidadesUsuario').empty();
+
+        try {
+            const [unitsRes, permsRes] = await Promise.all([
+                axios.post(baseUrl, { method: 'listSystemUnits', token, data: {} }),
+                axios.post(baseUrl, { method: 'getPermissionsByMenu', token, data: { menu_id: menuId } })
+            ]);
+
+            const unidades = unitsRes.data?.unidades ?? [];
+            const permissoesRaw = permsRes.data?.data ?? [];
+
+            const permissoes = permissoesRaw.filter(p => p.system_user_id == userId);
+
+            unidades.forEach(unit => {
+                $('#selectUnidadesUsuario').append(`<option value="${unit.id}">${unit.name}</option>`);
+            });
+
+            permissoes.forEach(p => {
+                $('#tabelaUnidadesUsuario').append(`
+                <tr>
+                    <td>${p.unidade_nome}</td>
+                    <td class="text-center">
+                        <i class="fa fa-trash red" onclick="removerPermissao(${p.id})"></i>
+                    </td>
+                </tr>
+            `);
+            });
+
+            $('#selectUnidadesUsuario').val(null).trigger('change');
+            $('#modalPermissaoUsuario').modal('show');
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao carregar permissões ou unidades.', 'error');
+        }
+    }
+
+
+
+
+    async function adicionarPermissaoUsuario() {
+        const menu_id = currentMenuId
+        const system_user_id = $('#permissaoUserId').val();
+        const system_unit_id = $('#selectUnidadesUsuario').val();
+
+        if (!menu_id || !system_user_id || !system_unit_id) {
+            Swal.fire('Atenção', 'Selecione a unidade.', 'warning');
+            return;
+        }
+
+        try {
+            Swal.showLoading();
+
+            await axios.post(baseUrl, {
+                method: 'createOrUpdateMenuPermission',
+                token,
+                data: [{ menu_id, system_user_id, system_unit_id }]
+            });
+
+            Swal.close();
+            abrirPermissaoUsuario(system_user_id, menu_id);
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao adicionar permissão.', 'error');
+        }
+    }
+
+
+
+
+
+
+
+
+</script>
+</body>
+</html>
