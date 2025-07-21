@@ -1752,6 +1752,8 @@ class MovimentacaoController
                 $seq = $item["seq"];
                 $quantidade = $item["quantidade"];
                 $valor = $item["valor"] ?? null;
+                $motivo = $item["motivo"] ?? null;
+                $foto = $item["foto"] ?? null;
 
                 // Buscar nome e unidade do produto
                 $stmtProd = $pdo->prepare("SELECT nome, und FROM products WHERE system_unit_id = :unit_id AND codigo = :codigo LIMIT 1");
@@ -1764,6 +1766,7 @@ class MovimentacaoController
                 $nomeProduto = $produto['nome'] ?? 'Produto não encontrado';
                 $unidade = $produto['und'] ?? '-';
 
+                // Inserir na movimentação
                 $stmt = $pdo->prepare("
                 INSERT INTO movimentacao 
                 (system_unit_id, system_unit_id_destino, status, doc, tipo, tipo_mov, produto, seq, data, data_original, valor, quantidade, usuario_id) 
@@ -1792,6 +1795,20 @@ class MovimentacaoController
                     ];
                 }
 
+                // Salvar anexo se tiver motivo e foto
+                if (!empty($motivo) && !empty($foto)) {
+                    $stmtAnexo = $pdo->prepare("
+                    INSERT INTO perda_anexos (doc, user, motivo, url)
+                    VALUES (:doc, :user, :motivo, :url)
+                ");
+                    $stmtAnexo->execute([
+                        ':doc' => $doc,
+                        ':user' => $usuario_id,
+                        ':motivo' => $motivo,
+                        ':url' => $foto
+                    ]);
+                }
+
                 $itensSalvos[] = [
                     'codigo'     => $codigo,
                     'nome'       => $nomeProduto,
@@ -1800,13 +1817,13 @@ class MovimentacaoController
                 ];
             }
 
-            // Busca nome da loja
+            // Buscar nome da loja
             $stmtLoja = $pdo->prepare("SELECT name FROM system_unit WHERE id = :id");
             $stmtLoja->execute([':id' => $system_unit_id]);
             $loja = $stmtLoja->fetch(PDO::FETCH_ASSOC);
             $nomeLoja = $loja['name'] ?? 'Loja não encontrada';
 
-            // Busca nome do usuário
+            // Buscar nome do usuário
             $stmtUser = $pdo->prepare("SELECT name FROM system_users WHERE id = :id");
             $stmtUser->execute([':id' => $usuario_id]);
             $usuario = $stmtUser->fetch(PDO::FETCH_ASSOC);

@@ -743,7 +743,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $data_inicial = isset($requestData['data_inicial']) ? $requestData['data_inicial'] : null;
                     $data_final = isset($requestData['data_final']) ? $requestData['data_final'] : null;
 
-                    // Chama o método listBalance com os parâmetros corretos
+                    // Chama o metodo listBalance com os parâmetros corretos
                     $response = MovimentacaoController::listBalance($requestData['system_unit_id'], $data_inicial, $data_final);
                 } else {
                     http_response_code(400); // Código HTTP 400 para Bad Request
