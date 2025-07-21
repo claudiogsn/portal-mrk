@@ -134,8 +134,7 @@ class MenuMobileController
             foreach ($data as $item) {
                 if (
                     !isset($item['menu_id']) ||
-                    !isset($item['system_user_id']) ||
-                    !isset($item['system_unit_id'])
+                    !isset($item['system_user_id'])
                 ) {
                     $pdo->rollBack();
                     return ["success" => false, "message" => "Campos obrigatórios ausentes em um dos registros."];
@@ -145,25 +144,23 @@ class MenuMobileController
                     // UPDATE se id estiver presente
                     $stmt = $pdo->prepare("
                     UPDATE menu_mobile_access 
-                    SET menu_id = :menu_id, system_user_id = :system_user_id, system_unit_id = :system_unit_id
+                    SET menu_id = :menu_id, system_user_id = :system_user_id
                     WHERE id = :id
                 ");
                     $stmt->execute([
                         ':id' => $item['id'],
                         ':menu_id' => $item['menu_id'],
-                        ':system_user_id' => $item['system_user_id'],
-                        ':system_unit_id' => $item['system_unit_id']
+                        ':system_user_id' => $item['system_user_id']
                     ]);
                 } else {
                     // INSERT se id não estiver presente
                     $stmt = $pdo->prepare("
-                    INSERT IGNORE INTO menu_mobile_access (menu_id, system_user_id, system_unit_id)
-                    VALUES (:menu_id, :system_user_id, :system_unit_id)
+                    INSERT IGNORE INTO menu_mobile_access (menu_id, system_user_id)
+                    VALUES (:menu_id, :system_user_id)
                 ");
                     $stmt->execute([
                         ':menu_id' => $item['menu_id'],
-                        ':system_user_id' => $item['system_user_id'],
-                        ':system_unit_id' => $item['system_unit_id']
+                        ':system_user_id' => $item['system_user_id']
                     ]);
                 }
             }
@@ -186,14 +183,11 @@ class MenuMobileController
         SELECT 
             a.id,
             a.system_user_id,
-            a.system_unit_id,
-            u.name AS usuario_nome,
-            un.name AS unidade_nome
+            u.name AS usuario_nome
         FROM menu_mobile_access a
         INNER JOIN system_users u ON a.system_user_id = u.id
-        INNER JOIN system_unit un ON a.system_unit_id = un.id
         WHERE a.menu_id = ?
-        ORDER BY un.name, u.name
+        ORDER BY u.name
     ");
         $stmt->execute([$menuId]);
         $permissoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -203,6 +197,7 @@ class MenuMobileController
             "data" => $permissoes
         ];
     }
+
 
 
 }

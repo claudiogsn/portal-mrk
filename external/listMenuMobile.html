@@ -76,31 +76,26 @@
 </div>
 
 <!-- Modal de Permissões -->
+<!-- Modal de Permissões -->
 <div class="modal fade" id="modalPermissoes" tabindex="-1">
     <div class="modal-dialog">
         <form onsubmit="return false">
             <div class="modal-content">
                 <div class="modal-header"><h4 class="modal-title">Permissões do Menu</h4></div>
                 <div class="modal-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5>Usuários com Permissão</h5>
-                        <button class="btn btn-success btn-sm" onclick="abrirFormNovoUsuarioPermissao()">
-                            <i class="fa fa-plus"></i> Novo Usuário
-                        </button>
+                    <div class="mb-3">
+                        <label>Adicionar Usuário</label>
+                        <select id="selectNovoUsuario" class="form-control select2"></select>
                     </div>
+                    <br>
 
-                    <!-- Formulário de novo usuário (inicialmente oculto) -->
-                    <div id="formNovoUsuarioPermissao" style="display: none;" class="mb-3">
-                        <label>Usuário</label>
-                        <select id="novoUsuarioPermissao" class="form-control select2"></select>
-                        <div class="text-right mt-2">
-                            <button class="btn btn-primary btn-sm" onclick="confirmarNovoUsuarioPermissao()">Continuar</button>
-                        </div>
+                    <div class="text-right mt-2">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="adicionarPermissaoUsuario()">Adicionar</button>
                     </div>
+                    <br>
 
-                    <!-- Tabela -->
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped">
+                        <table class="table table-striped table-hove">
                             <thead>
                             <tr>
                                 <th>Usuário</th>
@@ -110,45 +105,8 @@
                             <tbody id="tabelaUsuariosPermissao"></tbody>
                         </table>
                     </div>
-
                 </div>
 
-
-                <div class="modal-footer">
-                    <button class="btn btn-primary" id="btnSalvarPermissao">Salvar Permissão</button>
-                    <button class="btn btn-default" data-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="modal fade" id="modalPermissaoUsuario" tabindex="-1">
-    <div class="modal-dialog">
-        <form onsubmit="return false">
-            <div class="modal-content">
-                <div class="modal-header"><h4 class="modal-title">Permissões do Usuário</h4></div>
-                <div class="modal-body">
-                    <input type="hidden" id="permissaoUserId">
-                    <input type="hidden" id="permissaoMenuId">
-                    <label>Adicionar Unidade</label>
-                    <select class="form-control select2" id="selectUnidadesUsuario"></select>
-                    <div class="text-right mt-2">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="adicionarPermissaoUsuario()">Adicionar</button>
-                    </div>
-
-                    <div class="table-responsive mt-3">
-                        <table class="table table-bordered table-striped">
-                            <thead>
-                            <tr>
-                                <th>Unidade</th>
-                                <th>Ação</th>
-                            </tr>
-                            </thead>
-                            <tbody id="tabelaUnidadesUsuario"></tbody>
-                        </table>
-                    </div>
-                </div>
                 <div class="modal-footer">
                     <button class="btn btn-default" data-dismiss="modal">Fechar</button>
                 </div>
@@ -156,8 +114,6 @@
         </form>
     </div>
 </div>
-
-
 
 
 <script>
@@ -244,8 +200,6 @@
                     &nbsp;
                     <a href="#" onclick="toggleStatus(${menu.id})" title="Ativar/Inativar"><i class="fa fa-power-off orange"></i></a>
                     &nbsp;
-                    <a href="#" onclick="excluirMenu(${menu.id})" title="Excluir"><i class="fa fa-trash red"></i></a>
-                    &nbsp;
                     <a href="#" onclick="abrirPermissoes(${menu.id})" title="Permissões"><i class="fa fa-users green"></i></a>
                 </td>
                 <td>${menu.label}</td>
@@ -287,22 +241,9 @@
         listarMenus();
     }
 
-    async function excluirMenu(id) {
-        const confirm = await Swal.fire({ title: 'Excluir menu?', icon: 'warning', showCancelButton: true });
-        if (!confirm.isConfirmed) return;
-
-        await axios.post(baseUrl, { method: 'deleteMenu', token, data: { id } });
-        listarMenus();
-    }
-
-    let todosUsuarios = [];     // todos vindos do getUsers
-    let usuariosComPermissao = []; // preenchidos com os vinculados
-
     async function abrirPermissoes(menuId) {
         currentMenuId = menuId;
-        $('#menuPermissaoId').val(menuId);
-        $('#formNovoUsuarioPermissao').hide();
-        $('#novoUsuarioPermissao').empty().trigger('change');
+        $('#selectNovoUsuario').empty().trigger('change');
         $('#tabelaUsuariosPermissao').empty();
 
         try {
@@ -312,102 +253,23 @@
             ]);
 
             const permissoes = permsRes.data.data || [];
-            todosUsuarios = usersRes.data.users || [];
+            const todosUsuarios = usersRes.data.users || [];
 
-            const agrupado = {};
-            usuariosComPermissao = [];
+            const idsPermitidos = permissoes.map(p => p.system_user_id);
 
-            permissoes.forEach(p => {
-                if (!agrupado[p.system_user_id]) {
-                    agrupado[p.system_user_id] = { nome: p.usuario_nome, system_user_id: p.system_user_id };
-                    usuariosComPermissao.push(p.system_user_id);
+            // Preencher select com usuários que ainda não têm permissão
+            $('#selectNovoUsuario').append('<option value="">Selecione</option>');
+            todosUsuarios.forEach(u => {
+                if (!idsPermitidos.includes(u.id)) {
+                    $('#selectNovoUsuario').append(`<option value="${u.id}">${u.name}</option>`);
                 }
             });
 
-            Object.values(agrupado).forEach(u => {
+            // Preencher tabela de usuários com permissão
+            permissoes.forEach(p => {
                 $('#tabelaUsuariosPermissao').append(`
                 <tr>
-                    <td>${u.nome}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-info" onclick="abrirPermissaoUsuario(${u.system_user_id}, ${menuId})">
-                            <i class="fa fa-gear"></i> Editar Permissões
-                        </button>
-                    </td>
-                </tr>
-            `);
-            });
-
-            $('#modalPermissoes').modal('show');
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Não foi possível carregar permissões.', 'error');
-        }
-    }
-
-    function abrirFormNovoUsuarioPermissao() {
-        $('#formNovoUsuarioPermissao').slideDown();
-        $('#novoUsuarioPermissao').empty();
-
-        const disponiveis = todosUsuarios.filter(u => !usuariosComPermissao.includes(u.id));
-        if (disponiveis.length === 0) {
-            Swal.fire('Aviso', 'Todos os usuários já estão com permissão.', 'info');
-            return;
-        }
-
-        $('#novoUsuarioPermissao').append('<option value="">Selecione</option>');
-        disponiveis.forEach(u => {
-            $('#novoUsuarioPermissao').append(`<option value="${u.id}">${u.name}</option>`);
-        });
-
-        // reativa Select2 com busca
-        $('#novoUsuarioPermissao').val(null).trigger('change').select2({ width: '100%' });
-    }
-
-    function confirmarNovoUsuarioPermissao() {
-        const userId = $('#novoUsuarioPermissao').val()?.trim(); // pode ser "5" ou ""
-        const menuId = $('#menuPermissaoId').val();
-
-        if (!userId || userId === "" || isNaN(userId)) {
-            Swal.fire('Atenção', 'Selecione o usuário.', 'warning');
-            return;
-        }
-
-        console.log('Valor selecionado:', userId);
-
-
-        $('#formNovoUsuarioPermissao').hide();
-        abrirPermissaoUsuario(parseInt(userId), parseInt(menuId));
-    }
-
-
-
-
-
-    async function abrirPermissaoUsuario(userId, menuId) {
-        $('#permissaoUserId').val(userId);
-        $('#permissaoMenuId').val(menuId);
-        $('#selectUnidadesUsuario').empty();
-        $('#tabelaUnidadesUsuario').empty();
-
-        try {
-            const [unitsRes, permsRes] = await Promise.all([
-                axios.post(baseUrl, { method: 'listSystemUnits', token, data: {} }),
-                axios.post(baseUrl, { method: 'getPermissionsByMenu', token, data: { menu_id: menuId } })
-            ]);
-
-            const unidades = unitsRes.data?.unidades ?? [];
-            const permissoesRaw = permsRes.data?.data ?? [];
-
-            const permissoes = permissoesRaw.filter(p => p.system_user_id == userId);
-
-            unidades.forEach(unit => {
-                $('#selectUnidadesUsuario').append(`<option value="${unit.id}">${unit.name}</option>`);
-            });
-
-            permissoes.forEach(p => {
-                $('#tabelaUnidadesUsuario').append(`
-                <tr>
-                    <td>${p.unidade_nome}</td>
+                    <td>${p.usuario_nome}</td>
                     <td class="text-center">
                         <i class="fa fa-trash red" onclick="removerPermissao(${p.id})"></i>
                     </td>
@@ -415,24 +277,26 @@
             `);
             });
 
-            $('#selectUnidadesUsuario').val(null).trigger('change');
-            $('#modalPermissaoUsuario').modal('show');
+            $('#modalPermissoes').modal('show');
+            // Aguarda o modal estar visível e depois inicializa o Select2 corretamente
+            $('#modalPermissoes').on('shown.bs.modal', function () {
+                $('#selectNovoUsuario').select2({
+                    dropdownParent: $('#modalPermissoes'),
+                    width: '100%'
+                });
+            });
         } catch (err) {
             console.error(err);
-            Swal.fire('Erro', 'Falha ao carregar permissões ou unidades.', 'error');
+            Swal.fire('Erro', 'Não foi possível carregar permissões.', 'error');
         }
     }
 
-
-
-
     async function adicionarPermissaoUsuario() {
-        const menu_id = currentMenuId
-        const system_user_id = $('#permissaoUserId').val();
-        const system_unit_id = $('#selectUnidadesUsuario').val();
+        const system_user_id = $('#selectNovoUsuario').val();
+        const menu_id = currentMenuId;
 
-        if (!menu_id || !system_user_id || !system_unit_id) {
-            Swal.fire('Atenção', 'Selecione a unidade.', 'warning');
+        if (!system_user_id) {
+            Swal.fire('Atenção', 'Selecione um usuário.', 'warning');
             return;
         }
 
@@ -442,22 +306,16 @@
             await axios.post(baseUrl, {
                 method: 'createOrUpdateMenuPermission',
                 token,
-                data: [{ menu_id, system_user_id, system_unit_id }]
+                data: [{ menu_id, system_user_id }]
             });
 
             Swal.close();
-            abrirPermissaoUsuario(system_user_id, menu_id);
+            abrirPermissoes(menu_id); // recarrega o modal
         } catch (err) {
             console.error(err);
             Swal.fire('Erro', 'Erro ao adicionar permissão.', 'error');
         }
     }
-
-
-
-
-
-
 
 
 </script>

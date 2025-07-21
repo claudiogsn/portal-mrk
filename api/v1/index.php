@@ -124,8 +124,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = UserController::getUsers();
                 break;
             case 'getMenuMobile':
-                if (isset($requestData['user_id']) && ($requestData['system_unit_id'])) {
-                    $response = UserController::getMenuMobile($requestData['user_id'],$requestData['system_unit_id']);
+                if (isset($requestData['user_id'])) {
+                    $response = UserController::getMenuMobile($requestData['user_id']);
+
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro user ausente'];

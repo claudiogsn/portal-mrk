@@ -85,20 +85,26 @@ class UserController {
         return ['success' => true, 'units' => $units];
     }
 
-   public static function getMenuMobile($user_id, $system_unit_id)
+   public static function getMenuMobile($user_id)
     {
         global $pdo;
 
         $stmt = $pdo->prepare("
-            SELECT m.id, m.name, m.label, m.description, m.icon, m.route, m.ordem
+            SELECT DISTINCT
+                m.id, 
+                m.name, 
+                m.label, 
+                m.description, 
+                m.icon, 
+                m.route, 
+                m.ordem
             FROM menu_mobile m
             INNER JOIN menu_mobile_access a ON a.menu_id = m.id
             WHERE a.system_user_id = :user_id
-              AND a.system_unit_id = :system_unit_id
-            ORDER BY m.ordem, m.label
+            ORDER BY m.ordem;
+
         ");
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
         $stmt->execute();
         $menus = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
