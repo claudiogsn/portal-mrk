@@ -566,8 +566,8 @@ class NecessidadesController
                     'detalhes_suspeitos' => $detalhes,
                 ];
 
-                echo "🚨 Loop detectado após {$maxRodadas} rodadas! Análise de insumos:\n";
-                echo json_encode($debugFormatado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+                //echo "🚨 Loop detectado após {$maxRodadas} rodadas! Análise de insumos:\n";
+                //echo json_encode($debugFormatado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
                 return array_values($resultado);
             }
 
