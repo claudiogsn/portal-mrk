@@ -599,6 +599,19 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
                 }
                 break;
+
+            case 'importCompositionsZig':
+                if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
+                    $response = ComposicaoController::importCompositionsZig(
+                        $requestData['system_unit_id'],
+                        $requestData['itens']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
+                }
+                break;
+
             case 'importProductions':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
                     $response = ComposicaoController::importProductions(

@@ -226,6 +226,102 @@ class ComposicaoController {
         }
     }
 
+    public static function importCompositionsZig($system_unit_id, $itens)
+    {
+        global $pdo;
+
+        try {
+            $pdo->beginTransaction();
+
+            // Apagar composições existentes da loja
+            $stmtDel = $pdo->prepare("DELETE FROM compositions WHERE system_unit_id = :unit_id");
+            $stmtDel->execute([':unit_id' => $system_unit_id]);
+
+            $stmtFindProduct = $pdo->prepare("
+            SELECT codigo AS product_id 
+            FROM products 
+            WHERE system_unit_id = :unit_id AND sku_zig = :sku_zig
+            LIMIT 1
+        ");
+
+            $stmtFindInsumo = $pdo->prepare("
+            SELECT codigo AS insumo_id 
+            FROM products 
+            WHERE system_unit_id = :unit_id AND nome = :nome
+            LIMIT 1
+        ");
+
+            $stmtInsert = $pdo->prepare("
+            INSERT INTO compositions (product_id, insumo_id, quantity, system_unit_id)
+            VALUES (:product_id, :insumo_id, :quantity, :system_unit_id)
+        ");
+
+            $erros_sku = [];
+            $erros_insumo = [];
+            $total_inseridos = 0;
+
+            foreach ($itens as $item) {
+                $sku_zig = trim($item['sku_zig'] ?? '');
+                $insumo_nome = trim($item['insumo'] ?? '');
+                $quantidade = floatval($item['quantidade']);
+
+                if (!$sku_zig || !$insumo_nome || $quantidade <= 0) continue;
+
+                // Buscar product_id pelo SKU
+                $stmtFindProduct->execute([
+                    ':unit_id' => $system_unit_id,
+                    ':sku_zig' => $sku_zig
+                ]);
+                $product = $stmtFindProduct->fetch(PDO::FETCH_ASSOC);
+                if (!$product) {
+                    $erros_sku[] = $sku_zig;
+                    continue;
+                }
+
+                // Buscar insumo_id pelo nome do insumo
+                $stmtFindInsumo->execute([
+                    ':unit_id' => $system_unit_id,
+                    ':nome' => $insumo_nome
+                ]);
+                $insumo = $stmtFindInsumo->fetch(PDO::FETCH_ASSOC);
+                if (!$insumo) {
+                    $erros_insumo[] = [
+                        'sku_zig' => $sku_zig,
+                        'insumo' => $insumo_nome
+                    ];
+                    continue;
+                }
+
+                // Inserir composição
+                $stmtInsert->execute([
+                    ':product_id' => $product['product_id'],
+                    ':insumo_id' => $insumo['insumo_id'],
+                    ':quantity' => $quantidade,
+                    ':system_unit_id' => $system_unit_id
+                ]);
+
+                $total_inseridos++;
+            }
+
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Importação concluída.',
+                'total_inseridos' => $total_inseridos,
+                'erros_sku_nao_encontrado' => array_unique($erros_sku),
+                'erros_insumo_nao_encontrado' => $erros_insumo
+            ];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return [
+                'success' => false,
+                'message' => 'Erro: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
     public static function importProductions(int $system_unit_id, array $itens): array
     {
         global $pdo;
