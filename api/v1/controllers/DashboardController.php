@@ -1043,19 +1043,23 @@ class DashboardController
 
         try {
             $stmt = $pdo->prepare("
-            SELECT
-                SUM(vlTotalRecebido) AS faturamento_bruto,
-                SUM(vlDesconto) AS total_descontos,
-                SUM(vlServicoRecebido) AS total_taxa_servico,
-                SUM(numPessoas) AS total_clientes,
-                count(num_controle) as numero_pedidos
-            FROM
-                movimento_caixa
-            WHERE
-                lojaId = :lojaId
-                AND dataContabil BETWEEN :dt_inicio AND :dt_fim
-                AND cancelado = 0
-        ");
+               SELECT
+                    SUM(vlTotalRecebido) AS faturamento_bruto,
+                    SUM(vlDesconto) AS total_descontos,
+                    SUM(vlServicoRecebido) AS total_taxa_servico,
+                    SUM(numPessoas) AS total_clientes,
+                    COUNT(num_controle) AS numero_pedidos,
+                    SUM(CASE WHEN modoVenda2 = 'SALAO' THEN 1 ELSE 0 END) AS pedidos_salao,
+                    SUM(CASE WHEN modoVenda2 = 'DELIVERY' THEN 1 ELSE 0 END) AS pedidos_delivery,
+                    SUM(CASE WHEN modoVenda2 = 'BALCAO' THEN 1 ELSE 0 END) AS pedidos_balcao
+                
+                FROM
+                    movimento_caixa
+                WHERE
+                    lojaId = :lojaId
+                    AND dataContabil BETWEEN :dt_inicio AND :dt_fim
+                    AND cancelado = 0
+            ");
 
             $stmt->bindParam(':lojaId', $lojaId, PDO::PARAM_INT);
             $stmt->bindParam(':dt_inicio', $dt_inicio);
@@ -1079,7 +1083,9 @@ class DashboardController
                 'faturamento_liquido' => round($liquido, 2),
                 'numero_clientes' => $clientes,
                 'ticket_medio' => round($ticketMedio, 2),
-                'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0
+                'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0,
+                'pedidos_presencial' => (int)$res['pedidos_salao'] + (int)$res['pedidos_balcao'],
+                'pedidos_delivery' => (int)$res['pedidos_delivery'] ?? 0
             ];
         } catch (Exception $e) {
             return [
@@ -2128,7 +2134,7 @@ class DashboardController
                     *
                 FROM nota_fiscal_entrada
                 WHERE system_unit_id = :unitId
-                  AND data_emissao BETWEEN :inicio AND :fim
+                  AND data_entrada BETWEEN :inicio AND :fim
                 ORDER BY fornecedor DESC
             ");
                 $stmt->execute([
@@ -2255,7 +2261,7 @@ class DashboardController
                 WHERE m.system_unit_id = :unitId
                   AND m.tipo = 'c'
                   AND m.tipo_mov = 'entrada'
-                  AND m.data_emissao BETWEEN :inicio AND :fim
+                  AND m.data BETWEEN :inicio AND :fim
                 GROUP BY m.produto
             ");
                 $stmt->execute([
@@ -2339,7 +2345,7 @@ class DashboardController
                     SUM(valor_total) AS soma_valor_total
                 FROM nota_fiscal_entrada
                 WHERE system_unit_id = :unitId
-                  AND data_emissao BETWEEN :inicio AND :fim
+                  AND data BETWEEN :inicio AND :fim
             ");
                 $stmt->execute([
                     ':unitId' => $unitId,
