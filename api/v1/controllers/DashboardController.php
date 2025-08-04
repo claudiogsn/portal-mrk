@@ -1663,7 +1663,11 @@ class DashboardController
                     SUM(vlTotalRecebido) AS faturamento_bruto,
                     SUM(vlDesconto) AS total_descontos,
                     SUM(vlServicoRecebido) AS total_taxa_servico,
-                    SUM(numPessoas) AS total_clientes
+                    SUM(numPessoas) AS total_clientes,
+                    SUM(CASE WHEN modoVenda2 = 'SALAO' THEN 1 ELSE 0 END) AS pedidos_salao,
+                    SUM(CASE WHEN modoVenda2 = 'DELIVERY' THEN 1 ELSE 0 END) AS pedidos_delivery,
+                    SUM(CASE WHEN modoVenda2 = 'BALCAO' THEN 1 ELSE 0 END) AS pedidos_balcao
+                    
                 
                 FROM movimento_caixa
                 WHERE lojaId = :lojaId
@@ -1695,7 +1699,9 @@ class DashboardController
                     'faturamento_liquido' => round($liquido, 2),
                     'numero_clientes' => $clientes,
                     'ticket_medio' => round($ticketMedio, 2),
-                    'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0
+                    'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0,
+                    'pedidos_presencial' => (int)$res['pedidos_salao'] + (int)$res['pedidos_balcao'],
+                    'pedidos_delivery' => (int)$res['pedidos_delivery'] ?? 0
                 ];
             }
 

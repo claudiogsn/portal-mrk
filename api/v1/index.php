@@ -88,7 +88,9 @@ if (isset($data['method']) && isset($data['data'])) {
         'getUserDetails',
         'getUnitsUser',
         'getMenuMobile',
-        'getIntervalosMensais'
+        'getIntervalosMensais',
+        'gerarPdfFaturamento',
+        'gerarPdfCompras'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
