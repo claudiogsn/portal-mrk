@@ -87,7 +87,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'getIntervalosDiarios',
         'getUserDetails',
         'getUnitsUser',
-        'getMenuMobile'
+        'getMenuMobile',
+        'getIntervalosMensais'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
