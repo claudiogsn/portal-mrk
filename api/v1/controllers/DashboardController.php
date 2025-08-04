@@ -115,6 +115,31 @@ class DashboardController
         ];
     }
 
+
+    public static function getIntervalosMensais(): array
+    {
+        $tz = new DateTimeZone('America/Sao_Paulo');
+        $hoje = new DateTimeImmutable('now', $tz);
+
+        // Último mês completo
+        $inicioAtual = (new DateTimeImmutable('first day of last month', $tz))->setTime(0, 0, 0);
+        $fimAtual = (new DateTimeImmutable('last day of last month', $tz))->setTime(23, 59, 59);
+
+        // Mês anterior ao último
+        $inicioAnterior = $inicioAtual->modify('-1 month')->modify('first day of this month');
+        $fimAnterior = $inicioAtual->modify('-1 day')->setTime(23, 59, 59);
+
+        return [
+            'dt_inicio' => $inicioAtual->format('Y-m-d 00:00:00'),
+            'dt_fim' => $fimAtual->format('Y-m-d 23:59:59'),
+            'dt_inicio_anterior' => $inicioAnterior->format('Y-m-d 00:00:00'),
+            'dt_fim_anterior' => $fimAnterior->format('Y-m-d 23:59:59'),
+        ];
+    }
+
+
+
+
     public static function getIntervalosDiarios(): array
     {
         $tz = new DateTimeZone('America/Sao_Paulo');
@@ -149,7 +174,8 @@ class DashboardController
         array $comprasAtual,
         array $comprasAnterior,
         array $itensAtual,
-        array $itensAnterior
+        array $itensAnterior,
+        string            $periodo = 'semanal'
     ): string {
         $labels = [];
         $fatValues = [];
@@ -201,7 +227,7 @@ class DashboardController
         </div>
         <div>
             <h2 style='margin: 0;'>Portal MRK</h2>
-            <h3 style='margin: 0;'>Relatório Semanal - Faturamento X Compras</h3>
+            <h3 style='margin: 0;'>Relatório " . ucfirst($periodo) . " - Faturamento X Compras</h3>
             <p style='margin: 4px 0 0 0; font-size: 14px;'>
                 Comparativo entre <strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong>
                 e <strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong>
@@ -355,7 +381,7 @@ class DashboardController
             <img src='{$graficoSrc}' style='max-width: 100%; height: auto;' />
         </div></center>";
 
-        $html .= "<center><h3 style='margin-top: 40px;'>Compras da semana por fornecedor</h3></center>";
+        $html .= "<center><h3 style='margin-top: 40px;'>Compras por fornecedor</h3></center>";
 
         foreach ($comprasAtual as $loja) {
             $nomeLoja = strtoupper($loja['nomeLoja']);
@@ -501,7 +527,8 @@ class DashboardController
         array $dadosAnteriores,
         array $rankingsPorLoja,
         array $mvAnterior,
-        array $mvAtual
+        array $mvAtual,
+        string            $periodo = 'semanal'
     ): string {
         $somaCampos = function(array $dados, array $campos) {
             $soma = array_fill_keys($campos, 0.0);
@@ -587,7 +614,8 @@ class DashboardController
             $dadosAnterior,
             $ranking,
             $mvAnt,
-            $mvAt
+            $mvAt,
+            $periodo
         );
     }
 
@@ -601,7 +629,8 @@ class DashboardController
         array             $dadosAnterior,
         array             $ranking = [],
         array             $modosVendaAnterior = [],
-        array             $modosVendaAtual = []
+        array             $modosVendaAtual = [],
+        string            $periodo = 'semanal'
     ): string
     {
         $campos = [
@@ -622,7 +651,7 @@ class DashboardController
         </div>
         <div>
             <h2 style='margin: 0;'>Portal MRK</h2>
-            <h3 style='margin: 0;'>Relatório Semanal - {$nomeLoja}</h3>
+            <h3 style='margin: 0;'>Relatório " . ucfirst($periodo) . " - {$nomeLoja}</h3>
             <p style='margin: 4px 0 0 0; font-size: 14px;'>
                 Comparativo entre <strong>{$inicioAnterior->format('d/m')} a {$fimAnterior->format('d/m')}</strong>
                 e <strong>{$inicioAtual->format('d/m')} a {$fimAtual->format('d/m')}</strong>
@@ -636,11 +665,11 @@ class DashboardController
             <tr style='border-bottom: 1px solid #000000;'>
                 <th style='padding: 6px; text-align: left;'> </th>
                 <th style='padding: 6px; text-align: right;'>
-                    Semana Atual<br>
+                    " . ucfirst($periodo) . " Atual<br>
                     <strong>{$inicioAtual->format('d/m')} - {$fimAtual->format('d/m')}</strong>
                 </th>
                 <th style='padding: 6px; text-align: right;'>
-                    Semana Anterior<br>
+                    " . ucfirst($periodo) . " Anterior<br>
                     <strong>{$inicioAnterior->format('d/m')} - {$fimAnterior->format('d/m')}</strong>
                 </th>
                 <th style='padding: 6px; text-align: right; width: 30px; font-size: 8px;'>Var (%)</th>
@@ -890,9 +919,6 @@ class DashboardController
         $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
         $fimAtual = $hoje->modify('last sunday'); // domingo passado
 
-//        $inicioAtual = new DateTime('2025-07-01');
-//        $fimAtual = new DateTime('2025-07-07');
-
 
         $inicioAnterior = $inicioAtual->modify('-7 days');
         $fimAnterior = $fimAtual->modify('-7 days');
@@ -950,6 +976,215 @@ class DashboardController
             'url' => $publicUrl
         ];
     }
+
+    public static function gerarPdfCompras($grupoId, $periodo = 'semanal'): array
+    {
+        $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+
+        if ($periodo === 'mensal') {
+            // Último mês completo
+            $inicioAtual = (new DateTimeImmutable('first day of last month', new DateTimeZone('America/Sao_Paulo')))
+                ->setTime(0, 0, 0);
+            $fimAtual = (new DateTimeImmutable('last day of last month', new DateTimeZone('America/Sao_Paulo')))
+                ->setTime(23, 59, 59);
+
+            $inicioAnterior = $inicioAtual->modify('-1 month')->modify('first day of this month');
+            $fimAnterior = $inicioAtual->modify('-1 day')->setTime(23, 59, 59);
+        } else {
+            // SEMANAL (default)
+            $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
+            $fimAtual = $hoje->modify('last sunday'); // domingo passado
+
+            $inicioAnterior = $inicioAtual->modify('-7 days');
+            $fimAnterior = $fimAtual->modify('-7 days');
+        }
+
+        // Buscar resumos financeiros
+        $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        // Buscar compras
+        $comprasAtual = self::generateNotasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $comprasAnterior = self::generateNotasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        $itensAtual = self::generateComprasPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $itensAnterior = self::generateComprasPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
+            return ['success' => false, 'message' => 'Erro ao buscar dados do período.'];
+        }
+
+        // Montar HTML
+        $html = self::gerarHtmlComparativoComprasPorLoja(
+            $inicioAtual, $fimAtual,
+            $inicioAnterior, $fimAnterior,
+            $resumoAtual['data'],
+            $resumoAnterior['data'],
+            $comprasAtual['data'],
+            $comprasAnterior['data'],
+            $itensAtual['data'],
+            $itensAnterior['data'],
+            $periodo
+        );
+
+        // Gerar PDF
+        $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
+        $dompdf->loadHtml('<html><head><meta charset="UTF-8"></head><body>' . $html . '</body></html>');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        // Nome do arquivo com período e intervalo de datas
+        $dataLabel = date('Ymd_His');
+        $fileName = "compras_{$periodo}_{$grupoId}_{$dataLabel}.pdf";
+        $filePath = __DIR__ . '/../public/reports/' . $fileName;
+        $publicUrl = 'https://portal.mrksolucoes.com.br/api/v1/public/reports/' . $fileName;
+
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 0777, true);
+        }
+
+        file_put_contents($filePath, $dompdf->output());
+
+        return [
+            'success' => true,
+            'url' => $publicUrl
+        ];
+    }
+
+
+
+    public static function gerarPdfFaturamento($grupoId, $periodo = 'semanal'): array
+    {
+        $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
+
+        if ($periodo === 'mensal') {
+            // Último mês completo
+            $inicioAtual = (new DateTimeImmutable('first day of last month', new DateTimeZone('America/Sao_Paulo')))
+                ->setTime(0, 0, 0);
+            $fimAtual = (new DateTimeImmutable('last day of last month', new DateTimeZone('America/Sao_Paulo')))
+                ->setTime(23, 59, 59);
+
+            // Mês anterior ao último
+            $inicioAnterior = $inicioAtual->modify('-1 month')->modify('first day of this month');
+            $fimAnterior = $inicioAtual->modify('-1 day')->setTime(23, 59, 59);
+        } else {
+            // SEMANAL (default)
+            $inicioAtual = $hoje->modify('last sunday')->modify('-6 days'); // segunda passada
+            $fimAtual = $hoje->modify('last sunday'); // domingo passado
+
+            $inicioAnterior = $inicioAtual->modify('-7 days');
+            $fimAnterior = $fimAtual->modify('-7 days');
+        }
+
+        // Buscar resumos financeiros
+        $resumoAtual = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAtual->format('Y-m-d 00:00:00'), $fimAtual->format('Y-m-d 23:59:59'));
+        $resumoAnterior = self::generateResumoFinanceiroPorGrupo($grupoId, $inicioAnterior->format('Y-m-d 00:00:00'), $fimAnterior->format('Y-m-d 23:59:59'));
+
+        if (!$resumoAtual['success'] || !$resumoAnterior['success']) {
+            return ['success' => false, 'message' => 'Erro ao buscar dados do período.'];
+        }
+
+        // Ranking top 3
+        $rankingAtual = self::getRankingTop3ProdutosPorGrupo($grupoId, $inicioAtual->format('Y-m-d'), $fimAtual->format('Y-m-d'));
+        $rankingAnterior = self::getRankingTop3ProdutosPorGrupo($grupoId, $inicioAnterior->format('Y-m-d'), $fimAnterior->format('Y-m-d'));
+
+        $rankingsPorLoja = [];
+        foreach ($rankingAnterior['data'] ?? [] as $loja) {
+            $rankingsPorLoja[$loja['lojaId']]['anterior'] = $loja;
+        }
+        foreach ($rankingAtual['data'] ?? [] as $loja) {
+            $rankingsPorLoja[$loja['lojaId']]['atual'] = $loja;
+        }
+
+        $dadosAtuais = [];
+        foreach ($resumoAtual['data'] as $loja) {
+            $dadosAtuais[$loja['lojaId']] = $loja;
+        }
+
+        $dadosAnteriores = [];
+        foreach ($resumoAnterior['data'] as $loja) {
+            $dadosAnteriores[$loja['lojaId']] = $loja;
+        }
+
+        $modosVendaAtual = self::getResumoModosVendaPorGrupo($grupoId, $inicioAtual->format('Y-m-d'), $fimAtual->format('Y-m-d'));
+        $modosVendaAnterior = self::getResumoModosVendaPorGrupo($grupoId, $inicioAnterior->format('Y-m-d'), $fimAnterior->format('Y-m-d'));
+
+        $mvAtual = [];
+        foreach ($modosVendaAtual['data'] ?? [] as $item) {
+            $mvAtual[$item['lojaId']] = $item['data'];
+        }
+
+        $mvAnterior = [];
+        foreach ($modosVendaAnterior['data'] ?? [] as $item) {
+            $mvAnterior[$item['lojaId']] = $item['data'];
+        }
+
+        // Montar HTML por loja
+        $html = '';
+        foreach ($dadosAtuais as $lojaId => $dadosLojaAtual) {
+            $dadosLojaAnterior = $dadosAnteriores[$lojaId] ?? [
+                'faturamento_bruto' => 0,
+                'descontos' => 0,
+                'taxa_servico' => 0,
+                'faturamento_liquido' => 0,
+                'numero_clientes' => 0,
+                'ticket_medio' => 0
+            ];
+
+            $ranking = $rankingsPorLoja[$lojaId] ?? [
+                'anterior' => [],
+                'atual' => []
+            ];
+
+            $html .= self::gerarHtmlComparativoLoja(
+                $dadosLojaAtual['nomeLoja'],
+                $inicioAtual, $fimAtual,
+                $inicioAnterior, $fimAnterior,
+                $dadosLojaAtual,
+                $dadosLojaAnterior,
+                $ranking,
+                $mvAnterior[$lojaId] ?? [],
+                $mvAtual[$lojaId] ?? [],
+                $periodo
+            );
+        }
+
+        $html .= self::gerarHtmlConsolidadoGrupo(
+            $inicioAtual,
+            $fimAtual,
+            $inicioAnterior,
+            $fimAnterior,
+            $resumoAtual['data'],
+            $resumoAnterior['data'],
+            $rankingsPorLoja,
+            $mvAnterior,
+            $mvAtual,
+            $periodo
+        );
+
+        $dompdf = new Dompdf((new Options())->set('isRemoteEnabled', true));
+        $dompdf->loadHtml('<html><head><meta charset="UTF-8"></head><body>' . $html . '</body></html>');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $dataLabel = date('Ymd_His');
+        $fileName = "faturamento_{$periodo}_{$grupoId}_{$dataLabel}.pdf";
+        $filePath = __DIR__ . '/../public/reports/' . $fileName;
+        $publicUrl = 'https://portal.mrksolucoes.com.br/api/v1/public/reports/' . $fileName;
+
+
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 0777, true);
+        }
+
+        file_put_contents($filePath, $dompdf->output());
+
+        return [
+            'success' => true,
+            'url' => $publicUrl
+        ];
+    }
+
 
     public static function getLojaIdBySystemUnitId($systemUnitId): array
     {

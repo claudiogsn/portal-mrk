@@ -892,6 +892,18 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id e nome_loja são obrigatórios.'];
                 }
                 break;
+            case 'gerarPdfFaturamento':
+                if (isset($requestData['group_id'])) {
+                    $periodo = isset($requestData['periodo']) && in_array($requestData['periodo'], ['semanal', 'mensal'])
+                        ? $requestData['periodo']
+                        : 'semanal';
+
+                    $response = DashboardController::gerarPdfFaturamento($requestData['group_id'], $periodo);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro group_id é obrigatório.'];
+                }
+                break;
             case 'gerarPdfSemanalCompras':
                 if (isset($requestData['group_id'])) {
                     $response = DashboardController::gerarPdfSemanalCompras($requestData['group_id']);
@@ -900,8 +912,23 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id e nome_loja são obrigatórios.'];
                 }
                 break;
+            case 'gerarPdfCompras':
+                if (isset($requestData['group_id'])) {
+                    $periodo = isset($requestData['periodo']) && in_array($requestData['periodo'], ['semanal', 'mensal'])
+                        ? $requestData['periodo']
+                        : 'semanal';
+
+                    $response = DashboardController::gerarPdfCompras($requestData['group_id'], $periodo);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro group_id é obrigatório.'];
+                }
+                break;
             case 'getIntervalosSemanais':
                     $response = DashboardController::getIntervalosSemanais();
+                break;
+            case 'getIntervalosMensais':
+                $response = DashboardController::getIntervalosMensais();
                 break;
             case 'getIntervalosDiarios':
                     $response = DashboardController::getIntervalosDiarios();
