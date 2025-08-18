@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Importar Notas Fiscais</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- FilePond CSS -->
+    <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet" />
+    <!-- FilePond JS -->
+    <script src="https://unpkg.com/filepond@^4/dist/filepond.js"></script>
+
+
+    <style>
+        .status-ok { color: green; font-weight: bold; }
+        .status-erro { color: red; font-weight: bold; }
+        .custom-file-label::after {
+            content: "Procurar";
+        }
+        .filepond--list {
+            display: none !important;
+        }
+
+        .filepond--file-info {
+            display: none !important;
+        }
+
+        .filepond--file-status {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <input type="file" id="inputXml" accept=".xml" multiple>
+                </div>
+                <div class="col-md-6 text-right">
+                    <button class="btn btn-primary" id="btnImportar" disabled>Importar</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped" id="tabelaArquivos">
+                    <thead>
+                    <tr>
+                        <th>Arquivo</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+
+    let arquivosSelecionados = [];
+
+    $(document).ready(function () {
+        $("#inputXml").on("change", function () {
+            arquivosSelecionados = Array.from(this.files);
+            renderTabelaArquivos();
+            $("#btnImportar").prop("disabled", arquivosSelecionados.length === 0);
+        });
+
+        $("#btnImportar").click(importarNotas);
+    });
+
+    function renderTabelaArquivos() {
+        const tbody = $("#tabelaArquivos tbody");
+        tbody.empty();
+
+        if (arquivosSelecionados.length === 0) {
+            tbody.append('<tr><td colspan="2" class="text-center">Nenhum arquivo selecionado.</td></tr>');
+            return;
+        }
+
+        arquivosSelecionados.forEach((file, idx) => {
+            tbody.append(`
+                <tr data-idx="${idx}">
+                    <td>${file.name}</td>
+                    <td class="status">Aguardando importação</td>
+                </tr>
+            `);
+        });
+    }
+
+    async function importarNotas() {
+        if (arquivosSelecionados.length === 0) {
+            Swal.fire("Aviso", "Selecione pelo menos um arquivo XML.", "warning");
+            return;
+        }
+
+        const confirm = await Swal.fire({
+            title: "Confirmar Importação",
+            text: `Deseja importar ${arquivosSelecionados.length} nota(s) fiscal(is)?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Sim, importar",
+            cancelButtonText: "Cancelar"
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        for (let i = 0; i < arquivosSelecionados.length; i++) {
+            const file = arquivosSelecionados[i];
+            const row = $(`#tabelaArquivos tbody tr[data-idx="${i}"] .status`);
+
+            // Mostra barra de progresso
+            row.html(`
+            <div class="progress" style="height:20px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                     role="progressbar" style="width: 100%">
+                    Importando...
+                </div>
+            </div>
+        `);
+
+            try {
+                const xmlText = await file.text();
+                const notaJson = xmlToJson(xmlText);
+
+                const res = await axios.post(baseUrl, {
+                    method: "importNotaFiscal",
+                    token,
+                    data: {
+                        system_unit_id: unit_id,
+                        notaJson
+                    }
+                });
+
+                if (res.data.success) {
+                    row.html(`<span class="status-ok"><i class="fa fa-check"></i> Importada com sucesso</span>`);
+                } else {
+                    row.html(`<span class="status-erro"><i class="fa fa-times"></i> Erro: ${res.data.message || 'Falha ao importar'}</span>`);
+                }
+            } catch (e) {
+                console.error(e);
+                row.html(`<span class="status-erro"><i class="fa fa-times"></i> Erro ao processar XML</span>`);
+            }
+        }
+
+        Swal.fire("Finalizado", "Processo de importação concluído.", "success");
+    }
+
+
+    // Converte XML string -> JSON simplificado compatível com importNotaFiscal
+    function xmlToJson(xmlString) {
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(xmlString, "text/xml");
+
+        const getText = (tag, ctx = xml) => {
+            const el = ctx.getElementsByTagName(tag)[0];
+            return el ? el.textContent : null;
+        };
+
+        const itens = [];
+        const dets = xml.getElementsByTagName("det");
+        for (let d of dets) {
+            const prod = d.getElementsByTagName("prod")[0];
+            itens.push({
+                numero_item: d.getAttribute("nItem"),
+                codigo_produto: getText("cProd", prod),
+                descricao: getText("xProd", prod),
+                ncm: getText("NCM", prod),
+                cfop: getText("CFOP", prod),
+                unidade: getText("uCom", prod),
+                quantidade: parseFloat(getText("qCom", prod) || 0),
+                valor_unitario: parseFloat(getText("vUnCom", prod) || 0),
+                valor_total: parseFloat(getText("vProd", prod) || 0),
+                valor_frete: parseFloat(getText("vFrete", prod) || 0)
+            });
+        }
+
+        return {
+            fornecedor: {
+                cnpj_cpf: getText("CNPJ", xml.getElementsByTagName("emit")[0]),
+                razao: getText("xNome", xml.getElementsByTagName("emit")[0]),
+                nome: getText("xFant", xml.getElementsByTagName("emit")[0]),
+                endereco: `${getText("xLgr", xml.getElementsByTagName("enderEmit")[0])}, ${getText("nro", xml.getElementsByTagName("enderEmit")[0])}, ${getText("xCpl", xml.getElementsByTagName("enderEmit")[0])}, ${getText("xBairro", xml.getElementsByTagName("enderEmit")[0])}, ${getText("xMun", xml.getElementsByTagName("enderEmit")[0])}/${getText("UF", xml.getElementsByTagName("enderEmit")[0])}`,
+                cep: getText("CEP", xml.getElementsByTagName("enderEmit")[0]),
+                insc_estadual: getText("IE", xml.getElementsByTagName("emit")[0]),
+                fone: getText("fone", xml.getElementsByTagName("enderEmit")[0])
+            },
+            chave_acesso: xml.getElementsByTagName("infNFe")[0].getAttribute("Id").replace("NFe", ""),
+            numero_nf: getText("nNF"),
+            serie: getText("serie"),
+            data_emissao: getText("dhEmi"),
+            data_saida: getText("dhSaiEnt"),
+            natureza_operacao: getText("natOp"),
+            valor_total: parseFloat(getText("vNF") || 0),
+            valor_produtos: parseFloat(getText("vProd") || 0),
+            valor_frete: parseFloat(getText("vFrete") || 0),
+            itens
+        };
+    }
+
+    // Ativar FilePond no input
+    const inputElement = document.querySelector('#inputXml');
+
+    const pond = FilePond.create(inputElement, {
+        allowMultiple: true,
+        credits: false,
+        labelIdle: 'Arraste seus arquivos XML ou <span class="filepond--label-action">Selecione</span>',
+        acceptedFileTypes: ['application/xml', 'text/xml'],
+        allowFileEncode: false,
+        allowFilePreview: false,
+        allowFileTypeValidation: true,
+        allowFileSizeValidation: true,
+        allowReorder: false,
+        allowReplace: false,
+        itemInsertLocation: null,
+        maxFiles: 100,
+        fileValidateTypeLabelExpectedTypes: 'Apenas arquivos XML são permitidos',
+    });
+
+    // Sempre que os arquivos mudarem, atualizamos nossa lista
+    pond.on('updatefiles', (fileItems) => {
+        arquivosSelecionados = fileItems.map(f => f.file);
+
+        // Mostra quantidade selecionada
+        const qtd = arquivosSelecionados.length;
+        const label = qtd === 0
+            ? 'Arraste seus arquivos XML ou <span class="filepond--label-action">Selecione</span>'
+            : `${qtd} arquivo(s) selecionado(s)`;
+
+        pond.labelIdle = label;
+
+        renderTabelaArquivos();
+        $("#btnImportar").prop("disabled", qtd === 0);
+    });
+
+</script>
+</body>
+</html>

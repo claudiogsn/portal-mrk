@@ -71,6 +71,10 @@
           </menuitem>
         </menu>
       </menuitem>
+      <menuitem label="MD-e">
+        <action>NotasFiscais</action>
+        <icon>far:file-alt fa-fw</icon>
+      </menuitem>
       <menuitem label="Balanco">
         <icon>fas:balance-scale fa-fw</icon>
         <menu>

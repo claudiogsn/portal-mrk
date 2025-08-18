@@ -36,6 +36,7 @@ require_once 'controllers/DisparosController.php';
 require_once 'controllers/SystemUnitController.php';
 require_once 'controllers/UserController.php';
 require_once 'controllers/MenuMobileController.php';
+require_once 'controllers/MdeController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -106,6 +107,25 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
+            // Métodos para MdeController
+            case 'importNotaFiscal':
+                if (isset($requestData['system_unit_id']) && isset($requestData['notaJson'])) {
+                    $response = MdeController::importNotaFiscal($requestData['system_unit_id'], $requestData['notaJson']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou notaJson ausentes'];
+                }
+                break;
+
+            case 'listarNotas':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = MdeController::listarNotas($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ausente'];
+                }
+                break;
+
             // Métodos para UserController
             case 'getUserDetails':
                 if (isset($requestData['user'])) {
