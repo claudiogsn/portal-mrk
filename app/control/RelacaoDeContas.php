@@ -13,9 +13,9 @@ class RelacaoDeContas extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/listcontas.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/external/listContas.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/listcontas.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/listContas.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }
 
         $iframe = new TElement('iframe');
