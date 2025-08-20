@@ -16,6 +16,10 @@
   <menuitem label="Financeiro">
     <icon>fas:dollar-sign fa-fw</icon>
     <menu>
+      <menuitem label="Relação de Contas">
+        <action>RelacaoDeContas</action>
+        <icon>fas:circle fa-fw</icon>
+      </menuitem>
       <menuitem label="Importar Dados">
         <action>ImportFinanceiro</action>
         <icon>fas:circle fa-fw</icon>
@@ -71,10 +75,6 @@
           </menuitem>
         </menu>
       </menuitem>
-      <menuitem label="MD-e">
-        <action>NotasFiscais</action>
-        <icon>far:file-alt fa-fw</icon>
-      </menuitem>
       <menuitem label="Balanco">
         <icon>fas:balance-scale fa-fw</icon>
         <menu>
@@ -117,6 +117,10 @@
       <menuitem label="Compra">
         <icon>fas:dolly-flatbed fa-fw</icon>
         <menu>
+          <menuitem label="MD-e">
+            <action>NotasFiscais</action>
+            <icon>far:file-alt fa-fw</icon>
+          </menuitem>
           <menuitem label="Previsão de Compras">
             <action>PrevisaoCompras</action>
             <icon>fas:circle fa-fw</icon>

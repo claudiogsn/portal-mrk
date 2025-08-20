@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Contas - Lista e Totais</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        /* Modal Fullscreen (mantido do seu modelo) */
+        .modal-fullscreen { max-width:100%!important; width:100%!important; height:100%!important; margin:0!important; }
+        .modal-fullscreen .modal-content { height:100%; border:0; border-radius:0; }
+        .modal-fullscreen .modal-body { overflow-y:auto; }
+
+        .form-control { margin-bottom:10px; }
+        .label-success { background-color:#4caf50; }
+        .label-danger  { background-color:#f44336; }
+        .modal-iframe { width:100%; height:80vh; border:none; }
+
+        /* Cards KPI */
+        .kpi { text-align:center; padding:12px; border-radius:6px; border:1px solid #eee; }
+        .kpi h4 { margin:4px 0 0 0; font-weight:700; }
+        .kpi small { color:#333; opacity:.9; display:block; }
+        .kpi.green { background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
+        .kpi.red   { background:#ffebee; border-color:#ffcdd2; color:#c62828; }
+        .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
+
+        .table thead th { white-space:nowrap; }
+        .text-right { text-align:right; }
+
+        /* Círculo de contorno para ícones do FA */
+        .icon-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            line-height: 1;
+            font-size: 10px;
+        }
+        .icon-circle.green { color: #4caf50; }
+        .icon-circle.red   { color: #f44336; }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header d-flex justify-content-between align-items-center">
+            <h2>Relação de Contas</h2>
+        </div>
+        <div class="body">
+
+            <!-- Filtros (um único row) -->
+            <div class="row">
+                <div class="col-md-2">
+                    <label>Data Inicial</label>
+                    <input type="date" id="filtroDataInicial" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label>Data Final</label>
+                    <input type="date" id="filtroDataFinal" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label>Tipo de Data</label>
+                    <select id="filtroTipoData" class="form-control">
+                        <option value="emissao">Emissão</option>
+                        <option value="vencimento" selected>Vencimento</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label>Tipo</label>
+                    <select id="filtroTipo" class="form-control">
+                        <option value="">Todas</option>
+                        <option value="c">Crédito (c)</option>
+                        <option value="d">Débito (d)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label>Status</label>
+                    <select id="filtroStatus" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="aberto">Em aberto</option>
+                        <option value="pago">Pago</option>
+                    </select>
+                </div>
+                <div class="col-md-2 text-right">
+                    <label>&nbsp;</label><br>
+                    <button class="btn btn-primary" id="btnBuscar">Buscar</button>
+                </div>
+            </div>
+
+            <!-- Totalizadores -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="kpi green">
+                        <small>Total de Créditos</small>
+                        <h4 id="kpiCreditos">R$ 0,00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi red">
+                        <small>Total de Débitos</small>
+                        <h4 id="kpiDebitos">R$ 0,00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi blue">
+                        <small>Diferença (Créditos − Débitos)</small>
+                        <h4 id="kpiDiferenca">R$ 0,00</h4>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BUSCA (entre KPIs e Grid) -->
+            <div class="row">
+                <div class="col-md-6">
+                    <label>Buscar</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Digite para buscar em Entidade (nome) e Documento">
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabelaContas">
+                    <thead>
+                    <tr>
+                        <th style="width:40px;"></th> <!-- ação editar -->
+                        <th style="width:40px;"></th> <!-- outras ações -->
+                        <th style="width:40px;">Tipo</th>
+                        <th>Entidade</th>
+                        <th>Documento</th>
+                        <th>Emissão</th>
+                        <th>Data Vencimento</th>
+                        <th>Observação</th>
+                        <th>Status</th>
+                        <th>Data Pagamento</th>
+                        <th class="text-right">Valor</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal (mantido do modelo) -->
+<div class="modal fade" id="modalImportacao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Importar</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="iframeImportacao" class="modal-iframe"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // === Configs iguais ao seu modelo ===
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const baseUrlRedirect = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br'
+        : 'http://localhost/portal-mrk';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token   = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+    const username = urlParams.get('username') || '';
+
+    // === Helpers ===
+    function toBRL(v){
+        if (v === null || v === undefined || v === '') return 'R$ 0,00';
+        const num = Number(v) || 0;
+        return num.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    }
+
+    function setDefaultMonth(){
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = today.getMonth(); // 0..11
+        const first = new Date(y, m, 1);
+        const last  = new Date(y, m + 1, 0);
+        const toInput = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().substring(0,10);
+        $('#filtroDataInicial').val(toInput(first));
+        $('#filtroDataFinal').val(toInput(last));
+        $('#filtroTipoData').val('vencimento');
+        $('#filtroTipo').val(''); // todas
+        $('#filtroStatus').val(''); // todos
+    }
+
+    let contas = [];
+
+    $(document).ready(function () {
+        setDefaultMonth();
+
+        $('#btnBuscar').click(buscar);
+
+        // filtros locais em tempo real
+        $('#filtroStatus').on('change input', aplicarFiltrosLocais);
+        $('#filtroBusca').on('input', aplicarFiltrosLocais);
+
+        // busca inicial com os defaults
+        buscar();
+    });
+
+    async function buscar(){
+        if (!token || !unit_id){
+            Swal.fire('Atenção', 'Parâmetros ausentes na URL (token e/ou unit_id).', 'warning');
+            return;
+        }
+
+        const data_inicial = $('#filtroDataInicial').val();
+        const data_final   = $('#filtroDataFinal').val();
+        const tipoData     = $('#filtroTipoData').val(); // 'emissao' | 'vencimento'
+        const tipo         = $('#filtroTipo').val();     // '' | 'c' | 'd'
+
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const payload = {
+                method: 'listContas',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    data_inicial,
+                    data_final,
+                    tipoData,
+                    ...(tipo ? { tipo } : {}) // se vazio, não envia (todas)
+                }
+            };
+            const res = await axios.post(baseUrl, payload);
+
+            if (Array.isArray(res.data)) {
+                contas = res.data;
+            } else if (res.data && res.data.success && Array.isArray(res.data.data)) {
+                contas = res.data.data;
+            } else if (Array.isArray(res.data?.response)) {
+                contas = res.data.response;
+            } else {
+                contas = [];
+            }
+
+            aplicarFiltrosLocais(); // aplica status + busca local
+            Swal.close();
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+        }
+    }
+
+    // Normaliza string p/ busca (case-insensitive + sem acentos)
+    function norm(s){
+        return String(s || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+            .toLowerCase();
+    }
+
+    // Filtros locais combinados: Status + Busca
+    function aplicarFiltrosLocais(){
+        const status = $('#filtroStatus').val(); // '' | 'aberto' | 'pago'
+        const termo  = norm($('#filtroBusca').val());
+
+        let lista = contas.slice();
+
+        if (status === 'aberto') {
+            lista = lista.filter(n => !n.baixa_dt);
+        } else if (status === 'pago') {
+            lista = lista.filter(n => !!n.baixa_dt);
+        }
+
+        if (termo) {
+            lista = lista.filter(n => {
+                const nome = norm(n.nome);
+                const doc  = norm(n.doc);
+                return (nome && nome.includes(termo)) || (doc && doc.includes(termo));
+            });
+        }
+
+        renderTabela(lista);
+        renderTotais(lista);
+    }
+
+    function renderTotais(lista){
+        let totalCreditos = 0;
+        let totalDebitos  = 0;
+
+        for (const row of lista){
+            const val = Number(row.valor) || 0;
+            const t = (row.tipo || '').toString().trim().toLowerCase();
+            if (t === 'c') totalCreditos += val;
+            else if (t === 'd') totalDebitos += val;
+        }
+
+        const diferenca = totalCreditos - totalDebitos;
+        $('#kpiCreditos').text(toBRL(totalCreditos));
+        $('#kpiDebitos').text(toBRL(totalDebitos));
+        $('#kpiDiferenca').text(toBRL(diferenca));
+    }
+
+    function renderTabela(lista){
+        const tbody = $('#tabelaContas tbody');
+        tbody.empty();
+
+        if (!lista || !lista.length){
+            tbody.append('<tr><td colspan="11" class="text-center">Nenhum registro encontrado.</td></tr>');
+            return;
+        }
+
+        for (const n of lista){
+            const emissao    = fmtDate(n.emissao);
+            const vencimento = fmtDate(n.vencimento);
+            const pagamento  = fmtDate(n.baixa_dt);
+
+            const isPago = !!n.baixa_dt;
+            const statusBadge = isPago
+                ? '<span class="label label-success">Pago</span>'
+                : '<span class="label label-warning">Em aberto</span>';
+
+            const t = (n.tipo || '').toString().trim().toLowerCase();
+            let tipoIcon = '<span class="icon-circle" style="color:#9e9e9e;"><i class="fa fa-question"></i></span>';
+            if (t === 'c') tipoIcon = '<span class="icon-circle green" title="Crédito"><i class="fa fa-plus"></i></span>';
+            if (t === 'd') tipoIcon = '<span class="icon-circle red" title="Débito"><i class="fa fa-minus"></i></span>';
+
+            tbody.append(`
+                <tr>
+                    <td><a href="#" title="Editar"><i class="fa fa-edit blue"></i></a></td>
+                    <td><a href="#" title="Outras ações"><i class="fa fa-ellipsis-v green"></i></a></td>
+                    <td class="text-center">${tipoIcon}</td>
+                    <td>${n.nome ?? ''}</td>
+                    <td>${n.doc ?? ''}</td>
+                    <td>${emissao}</td>
+                    <td>${vencimento}</td>
+                    <td title="${n.obs ?? ''}">${n.obs ? String(n.obs).slice(0, 80) : ''}</td>
+                    <td>${statusBadge}</td>
+                    <td>${pagamento}</td>
+                    <td class="text-right">${toBRL(n.valor)}</td>
+                </tr>
+            `);
+        }
+    }
+
+    // Exibição dd/mm/aaaa só no grid
+    function fmtDate(iso) {
+        if (!iso) return '';
+        const s = String(iso).slice(0, 10); // 'YYYY-MM-DD'
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+            const [y, m, d] = s.split('-');
+            return `${d}/${m}/${y}`;
+        }
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+    }
+</script>
+</body>
+</html>

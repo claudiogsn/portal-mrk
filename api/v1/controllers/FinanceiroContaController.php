@@ -95,12 +95,36 @@ class FinanceiroContaController {
         }
     }
 
-    public static function listContas() {
+    public static function listContas($system_unit_id, $data_inicial, $data_final, $tipoData = 'emissao', $tipo = null) {
         global $pdo;
 
-        $stmt = $pdo->query("SELECT * FROM financeiro_conta");
+        // Coluna de filtro de data
+        $colunaData = ($tipoData === 'vencimento') ? 'vencimento' : 'emissao';
+
+        $sql = "SELECT *
+            FROM financeiro_conta
+            WHERE system_unit_id = :system_unit_id
+              AND {$colunaData} BETWEEN :data_inicial AND :data_final ORDER BY {$colunaData} ASC";
+
+        // Se o tipo for informado, aplica no WHERE
+        if (!empty($tipo)) {
+            $sql .= " AND tipo = :tipo";
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->bindValue(':data_inicial', $data_inicial);
+        $stmt->bindValue(':data_final', $data_final);
+
+        if (!empty($tipo)) {
+            $stmt->bindValue(':tipo', $tipo, PDO::PARAM_STR);
+        }
+
+        $stmt->execute();
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function importarContaApi($system_unit_id) {
         global $pdo;
@@ -192,7 +216,6 @@ class FinanceiroContaController {
             return ["success" => false, "message" => $e->getMessage()];
         }
     }
-
 
 
     public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {

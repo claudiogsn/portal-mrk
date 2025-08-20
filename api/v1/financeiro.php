@@ -106,6 +106,28 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros inválidos'];
                 }
                break;
+            case 'listContas':
+                if (
+                    isset($requestData['system_unit_id']) &&
+                    isset($requestData['data_inicial']) &&
+                    isset($requestData['data_final']) &&
+                    isset($requestData['tipoData'])
+                ) {
+                    $response = FinanceiroContaController::listContas(
+                        $requestData['system_unit_id'],
+                        $requestData['data_inicial'],
+                        $requestData['data_final'],
+                        $requestData['tipoData'], // 'emissao' ou 'vencimento'
+                        $requestData['tipo'] ?? null // 'credito', 'debito' ou null (traz todos)
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros inválidos'];
+                }
+                break;
+
+
+
             case 'getContaByMonth':
                 if(isset($requestData['system_unit_id']) && isset($requestData['month']) && isset($requestData['year'])){
                     $response = FinanceiroContaController::getContaByMonth($requestData['system_unit_id'], $requestData['month'], $requestData['year'], $requestData['plano_contas']);
