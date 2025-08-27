@@ -156,7 +156,8 @@ class MdeController
                     en.data_emissao,
                     en.data_entrada,
                     en.valor_total,
-                    en.incluida,
+                    en.incluida_estoque,
+                    en.incluida_financeiro,
                     ff.razao AS fornecedor_razao,
                     ff.cnpj_cpf AS fornecedor_cnpj
                 FROM estoque_nota en

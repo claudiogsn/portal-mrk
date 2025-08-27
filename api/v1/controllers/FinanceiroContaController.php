@@ -11,6 +11,44 @@ require_once __DIR__ . '/../database/db.php';
 
 
 class FinanceiroContaController {
+
+    public static function importaContaByNota($data) {
+        global $pdo;
+
+        try {
+            $sql = "INSERT INTO financeiro_conta
+            (system_unit_id, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+            VALUES
+            (:system_unit_id, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL, :valor, :plano_contas, NULL, :obs, NULL, NULL, NULL, :adic, :comissao, NULL, NULL, NULL, NULL)";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':system_unit_id' => $data['system_unit_id'],
+                ':nome'           => $data['nome'],
+                ':entidade'       => $data['entidade'],
+                ':cgc'            => $data['cgc'],
+                ':tipo'           => $data['tipo'],
+                ':doc'            => $data['doc'],
+                ':emissao'        => $data['emissao'],
+                ':vencimento'     => $data['vencimento'],
+                ':valor'          => $data['valor'],
+                ':plano_contas'   => $data['plano_contas'] ?? null,
+                ':obs'            => $data['obs'] ?? null,
+                ':adic'           => $data['adic'] ?? 0,
+                ':comissao'       => $data['comissao'] ?? 0,
+            ]);
+
+            return [
+                'success'  => true,
+                'message'  => 'Conta importada com sucesso',
+                'conta_id' => (int)$pdo->lastInsertId()
+            ];
+
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Erro ao inserir: '.$e->getMessage()];
+        }
+    }
+
     public static function createConta($data) {
         global $pdo;
 
@@ -130,7 +168,7 @@ class FinanceiroContaController {
         global $pdo;
 
         try {
-            // Obtém o custom_code a partir do system_unit_id
+            // 1) Pega custom_code do unit
             $stmt = $pdo->prepare("SELECT custom_code AS estabelecimento FROM system_unit WHERE id = :id");
             $stmt->bindParam(':id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
@@ -139,12 +177,55 @@ class FinanceiroContaController {
             if (!$result) {
                 throw new Exception("System Unit ID inválido ou não encontrado.");
             }
-
             $estabelecimento = $result['estabelecimento'];
 
-            // Chama o método da API para buscar as contas (Débito e Crédito)
+            // 2) Tipos a importar
             $tipos = ['d', 'c'];
-            $contasImportadas = [];
+
+            // 3) Preparar statements (SELECT/INSERT/UPDATE) e iniciar transação
+            $pdo->beginTransaction();
+
+            $selectStmt = $pdo->prepare(
+                "SELECT id FROM financeiro_conta WHERE system_unit_id = ? AND codigo = ? LIMIT 1"
+            );
+
+            $insertStmt = $pdo->prepare(
+                "INSERT INTO financeiro_conta
+            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor,
+             plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+             VALUES
+            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, :baixa_dt, :valor,
+             :plano_contas, :banco, :obs, :inc_ope, :bax_ope, :comp_dt, :adic, :comissao, :local, :cheque, :dt_cheque, :segmento)"
+            );
+
+            $updateStmt = $pdo->prepare(
+                "UPDATE financeiro_conta SET
+                nome = :nome,
+                entidade = :entidade,
+                cgc = :cgc,
+                tipo = :tipo,
+                doc = :doc,
+                emissao = :emissao,
+                vencimento = :vencimento,
+                baixa_dt = :baixa_dt,
+                valor = :valor,
+                plano_contas = :plano_contas,
+                banco = :banco,
+                obs = :obs,
+                inc_ope = :inc_ope,
+                bax_ope = :bax_ope,
+                comp_dt = :comp_dt,
+                adic = :adic,
+                comissao = :comissao,
+                local = :local,
+                cheque = :cheque,
+                dt_cheque = :dt_cheque,
+                segmento = :segmento
+             WHERE id = :id"
+            );
+
+            $totInseridos = 0;
+            $totAtualizados = 0;
 
             foreach ($tipos as $tipo) {
                 $contas = FinanceiroApiMenewController::fetchFinanceiroConta($estabelecimento, $tipo);
@@ -154,65 +235,84 @@ class FinanceiroContaController {
                 }
 
                 foreach ($contas['contas'] as $conta) {
-                    $stmtInsert = $pdo->prepare(
-                        "INSERT INTO financeiro_conta (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
-                    ON DUPLICATE KEY UPDATE 
-                    nome = VALUES(nome), 
-                    entidade = VALUES(entidade), 
-                    cgc = VALUES(cgc), 
-                    tipo = VALUES(tipo), 
-                    doc = VALUES(doc), 
-                    emissao = VALUES(emissao), 
-                    vencimento = VALUES(vencimento), 
-                    baixa_dt = VALUES(baixa_dt), 
-                    valor = VALUES(valor), 
-                    plano_contas = VALUES(plano_contas), 
-                    banco = VALUES(banco), 
-                    obs = VALUES(obs), 
-                    inc_ope = VALUES(inc_ope), 
-                    bax_ope = VALUES(bax_ope), 
-                    comp_dt = VALUES(comp_dt), 
-                    adic = VALUES(adic), 
-                    comissao = VALUES(comissao), 
-                    local = VALUES(local), 
-                    cheque = VALUES(cheque), 
-                    dt_cheque = VALUES(dt_cheque), 
-                    segmento = VALUES(segmento)"
-                    );
+                    // Normalizações/Defaults leves
+                    $codigo        = $conta['id']; // mantém a mesma semântica usada antes
+                    $plano_contas  = isset($conta['plano_contas']) ? ('0' . $conta['plano_contas']) : null;
 
-                    $plano_contas = '0'.$conta['plano_contas'];
+                    // 4) Existe?
+                    $selectStmt->execute([$system_unit_id, $codigo]);
+                    $row = $selectStmt->fetch(PDO::FETCH_ASSOC);
 
-                    $stmtInsert->execute([
-                        $system_unit_id,
-                        $conta['id'],
-                        $conta['nome'],
-                        $conta['entidade'],
-                        $conta['cgc'] ?? '',
-                        $conta['tipo'],
-                        $conta['doc'],
-                        $conta['emissao'],
-                        $conta['vencimento'],
-                        $conta['baixa_dt'],
-                        $conta['valor'],
-                        $plano_contas,
-                        $conta['banco'],
-                        $conta['obs'],
-                        $conta['inc_ope'],
-                        $conta['bax_ope'],
-                        $conta['comp_dt'],
-                        $conta['adic'],
-                        $conta['comissao'],
-                        $conta['local'],
-                        $conta['cheque'],
-                        $conta['dt_cheque'],
-                        $conta['segmento']
-                    ]);
+                    if ($row) {
+                        // UPDATE
+                        $updateStmt->execute([
+                            ':nome'         => $conta['nome'],
+                            ':entidade'     => $conta['entidade'],
+                            ':cgc'          => $conta['cgc'] ?? '',
+                            ':tipo'         => $conta['tipo'],
+                            ':doc'          => $conta['doc'],
+                            ':emissao'      => $conta['emissao'],
+                            ':vencimento'   => $conta['vencimento'],
+                            ':baixa_dt'     => $conta['baixa_dt'] ?? null,
+                            ':valor'        => $conta['valor'],
+                            ':plano_contas' => $plano_contas,
+                            ':banco'        => $conta['banco'] ?? null,
+                            ':obs'          => $conta['obs'] ?? null,
+                            ':inc_ope'      => $conta['inc_ope'] ?? null,
+                            ':bax_ope'      => $conta['bax_ope'] ?? null,
+                            ':comp_dt'      => $conta['comp_dt'] ?? null,
+                            ':adic'         => $conta['adic'] ?? 0,
+                            ':comissao'     => $conta['comissao'] ?? 0,
+                            ':local'        => $conta['local'] ?? null,
+                            ':cheque'       => $conta['cheque'] ?? null,
+                            ':dt_cheque'    => $conta['dt_cheque'] ?? null,
+                            ':segmento'     => $conta['segmento'] ?? null,
+                            ':id'           => (int)$row['id'],
+                        ]);
+                        $totAtualizados++;
+                    } else {
+                        // INSERT
+                        $insertStmt->execute([
+                            ':system_unit_id' => $system_unit_id,
+                            ':codigo'         => $codigo,
+                            ':nome'           => $conta['nome'],
+                            ':entidade'       => $conta['entidade'],
+                            ':cgc'            => $conta['cgc'] ?? '',
+                            ':tipo'           => $conta['tipo'],
+                            ':doc'            => $conta['doc'],
+                            ':emissao'        => $conta['emissao'],
+                            ':vencimento'     => $conta['vencimento'],
+                            ':baixa_dt'       => $conta['baixa_dt'] ?? null,
+                            ':valor'          => $conta['valor'],
+                            ':plano_contas'   => $plano_contas,
+                            ':banco'          => $conta['banco'] ?? null,
+                            ':obs'            => $conta['obs'] ?? null,
+                            ':inc_ope'        => $conta['inc_ope'] ?? null,
+                            ':bax_ope'        => $conta['bax_ope'] ?? null,
+                            ':comp_dt'        => $conta['comp_dt'] ?? null,
+                            ':adic'           => $conta['adic'] ?? 0,
+                            ':comissao'       => $conta['comissao'] ?? 0,
+                            ':local'          => $conta['local'] ?? null,
+                            ':cheque'         => $conta['cheque'] ?? null,
+                            ':dt_cheque'      => $conta['dt_cheque'] ?? null,
+                            ':segmento'       => $conta['segmento'] ?? null,
+                        ]);
+                        $totInseridos++;
+                    }
                 }
             }
 
-            return ["success" => true, "message" => "Contas importadas ou atualizadas com sucesso"];
+            $pdo->commit();
+
+            return [
+                "success"       => true,
+                "message"       => "Contas importadas/atualizadas com sucesso",
+                "inseridos"     => $totInseridos,
+                "atualizados"   => $totAtualizados
+            ];
+
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) { $pdo->rollBack(); }
             return ["success" => false, "message" => $e->getMessage()];
         }
     }

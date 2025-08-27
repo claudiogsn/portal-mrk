@@ -7,12 +7,78 @@
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
+        .label-success { background-color: #4caf50; }
+        .orange { color: orange; font-size: 16px; }
+
+        /* Animação de sino */
+        @keyframes swing {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(10deg); }
+            50% { transform: rotate(-10deg); }
+            75% { transform: rotate(6deg); }
+            100% { transform: rotate(0deg); }
+        }
+        .sino-animado { display: inline-block; animation: swing 1s infinite; }
+
+        /* Cards KPI */
+        .kpi-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .kpi-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kpi-value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .kpi-label {
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        /* Temas */
+        .kpi.orange {
+            background: #fff3e0;
+            border-color: #ffe0b2;
+            color: #ef6c00;
+        }
+
+        .kpi.blue {
+            background: #e3f2fd;
+            border-color: #bbdefb;
+            color: #1565c0;
+        }
+
+        /* Botões dentro do card seguem cor do tema */
+        .kpi.orange .btn {
+            background-color: #ef6c00;
+            border-color: #ef6c00;
+            color: #fff;
+        }
+
+        .kpi.blue .btn {
+            background-color: #1565c0;
+            border-color: #1565c0;
+            color: #fff;
+        }
+
         /* Modal Fullscreen */
         .modal-fullscreen {
             max-width: 100% !important;
@@ -72,11 +138,14 @@
                     <input type="text" id="filtroCnpj" class="form-control" placeholder="Digite CPF ou CNPJ">
                 </div>
                 <div class="col-md-2">
-                    <label>Incluída</label>
-                    <select id="filtroIncluida" class="form-control">
+                    <label>Status</label>
+                    <select id="filtroStatus" class="form-control">
                         <option value="">Todas</option>
-                        <option value="1">Sim</option>
-                        <option value="0">Não</option>
+                        <option value="sem_pendencia">Sem pendência (estoque e financeiro incluídos)</option>
+                        <option value="incluida_fin">Incluídas Financeiro</option>
+                        <option value="incluida_est">Incluída Estoque</option>
+                        <option value="pend_est">Não incluídas no estoque</option>
+                        <option value="pend_fin">Não incluída no financeiro</option>
                     </select>
                 </div>
                 <div class="col-md-3 text-right">
@@ -89,6 +158,36 @@
                     </button>
                 </div>
             </div>
+
+            <div class="row" id="rowKpis" style="margin-top:10px;">
+                <div class="col-md-4">
+                    <div class="kpi-card kpi orange">
+                        <p class="kpi-label">Pendências Financeiro</p>
+                        <div class="kpi-row">
+                            <div class="kpi-value" id="kpiPendFin">0</div>
+                            <button class="btn btn-sm" id="btnVerMaisFin">Ver mais</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi-card kpi orange">
+                        <p class="kpi-label">Pendências Estoque</p>
+                        <div class="kpi-row">
+                            <div class="kpi-value" id="kpiPendEst">0</div>
+                            <button class="btn btn-sm" id="btnVerMaisEst">Ver mais</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi-card kpi blue">
+                        <p class="kpi-label">Somatório Total de NF-e</p>
+                        <div class="kpi-row">
+                            <div class="kpi-value" id="kpiSomatorio">R$ 0,00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
 
             <!-- Grid -->
@@ -103,7 +202,8 @@
                         <th>Razão Social</th>
                         <th>CPF/CNPJ</th>
                         <th>Valor NF-e</th>
-                        <th>Incluída</th>
+                        <th>Incluída Estoque</th>
+                        <th>Incluída Financeiro</th>
                         <th>Data Entrada</th>
                     </tr>
                     </thead>
@@ -149,7 +249,7 @@
     $(document).ready(function () {
         $('#btnListarNotas').click(listarNotas);
 
-        $('#filtroDataInicial, #filtroDataFinal, #filtroCnpj, #filtroIncluida')
+        $('#filtroDataInicial, #filtroDataFinal, #filtroCnpj, #filtroStatus')
             .on('input change', aplicarFiltros);
 
         $('#btnAbrirImportacao').click(() => {
@@ -158,11 +258,21 @@
             $('#modalImportacao').modal('show');
         });
 
-        // Quando fechar o modal, recarrega lista
+        // KPIs -> "Ver mais"
+        $('#btnVerMaisFin').on('click', function() {
+            $('#filtroStatus').val('pend_fin');
+            aplicarFiltros();
+        });
+        $('#btnVerMaisEst').on('click', function() {
+            $('#filtroStatus').val('pend_est');
+            aplicarFiltros();
+        });
+
         $('#modalImportacao').on('hidden.bs.modal', function () {
             listarNotas();
         });
     });
+
 
     async function listarNotas() {
         Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
@@ -174,7 +284,8 @@
             });
 
             if (res.data.success) {
-                notasOriginais = res.data.data;
+                notasOriginais = res.data.data || [];
+                recalcKpis(notasOriginais);
                 renderTabela(notasOriginais);
                 Swal.close();
             } else {
@@ -186,13 +297,27 @@
         }
     }
 
+    function recalcKpis(data) {
+        const pendFin = data.filter(n => Number(n.incluida_financeiro) !== 1).length;
+        const pendEst = data.filter(n => Number(n.incluida_estoque) !== 1).length;
+        const soma = data.reduce((acc, n) => acc + (parseFloat(n.valor_total || 0) || 0), 0);
+
+        $('#kpiPendFin').text(pendFin);
+        $('#kpiPendEst').text(pendEst);
+        $('#kpiSomatorio').text(
+            soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        );
+    }
+
+
+
     function aplicarFiltros() {
         let dataFiltrada = [...notasOriginais];
 
         const dataIni = $('#filtroDataInicial').val();
         const dataFim = $('#filtroDataFinal').val();
         const cnpj = $('#filtroCnpj').val().replace(/\D/g, '');
-        const incluida = $('#filtroIncluida').val();
+        const status = $('#filtroStatus').val();
 
         if (dataIni) {
             dataFiltrada = dataFiltrada.filter(n =>
@@ -206,15 +331,28 @@
         }
         if (cnpj) {
             dataFiltrada = dataFiltrada.filter(n =>
-                n.fornecedor_cnpj.includes(cnpj)
-            );
-        }
-        if (incluida !== "") {
-            dataFiltrada = dataFiltrada.filter(n =>
-                String(n.incluida) === incluida
+                (n.fornecedor_cnpj || '').includes(cnpj)
             );
         }
 
+        // status combinado
+        if (status) {
+            if (status === 'sem_pendencia') {
+                dataFiltrada = dataFiltrada.filter(n =>
+                    Number(n.incluida_estoque) === 1 && Number(n.incluida_financeiro) === 1
+                );
+            } else if (status === 'incluida_fin') {
+                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_financeiro) === 1);
+            } else if (status === 'incluida_est') {
+                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) === 1);
+            } else if (status === 'pend_est') {
+                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) !== 1);
+            } else if (status === 'pend_fin') {
+                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_financeiro) !== 1);
+            }
+        }
+
+        recalcKpis(dataFiltrada);
         renderTabela(dataFiltrada);
     }
 
@@ -223,30 +361,36 @@
         tbody.empty();
 
         if (!lista.length) {
-            tbody.append('<tr><td colspan="9" class="text-center">Nenhuma nota encontrada.</td></tr>');
+            tbody.append('<tr><td colspan="10" class="text-center">Nenhuma nota encontrada.</td></tr>');
             return;
         }
 
         lista.forEach(n => {
-            const incluidaBadge = n.incluida == 1
+            const estoqueBadge = Number(n.incluida_estoque) === 1
                 ? '<span class="label label-success">Sim</span>'
-                : '<span class="label label-danger">Não</span>';
+                : '<i class="fas fa-exclamation-triangle orange sino-animado" title="Não incluída no estoque"></i>';
+
+            const financeiroBadge = Number(n.incluida_financeiro) === 1
+                ? '<span class="label label-success">Sim</span>'
+                : '<i class="fas fa-exclamation-triangle orange sino-animado" title="Não incluída no financeiro"></i>';
 
             tbody.append(`
-                <tr>
-                    <td><a href="#" title="Editar"><i class="fa fa-edit blue"></i></a></td>
-                    <td><a href="#" title="Entrada"><i class="fa fa-download green"></i></a></td>
-                    <td>${n.numero_nf}</td>
-                    <td>${n.data_emissao ? n.data_emissao.substr(0, 10) : ''}</td>
-                    <td>${n.fornecedor_razao}</td>
-                    <td>${n.fornecedor_cnpj}</td>
-                    <td>R$ ${parseFloat(n.valor_total).toFixed(2)}</td>
-                    <td>${incluidaBadge}</td>
-                    <td>${n.data_entrada ? n.data_entrada.substr(0, 10) : ''}</td>
-                </tr>
-            `);
+      <tr>
+        <td><a href="#" title="Editar"><i class="fa fa-edit blue"></i></a></td>
+        <td><a href="#" title="Entrada"><i class="fa fa-download green"></i></a></td>
+        <td>${n.numero_nf ?? ''}</td>
+        <td>${n.data_emissao ? n.data_emissao.substr(0, 10) : ''}</td>
+        <td>${n.fornecedor_razao ?? ''}</td>
+        <td>${n.fornecedor_cnpj ?? ''}</td>
+        <td>${(parseFloat(n.valor_total) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+        <td>${estoqueBadge}</td>
+        <td>${financeiroBadge}</td>
+        <td>${n.data_entrada ? n.data_entrada.substr(0, 10) : ''}</td>
+      </tr>
+    `);
         });
     }
+
 </script>
 </body>
 </html>

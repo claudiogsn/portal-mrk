@@ -4,71 +4,80 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class ProductController {
 
-    public static function createProduct($data) {
+    public static function createProduto($data) {
         global $pdo;
 
-        // Campos da nova estrutura da tabela, exceto 'codigo'
-        $requiredFields = ['nome', 'preco', 'und', 'venda', 'composicao', 'insumo', 'system_unit_id', 'categoria', 'status'];
+        // Campos esperados no JSON (data):
+        // id, sku_zig, unit_id, codigo, nome, und, categoria, venda, composicao, insumo
 
-        // Verifica se todos os campos obrigatórios estão presentes
+        // Verifica obrigatórios presentes no JSON
+        $requiredFields = ['nome', 'und', 'categoria', 'venda', 'composicao', 'insumo', 'unit_id'];
         foreach ($requiredFields as $field) {
             if (!isset($data[$field])) {
-                return array('success' => false, 'message' => "O campo '$field' é obrigatório.");
+                return ['success' => false, 'message' => "O campo '$field' é obrigatório."];
             }
         }
 
-        // Gerar o valor de 'codigo' automaticamente a partir do valor máximo existente
+        // De/Para
+        $system_unit_id = (int)$data['unit_id'];
+        $codigoInput    = isset($data['codigo']) ? trim((string)$data['codigo']) : '';
+        $nome           = (string)$data['nome'];
+        $und            = (string)$data['und'];
+        $categoria      = (string)$data['categoria'];
+        $venda          = (int)($data['venda'] ? 1 : 0);
+        $composicao     = (int)($data['composicao'] ? 1 : 0);
+        $insumo         = (int)($data['insumo'] ? 1 : 0);
+        $sku_zig        = isset($data['sku_zig']) ? (string)$data['sku_zig'] : null;
+
+        // Geração/validação do código
         try {
-            $stmt = $pdo->prepare("SELECT MAX(codigo) AS max_codigo FROM products WHERE system_unit_id = :system_unit_id");
-            $stmt->bindParam(':system_unit_id', $data['system_unit_id'], PDO::PARAM_INT);
-            $stmt->execute();
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            // Incrementar o valor do 'codigo' com base no máximo encontrado, iniciando com 1 se não houver registros
-            $codigo = ($result['max_codigo'] !== null) ? $result['max_codigo'] + 1 : 1;
-
+            if ($codigoInput === '') {
+                $stmt = $pdo->prepare("SELECT MAX(codigo) AS max_codigo FROM products WHERE system_unit_id = :system_unit_id");
+                $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $codigo = ($result && $result['max_codigo'] !== null) ? ((int)$result['max_codigo'] + 1) : 1;
+            } else {
+                $codigo = (int)$codigoInput;
+                $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM products WHERE system_unit_id = :system_unit_id AND codigo = :codigo");
+                $stmtCheck->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+                $stmtCheck->bindParam(':codigo', $codigo, PDO::PARAM_INT);
+                $stmtCheck->execute();
+                if ((int)$stmtCheck->fetchColumn() > 0) {
+                    return ['success' => false, 'message' => 'Código de produto já está em uso.'];
+                }
+            }
         } catch (Exception $e) {
-            return array('success' => false, 'message' => 'Erro ao gerar código do produto: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Erro ao gerar código do produto: ' . $e->getMessage()];
         }
 
-        // Obter os demais campos da requisição
-        $nome = $data['nome'];
-        $categoria = $data['categoria']; // Obtém o valor de categoria
-        $preco = $data['preco'];
-        $und = $data['und'];
-        $venda = $data['venda'];
-        $composicao = $data['composicao'];
-        $insumo = $data['insumo'];
-        $system_unit_id = $data['system_unit_id'];
-        $preco_custo = isset($data['preco_custo']) ? $data['preco_custo'] : null; // Novo campo
-        $saldo = isset($data['saldo']) ? $data['saldo'] : null; // Novo campo
-        $ultimo_doc = isset($data['ultimo_doc']) ? $data['ultimo_doc'] : null; // Novo campo
-
-
-        // Verificar se o código já existe
-        $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM products WHERE system_unit_id = :system_unit_id AND codigo = :codigo");
-        $stmtCheck->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmtCheck->bindParam(':codigo', $codigo, PDO::PARAM_INT);
-        $stmtCheck->execute();
-        if ($stmtCheck->fetchColumn() > 0) {
-            return ['success' => false, 'message' => 'Código de produto já está em uso.'];
-        }
-
-
-        // Inserção no banco de dados com os novos campos
-        $stmt = $pdo->prepare("INSERT INTO products (codigo, nome, preco, und, venda, composicao, insumo, system_unit_id, categoria, preco_custo, saldo, ultimo_doc) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        // INSERT somente com os campos do JSON (mapeados)
+        // Ajuste as colunas conforme seu schema (removemos tudo que não existe no JSON original)
+        $sql = "INSERT INTO products (
+                codigo, nome, und, venda, composicao, insumo, system_unit_id, categoria, sku_zig
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try {
-            $stmt->execute([$codigo, $nome, $preco, $und, $venda, $composicao, $insumo, $system_unit_id, $categoria, $preco_custo, $saldo, $ultimo_doc]);
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                $codigo,
+                $nome,
+                $und,
+                $venda,
+                $composicao,
+                $insumo,
+                $system_unit_id,
+                $categoria,
+                $sku_zig
+            ]);
 
             if ($stmt->rowCount() > 0) {
-                return array('success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId());
-            } else {
-                return array('success' => false, 'message' => 'Falha ao criar produto');
+                return ['success' => true, 'message' => 'Produto criado com sucesso', 'product_id' => $pdo->lastInsertId(), 'codigo' => $codigo];
             }
+
+            return ['success' => false, 'message' => 'Falha ao criar produto'];
         } catch (Exception $e) {
-            return array('success' => false, 'message' => 'Erro ao criar produto: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Erro ao criar produto: ' . $e->getMessage()];
         }
     }
 

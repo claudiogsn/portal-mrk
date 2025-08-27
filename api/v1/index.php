@@ -1515,8 +1515,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             // Métodos para ProductController
-            case 'createProduct':
-                $response = ProductController::createProduct($requestData);
+            case 'createProduto':
+                $response = ProductController::createProduto($requestData);
                 break;
             case 'updateProduto':
                 if (isset($requestData)) {
