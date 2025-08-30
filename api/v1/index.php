@@ -1518,6 +1518,19 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'createProduto':
                 $response = ProductController::createProduto($requestData);
                 break;
+            case 'replicarProdutosEComposicoes':
+                if (isset($requestData['codigos'], $requestData['system_unit_id_origem'], $requestData['system_units_destino'])) {
+                    $response = ProductController::replicarProdutosEComposicoes(
+                        $requestData['codigos'],
+                        (int)$requestData['system_unit_id_origem'],
+                        $requestData['system_units_destino']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros obrigatórios ausentes'];
+                }
+                break;
+
             case 'updateProduto':
                 if (isset($requestData)) {
                     $response = ProductController::updateProduto($requestData);

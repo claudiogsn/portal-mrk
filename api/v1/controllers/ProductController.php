@@ -81,6 +81,101 @@ class ProductController {
         }
     }
 
+    public static function replicarProdutosEComposicoes($codigosProdutos, $system_unit_id_origem, $system_units_destino) {
+        global $pdo;
+
+        try {
+            $pdo->beginTransaction();
+
+            foreach ($codigosProdutos as $codigo) {
+                // 1. Buscar produto origem
+                $stmt = $pdo->prepare("SELECT * FROM products WHERE system_unit_id = :origem AND codigo = :codigo");
+                $stmt->execute([':origem' => $system_unit_id_origem, ':codigo' => $codigo]);
+                $produtoOrigem = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$produtoOrigem) {
+                    continue;
+                }
+
+                foreach ($system_units_destino as $destino) {
+                    // 2. Inserir ou atualizar produto no destino (upsert)
+                    $stmtInsert = $pdo->prepare("
+                    INSERT INTO products (system_unit_id, codigo, nome, preco, categoria, und, venda, composicao, insumo, producao, compravel, preco_custo, estoque_minimo, saldo, status, ultimo_doc, sku_zig)
+                    VALUES (:system_unit_id, :codigo, :nome, :preco, :categoria, :und, :venda, :composicao, :insumo, :producao, :compravel, :preco_custo, :estoque_minimo, :saldo, :status, :ultimo_doc, :sku_zig)
+                    ON DUPLICATE KEY UPDATE
+                        nome = VALUES(nome),
+                        preco = VALUES(preco),
+                        categoria = VALUES(categoria),
+                        und = VALUES(und),
+                        venda = VALUES(venda),
+                        composicao = VALUES(composicao),
+                        insumo = VALUES(insumo),
+                        producao = VALUES(producao),
+                        compravel = VALUES(compravel),
+                        preco_custo = VALUES(preco_custo),
+                        estoque_minimo = VALUES(estoque_minimo),
+                        saldo = VALUES(saldo),
+                        status = VALUES(status),
+                        ultimo_doc = VALUES(ultimo_doc),
+                        sku_zig = VALUES(sku_zig)
+                ");
+                    $stmtInsert->execute([
+                        ':system_unit_id' => $destino,
+                        ':codigo' => $produtoOrigem['codigo'],
+                        ':nome' => $produtoOrigem['nome'],
+                        ':preco' => $produtoOrigem['preco'],
+                        ':categoria' => $produtoOrigem['categoria'],
+                        ':und' => $produtoOrigem['und'],
+                        ':venda' => $produtoOrigem['venda'],
+                        ':composicao' => $produtoOrigem['composicao'],
+                        ':insumo' => $produtoOrigem['insumo'],
+                        ':producao' => $produtoOrigem['producao'],
+                        ':compravel' => $produtoOrigem['compravel'],
+                        ':preco_custo' => $produtoOrigem['preco_custo'],
+                        ':estoque_minimo' => $produtoOrigem['estoque_minimo'],
+                        ':saldo' => $produtoOrigem['saldo'],
+                        ':status' => $produtoOrigem['status'],
+                        ':ultimo_doc' => $produtoOrigem['ultimo_doc'],
+                        ':sku_zig' => $produtoOrigem['sku_zig']
+                    ]);
+
+                    // Recupera o id do produto no destino
+                    $stmtGetId = $pdo->prepare("SELECT id FROM products WHERE system_unit_id = :destino AND codigo = :codigo");
+                    $stmtGetId->execute([':destino' => $destino, ':codigo' => $codigo]);
+                    $produtoDestino = $stmtGetId->fetch(PDO::FETCH_ASSOC);
+                    $novoProductId = $produtoDestino['id'];
+
+                    // 3. Buscar composições da origem
+                    $stmtComp = $pdo->prepare("SELECT * FROM compositions WHERE system_unit_id = :origem AND product_id = :product_id");
+                    $stmtComp->execute([':origem' => $system_unit_id_origem, ':product_id' => $codigo]);
+                    $composicoes = $stmtComp->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($composicoes as $comp) {
+                        // 4. Inserir ou atualizar composições (upsert)
+                        $stmtInsertComp = $pdo->prepare("
+                        INSERT INTO compositions (product_id, insumo_id, quantity, system_unit_id)
+                        VALUES (:product_id, :insumo_id, :quantity, :system_unit_id)
+                        ON DUPLICATE KEY UPDATE
+                            quantity = VALUES(quantity)
+                    ");
+                        $stmtInsertComp->execute([
+                            ':product_id' => $novoProductId,
+                            ':insumo_id' => $comp['insumo_id'],
+                            ':quantity' => $comp['quantity'],
+                            ':system_unit_id' => $destino
+                        ]);
+                    }
+                }
+            }
+
+            $pdo->commit();
+            return ['success' => true, 'message' => 'Produtos e composições replicados/atualizados com sucesso.'];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return ['success' => false, 'message' => 'Erro ao replicar: ' . $e->getMessage()];
+        }
+    }
+
     public static function updateProduto($data) {
         global $pdo;
 
