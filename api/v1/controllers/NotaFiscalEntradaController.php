@@ -79,7 +79,7 @@ class NotaFiscalEntradaController {
     }
 
 
-    public static function getNotaFinanceiroPayload(array $data)
+    public static function getNotaFinanceiroPayload(array $data): array
     {
         global $pdo;
 

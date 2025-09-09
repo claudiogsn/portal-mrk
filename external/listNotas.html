@@ -12,7 +12,12 @@
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
+        .select2-container { width: 100% !important; }
+        .select2-dropdown { z-index: 9999; }
+
         .label-success { background-color: #4caf50; }
         .orange { color: orange; font-size: 16px; }
 
@@ -229,10 +234,89 @@
     </div>
 </div>
 
+<!-- Modal Inclusão no Contas a Pagar -->
+<div class="modal fade" id="modalFinanceiro" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom: 1px solid #eee;">
+                <h4 class="modal-title">Inclusão no Contas a Pagar</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="finFornecedorId">
+                <input type="hidden" id="finChaveAcesso">
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <label>Fornecedor</label>
+                        <input type="text" id="finFornecedorNome" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Documento</label>
+                        <input type="text" id="finDocumento" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>Emissão</label>
+                        <input type="date" id="finEmissao" class="form-control">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Vencimento</label>
+                        <input type="date" id="finVencimento" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>Valor</label>
+                        <input type="text" id="finValor" class="form-control" readonly>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Adicional</label>
+                        <input type="text" id="finAdicional" class="form-control" value="0">
+                    </div>
+                    <div class="col-md-6">
+                        <label>Desconto</label>
+                        <input type="text" id="finDesconto" class="form-control" value="0">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Forma de Pagamento</label>
+                        <select id="finForma" class="form-control"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Classificação Contábil (Plano de Contas)</label>
+                        <select id="finPlano" class="form-control"></select>
+                    </div>
+
+
+                    <div class="col-md-12" id="grupoObservacao" style="margin-top:18px;">
+                        <label>Observação</label>
+                        <textarea id="finObs" class="form-control" rows="3"></textarea>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="modal-footer" style="border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="btnGravarFinanceiro">
+                    <i class="fa fa-save"></i> Gravar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const baseUrlFinanceiro = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
     const baseUrlRedirect = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br'
@@ -273,7 +357,6 @@
         });
     });
 
-
     async function listarNotas() {
         Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
         try {
@@ -308,8 +391,6 @@
             soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         );
     }
-
-
 
     function aplicarFiltros() {
         let dataFiltrada = [...notasOriginais];
@@ -372,7 +453,16 @@
 
             const financeiroBadge = Number(n.incluida_financeiro) === 1
                 ? '<span class="label label-success">Sim</span>'
-                : '<i class="fas fa-exclamation-triangle orange sino-animado" title="Não incluída no financeiro"></i>';
+                : `<a href="#" class="abrir-financeiro"
+                    data-chave="${n.chave_acesso || ''}"
+                    data-id="${n.id || ''}"
+                    data-fornecedor="${(n.fornecedor_razao || '').replace(/"/g,'&quot;')}"
+                    data-doc="${n.numero_nf || ''}"
+                    data-emissao="${n.data_emissao ? n.data_emissao.substr(0,10) : ''}"
+                    data-valor="${n.valor_total || 0}"
+                    title="Incluir no Financeiro">
+                    <i class="fas fa-exclamation-triangle orange sino-animado"></i>
+                 </a>`;
 
             tbody.append(`
       <tr>
@@ -390,6 +480,182 @@
     `);
         });
     }
+    function toNumberBR(v) {
+        if (v === null || v === undefined) return 0;
+        if (typeof v === 'number') return v;
+        let s = (v + '').trim();
+        // remove milhar e troca vírgula por ponto
+        s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+    function toBRL(n) {
+        return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    async function abrirModalFinanceiro({ chave_acesso, id, fornecedor_nome, documento_hint, emissao_hint, valor_hint }) {
+        try {
+            if (!chave_acesso && !id) {
+                Swal.fire('Atenção', 'Não foi possível identificar a chave de acesso da nota.', 'warning');
+                return;
+            }
+
+            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+
+            const payloadReq = {
+                method: 'getNotaFinanceiroPayload',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    ...(chave_acesso ? { chave_acesso } : {}),
+                    ...(id ? { id } : {})
+                }
+            };
+
+            const res = await axios.post(baseUrl, payloadReq);
+            if (!res.data || !res.data.success || !res.data.data) {
+                Swal.close();
+                Swal.fire('Erro', res.data?.error || 'Não foi possível obter os dados da nota.', 'error');
+                return;
+            }
+
+            const d = res.data.data;
+
+            // Preenche campos básicos
+            $('#finFornecedorId').val(d.fornecedor_id || '');
+            $('#finChaveAcesso').val(chave_acesso || '');
+            $('#finFornecedorNome').val(fornecedor_nome || '');              // somente visual
+            $('#finDocumento').val(d.documento || documento_hint || '');
+            $('#finEmissao').val(d.emissao || emissao_hint || '');
+            $('#finVencimento').val('');                                     // usuário define
+            $('#finValor').val((d.valor_total !== undefined && d.valor_total !== null)
+                ? ('' + Number(d.valor_total).toFixed(2)).replace('.', ',')
+                : (valor_hint ? ('' + Number(valor_hint).toFixed(2)).replace('.', ',') : '0,00')
+            );
+            $('#finAdicional').val('0');
+            $('#finDesconto').val('0');
+            $('#finObs').val(d.chave_acesso ? ('Chave NFe: ' + d.chave_acesso) : (chave_acesso ? ('Chave NFe: ' + chave_acesso) : ''));
+
+            // === Plano de Contas (hierarquia): ordena por tamanho do código e depois por código ===
+            const planos = Array.isArray(d.planos_de_conta) ? d.planos_de_conta.slice() : [];
+            planos.sort((a, b) => {
+                const ca = (a.codigo || ''), cb = (b.codigo || '');
+                if (ca.length !== cb.length) return ca.length - cb.length;
+                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
+            });
+
+            const $plano = $('#finPlano');
+            $plano.empty().append(`<option value="">Selecione...</option>`);
+            planos.forEach(p => {
+                // valor = código (string). Se quiser pelo id, troque p.id aqui.
+                $plano.append(`<option value="${p.codigo}" data-id="${p.id || ''}">${p.label || (p.codigo + ' - ' + (p.descricao || ''))}</option>`);
+            });
+
+            // === Formas de Pagamento ===
+            const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (Array.isArray(d.formas_de_pagamento) ? d.formas_de_pagamento : []);
+            const $forma = $('#finForma');
+            $forma.empty().append(`<option value="">Selecione...</option>`);
+            formas.forEach(f => {
+                $forma.append(`<option value="${f.id}">${f.descricao || f.nome || f.codigo}</option>`);
+            });
+
+            // Ativa selects pesquisáveis
+            const $modal = $('#modalFinanceiro');
+            $plano.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
+            $forma.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
+
+            Swal.close();
+            $modal.modal('show');
+
+        } catch (err) {
+            console.error(err);
+            Swal.close();
+            Swal.fire('Erro', 'Falha ao carregar dados para o financeiro.', 'error');
+        }
+    }
+    async function gravarFinanceiro() {
+        try {
+            const fornecedor_id = Number($('#finFornecedorId').val());
+            const chave_acesso  = $('#finChaveAcesso').val();
+            const documento     = $('#finDocumento').val().trim();
+            const emissao       = $('#finEmissao').val();
+            const vencimento    = $('#finVencimento').val();
+            const valor         = $('#finValor').val().trim();           // já vem como "123,45"
+            const adicional     = $('#finAdicional').val().trim();
+            const desconto      = $('#finDesconto').val().trim();
+            const plano_contas  = $('#finPlano').val();                  // valor = código
+            const forma_id      = $('#finForma').val();
+            const obs_extra     = ($('#finObs').val() || '').trim();
+
+            if (!fornecedor_id) return Swal.fire('Atenção', 'Fornecedor inválido.', 'warning');
+            if (!documento)     return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
+            if (!emissao)       return Swal.fire('Atenção', 'Informe a Emissão.', 'warning');
+            if (!vencimento)    return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
+            if (!valor)         return Swal.fire('Atenção', 'Valor inválido.', 'warning');
+            if (!plano_contas)  return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
+            if (!forma_id)      return Swal.fire('Atenção', 'Selecione a Forma de Pagamento.', 'warning');
+
+            Swal.fire({ title: 'Gravando...', didOpen: () => Swal.showLoading() });
+
+            const req = {
+                method: 'lancarNotaNoFinanceiroConta',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    fornecedor_id: fornecedor_id,
+                    documento: documento,
+                    emissao: emissao,                // aceita YYYY-MM-DD
+                    vencimento: vencimento,          // idem
+                    valor: valor,                    // "1.290,50" OK
+                    adicional: adicional || '0',
+                    desconto: desconto || '0',
+                    plano_contas: plano_contas,      // código
+                    forma_pagamento_id: Number(forma_id),
+                    obs_extra: obs_extra ? obs_extra : (chave_acesso ? ('Chave NFe: ' + chave_acesso) : ''),
+                    chave_acesso: chave_acesso
+                }
+            };
+
+            const res = await axios.post(baseUrlFinanceiro, req);
+            Swal.close();
+
+            if (!res.data || !res.data.success) {
+                return Swal.fire('Erro', res.data?.error || 'Falha ao gravar lançamento.', 'error');
+            }
+
+            $('#modalFinanceiro').modal('hide');
+            Swal.fire('Sucesso', 'Lançamento criado com sucesso.', 'success');
+            // atualiza a lista
+            await listarNotas();
+
+        } catch (e) {
+            console.error(e);
+            Swal.close();
+            Swal.fire('Erro', 'Falha ao gravar lançamento.', 'error');
+        }
+    }
+
+    $(document).on('click', '#btnGravarFinanceiro', gravarFinanceiro);
+
+    // abre o modal ao clicar no ícone de exclamação
+    $(document).on('click', 'a.abrir-financeiro', function (e) {
+        e.preventDefault();
+        const chave = $(this).data('chave');
+        const id    = $(this).data('id');
+        const fornecedor = $(this).data('fornecedor');
+        const doc   = $(this).data('doc');
+        const em    = $(this).data('emissao');
+        const val   = $(this).data('valor');
+        abrirModalFinanceiro({
+            chave_acesso: chave,
+            id,
+            fornecedor_nome: fornecedor,
+            documento_hint: doc,
+            emissao_hint: em,
+            valor_hint: val
+        });
+    });
+
+
 
 </script>
 </body>

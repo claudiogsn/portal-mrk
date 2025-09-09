@@ -517,7 +517,7 @@ class FinanceiroContaController {
         }
     }
 
-    public static function lancarNotaNoFinanceiroConta(array $data)
+    public static function lancarNotaNoFinanceiroConta(array $data): array
     {
         global $pdo;
 
@@ -564,6 +564,7 @@ class FinanceiroContaController {
             $desconto        = isset($data['desconto'])  ? $parseMoney($data['desconto'])  : 0.0;
             $planoContas     = isset($data['plano_contas']) ? trim((string)$data['plano_contas']) : null;
             $formaPgtoId     = isset($data['forma_pagamento_id']) ? (int)$data['forma_pagamento_id'] : null; // mapeado p/ "banco"
+            $chaveAcesso     = isset($data['chave_acesso']) ? trim((string)$data['chave_acesso']) : null;
 
             // ===== Busca fornecedor (cgc e nome) — NÃO pode faltar =====
             $stmtF = $pdo->prepare("
@@ -580,7 +581,6 @@ class FinanceiroContaController {
 
             $cgc  = !empty($forn['cnpj_cpf']) ? $forn['cnpj_cpf'] : '';
             $nome = !empty($forn['nome'])     ? $forn['nome']     : '';
-            // nome é NOT NULL na tabela — garante fallback
             if ($nome === '') {
                 $nome = "NF {$doc} – Fornecedor {$entidade}";
             }
@@ -598,6 +598,9 @@ class FinanceiroContaController {
             $obsPartes[] = "Final: " . number_format($valorFinal, 2, ',', '.');
             if ($planoContas) $obsPartes[] = "Plano: {$planoContas}";
             if (!empty($data['obs_extra'])) $obsPartes[] = trim((string)$data['obs_extra']);
+            if ($chaveAcesso && strpos(implode(' ', $obsPartes), 'Chave NFe:') === false) {
+                $obsPartes[] = "Chave NFe: {$chaveAcesso}";
+            }
             $obsPartes[] = "[ORIGEM: LOCAL]";
             $obs = implode(' | ', $obsPartes);
 
@@ -650,7 +653,7 @@ class FinanceiroContaController {
                 ':doc'            => $doc,
                 ':emissao'        => $emissao,
                 ':vencimento'     => $vencimento,
-                ':valor'          => $valorFinal,   // <-- grava o valor FINAL
+                ':valor'          => $valorFinal,   // <-- valor FINAL
                 ':plano_contas'   => $planoContas,
                 ':banco'          => $formaPgtoId,
                 ':obs'            => $obs,
@@ -658,12 +661,30 @@ class FinanceiroContaController {
             ]);
 
             $id = (int)$pdo->lastInsertId();
+
+            // ===== UPDATE da nota: incluida_financeiro = 1 (por system_unit_id + chave_acesso) =====
+            // Obs.: ajuste o nome da coluna se o seu schema usar outro (ex.: 'incluida_fin')
+            $notaAtualizada = null;
+            if ($chaveAcesso) {
+                $stU = $pdo->prepare("
+                UPDATE estoque_nota
+                SET incluida_financeiro = 1, updated_at = CURRENT_TIMESTAMP
+                WHERE system_unit_id = :unit AND chave_acesso = :chave
+                LIMIT 1
+            ");
+                $stU->execute([':unit' => $system_unit_id, ':chave' => $chaveAcesso]);
+                $notaAtualizada = ($stU->rowCount() > 0);
+            } else {
+                $notaAtualizada = false; // sem chave, não conseguimos marcar
+            }
+
             $pdo->commit();
 
             return [
-                'success' => true,
-                'id'      => $id,
-                'codigo'  => $nextCodigo,
+                'success'         => true,
+                'id'              => $id,
+                'codigo'          => $nextCodigo,
+                'nota_atualizada' => (bool)$notaAtualizada
             ];
 
         } catch (Exception $e) {
