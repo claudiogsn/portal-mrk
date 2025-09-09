@@ -1652,6 +1652,18 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'getNotaFinanceiroPayload':
+                if ($requestData['system_unit_id'] && $requestData['chave_acesso']) {
+                    $response = NotaFiscalEntradaController::getNotaFinanceiroPayload($requestData);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
             case 'importarProdutosZig':
                 if ($requestData['system_unit_id'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = ProductController::importarProdutosZig(

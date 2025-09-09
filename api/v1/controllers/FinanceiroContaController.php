@@ -163,8 +163,7 @@ class FinanceiroContaController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-
-    public static function importarContaApi($system_unit_id) {
+     public static function importarContaApi($system_unit_id) {
         global $pdo;
 
         try {
@@ -317,7 +316,6 @@ class FinanceiroContaController {
         }
     }
 
-
     public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {
         global $pdo;
 
@@ -426,7 +424,6 @@ class FinanceiroContaController {
         }
     }
 
-
     public static function getContaByMonth($system_unit_id, $month, $year, $plano_contas) {
         global $pdo;
 
@@ -517,6 +514,166 @@ class FinanceiroContaController {
                 'success' => false,
                 'message' => $e->getMessage()
             ];
+        }
+    }
+
+    public static function lancarNotaNoFinanceiroConta(array $data)
+    {
+        global $pdo;
+
+        $gotLock = false; // visível no finally
+
+        try {
+            // ===== Helpers =====
+            $parseDate = function (?string $s) {
+                if (!$s) return null;
+                $s = trim($s);
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;           // YYYY-MM-DD
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {                  // DD/MM/YYYY
+                    [$d,$m,$y] = explode('/',$s);
+                    return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
+                }
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            $parseMoney = function ($v) {
+                if ($v === null || $v === '') return 0.0;
+                if (is_string($v)) {
+                    $v = str_replace(['.', ' '], ['', ''], $v);
+                    $v = str_replace(',', '.', $v);
+                }
+                if (!is_numeric($v)) throw new Exception("Valor numérico inválido: {$v}");
+                return round((float)$v, 2);
+            };
+
+            // ===== Validação obrigatória =====
+            $required = ['system_unit_id','fornecedor_id','documento','emissao','vencimento','valor'];
+            foreach ($required as $k) {
+                if (!isset($data[$k]) || $data[$k] === '' || $data[$k] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$k}");
+                }
+            }
+
+            $system_unit_id  = (int)$data['system_unit_id'];
+            $entidade        = (int)$data['fornecedor_id'];
+            $doc             = trim((string)$data['documento']);
+            $emissao         = $parseDate($data['emissao']);
+            $vencimento      = $parseDate($data['vencimento']);
+            $valorBruto      = $parseMoney($data['valor']);
+            $adicional       = isset($data['adicional']) ? $parseMoney($data['adicional']) : 0.0;
+            $desconto        = isset($data['desconto'])  ? $parseMoney($data['desconto'])  : 0.0;
+            $planoContas     = isset($data['plano_contas']) ? trim((string)$data['plano_contas']) : null;
+            $formaPgtoId     = isset($data['forma_pagamento_id']) ? (int)$data['forma_pagamento_id'] : null; // mapeado p/ "banco"
+
+            // ===== Busca fornecedor (cgc e nome) — NÃO pode faltar =====
+            $stmtF = $pdo->prepare("
+            SELECT cnpj_cpf, nome
+            FROM financeiro_fornecedor
+            WHERE id = :id AND system_unit_id = :unit
+            LIMIT 1
+        ");
+            $stmtF->execute([':id'=>$entidade, ':unit'=>$system_unit_id]);
+            $forn = $stmtF->fetch(PDO::FETCH_ASSOC);
+            if (!$forn) {
+                throw new Exception("Fornecedor não encontrado para a unidade informada.");
+            }
+
+            $cgc  = !empty($forn['cnpj_cpf']) ? $forn['cnpj_cpf'] : '';
+            $nome = !empty($forn['nome'])     ? $forn['nome']     : '';
+            // nome é NOT NULL na tabela — garante fallback
+            if ($nome === '') {
+                $nome = "NF {$doc} – Fornecedor {$entidade}";
+            }
+
+            // Valor final gravado
+            $valorFinal = round($valorBruto + $adicional - $desconto, 2);
+            if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo.");
+
+            // Observação (breakdown)
+            $obsPartes = [];
+            $obsPartes[] = "NF {$doc}";
+            $obsPartes[] = "Bruto: " . number_format($valorBruto, 2, ',', '.');
+            $obsPartes[] = "Adic: "  . number_format($adicional, 2, ',', '.');
+            $obsPartes[] = "Desc: "  . number_format($desconto, 2, ',', '.');
+            $obsPartes[] = "Final: " . number_format($valorFinal, 2, ',', '.');
+            if ($planoContas) $obsPartes[] = "Plano: {$planoContas}";
+            if (!empty($data['obs_extra'])) $obsPartes[] = trim((string)$data['obs_extra']);
+            $obsPartes[] = "[ORIGEM: LOCAL]";
+            $obs = implode(' | ', $obsPartes);
+
+            // ===== Transação =====
+            $pdo->beginTransaction();
+
+            // Evita duplicidade (system_unit_id + entidade + doc)
+            $chk = $pdo->prepare("
+            SELECT id FROM financeiro_conta 
+            WHERE system_unit_id = :unit AND entidade = :ent AND doc = :doc 
+            LIMIT 1
+        ");
+            $chk->execute([':unit'=>$system_unit_id, ':ent'=>$entidade, ':doc'=>$doc]);
+            if ($chk->fetchColumn()) {
+                $pdo->rollBack();
+                return ['success'=>false, 'error'=>'Já existe lançamento para este fornecedor/documento nesta unidade.'];
+            }
+
+            // ===== Lock lógico para geração do código (evita corrida) =====
+            $lockName = 'financeiro_conta_codigo_local_lock';
+            $stLock = $pdo->prepare("SELECT GET_LOCK(:name, 5)");
+            $stLock->execute([':name'=>$lockName]);
+            $gotLock = ((int)$stLock->fetchColumn() === 1);
+
+            // ===== Gera CODIGO "de zero para baixo" =====
+            $stMin = $pdo->query("SELECT MIN(codigo) FROM financeiro_conta WHERE codigo <= 0");
+            $minCodigo = $stMin->fetchColumn();
+            if ($minCodigo !== null) {
+                $nextCodigo = ((int)$minCodigo) - 1;  // 0 -> -1 -> -2 -> ...
+            } else {
+                $nextCodigo = 0;                      // primeiro local
+            }
+
+            // ===== Insert =====
+            $stmt = $pdo->prepare("
+            INSERT INTO financeiro_conta
+            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
+             valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+            VALUES
+            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
+             :valor, :plano_contas, :banco, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL)
+        ");
+            $stmt->execute([
+                ':system_unit_id' => $system_unit_id,
+                ':codigo'         => $nextCodigo,   // 0, -1, -2, ...
+                ':nome'           => $nome,
+                ':entidade'       => $entidade,
+                ':cgc'            => $cgc,
+                ':tipo'           => 'd',           // a pagar (default)
+                ':doc'            => $doc,
+                ':emissao'        => $emissao,
+                ':vencimento'     => $vencimento,
+                ':valor'          => $valorFinal,   // <-- grava o valor FINAL
+                ':plano_contas'   => $planoContas,
+                ':banco'          => $formaPgtoId,
+                ':obs'            => $obs,
+                ':adic'           => $adicional
+            ]);
+
+            $id = (int)$pdo->lastInsertId();
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'id'      => $id,
+                'codigo'  => $nextCodigo,
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['success'=>false, 'error'=>$e->getMessage()];
+        } finally {
+            // Libera o lock mesmo em erro
+            if (!empty($gotLock)) {
+                try { $pdo->query("SELECT RELEASE_LOCK('financeiro_conta_codigo_local_lock')"); } catch (\Throwable $t) {}
+            }
         }
     }
 

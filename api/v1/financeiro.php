@@ -137,6 +137,11 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'lancarNotaNoFinanceiroConta':
+                $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
+                break;
+
+
 
             default:
                 http_response_code(405);
