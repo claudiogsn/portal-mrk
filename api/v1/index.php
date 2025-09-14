@@ -1664,6 +1664,30 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'getNotaItensFornecedorPayload':
+                if ($requestData['system_unit_id'] && $requestData['chave_acesso']) {
+                    $response = NotaFiscalEntradaController::getNotaItensFornecedorPayload($requestData);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+                case 'vincularItemNotaFornecedor':
+                if ($requestData['system_unit_id'] && $requestData['chave_acesso'] && $requestData['produto_codigo'] && $requestData['fornecedor_id']) {
+                    $response = NotaFiscalEntradaController::vincularItemNotaFornecedor($requestData);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
             case 'importarProdutosZig':
                 if ($requestData['system_unit_id'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = ProductController::importarProdutosZig(

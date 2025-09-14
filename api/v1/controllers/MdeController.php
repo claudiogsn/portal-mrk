@@ -159,7 +159,8 @@ class MdeController
                     en.incluida_estoque,
                     en.incluida_financeiro,
                     ff.razao AS fornecedor_razao,
-                    ff.cnpj_cpf AS fornecedor_cnpj
+                    ff.cnpj_cpf AS fornecedor_cnpj,
+                    ff.id as fornecedor_id
                 FROM estoque_nota en
                 JOIN financeiro_fornecedor ff ON en.fornecedor_id = ff.id 
                     AND ff.system_unit_id = en.system_unit_id

@@ -78,7 +78,6 @@ class NotaFiscalEntradaController {
         }
     }
 
-
     public static function getNotaFinanceiroPayload(array $data): array
     {
         global $pdo;
@@ -197,6 +196,389 @@ class NotaFiscalEntradaController {
 
         } catch (Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    public static function getNotaItensFornecedorPayload(array $data)
+    {
+        global $pdo;
+
+        try {
+            // ===== validação =====
+            $required = ['system_unit_id', 'chave_acesso', 'fornecedor_id'];
+            foreach ($required as $k) {
+                if (!isset($data[$k]) || $data[$k] === '' || $data[$k] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$k}");
+                }
+            }
+
+            $unitId      = (int)$data['system_unit_id'];
+            $chaveAcesso = trim((string)$data['chave_acesso']);
+            $fornIdInput = (int)$data['fornecedor_id'];
+
+            // ===== nota (com dados do fornecedor via JOIN) =====
+            $stNota = $pdo->prepare("
+            SELECT 
+                en.*, 
+                ff.nome     AS fornecedor_nome,
+                ff.razao    AS fornecedor_razao,
+                ff.cnpj_cpf AS fornecedor_cnpj_cpf
+            FROM estoque_nota AS en
+            LEFT JOIN financeiro_fornecedor AS ff
+                   ON ff.id = en.fornecedor_id
+                  AND ff.system_unit_id = en.system_unit_id
+            WHERE en.system_unit_id = :unit
+              AND en.chave_acesso  = :chave
+            LIMIT 1
+        ");
+            $stNota->execute([':unit' => $unitId, ':chave' => $chaveAcesso]);
+            $nota = $stNota->fetch(PDO::FETCH_ASSOC);
+            if (!$nota) {
+                return ['success' => false, 'error' => 'Nota não encontrada para a chave informada.'];
+            }
+
+            $notaId       = (int)$nota['id'];
+            $fornecedorId = (int)$nota['fornecedor_id'];
+            if ($fornecedorId !== $fornIdInput) {
+                return ['success' => false, 'error' => 'fornecedor_id não confere com a nota.'];
+            }
+
+            // ===== itens da nota =====
+            $stItens = $pdo->prepare("
+            SELECT id, numero_item, codigo_produto, descricao, unidade, quantidade
+            FROM estoque_nota_item
+            WHERE system_unit_id = :unit AND nota_id = :nota
+            ORDER BY numero_item ASC
+        ");
+            $stItens->execute([':unit' => $unitId, ':nota' => $notaId]);
+            $rows = $stItens->fetchAll(PDO::FETCH_ASSOC);
+
+            $itensOut = [];
+
+            // prepareds para reuso
+            $qRelPorCodigoUnid = $pdo->prepare("
+            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
+            FROM item_fornecedor
+            WHERE system_unit_id = :unit
+              AND fornecedor_id  = :forn
+              AND codigo_nota    = :cod
+              AND (unidade_nota = :un OR unidade_nota IS NULL)
+            ORDER BY (unidade_nota IS NULL), id DESC
+            LIMIT 1
+        ");
+            $qRelPorDescUnid = $pdo->prepare("
+            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
+            FROM item_fornecedor
+            WHERE system_unit_id = :unit
+              AND fornecedor_id  = :forn
+              AND descricao_nota = :desc
+              AND (unidade_nota = :un OR unidade_nota IS NULL)
+            ORDER BY (unidade_nota IS NULL), id DESC
+            LIMIT 1
+        ");
+            $qRelPorCodigo = $pdo->prepare("
+            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
+            FROM item_fornecedor
+            WHERE system_unit_id = :unit
+              AND fornecedor_id  = :forn
+              AND codigo_nota    = :cod
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+            $qRelPorDesc = $pdo->prepare("
+            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
+            FROM item_fornecedor
+            WHERE system_unit_id = :unit
+              AND fornecedor_id  = :forn
+              AND descricao_nota = :desc
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+            $qProd = $pdo->prepare("
+            SELECT id, codigo, nome, und
+            FROM products
+            WHERE system_unit_id = :unit AND codigo = :codigo
+            LIMIT 1
+        ");
+
+            foreach ($rows as $r) {
+                $numItem  = (int)$r['numero_item'];
+                $codNota  = $r['codigo_produto'] !== null ? (string)$r['codigo_produto'] : null;
+                $descNota = $r['descricao']      !== null ? (string)$r['descricao']      : null;
+                $uniNota  = $r['unidade']        !== null ? (string)$r['unidade']        : null;
+                $qtdNota  = $r['quantidade']     !== null ? (float)$r['quantidade']      : 0.0;
+
+                // === tenta casar relação item_fornecedor (prioridade) ===
+                $rel = null;
+
+                if ($codNota !== null) {
+                    $qRelPorCodigoUnid->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':cod'=>$codNota, ':un'=>$uniNota]);
+                    $rel = $qRelPorCodigoUnid->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
+                if (!$rel && $descNota !== null) {
+                    $qRelPorDescUnid->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':desc'=>$descNota, ':un'=>$uniNota]);
+                    $rel = $qRelPorDescUnid->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
+                if (!$rel && $codNota !== null) {
+                    $qRelPorCodigo->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':cod'=>$codNota]);
+                    $rel = $qRelPorCodigo->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
+                if (!$rel && $descNota !== null) {
+                    $qRelPorDesc->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':desc'=>$descNota]);
+                    $rel = $qRelPorDesc->fetch(PDO::FETCH_ASSOC) ?: null;
+                }
+
+                $fator             = 1.0;
+                $prodCodigoInterno = null;
+                $prodNomeInterno   = null;
+                $prodUndInterno    = null;
+
+                if ($rel) {
+                    $fator = isset($rel['fator_conversao']) ? (float)$rel['fator_conversao'] : 1.0;
+
+                    if (!empty($rel['produto_codigo'])) {
+                        $qProd->execute([':unit'=>$unitId, ':codigo'=>(int)$rel['produto_codigo']]);
+                        if ($p = $qProd->fetch(PDO::FETCH_ASSOC)) {
+                            $prodCodigoInterno = (int)$p['codigo'];
+                            $prodNomeInterno   = (string)$p['nome'];
+                            $prodUndInterno    = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : ($p['und'] ?? null);
+                        } else {
+                            $prodUndInterno    = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : null;
+                        }
+                    } else {
+                        $prodUndInterno = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : null;
+                    }
+                }
+
+                $qtdInterno = round($qtdNota * $fator, 4);
+
+                $itensOut[] = [
+                    // dados da nota
+                    'numero_item_nota'       => $numItem,
+                    'codigo_produto_nota'    => $codNota,
+                    'descricao_nota'         => $descNota,
+                    'unidade_nota'           => $uniNota,
+                    'quantidade_nota'        => $qtdNota,
+
+                    // mapeamento interno (se houver)
+                    'codigo_produto_interno' => $prodCodigoInterno,
+                    'descricao_interno'      => $prodNomeInterno,
+                    'unidade_interno'        => $prodUndInterno,
+                    'quantidade_interno'     => $qtdInterno,
+                    'fator_conversao'        => $fator,
+
+                    // metadados opcionais
+                    'relacao_encontrada'     => (bool)$rel,
+                    'relacao_id'             => $rel ? (int)$rel['id'] : null,
+                ];
+            }
+
+            // ===== retorno =====
+            return [
+                'success' => true,
+                'data' => [
+                    'nota'  => $nota,     // já contém fornecedor_nome/razao/cnpj_cpf
+                    'itens' => $itensOut
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    public static function vincularItemNotaFornzecedor(array $data)
+    {
+        global $pdo;
+
+        try {
+            // ===== helpers =====
+            $parseDecimal = function ($v) {
+                if ($v === null || $v === '') throw new Exception("fator_conversao é obrigatório.");
+                if (is_string($v)) {
+                    $v = str_replace(['.', ' '], ['', ''], $v);
+                    $v = str_replace(',', '.', $v);
+                }
+                if (!is_numeric($v)) throw new Exception("fator_conversao inválido.");
+                return (float)$v;
+            };
+            $reqStr = function($v, $nome){
+                $s = trim((string)$v);
+                if ($s === '') throw new Exception("{$nome} é obrigatório.");
+                return $s;
+            };
+            $reqInt = function($v, $nome){
+                if ($v === null || $v === '' || !is_numeric($v)) throw new Exception("{$nome} é obrigatório.");
+                return (int)$v;
+            };
+
+            // ===== obrigatórios (TODOS os campos da relação) =====
+            $system_unit_id  = $reqInt($data['system_unit_id']  ?? null, 'system_unit_id');
+            $fornecedor_id   = $reqInt($data['fornecedor_id']   ?? null, 'fornecedor_id');
+            $produto_codigo  = $reqInt($data['produto_codigo']  ?? null, 'produto_codigo');
+            $codigo_nota     = $reqStr($data['codigo_nota']     ?? null, 'codigo_nota');
+            $descricao_nota  = $reqStr($data['descricao_nota']  ?? null, 'descricao_nota');
+            $unidade_nota    = $reqStr($data['unidade_nota']    ?? null, 'unidade_nota');
+            $fator_conversao = $parseDecimal($data['fator_conversao'] ?? null);
+            $unidade_item    = $reqStr($data['unidade_item']    ?? null, 'unidade_item');
+
+            if ($fator_conversao <= 0) throw new Exception("fator_conversao deve ser > 0.");
+
+            // normaliza unidades
+            $unidade_nota = strtoupper($unidade_nota);
+            $unidade_item = strtoupper($unidade_item);
+
+            // ===== opcionais para validação com a nota =====
+            $chave_acesso = isset($data['chave_acesso']) ? trim((string)$data['chave_acesso']) : null;
+            $numero_item  = isset($data['numero_item'])  ? (int)$data['numero_item'] : null;
+
+            // ===== valida fornecedor existe =====
+            $stForn = $pdo->prepare("
+            SELECT id FROM financeiro_fornecedor
+            WHERE id = :id AND system_unit_id = :unit
+            LIMIT 1
+        ");
+            $stForn->execute([':id'=>$fornecedor_id, ':unit'=>$system_unit_id]);
+            if (!$stForn->fetchColumn()) {
+                throw new Exception("Fornecedor não encontrado nesta unidade.");
+            }
+
+            // ===== valida produto interno existe =====
+            $stProd = $pdo->prepare("
+            SELECT id FROM products
+            WHERE system_unit_id = :unit AND codigo = :cod
+            LIMIT 1
+        ");
+            $stProd->execute([':unit'=>$system_unit_id, ':cod'=>$produto_codigo]);
+            if (!$stProd->fetchColumn()) {
+                throw new Exception("Produto interno (products.codigo) não encontrado nesta unidade.");
+            }
+
+            // ===== validação cruzada com a nota (se informada) =====
+            if ($chave_acesso && $numero_item !== null) {
+                // acha a nota
+                $stNota = $pdo->prepare("
+                SELECT id, fornecedor_id
+                FROM estoque_nota
+                WHERE system_unit_id = :unit AND chave_acesso = :chave
+                LIMIT 1
+            ");
+                $stNota->execute([':unit'=>$system_unit_id, ':chave'=>$chave_acesso]);
+                $nota = $stNota->fetch(PDO::FETCH_ASSOC);
+                if (!$nota) throw new Exception("Nota não encontrada para a chave de acesso informada.");
+
+                if ((int)$nota['fornecedor_id'] !== $fornecedor_id) {
+                    throw new Exception("fornecedor_id não confere com o da nota.");
+                }
+
+                // carrega o item da nota para conferir código/descrição/unidade
+                $stItem = $pdo->prepare("
+                SELECT codigo_produto, descricao, unidade
+                FROM estoque_nota_item
+                WHERE system_unit_id = :unit AND nota_id = :nota AND numero_item = :ni
+                LIMIT 1
+            ");
+                $stItem->execute([
+                    ':unit'=>$system_unit_id,
+                    ':nota'=>(int)$nota['id'],
+                    ':ni'=>$numero_item
+                ]);
+                $it = $stItem->fetch(PDO::FETCH_ASSOC);
+                if (!$it) throw new Exception("Item da nota não encontrado para o número informado.");
+
+                // validações estritas
+                if ((string)$it['codigo_produto'] !== $codigo_nota) {
+                    throw new Exception("codigo_nota não confere com o item da nota.");
+                }
+                if ((string)$it['descricao'] !== $descricao_nota) {
+                    throw new Exception("descricao_nota não confere com o item da nota.");
+                }
+                if (strtoupper((string)$it['unidade']) !== $unidade_nota) {
+                    throw new Exception("unidade_nota não confere com o item da nota.");
+                }
+            }
+
+            // ===== previne duplicidade lógica (por código+un; e também por descrição+un) =====
+            $stDup1 = $pdo->prepare("
+            SELECT id FROM item_fornecedor
+            WHERE system_unit_id = :unit AND fornecedor_id = :forn
+              AND codigo_nota = :cod AND unidade_nota = :un
+            LIMIT 1
+        ");
+            $stDup1->execute([
+                ':unit'=>$system_unit_id, ':forn'=>$fornecedor_id,
+                ':cod'=>$codigo_nota, ':un'=>$unidade_nota
+            ]);
+            if ($stDup1->fetchColumn()) {
+                throw new Exception("Já existe relação com este (codigo_nota, unidade_nota) para o fornecedor.");
+            }
+
+            $stDup2 = $pdo->prepare("
+            SELECT id FROM item_fornecedor
+            WHERE system_unit_id = :unit AND fornecedor_id = :forn
+              AND descricao_nota = :desc AND unidade_nota = :un
+            LIMIT 1
+        ");
+            $stDup2->execute([
+                ':unit'=>$system_unit_id, ':forn'=>$fornecedor_id,
+                ':desc'=>$descricao_nota, ':un'=>$unidade_nota
+            ]);
+            if ($stDup2->fetchColumn()) {
+                throw new Exception("Já existe relação com este (descricao_nota, unidade_nota) para o fornecedor.");
+            }
+            // ===== upsert =====
+                        $stmt = $pdo->prepare("
+                INSERT INTO item_fornecedor
+                    (system_unit_id, fornecedor_id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item)
+                VALUES
+                    (:unit, :forn, :pc, :cod, :desc, :un_nota, :fator, :un_item)
+                ON DUPLICATE KEY UPDATE
+                    produto_codigo  = VALUES(produto_codigo),
+                    codigo_nota     = VALUES(codigo_nota),
+                    fator_conversao = VALUES(fator_conversao),
+                    unidade_item    = VALUES(unidade_item),
+                    id = LAST_INSERT_ID(id)
+            ");
+
+            $stmt->execute([
+                ':unit'    => $system_unit_id,
+                ':forn'    => $fornecedor_id,
+                ':pc'      => $produto_codigo,
+                ':cod'     => $codigo_nota,
+                ':desc'    => $descricao_nota,
+                ':un_nota' => $unidade_nota,
+                ':fator'   => $fator_conversao,
+                ':un_item' => $unidade_item
+            ]);
+
+            $idRel   = (int)$pdo->lastInsertId();
+            $changed = $stmt->rowCount(); // 1 = insert, 2 = update (se mudou), 0 = update sem mudança
+            $acao    = ($changed === 1) ? 'inserted' : (($changed >= 2) ? 'updated' : 'noop');
+
+            // preview de conversão (se veio dado da nota)
+            $preview = null;
+            if ($chave_acesso && $numero_item !== null) {
+                $stQtd = $pdo->prepare("
+                SELECT quantidade FROM estoque_nota_item
+                WHERE system_unit_id = :unit
+                  AND nota_id = (SELECT id FROM estoque_nota WHERE system_unit_id = :unit AND chave_acesso = :chave LIMIT 1)
+                  AND numero_item = :ni
+                LIMIT 1
+            ");
+                $stQtd->execute([':unit'=>$system_unit_id, ':chave'=>$chave_acesso, ':ni'=>$numero_item]);
+                $qtdNota = (float)($stQtd->fetchColumn() ?: 0);
+                $preview = [
+                    'quantidade_nota'     => $qtdNota,
+                    'fator_conversao'     => $fator_conversao,
+                    'quantidade_interno'  => round($qtdNota * $fator_conversao, 4),
+                    'acao' => $acao
+                ];
+            }
+
+            return ['success'=>true, 'id'=>$idRel, 'preview'=>$preview];
+
+        } catch (Exception $e) {
+            return ['success'=>false, 'error'=>$e->getMessage()];
         }
     }
 
