@@ -199,7 +199,7 @@ class NotaFiscalEntradaController {
         }
     }
 
-    public static function getNotaItensFornecedorPayload(array $data)
+    public static function getNotaItensFornecedorPayload(array $data):array
     {
         global $pdo;
 
@@ -387,7 +387,7 @@ class NotaFiscalEntradaController {
         }
     }
 
-    public static function vincularItemNotaFornzecedor(array $data)
+    public static function vincularItemNotaFornecedor(array $data):array
     {
         global $pdo;
 
@@ -498,34 +498,6 @@ class NotaFiscalEntradaController {
                 }
             }
 
-            // ===== previne duplicidade lógica (por código+un; e também por descrição+un) =====
-            $stDup1 = $pdo->prepare("
-            SELECT id FROM item_fornecedor
-            WHERE system_unit_id = :unit AND fornecedor_id = :forn
-              AND codigo_nota = :cod AND unidade_nota = :un
-            LIMIT 1
-        ");
-            $stDup1->execute([
-                ':unit'=>$system_unit_id, ':forn'=>$fornecedor_id,
-                ':cod'=>$codigo_nota, ':un'=>$unidade_nota
-            ]);
-            if ($stDup1->fetchColumn()) {
-                throw new Exception("Já existe relação com este (codigo_nota, unidade_nota) para o fornecedor.");
-            }
-
-            $stDup2 = $pdo->prepare("
-            SELECT id FROM item_fornecedor
-            WHERE system_unit_id = :unit AND fornecedor_id = :forn
-              AND descricao_nota = :desc AND unidade_nota = :un
-            LIMIT 1
-        ");
-            $stDup2->execute([
-                ':unit'=>$system_unit_id, ':forn'=>$fornecedor_id,
-                ':desc'=>$descricao_nota, ':un'=>$unidade_nota
-            ]);
-            if ($stDup2->fetchColumn()) {
-                throw new Exception("Já existe relação com este (descricao_nota, unidade_nota) para o fornecedor.");
-            }
             // ===== upsert =====
                         $stmt = $pdo->prepare("
                 INSERT INTO item_fornecedor
@@ -581,6 +553,217 @@ class NotaFiscalEntradaController {
             return ['success'=>false, 'error'=>$e->getMessage()];
         }
     }
+
+    public static function lancarItensNotaNoEstoque(array $data): array
+    {
+        global $pdo;
+
+        try {
+            // ===== helpers =====
+            $parseDate = function (?string $s) {
+                if (!$s) throw new Exception("Data inválida.");
+                $s = trim($s);
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;               // YYYY-MM-DD
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {                      // DD/MM/YYYY
+                    [$d,$m,$y] = explode('/',$s);
+                    return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
+                }
+                // tenta normalizar qualquer coisa que strtotime aceite
+                $t = strtotime($s);
+                if ($t !== false) return date('Y-m-d', $t);
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            // ===== validação de topo =====
+            foreach (['system_unit_id','usuario_id','chave_acesso','itens','data_entrada'] as $k) {
+                if (!isset($data[$k]) || $data[$k] === '' || $data[$k] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$k}");
+                }
+            }
+            if (!is_array($data['itens']) || count($data['itens']) === 0) {
+                throw new Exception("Lista de itens está vazia.");
+            }
+
+            $unitId      = (int)$data['system_unit_id'];
+            $usuarioId   = (int)$data['usuario_id'];
+            $chaveAcess  = trim((string)$data['chave_acesso']);
+            $dataEntrada = $parseDate((string)$data['data_entrada']); // <- agora vindo do payload (obrigatória)
+            $dataEmissaoOverride = isset($data['data_emissao']) && $data['data_emissao'] !== ''
+                ? $parseDate((string)$data['data_emissao'])
+                : null;
+
+            // ===== busca nota (doc/datas) =====
+            $stNota = $pdo->prepare("
+            SELECT id, numero_nf, data_emissao, data_entrada, fornecedor_id
+            FROM estoque_nota
+            WHERE system_unit_id = :unit AND chave_acesso = :chave
+            LIMIT 1
+        ");
+            $stNota->execute([':unit'=>$unitId, ':chave'=>$chaveAcess]);
+            $nota = $stNota->fetch(PDO::FETCH_ASSOC);
+            if (!$nota) throw new Exception("Nota não encontrada para a chave de acesso informada.");
+
+            $notaId      = (int)$nota['id'];
+            $docNumero   = (string)$nota['numero_nf'];
+            $dataEmissaoNota = $nota['data_emissao'] ? date('Y-m-d', strtotime($nota['data_emissao'])) : null;
+
+            // Emissão usada: override > emissão da nota > data_entrada (payload)
+            $dataEmissao = $dataEmissaoOverride ?? ($dataEmissaoNota ?? $dataEntrada);
+
+            // ===== prepareds auxiliares =====
+            $stCheckProd = $pdo->prepare("
+            SELECT id FROM products
+            WHERE system_unit_id = :unit AND codigo = :cod
+            LIMIT 1
+        ");
+            $stItemNota = $pdo->prepare("
+            SELECT numero_item, valor_unitario, valor_total
+            FROM estoque_nota_item
+            WHERE system_unit_id = :unit AND nota_id = :nota AND numero_item = :ni
+            LIMIT 1
+        ");
+
+            // mesma query base do seu importCompras (com upsert)
+            $insertQuery = "
+            INSERT INTO movimentacao (
+                system_unit_id, status, doc, tipo, tipo_mov, produto, seq,
+                data, data_emissao, data_original, quantidade, valor, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                status = VALUES(status),
+                data = VALUES(data),
+                data_emissao = VALUES(data_emissao),
+                data_original = VALUES(data_original),
+                quantidade = VALUES(quantidade),
+                valor = VALUES(valor),
+                usuario_id = VALUES(usuario_id)
+        ";
+            $stInsert = $pdo->prepare($insertQuery);
+
+            $pdo->beginTransaction();
+
+            $countIns = 0;
+            $detalhes = [];
+
+            foreach ($data['itens'] as $idx => $item) {
+                // ===== validação por item =====
+                foreach (['numero_item_nota','codigo_produto_interno','unidade_interno','quantidade_interno'] as $k) {
+                    if (!isset($item[$k]) || $item[$k] === '' || $item[$k] === null) {
+                        throw new Exception("Item {$idx}: campo obrigatório ausente: {$k}");
+                    }
+                }
+
+                $seq        = (int)$item['numero_item_nota'];
+                $prodCodigo = (int)$item['codigo_produto_interno'];
+                $undInterna = strtoupper(trim((string)$item['unidade_interno']));
+                $qtdInterna = (float)$item['quantidade_interno'];
+                if ($qtdInterna <= 0) throw new Exception("Item {$idx}: quantidade_interno deve ser > 0.");
+
+                // valida produto
+                $stCheckProd->execute([':unit'=>$unitId, ':cod'=>$prodCodigo]);
+                if (!$stCheckProd->fetchColumn()) {
+                    throw new Exception("Item {$idx}: produto interno {$prodCodigo} não encontrado nesta unidade.");
+                }
+
+                // calcula valor (unitário) se não foi enviado
+                $valorUnit = null;
+                if (isset($item['valor_unitario_interno']) && $item['valor_unitario_interno'] !== '' && $item['valor_unitario_interno'] !== null) {
+                    $v = (string)$item['valor_unitario_interno'];
+                    $v = str_replace(['.', ' '], ['', ''], $v);
+                    $v = str_replace(',', '.', $v);
+                    if (!is_numeric($v)) throw new Exception("Item {$idx}: valor_unitario_interno inválido.");
+                    $valorUnit = (float)$v;
+                } else {
+                    // tenta a partir do item da nota
+                    $stItemNota->execute([':unit'=>$unitId, ':nota'=>$notaId, ':ni'=>$seq]);
+                    $infNota = $stItemNota->fetch(PDO::FETCH_ASSOC);
+
+                    $fator  = isset($item['fator_conversao']) ? (float)$item['fator_conversao'] : null; // se vier
+                    $vUnitN = $infNota && $infNota['valor_unitario'] !== null ? (float)$infNota['valor_unitario'] : null;
+                    $vTotN  = $infNota && $infNota['valor_total']    !== null ? (float)$infNota['valor_total']    : null;
+
+                    if ($vTotN !== null && $qtdInterna > 0) {
+                        $valorUnit = $vTotN / $qtdInterna; // total da nota / qtd interna
+                    } elseif ($vUnitN !== null && $fator && $fator > 0) {
+                        $valorUnit = $vUnitN / $fator;     // unit da nota (ex.: 1 FD) / fator = unit interna (ex.: UN)
+                    } else {
+                        $valorUnit = 0.00;
+                    }
+                }
+
+                // monta linha p/ movimentacao
+                $row = [
+                    $unitId,            // system_unit_id
+                    1,                  // status
+                    $docNumero,         // doc (numero da NF)
+                    'c',                // tipo (compra)
+                    'entrada',          // tipo_mov
+                    $prodCodigo,        // produto (products.codigo)
+                    $seq,               // seq (nº item da nota)
+                    $dataEntrada,       // data (OBRIGATÓRIA e vinda do payload)
+                    $dataEmissao,       // data_emissao (override > nota > data_entrada)
+                    $dataEntrada,       // data_original
+                    $qtdInterna,        // quantidade (já convertida)
+                    $valorUnit,         // valor (unitário interno)
+                    $usuarioId          // usuario_id
+                ];
+
+                $stInsert->execute($row);
+                $countIns++;
+
+                $detalhes[] = [
+                    'seq'        => $seq,
+                    'produto'    => $prodCodigo,
+                    'qtd'        => $qtdInterna,
+                    'valor_unit' => round($valorUnit, 6),
+                    'und'        => $undInterna
+                ];
+            }
+
+            // marca a nota como incluída no estoque
+            try {
+                $stU = $pdo->prepare("
+                UPDATE estoque_nota
+                SET incluida_estoque = 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id AND system_unit_id = :unit
+                LIMIT 1
+            ");
+                $stU->execute([':id'=>$notaId, ':unit'=>$unitId]);
+
+                if ($stU->rowCount() === 0) {
+                    // fallback: alguns schemas usam só 'incluida'
+                    $stU2 = $pdo->prepare("
+                    UPDATE estoque_nota
+                    SET incluida_estoque = 1, updated_at = CURRENT_TIMESTAMP, data_entrada = :data_entrada
+                    WHERE id = :id AND system_unit_id = :unit
+                    LIMIT 1
+                ");
+                    $stU2->execute([':id'=>$notaId, ':unit'=>$unitId, ':data_entrada'=>$dataEntrada]);
+                }
+            } catch (\Throwable $e) {
+                // se a coluna não existir, apenas ignora
+            }
+
+            $pdo->commit();
+
+            return [
+                'success'   => true,
+                'message'   => 'Movimentações salvas com sucesso.',
+                'inseridos' => $countIns,
+                'doc'       => $docNumero,
+                'data'      => [
+                    'data_entrada' => $dataEntrada,
+                    'data_emissao' => $dataEmissao
+                ],
+                'detalhes'  => $detalhes
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
 
 
 }

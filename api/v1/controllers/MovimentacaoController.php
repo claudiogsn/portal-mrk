@@ -913,8 +913,6 @@ class MovimentacaoController
         }
     }
 
-
-
     public static function importMovBySales($systemUnitId, $data): string
     // NÃO USADA
     {

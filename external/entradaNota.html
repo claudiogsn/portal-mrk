@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Entrada de Nota no Estoque</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .card { border-radius: 8px; }
+        .badge-pill { border-radius: 50px; padding: 6px 10px; }
+        .table thead th { white-space: nowrap; }
+        .row-pendente { background: #ffecec !important; }
+        .row-pendente td { border-top: 1px solid #f4c2c2 !important; }
+        .status-flag { font-weight: 600; }
+        .k-hint { color:#777; font-size: 12px; }
+        .skeleton {
+            background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+            background-size: 200% 100%;
+            animation: shine 1.2s infinite;
+            border-radius: 6px; height: 20px;
+        }
+        @keyframes shine { to { background-position-x: -200%; } }
+
+        .sync-box { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; }
+        .sync-box h5 { margin-top: 0; }
+        .label-strong { font-weight: 600; }
+        .readonly-field { background: #fafafa; border: 1px solid #eee; padding: 8px; border-radius: 6px; }
+        .select2-container { width: 100% !important; }
+        .mt-6 { margin-top: 1.25rem; }
+        .mb-6 { margin-bottom: 1.25rem; }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br/>
+    <div class="card">
+        <div class="header d-flex justify-content-between align-items-center">
+            <h2>Entrada de Nota no Estoque</h2>
+            <div>
+                <span id="flagEstoque" class="badge badge-pill"></span>
+            </div>
+        </div>
+        <div class="body">
+
+            <!-- Cabeçalho da Nota -->
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Fornecedor</label>
+                    <div id="notaFornecedor" class="readonly-field skeleton"></div>
+                </div>
+                <div class="col-md-2">
+                    <label>CNPJ/CPF</label>
+                    <div id="notaCnpj" class="readonly-field skeleton"></div>
+                </div>
+                <div class="col-md-2">
+                    <label>Número</label>
+                    <div id="notaNumero" class="readonly-field skeleton"></div>
+                </div>
+                <div class="col-md-1">
+                    <label>Série</label>
+                    <div id="notaSerie" class="readonly-field skeleton"></div>
+                </div>
+                <div class="col-md-2">
+                    <label>Emissão</label>
+                    <div id="notaEmissao" class="readonly-field skeleton"></div>
+                </div>
+                <div class="col-md-2">
+                    <label>Data de Entrada</label>
+                    <input type="date" id="notaDataEntrada" class="form-control" />
+                    <div class="k-hint">Obrigatória para gravar</div>
+                </div>
+            </div>
+
+            <hr/>
+
+            <div class="row">
+                <!-- GRID ITENS -->
+                <div class="col-md-8">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h4 class="mb-0">Itens da Nota</h4>
+                        <div>
+                            <button class="btn btn-success" id="btnGravarNota" disabled>
+                                <i class="fa fa-save"></i>&nbsp;Gravar Nota (Entrada no Estoque)
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="tabelaItens">
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cód. Nota</th>
+                                <th>Descrição Nota</th>
+                                <th>UN Nota</th>
+                                <th>Qtd Nota</th>
+                                <th>Cód. Interno</th>
+                                <th>Descrição Interno</th>
+                                <th>UN Interno</th>
+                                <th>Qtd Interno</th>
+                                <th>Ação</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr><td colspan="10" class="text-center">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PAINEL DE SINCRONIZAÇÃO -->
+                <div class="col-md-4">
+                    <div class="sync-box">
+                        <h5><i class="fa fa-link"></i> Sincronizar Item / Fornecedor</h5>
+
+                        <!-- Nota (esquerda) -->
+                        <div class="row">
+                            <div class="col-12">
+                                <label class="label-strong">Item da Nota</label>
+                                <div class="readonly-field" id="syncNotaInfo">
+                                    <div class="k-hint">Selecione um item pendente e clique “Sincronizar”</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Insumo (direita) -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <label class="label-strong">Insumo / Produto Interno</label>
+                                <select id="selInsumo" class="form-control"></select>
+                                <div class="row mt-2">
+                                    <div class="col-5">
+                                        <label>Código</label>
+                                        <div id="insumoCodigo" class="readonly-field">&nbsp;</div>
+                                    </div>
+                                    <div class="col-7">
+                                        <label>Unidade</label>
+                                        <div id="insumoUn" class="readonly-field">&nbsp;</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label>Nome</label>
+                                    <div id="insumoNome" class="readonly-field" style="min-height:36px;">&nbsp;</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Conversão -->
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <label>Fator de Conversão</label>
+                                <input type="number" step="0.000001" min="0.000001" id="fatorConv" class="form-control" value="1" />
+                            </div>
+                            <div class="col-6">
+                                <label>Qtd Interna (auto)</label>
+                                <div id="qtdInternaPreview" class="readonly-field">-</div>
+                                <div class="k-hint" id="formulaPreview">&nbsp;</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-right">
+                            <button class="btn btn-primary" id="btnGravarVinculo" disabled>
+                                <i class="fa fa-check"></i> Gravar Vínculo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- body -->
+    </div> <!-- card -->
+</div>
+
+<script>
+    // ===== Configs base =====
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const system_unit_id = urlParams.get('system_unit_id');
+    const chave_acesso   = urlParams.get('chave_acesso');
+    const fornecedor_id  = urlParams.get('fornecedor_id');
+    const token          = urlParams.get('token');
+
+    // Estado
+    let nota = null;
+    let itens = [];
+    let insumos = [];
+    let selectedIndex = null; // índice do item selecionado no array "itens"
+
+    // ===== Helpers =====
+    const fmtDate = (s) => !s ? '' : s.substring(0,10);
+    const moneyBR = (n) => (Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+    const allSynced = () => itens.every(it => it.codigo_produto_interno !== null && it.unidade_interno && it.fator_conversao > 0);
+
+    function setFlagEstoque(n) {
+        const el = $('#flagEstoque');
+        if (Number(n?.incluida_estoque) === 1) {
+            el.removeClass().addClass('badge badge-pill badge-success').text('Incluída no estoque');
+            $('#btnGravarNota').prop('disabled', true);
+        } else {
+            el.removeClass().addClass('badge badge-pill badge-warning').text('Ainda não incluída no estoque');
+        }
+    }
+
+    // ===== Carrega Página =====
+    $(document).ready(async function () {
+        if (!system_unit_id || !chave_acesso || !fornecedor_id || !token) {
+            Swal.fire('Erro', 'Parâmetros ausentes na URL: system_unit_id, chave_acesso, fornecedor_id, token.', 'error');
+            return;
+        }
+
+        // Select2
+        $('#selInsumo').select2({ placeholder: 'Selecione um insumo...', allowClear: true });
+
+        await carregarNotaEItens();
+        await carregarInsumos();
+
+        $('#fatorConv').on('input', atualizarPreviewConversao);
+        $('#selInsumo').on('change', onChangeInsumo);
+
+        $('#btnGravarVinculo').on('click', gravarVinculo);
+        $('#btnGravarNota').on('click', gravarNota);
+    });
+
+    // ===== Requests =====
+    async function carregarNotaEItens() {
+        Swal.fire({title:'Carregando nota...', didOpen:()=>Swal.showLoading()});
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getNotaItensFornecedorPayload',
+                token: token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    chave_acesso: String(chave_acesso),
+                    fornecedor_id: Number(fornecedor_id)
+                }
+            });
+
+            if (!res.data.success) throw new Error(res.data.error || 'Falha ao buscar nota');
+
+            nota = res.data.data.nota;
+            itens = res.data.data.itens || [];
+
+            // Cabeçalho
+            $('#notaFornecedor').removeClass('skeleton').text(nota.fornecedor_nome || nota.fornecedor_razao || '');
+            $('#notaCnpj').removeClass('skeleton').text(nota.fornecedor_cnpj_cpf || '');
+            $('#notaNumero').removeClass('skeleton').text(nota.numero_nf || '');
+            $('#notaSerie').removeClass('skeleton').text(nota.serie || '');
+            $('#notaEmissao').removeClass('skeleton').text(fmtDate(nota.data_emissao));
+            setFlagEstoque(nota);
+
+            // Data de entrada: usa nota.data_entrada (se houver) ou hoje
+            const hoje = new Date();
+            const y = hoje.getFullYear(), m = String(hoje.getMonth()+1).padStart(2,'0'), d = String(hoje.getDate()).padStart(2,'0');
+            $('#notaDataEntrada').val(nota.data_entrada ? fmtDate(nota.data_entrada) : `${y}-${m}-${d}`);
+
+            renderTabela();
+            toggleGravarNota();
+
+            Swal.close();
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', e.message || 'Erro ao carregar nota', 'error');
+        }
+    }
+
+    async function carregarInsumos() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listInsumos',
+                token: token,
+                data: { unit_id: String(system_unit_id) }
+            });
+            if (!res.data.success) throw new Error('Falha ao carregar insumos');
+            insumos = res.data.insumos || [];
+
+            // Preenche Select2 com insumos
+            const options = insumos.map(i => ({ id: i.codigo, text: `${i.codigo} - ${i.nome}`, raw: i }));
+            $('#selInsumo').empty().select2({ data: options, allowClear: true, placeholder: 'Selecione um insumo...' });
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', e.message || 'Erro ao carregar insumos', 'error');
+        }
+    }
+
+    // ===== Render Grid =====
+    function renderTabela() {
+        const tbody = $('#tabelaItens tbody');
+        tbody.empty();
+
+        if (!itens.length) {
+            tbody.append('<tr><td colspan="10" class="text-center">Sem itens.</td></tr>');
+            return;
+        }
+
+        itens.forEach((it, idx) => {
+            const pendente = (it.codigo_produto_interno === null || !it.unidade_interno || !(Number(it.fator_conversao) > 0));
+            const trClass = pendente ? 'row-pendente' : '';
+            const qtdInterna = Number(it.quantidade_interno || (Number(it.quantidade_nota||0) * Number(it.fator_conversao||1)));
+
+            const btnSync = `
+        <button class="btn btn-sm ${pendente ? 'btn-danger':'btn-outline-secondary'}"
+                onclick="abrirSync(${idx})">
+          <i class="fa fa-link"></i> Sincronizar
+        </button>`;
+
+            tbody.append(`
+        <tr class="${trClass}">
+          <td>${it.numero_item_nota}</td>
+          <td>${it.codigo_produto_nota ?? ''}</td>
+          <td>${it.descricao_nota ?? ''}</td>
+          <td>${it.unidade_nota ?? ''}</td>
+          <td>${it.quantidade_nota ?? ''}</td>
+          <td>${it.codigo_produto_interno ?? ''}</td>
+          <td>${it.descricao_interno ?? ''}</td>
+          <td>${it.unidade_interno ?? ''}</td>
+          <td>${qtdInterna || ''}</td>
+          <td>${btnSync}</td>
+        </tr>
+      `);
+        });
+    }
+
+    window.abrirSync = function(index) {
+        selectedIndex = index;
+        const it = itens[index];
+
+        // Preenche bloco "Item da Nota"
+        $('#syncNotaInfo').html(`
+      <div><span class="label-strong">Item:</span> ${it.numero_item_nota}</div>
+      <div><span class="label-strong">Cód. Nota:</span> ${it.codigo_produto_nota ?? ''}</div>
+      <div><span class="label-strong">Descrição:</span> ${it.descricao_nota ?? ''}</div>
+      <div><span class="label-strong">UN Nota:</span> ${it.unidade_nota ?? ''}</div>
+      <div><span class="label-strong">Qtd Nota:</span> ${it.quantidade_nota ?? ''}</div>
+    `);
+
+        // Se já tiver mapeamento, pré-seleciona
+        $('#selInsumo').val(null).trigger('change');
+        $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-');
+
+        if (it.codigo_produto_interno) {
+            const found = insumos.find(x => Number(x.codigo) === Number(it.codigo_produto_interno));
+            if (found) {
+                $('#selInsumo').val(String(found.codigo)).trigger('change');
+            }
+            $('#fatorConv').val(Number(it.fator_conversao || 1));
+        } else {
+            $('#fatorConv').val(Number(it.fator_conversao || 1));
+        }
+
+        atualizarPreviewConversao();
+        $('#btnGravarVinculo').prop('disabled', false);
+    };
+
+    function onChangeInsumo() {
+        const codigo = $('#selInsumo').val();
+        if (!codigo) {
+            $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-');
+            return;
+        }
+        const ins = insumos.find(x => String(x.codigo) === String(codigo));
+        $('#insumoCodigo').text(ins ? ins.codigo : '-');
+        $('#insumoUn').text(ins ? (ins.und || '-') : '-');
+        $('#insumoNome').text(ins ? ins.nome : '-');
+    }
+
+    function atualizarPreviewConversao() {
+        if (selectedIndex === null) return;
+        const it = itens[selectedIndex];
+        const fator = Number($('#fatorConv').val() || 1);
+        const qtdNota = Number(it.quantidade_nota || 0);
+        const qtdInterna = (qtdNota * (fator > 0 ? fator : 0)).toFixed(4);
+        $('#qtdInternaPreview').text(qtdInterna);
+        $('#formulaPreview').text(`${qtdNota} (nota) × ${fator} (fator) = ${qtdInterna}`);
+    }
+
+    function toggleGravarNota() {
+        const ok = allSynced() && Number(nota?.incluida_estoque) !== 1;
+        $('#btnGravarNota').prop('disabled', !ok);
+    }
+
+    // ===== Gravar Vinculação =====
+    async function gravarVinculo() {
+        if (selectedIndex === null) return Swal.fire('Atenção', 'Selecione um item para sincronizar.', 'warning');
+
+        const it = itens[selectedIndex];
+        const codigo = $('#selInsumo').val();
+        const fator = Number($('#fatorConv').val() || 0);
+        const ins = insumos.find(x => String(x.codigo) === String(codigo));
+
+        if (!codigo || !ins) return Swal.fire('Atenção', 'Selecione um insumo.', 'warning');
+        if (!(fator > 0)) return Swal.fire('Atenção', 'Informe um fator de conversão válido (> 0).', 'warning');
+
+        const payload = {
+            method: 'vincularItemNotaFornecedor',
+            token: token,
+            data: {
+                system_unit_id: Number(system_unit_id),
+                fornecedor_id: Number(fornecedor_id),
+                produto_codigo: Number(ins.codigo),
+                codigo_nota: String(it.codigo_produto_nota || ''),
+                descricao_nota: String(it.descricao_nota || ''),
+                unidade_nota: String(it.unidade_nota || ''),
+                fator_conversao: fator,
+                unidade_item: String(ins.und || '')
+            }
+        };
+
+        try {
+            Swal.fire({title:'Gravando vínculo...', didOpen:()=>Swal.showLoading()});
+            const res = await axios.post(baseUrl, payload);
+            if (!res.data.success) throw new Error(res.data.error || 'Falha ao gravar vínculo');
+
+            // Atualiza item na memória
+            const qtdInterna = Number(it.quantidade_nota || 0) * fator;
+            it.codigo_produto_interno = Number(ins.codigo);
+            it.descricao_interno      = String(ins.nome || '');
+            it.unidade_interno        = String(ins.und || '');
+            it.fator_conversao        = fator;
+            it.quantidade_interno     = qtdInterna;
+
+            renderTabela();
+            toggleGravarNota();
+
+            // limpa painel
+            selectedIndex = null;
+            $('#syncNotaInfo').html('<div class="k-hint">Selecione um item pendente e clique “Sincronizar”</div>');
+            $('#selInsumo').val(null).trigger('change');
+            $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-');
+            $('#fatorConv').val(1); $('#qtdInternaPreview').text('-'); $('#formulaPreview').text('');
+            $('#qtdInternaPreview').text('-');
+            $('#btnGravarVinculo').prop('disabled', true);
+
+
+            Swal.fire('Pronto!', 'Vínculo salvo com sucesso.', 'success');
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', e.message || 'Erro ao salvar vínculo', 'error');
+        }
+    }
+
+    // ===== Gravar Nota (Entrada no Estoque) =====
+    async function gravarNota() {
+        if (!allSynced()) return Swal.fire('Atenção','Existem itens pendentes de sincronização.','warning');
+
+        const data_entrada = $('#notaDataEntrada').val();
+        if (!data_entrada) return Swal.fire('Atenção','Informe a data de entrada.','warning');
+
+        // Monta lista de itens para o backend
+        const itensReq = itens.map(it => ({
+            numero_item_nota: it.numero_item_nota,
+            codigo_produto_interno: it.codigo_produto_interno,
+            unidade_interno: it.unidade_interno,
+            quantidade_interno: Number(it.quantidade_interno || (Number(it.quantidade_nota||0) * Number(it.fator_conversao||1))),
+            fator_conversao: Number(it.fator_conversao || 1)
+        }));
+
+        const req = {
+            method: 'lancarItensNotaNoEstoque',
+            token: token,
+            data: {
+                system_unit_id: Number(system_unit_id),
+                usuario_id: Number(urlParams.get('usuario_id') || 1), // ajuste se vier na URL; fallback 1
+                chave_acesso: String(chave_acesso),
+                data_entrada: String(data_entrada),
+                itens: itensReq
+            }
+        };
+
+        try {
+            Swal.fire({title:'Gravando nota no estoque...', didOpen:()=>Swal.showLoading()});
+            const res = await axios.post(baseUrl, req);
+            if (!res.data.success) throw new Error(res.data.message || 'Falha ao lançar itens no estoque');
+
+            // Marca flag local
+            nota.incluida_estoque = 1;
+            setFlagEstoque(nota);
+            toggleGravarNota();
+
+            Swal.fire('Sucesso', 'Nota incluída no estoque com sucesso.', 'success');
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', e.message || 'Erro ao gravar nota no estoque', 'error');
+        }
+    }
+</script>
+</body>
+</html>

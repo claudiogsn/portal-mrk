@@ -15,6 +15,13 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
+        /* fullscreen já existe, complemento para garantir 100vh do iframe */
+        .modal-iframe-full { width:100%; height:calc(100vh - 56px); border:0; }
+        /* (fallback para headers maiores/menores) */
+        @media (max-width: 768px){
+            .modal-iframe-full { height:calc(100vh - 52px); }
+        }
+
         .select2-container { width: 100% !important; }
         .select2-dropdown { z-index: 9999; }
 
@@ -116,6 +123,35 @@
         button {
             display: inline-flex;
             align-items: center; /* centraliza texto + ícone */
+        }
+        /* Escopo só para este modal */
+        #modalEntradaEstoque .modal-dialog {
+            max-width: 100% !important;
+            width: 100% !important;
+            height: 100%;
+            margin: 0;
+        }
+        #modalEntradaEstoque .modal-content {
+            height: 100vh;              /* ocupa a viewport inteira */
+            display: flex;              /* para o body crescer corretamente */
+            flex-direction: column;
+            border: 0;
+            border-radius: 0;
+        }
+        #modalEntradaEstoque .modal-header,
+        #modalEntradaEstoque .modal-footer {
+            flex: 0 0 auto;             /* tamanhos naturais */
+        }
+        #modalEntradaEstoque .modal-body {
+            flex: 1 1 auto;             /* ocupa o restante */
+            padding: 0;                 /* sem padding pra não dar barra extra */
+            overflow: hidden;           /* scroll fica dentro do iframe */
+        }
+        #modalEntradaEstoque .modal-iframe-full {
+            width: 100%;
+            height: 100%;               /* preenche o body inteiro */
+            border: 0;
+            display: block;
         }
     </style>
 </head>
@@ -308,6 +344,21 @@
     </div>
 </div>
 
+<!-- Modal Entrada no Estoque (FULLSCREEN) -->
+<div class="modal fade" id="modalEntradaEstoque" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom:1px solid #eee;">
+                <h4 class="modal-title">Compra – Importação de Nota</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="iframeEntradaEstoque" class="modal-iframe-full"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -355,6 +406,38 @@
         $('#modalImportacao').on('hidden.bs.modal', function () {
             listarNotas();
         });
+    });
+
+    // abre a tela de entrada/edição no estoque em fullscreen
+    $(document).on('click', 'a.abrir-estoque', function (e) {
+        e.preventDefault();
+
+        const chave       = $(this).data('chave');
+        const fornecedor  = $(this).data('fornecedor') || '';
+        const usuario_id  = urlParams.get('usuario_id') || ''; // se tiver
+        // Monta a URL do iframe (use seu host automático)
+        const baseRedirect = (window.location.hostname !== 'localhost')
+            ? 'https://portal.mrksolucoes.com.br'
+            : 'http://localhost/portal-mrk';
+
+        const qs = [
+            `system_unit_id=${encodeURIComponent(unit_id)}`,
+            `chave_acesso=${encodeURIComponent(chave || '')}`,
+            `fornecedor_id=${encodeURIComponent(fornecedor)}`,
+            `token=${encodeURIComponent(token || '')}`,
+            usuario_id ? `usuario_id=${encodeURIComponent(usuario_id)}` : null
+        ].filter(Boolean).join('&');
+
+        const urlIframe = `${baseRedirect}/external/entradaNotaEstoque.html?${qs}`;
+
+        $('#iframeEntradaEstoque').attr('src', urlIframe);
+        $('#modalEntradaEstoque').modal('show');
+    });
+
+    // sempre que fechar o modal, recarrega a lista
+    $('#modalEntradaEstoque').on('hidden.bs.modal', function () {
+        $('#iframeEntradaEstoque').attr('src', 'about:blank'); // limpa
+        listarNotas(); // atualiza o grid
     });
 
     async function listarNotas() {
@@ -447,9 +530,19 @@
         }
 
         lista.forEach(n => {
-            const estoqueBadge = Number(n.incluida_estoque) === 1
+            const estoqueBadgeConteudo = Number(n.incluida_estoque) === 1
                 ? '<span class="label label-success">Sim</span>'
                 : '<i class="fas fa-exclamation-triangle orange sino-animado" title="Não incluída no estoque"></i>';
+
+            // botão sempre ativo, independente do status
+            const estoqueBadge = `
+              <a href="#" class="abrir-estoque"
+                 title="Abrir Entrada no Estoque"
+                 data-chave="${n.chave_acesso || ''}"
+                 data-fornecedor="${n.fornecedor_id || ''}">
+                 ${estoqueBadgeConteudo}
+              </a>`;
+
 
             const financeiroBadge = Number(n.incluida_financeiro) === 1
                 ? '<span class="label label-success">Sim</span>'
