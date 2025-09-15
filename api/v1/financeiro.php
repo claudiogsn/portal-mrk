@@ -75,19 +75,19 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'fetchFinanceiroRateio':
                 $response = FinanceiroApiMenewController::fetchFinanceiroRateio($requestData['estabelecimento']);
                 break;
-            case 'importarContaApi':
+            case 'importarContaApiDesativado':
                 $response = FinanceiroContaController::importarContaApi($requestData['system_unit_id']);
                 break;
-            case 'importarRateiosApi':
+            case 'importarRateiosApiDesativado':
                 $response = FinanceiroRateioController::importarRateiosApi($requestData['system_unit_id']);
                 break;
             case 'importarFornecedoresApiDesativado':
                 $response = FinanceiroFornecedorController::importarFornecedoresApi($requestData['system_unit_id']);
                 break;
-            case 'importarClientesApi':
+            case 'importarClientesApiDesativado':
                 $response = FinanceiroClienteController::importarClientesApi($requestData['system_unit_id']);
                 break;
-            case 'importarPlanosApi':
+            case 'importarPlanosApiDesativado':
                 $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
                 break;
             case 'listPlanos':
@@ -140,6 +140,13 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'lancarNotaNoFinanceiroConta':
                 $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
                 break;
+            case 'exportContasF360':
+                $response = FinanceiroContaController::exportContasF360($requestData);
+                break;
+            case 'marcarExportadoF360':
+                $response = FinanceiroContaController::marcarExportadoF360($requestData);
+                break;
+
 
 
 

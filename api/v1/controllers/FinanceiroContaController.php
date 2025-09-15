@@ -699,6 +699,163 @@ class FinanceiroContaController {
     }
 
 
+    /**
+     * Exporta contas a pagar (tipo='d') em aberto (baixa_dt nula) e ainda não exportadas (exportado_f360=0).
+     * Retorna apenas as colunas solicitadas + id (para marcar depois).
+     */
+    public static function exportContasF360(array $data): array
+    {
+        global $pdo;
+
+        try {
+            if (empty($data['system_unit_id'])) {
+                throw new Exception("Campo obrigatório ausente: system_unit_id");
+            }
+            $unitId = (int)$data['system_unit_id'];
+
+            // helper p/ dd/mm/yyyy
+            $br = function (?string $ymd): string {
+                if (!$ymd) return '';
+                if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $ymd, $m)) {
+                    return "{$m[3]}/{$m[2]}/{$m[1]}";
+                }
+                return $ymd;
+            };
+
+            $sql = "
+            SELECT
+                fc.id,
+                fc.doc,
+                fc.codigo,
+                fc.obs,
+                fc.emissao,
+                fc.vencimento,
+                fc.valor,
+                COALESCE(NULLIF(fc.cgc,''), NULLIF(ff.cnpj_cpf,''))                           AS cli_doc,
+                COALESCE(NULLIF(fc.nome,''), NULLIF(ff.nome,''), NULLIF(ff.razao,''))          AS cli_nome,
+                fp.descricao                          AS plano_codigo
+            FROM financeiro_conta fc
+            LEFT JOIN financeiro_plano fp
+                   ON fp.system_unit_id = fc.system_unit_id
+                  AND fp.codigo = fc.plano_contas
+            LEFT JOIN financeiro_fornecedor ff
+                   ON ff.id = fc.entidade
+                  AND ff.system_unit_id = fc.system_unit_id
+            WHERE fc.system_unit_id = :unit
+              AND fc.tipo = 'd'
+              AND (fc.baixa_dt IS NULL OR fc.baixa_dt = '0000-00-00')
+              AND fc.exportado_f360 = 0
+            ORDER BY fc.vencimento ASC, fc.id ASC
+        ";
+
+            $st = $pdo->prepare($sql);
+            $st->execute([':unit' => $unitId]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+            $out = [];
+            foreach ($rows as $r) {
+                $numero = trim((string)($r['doc'] ?? ''));
+                if ($numero === '') $numero = (string)($r['codigo'] ?? '');
+
+                $cliFor = $r['cli_nome'];
+
+                $out[] = [
+                    'id'                 => (int)$r['id'],                     // para marcar depois
+                    'numero'             => $numero,                            // Nº
+                    'observacao'         => (string)($r['obs'] ?? ''),          // Observação
+                    'cliente_fornecedor' => $cliFor,                            // CPF/CNPJ ou Nome
+                    'emissao'            => $br($r['emissao'] ?? null),         // DD/MM/YYYY
+                    'vencimento'         => $br($r['vencimento'] ?? null),      // DD/MM/YYYY
+                    'valor'              => (float)$r['valor'],                 // número
+                    'plano_de_conta'     => (string)($r['plano_codigo'] ?? ''), // código
+                ];
+            }
+
+            return [
+                'success' => true,
+                'system_unit_id' => $unitId,
+                'columns' => ['numero','observacao','cliente_fornecedor','emissao','vencimento','valor','plano_de_conta'],
+                'rows' => $out,
+                'count' => count($out)
+            ];
+
+        } catch (Exception $e) {
+            return ['success'=>false, 'error'=>$e->getMessage()];
+        }
+    }
+
+    /**
+     * Marca exportado_f360 = 1 para os IDs informados, SOMENTE da unidade informada.
+     * Retorna quantas foram marcadas e lista de IDs ignorados (não pertencentes à unidade).
+     */
+    public static function marcarExportadoF360(array $data): array
+    {
+        global $pdo;
+
+        return [
+            'success' => true
+        ];
+
+        try {
+            if (empty($data['system_unit_id'])) {
+                throw new Exception("Campo obrigatório ausente: system_unit_id");
+            }
+            if (empty($data['ids']) || !is_array($data['ids'])) {
+                throw new Exception("Campo obrigatório ausente: ids (array).");
+            }
+
+            $unitId = (int)$data['system_unit_id'];
+
+            // normaliza IDs
+            $ids = array_values(array_unique(array_map(fn($v) => (int)$v, $data['ids'])));
+            $ids = array_values(array_filter($ids, fn($v) => $v > 0));
+            if (!$ids) {
+                throw new Exception("Lista de ids vazia após normalização.");
+            }
+
+            // filtra IDs que realmente pertencem à unidade
+            $in  = implode(',', array_fill(0, count($ids), '?'));
+            $sel = $pdo->prepare("SELECT id FROM financeiro_conta WHERE system_unit_id = ? AND id IN ($in)");
+            $sel->execute(array_merge([$unitId], $ids));
+            $validos = $sel->fetchAll(PDO::FETCH_COLUMN, 0);
+            $validos = array_map('intval', $validos);
+
+            // quais foram ignorados (não pertencem à unidade)
+            $ignorados = array_values(array_diff($ids, $validos));
+
+            $marcados = 0;
+            if ($validos) {
+                $pdo->beginTransaction();
+                $inUpd = implode(',', array_fill(0, count($validos), '?'));
+                $upd   = $pdo->prepare("
+                UPDATE financeiro_conta
+                SET exportado_f360 = 1, updated_at = CURRENT_TIMESTAMP
+                WHERE system_unit_id = ? AND id IN ($inUpd)
+            ");
+                $upd->execute(array_merge([$unitId], $validos));
+                $marcados = $upd->rowCount();
+                $pdo->commit();
+            }
+
+            return [
+                'success' => true,
+                'system_unit_id' => $unitId,
+                'marcados' => $marcados,
+                'ignorados' => $ignorados
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['success'=>false, 'error'=>$e->getMessage()];
+        }
+    }
+
+
+
+
+
+
+
 
 
 
