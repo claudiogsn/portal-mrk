@@ -792,10 +792,6 @@ class FinanceiroContaController {
     {
         global $pdo;
 
-        return [
-            'success' => true
-        ];
-
         try {
             if (empty($data['system_unit_id'])) {
                 throw new Exception("Campo obrigatório ausente: system_unit_id");
