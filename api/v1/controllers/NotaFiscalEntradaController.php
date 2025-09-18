@@ -173,13 +173,14 @@ class NotaFiscalEntradaController {
             // Ajuste os IDs conforme sua convenção interna, se necessitar.
             $formasPagamento = [
                 ['id' => 1, 'codigo' => 'dinheiro',      'descricao' => 'Dinheiro'],
-                ['id' => 2, 'codigo' => 'pix',           'descricao' => 'PIX'],
-                ['id' => 3, 'codigo' => 'debito',        'descricao' => 'Cartão de Débito'],
-                ['id' => 4, 'codigo' => 'credito',       'descricao' => 'Cartão de Crédito'],
-                ['id' => 5, 'codigo' => 'boleto',        'descricao' => 'Boleto'],
-                ['id' => 6, 'codigo' => 'transferencia', 'descricao' => 'Transferência'],
-                ['id' => 7, 'codigo' => 'cheque',        'descricao' => 'Cheque'],
-                ['id' => 8, 'codigo' => 'deposito',      'descricao' => 'Depósito']
+                ['id' => 2, 'codigo' => 'dda',      'descricao' => 'DDA'],
+                ['id' => 3, 'codigo' => 'pix',           'descricao' => 'PIX'],
+                ['id' => 4, 'codigo' => 'debito',        'descricao' => 'Cartão de Débito'],
+                ['id' => 5, 'codigo' => 'credito',       'descricao' => 'Cartão de Crédito'],
+                ['id' => 6, 'codigo' => 'DDA',        'descricao' => 'Boleto'],
+                ['id' => 7, 'codigo' => 'transferencia', 'descricao' => 'Transferência'],
+                ['id' => 8, 'codigo' => 'cheque',        'descricao' => 'Cheque'],
+                ['id' => 9, 'codigo' => 'deposito',      'descricao' => 'Depósito']
             ];
 
             // === Monta payload ===
