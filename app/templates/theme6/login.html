@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Manifesto PWA -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Ativação como app no iPhone -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Portal MRK">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="app/images/icon.png">
+
+    <!-- Cor da barra do navegador -->
+    <meta name="theme-color" content="#0b46ac">
+    <meta name="msapplication-navbutton-color" content="#0b46ac">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#0b46ac">
+
+    <title>Portal MRK</title>
+	<link rel="stylesheet" type="text/css" href="app/templates/{template}/style.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+	<link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
+<!--	<script src="https://kit.fontawesome.com/a81368914c.js"></script>-->
+    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {LIBRARIES}
+    {HEAD}
+    <link href="app/templates/{template}/plugins/node-waves/waves.css" rel="stylesheet" />
+    <link href="app/templates/{template}/plugins/animate-css/animate.css" rel="stylesheet" />
+    <link href="app/templates/{template}/css/style.css" rel="stylesheet">
+    <link href="app/templates/{template}/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="app/lib/include/admin.min.css?appver=700" rel="stylesheet" type="text/css" media="screen">
+    <style>
+    #tbutton_btn_entrar{
+        background-image:none;
+        background-color:#0b46ac !important;
+   }
+   .btn{
+       background-color:#0b46ac !important;
+    };
+    select {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    </style>
+</head>
+<body>
+<!-- Page Loader -->
+<div class="page-loader-wrapper">
+    <div class="loader">
+        <div class="preloader">
+            <div class="spinner-layer pl-indigo">
+                <div class="circle-clipper left">
+                    <div class="circle"></div>
+                </div>
+                <div class="circle-clipper right">
+                    <div class="circle"></div>
+                </div>
+            </div>
+        </div>
+        <p>Carregando...</p>
+    </div>
+</div>
+<div class="wave"></div>
+	<img class="wave" src="app/templates/{template}/images/wave.png">
+    
+	<div class="container">
+		<div class="img">
+			<img src="app/templates/{template}/images/bg-01.png">
+		</div>
+		<div class="login-content">
+			<form>
+<!--				<img style="width: 60%;height: 60%" src="app/templates/{template}/images/bg-01.png">-->
+				<h2 class="title"></h2>
+                <div id="adianti_div_content"></div>
+                <div id="adianti_online_content"></div>
+                <div id="adianti_online_content2"></div>
+    
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript" src="app/templates/{template}/main.js"></script>
+</body>
+<script src="app/templates/{template}/js/admin-login.js"></script>
+</html>
