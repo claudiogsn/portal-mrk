@@ -951,9 +951,41 @@ class FinanceiroContaController {
                 fc.emissao,
                 fc.vencimento,
                 fc.valor,
+
+                -- Fornecedor/cliente
                 COALESCE(NULLIF(fc.cgc,''), NULLIF(ff.cnpj_cpf,''))                           AS cli_doc,
                 COALESCE(NULLIF(fc.nome,''), NULLIF(ff.nome,''), NULLIF(ff.razao,''))          AS cli_nome,
-                fp.descricao                          AS plano_codigo
+
+                -- Plano de contas (por código)
+                fp.descricao AS plano_codigo,
+
+                -- Forma de pagamento: mapeia fc.banco (1..9) -> descrição e código
+                COALESCE(fc.banco, 0) AS forma_pg_id,
+                CASE COALESCE(fc.banco,0)
+                    WHEN 1 THEN 'Dinheiro'
+                    WHEN 2 THEN 'DDA'
+                    WHEN 3 THEN 'PIX'
+                    WHEN 4 THEN 'Cartão de Débito'
+                    WHEN 5 THEN 'Cartão de Crédito'
+                    WHEN 6 THEN 'Boleto'
+                    WHEN 7 THEN 'Transferência'
+                    WHEN 8 THEN 'Cheque'
+                    WHEN 9 THEN 'Depósito'
+                    ELSE ''
+                END AS forma_pg_desc,
+                CASE COALESCE(fc.banco,0)
+                    WHEN 1 THEN 'dinheiro'
+                    WHEN 2 THEN 'dda'
+                    WHEN 3 THEN 'pix'
+                    WHEN 4 THEN 'debito'
+                    WHEN 5 THEN 'credito'
+                    WHEN 6 THEN 'boleto'
+                    WHEN 7 THEN 'transferencia'
+                    WHEN 8 THEN 'cheque'
+                    WHEN 9 THEN 'deposito'
+                    ELSE ''
+                END AS forma_pg_cod
+
             FROM financeiro_conta fc
             LEFT JOIN financeiro_plano fp
                    ON fp.system_unit_id = fc.system_unit_id
@@ -977,26 +1009,30 @@ class FinanceiroContaController {
                 $numero = trim((string)($r['doc'] ?? ''));
                 if ($numero === '') $numero = (string)($r['codigo'] ?? '');
 
-                $cliFor = $r['cli_nome'];
-
                 $out[] = [
-                    'id'                 => (int)$r['id'],                     // para marcar depois
-                    'numero'             => $numero,                            // Nº
-                    'observacao'         => (string)($r['obs'] ?? ''),          // Observação
-                    'cliente_fornecedor' => $cliFor,                            // CPF/CNPJ ou Nome
-                    'emissao'            => $br($r['emissao'] ?? null),         // DD/MM/YYYY
-                    'vencimento'         => $br($r['vencimento'] ?? null),      // DD/MM/YYYY
-                    'valor'              => (float)$r['valor'],                 // número
-                    'plano_de_conta'     => (string)($r['plano_codigo'] ?? ''), // código
+                    'id'                       => (int)$r['id'],                     // para marcar depois
+                    'numero'                   => $numero,                            // Nº
+                    'observacao'               => (string)($r['obs'] ?? ''),          // Observação
+                    'cliente_fornecedor'       => (string)($r['cli_nome'] ?? ''),     // Nome
+                    'emissao'                  => $br($r['emissao'] ?? null),         // DD/MM/YYYY
+                    'vencimento'               => $br($r['vencimento'] ?? null),      // DD/MM/YYYY
+                    'valor'                    => (float)$r['valor'],                 // número
+                    'plano_de_conta'           => (string)($r['plano_codigo'] ?? ''),
+
+                    // NOVOS CAMPOS (mapeados de fc.banco)
+                    'forma_pagamento_id'       => (int)$r['forma_pg_id'],            // 0..9
+                    'forma_pagamento'          => (string)$r['forma_pg_desc'],       // 'Dinheiro', 'PIX', ...
+                    'forma_pagamento_codigo'   => (string)$r['forma_pg_cod'],        // 'dinheiro', 'pix', ...
                 ];
             }
 
             return [
-                'success' => true,
-                'system_unit_id' => $unitId,
-                'columns' => ['numero','observacao','cliente_fornecedor','emissao','vencimento','valor','plano_de_conta'],
-                'rows' => $out,
-                'count' => count($out)
+                'success'         => true,
+                'system_unit_id'  => $unitId,
+                // acrescentei 'forma_pagamento' nas colunas para deixar explícito
+                'columns'         => ['numero','observacao','cliente_fornecedor','emissao','vencimento','valor','plano_de_conta','forma_pagamento'],
+                'rows'            => $out,
+                'count'           => count($out)
             ];
 
         } catch (Exception $e) {
@@ -1065,6 +1101,35 @@ class FinanceiroContaController {
             return ['success'=>false, 'error'=>$e->getMessage()];
         }
     }
+
+    public static function hasF360Integration($system_unit_id): array
+    {
+        global $pdo;
+
+        try {
+
+            $st = $pdo->prepare("
+            SELECT COALESCE(f360_integration, 0) AS flag
+            FROM system_unit
+            WHERE id = :id
+            LIMIT 1
+        ");
+            $st->execute([':id' => $system_unit_id]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                return ['success' => false, 'error' => 'Unidade não encontrada.'];
+            }
+
+            // retorna 1 ou 0
+            $active = ((int)$row['flag'] === 1) ? 1 : 0;
+
+            return ['success' => true, 'active' => $active];
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
 
 
 

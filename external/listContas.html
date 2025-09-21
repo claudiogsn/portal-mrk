@@ -244,6 +244,8 @@
     const unit_id = urlParams.get('unit_id');
     const username = urlParams.get('username') || '';
 
+    $('#btnOpenExportF360').hide();
+
     // === Helpers ===
     function toBRL(v){
         if (v === null || v === undefined || v === '') return 'R$ 0,00';
@@ -269,6 +271,7 @@
 
     $(document).ready(function () {
         setDefaultMonth();
+        checarIntegracaoF360();
 
         $('#btnBuscar').click(buscar);
 
@@ -549,21 +552,22 @@
 
         // Linhas: mistura FIXOS + campos vindos da API
         const data = expRows.map(r => ([
-            F360_EMPRESA_CNPJ,                        // Empresa (CNPJ) - fixo
-            F360_TIPO_TITULO,                         // Tipo Título - fixo
-            r.numero ?? '',                           // Número
-            r.observacao ?? '',                       // OBSERVAÇÃO
-            r.cliente_fornecedor ?? '',               // Cliente / Fornecedor
-            F360_COMPETENCIA,                         // Competência (em branco)
-            r.emissao ?? '',                          // Emissão (DD/MM/YYYY vindo do back)
-            r.vencimento ?? '',                       // Vencimento (DD/MM/YYYY vindo do back)
-            Number(r.valor) || 0,                     // Valor (numérico)
-            F360_TIPO_DOCUMENTO,                      // Tipo de Documento - fixo
-            F360_CONTA_BANCARIA,                      // Conta Bancária - fixo
-            F360_MEIO_PAGAMENTO,                      // Meio de Pagamento - fixo
-            r.plano_de_conta ?? '',                   // Plano de Conta
-            F360_CENTRO_CUSTO                         // Centro de Custo - fixo
+            F360_EMPRESA_CNPJ,                  // Empresa (CNPJ)
+            F360_TIPO_TITULO,                   // Tipo Título
+            r.numero ?? '',                     // Número
+            r.observacao ?? '',                 // OBSERVAÇÃO
+            r.cliente_fornecedor ?? '',         // Cliente / Fornecedor
+            F360_COMPETENCIA,                   // Competência
+            r.emissao ?? '',                    // Emissão
+            r.vencimento ?? '',                 // Vencimento
+            Number(r.valor) || 0,               // Valor (numérico)
+            F360_TIPO_DOCUMENTO,                // Tipo de Documento
+            F360_CONTA_BANCARIA,                // Conta Bancária
+            (r.forma_pagamento ?? ''),          // Meio de Pagamento (ex.: 'Boleto', 'PIX', ...)
+            r.plano_de_conta ?? '',             // Plano de Conta
+            F360_CENTRO_CUSTO                   // Centro de Custo
         ]));
+
 
         // Monta planilha
         const wb = XLSX.utils.book_new();
@@ -635,6 +639,33 @@
             Swal.fire('Erro', 'Falha ao marcar exportados.', 'error');
         }
     }
+
+    async function checarIntegracaoF360() {
+        try {
+            if (!token || !unit_id) {
+                $('#btnOpenExportF360').remove();
+                return;
+            }
+
+            const res = await axios.post(baseUrl, {
+                method: 'hasF360Integration',
+                token,
+                data: { system_unit_id: Number(unit_id) }
+            });
+
+            const ativo = !!(res.data && res.data.success && res.data.active === 1);
+
+            if (ativo) {
+                $('#btnOpenExportF360').show();   // renderiza o botão
+            } else {
+                $('#btnOpenExportF360').remove(); // não renderiza
+            }
+        } catch (e) {
+            console.error(e);
+            $('#btnOpenExportF360').remove();     // em erro, não mostra
+        }
+    }
+
 </script>
 </body>
 </html>

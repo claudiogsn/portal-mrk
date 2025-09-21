@@ -149,6 +149,14 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'marcarExportadoF360':
                 $response = FinanceiroContaController::marcarExportadoF360($requestData);
                 break;
+            case 'hasF360Integration':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroContaController::hasF360Integration($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'ID do estabelecimento não informado'];
+                }
+                break;
 
 
 
