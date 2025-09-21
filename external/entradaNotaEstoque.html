@@ -272,6 +272,45 @@
     let insumos = [];
     let selectedIndex = null;
 
+    // === Helpers de unidade/quantidade (ATUALIZADOS) ===
+    const INT_UNITS = ['UN', 'U', 'UND', 'PC', 'PÇ', 'PÇS'];
+
+    function isIntUnit(u) {
+        return INT_UNITS.includes(String(u || '').toUpperCase());
+    }
+
+    function hasFraction(x) {
+        return Math.abs((Number(x) || 0) - Math.round(Number(x) || 0)) > 1e-9;
+    }
+
+    /** Normaliza:
+     * - Unidades inteiras: se tiver fração, mantém com 3 casas; senão arredonda p/ inteiro.
+     * - Demais unidades: sempre 3 casas.
+     */
+    function normalizeQtyByUnit(unit, val) {
+        const x = Number(val) || 0;
+        if (isIntUnit(unit)) {
+            return hasFraction(x) ? Math.round(x * 1000) / 1000 : Math.round(x);
+        }
+        return Math.round(x * 1000) / 1000;
+    }
+
+    /** Formata p/ exibição:
+     * - Inteira sem fração -> inteiro
+     * - Inteira com fração -> 3 casas
+     * - Demais -> 3 casas
+     */
+    function formatQtyByUnit(unit, val) {
+        const x = Number(val) || 0;
+        if (isIntUnit(unit)) {
+            if (hasFraction(x)) return (Math.round(x * 1000) / 1000).toFixed(3).replace('.', ',');
+            return String(Math.round(x));
+        }
+        return (Math.round(x * 1000) / 1000).toFixed(3).replace('.', ',');
+    }
+
+
+
     // Helpers
     const fmtDate = s => (!s ? '' : s.substring(0,10));
 
@@ -433,10 +472,14 @@
 
         itens.forEach((it, idx) => {
             const pend = (it.codigo_produto_interno === null || !it.unidade_interno || !(Number(it.fator_conversao) > 0));
-            const qtdInterna = Number(
+
+            const unInt = String(it.unidade_interno || '').trim();
+            const qtdIntCalc = Number(
                 it.quantidade_interno ?? (Number(it.quantidade_nota || 0) * Number(it.fator_conversao || 1))
             );
-            const trClass = pend ? 'row-pendente' : ''; // <-- removido 'row' do Bootstrap
+            const qtdIntFmt = formatQtyByUnit(unInt, qtdIntCalc);
+
+            const trClass = pend ? 'row-pendente' : '';
 
             const actionHtml = `
       <a href="#" title="Sincronizar Item" onclick="abrirSync(${idx}); return false;">
@@ -453,19 +496,20 @@
         <td>${it.quantidade_nota ?? ''}</td>
         <td>${it.codigo_produto_interno ?? ''}</td>
         <td>${it.descricao_interno ?? ''}</td>
-        <td>${it.unidade_interno ?? ''}</td>
-        <td>${Number.isFinite(qtdInterna) ? qtdInterna : ''}</td>
+        <td>${unInt}</td>
+        <td>${qtdIntFmt}</td>
         <td class="text-center">${actionHtml}</td>
       </tr>
     `);
         });
 
-        // seleção visual (delegado para evitar rebind duplicado)
+        // seleção visual
         tbody.off('click', 'tr').on('click', 'tr', function () {
             const i = Number($(this).data('idx'));
             marcarSelecionado(i);
         });
     }
+
 
 
     function marcarSelecionado(i) {
@@ -523,27 +567,36 @@
         const it      = itens[selectedIndex];
         const fator   = Number($('#fatorConv').val() || 1);
         const qtdNota = Number(it.quantidade_nota || 0);
+
         const unNota  = String(it.unidade_nota || '');
-        const unInt   = String($('#insumoUn').text() || it.unidade_interno || '');
-        const qtdInt  = qtdNota * (fator > 0 ? fator : 0);
+        // unidade do produto de estoque (se houver seleção, preferimos a do insumo)
+        const unIntSel = String($('#insumoUn').text() || '').trim();
+        const unIntItm = String(it.unidade_interno || '').trim();
+        const unInt    = unIntSel || unIntItm || '';
+
+        const qtdIntRaw = qtdNota * (fator > 0 ? fator : 0);
+        const qtdIntNorm = normalizeQtyByUnit(unInt, qtdIntRaw);
 
         // Previews principais
-        $('#qtdNotaPreviewVal').text(qtdNota.toFixed(4).replace(/\.0000$/,''));
+        $('#qtdNotaPreviewVal').text(
+            isIntUnit(unNota) ? String(Math.round(qtdNota)) : String(qtdNota).replace('.', ',')
+        );
         $('#qtdNotaPreviewUnit').text(unNota);
-        $('#qtdInternaPreview').text(qtdInt.toFixed(4));
+
+        $('#qtdInternaPreview').text(formatQtyByUnit(unInt, qtdIntNorm));
         $('#qtdInternaUnit').text(unInt);
 
-        // Fórmula visual (opcional)
+        // Fórmula visual (apenas ilustrativa)
         const html = `
-        <div class="calc-eq">
-          <span class="eq-term"><span class="eq-val">${qtdNota}</span> <span class="eq-unit">${unNota}</span></span>
-          <span class="eq-op">×</span>
-          <span class="eq-term"><span class="eq-val">${fator}</span></span>
-          <span class="eq-op">=</span>
-          <span class="eq-term"><span class="eq-val">${qtdInt.toFixed(4)}</span> <span class="eq-unit">${unInt}</span></span>
-        </div>
-        <div class="k-hint">Quantidade da nota × Fator de conversão = Quantidade interna</div>
-      `;
+    <div class="calc-eq">
+      <span class="eq-term"><span class="eq-val">${qtdNota}</span> <span class="eq-unit">${unNota}</span></span>
+      <span class="eq-op">×</span>
+      <span class="eq-term"><span class="eq-val">${fator}</span></span>
+      <span class="eq-op">=</span>
+      <span class="eq-term"><span class="eq-val">${formatQtyByUnit(unInt, qtdIntNorm)}</span> <span class="eq-unit">${unInt}</span></span>
+    </div>
+    <div class="k-hint">Quantidade da nota × Fator de conversão = Quantidade interna</div>
+  `;
         $('#formulaPreview').html(html);
     }
 
@@ -565,6 +618,9 @@
         if (!codigo || !ins) return Swal.fire('Atenção', 'Selecione um insumo.', 'warning');
         if (!(fator > 0))    return Swal.fire('Atenção', 'Informe um fator de conversão válido (> 0).', 'warning');
 
+        const unidadeInterna = String(ins.und || '');
+        const qtdInternaNorm = normalizeQtyByUnit(unidadeInterna, (Number(it.quantidade_nota || 0) * fator));
+
         const payload = {
             method: 'vincularItemNotaFornecedor',
             token,
@@ -576,7 +632,7 @@
                 descricao_nota: String(it.descricao_nota || ''),
                 unidade_nota: String(it.unidade_nota || ''),
                 fator_conversao: fator,
-                unidade_item: String(ins.und || '')
+                unidade_item: unidadeInterna
             }
         };
 
@@ -585,13 +641,12 @@
             const res = await axios.post(baseUrl, payload);
             if (!res.data.success) throw new Error(res.data.error || 'Falha ao sincronizar');
 
-            // Atualiza item na memória
-            const qtdInterna = Number(it.quantidade_nota || 0) * fator;
+            // Atualiza item na memória (com unidade + quantidade interna normalizada)
             it.codigo_produto_interno = Number(ins.codigo);
             it.descricao_interno      = String(ins.nome || '');
-            it.unidade_interno        = String(ins.und || '');
+            it.unidade_interno        = unidadeInterna;
             it.fator_conversao        = fator;
-            it.quantidade_interno     = qtdInterna;
+            it.quantidade_interno     = qtdInternaNorm;
 
             renderTabela();
             toggleGravarNota();
