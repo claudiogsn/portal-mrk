@@ -59,6 +59,44 @@ class MdeController
         try {
             $pdo->beginTransaction();
 
+            // ===== 1) Validar CNPJ do destinatário x CNPJ da unidade =====
+            // Aceita chaves 'destinatario' (novo) ou 'dest' (legado) e campos cnpj_cpf/cnpj
+            $cnpjDest = $notaJson['destinatario']['cnpj_cpf']
+                ?? $notaJson['dest']['cnpj_cpf']
+                ?? $notaJson['destinatario']['cnpj']
+                ?? $notaJson['dest']['cnpj']
+                ?? null;
+
+            if (!$cnpjDest) {
+                throw new Exception("Dados do destinatário não enviados (CNPJ ausente).");
+            }
+
+            $stmt = $pdo->prepare("SELECT cnpj FROM system_unit WHERE id = ? LIMIT 1");
+            $stmt->execute([$system_unit_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                throw new Exception("Unidade (system_unit_id={$system_unit_id}) não encontrada.");
+            }
+
+            $cnpjUnit = $row['cnpj'] ?? null;
+            if (!$cnpjUnit) {
+                throw new Exception("CNPJ da unidade não cadastrado.");
+            }
+
+            // Normaliza para apenas dígitos antes da comparação
+            $norm = static function ($v) {
+                return preg_replace('/\D+/', '', (string)$v);
+            };
+
+            if ($norm($cnpjDest) !== $norm($cnpjUnit)) {
+                throw new Exception(
+                    "CNPJ do destinatário (" . $norm($cnpjDest) .
+                    ") não corresponde ao CNPJ da unidade (" . $norm($cnpjUnit) . ")."
+                );
+            }
+
+            // ===== 2) Prossegue importação normalmente =====
             $fornecedorData = $notaJson['fornecedor'] ?? null;
             if (!$fornecedorData) {
                 throw new Exception("Dados do fornecedor não enviados");
@@ -67,18 +105,18 @@ class MdeController
             $fornecedor_id = self::getCreateFornecedor($system_unit_id, $fornecedorData);
 
             $chaveAcesso = $notaJson['chave_acesso'] ?? null;
-            $numeroNF = $notaJson['numero_nf'] ?? null;
-            $serie = $notaJson['serie'] ?? null;
+            $numeroNF    = $notaJson['numero_nf'] ?? null;
+            $serie       = $notaJson['serie'] ?? null;
 
             if (!$chaveAcesso || !$numeroNF) {
                 throw new Exception("Chave de acesso e número da NF são obrigatórios");
             }
 
-            // Verifica se nota já existe para este fornecedor, serie e unidade
+            // Verifica duplicidade (mesma unidade + fornecedor + número + série)
             $stmt = $pdo->prepare("
-                SELECT id FROM estoque_nota 
-                WHERE system_unit_id = ? AND fornecedor_id = ? AND numero_nf = ? AND serie = ?
-            ");
+            SELECT id FROM estoque_nota 
+            WHERE system_unit_id = ? AND fornecedor_id = ? AND numero_nf = ? AND serie = ?
+        ");
             $stmt->execute([$system_unit_id, $fornecedor_id, $numeroNF, $serie]);
             $notaExistente = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -88,10 +126,10 @@ class MdeController
 
             // Insere a nota
             $stmt = $pdo->prepare("
-                INSERT INTO estoque_nota 
-                (system_unit_id, fornecedor_id, chave_acesso, numero_nf, serie, data_emissao, data_saida, natureza_operacao, valor_total, valor_produtos, valor_frete) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+            INSERT INTO estoque_nota 
+            (system_unit_id, fornecedor_id, chave_acesso, numero_nf, serie, data_emissao, data_saida, natureza_operacao, valor_total, valor_produtos, valor_frete) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
 
             $stmt->execute([
                 $system_unit_id,
@@ -112,10 +150,10 @@ class MdeController
             // Insere os itens
             if (!empty($notaJson['itens']) && is_array($notaJson['itens'])) {
                 $stmtItem = $pdo->prepare("
-                    INSERT INTO estoque_nota_item
-                    (system_unit_id, nota_id, numero_item, codigo_produto, descricao, ncm, cfop, unidade, quantidade, valor_unitario, valor_total, valor_frete)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
+                INSERT INTO estoque_nota_item
+                (system_unit_id, nota_id, numero_item, codigo_produto, descricao, ncm, cfop, unidade, quantidade, valor_unitario, valor_total, valor_frete)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
 
                 foreach ($notaJson['itens'] as $item) {
                     $stmtItem->execute([
@@ -137,6 +175,7 @@ class MdeController
 
             $pdo->commit();
             return ['success' => true, 'nota_id' => $nota_id];
+
         } catch (Exception $e) {
             $pdo->rollBack();
             return ['success' => false, 'message' => $e->getMessage()];

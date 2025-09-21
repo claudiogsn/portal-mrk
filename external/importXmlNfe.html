@@ -108,7 +108,7 @@
 
     async function importarNotas() {
         if (arquivosSelecionados.length === 0) {
-            Swal.fire("Aviso", "Selecione pelo menos um arquivo XML.", "warning");
+            await Swal.fire("Aviso", "Selecione pelo menos um arquivo XML.", "warning");
             return;
         }
 
@@ -123,25 +123,30 @@
 
         if (!confirm.isConfirmed) return;
 
+        $("#btnImportar").prop("disabled", true);
+
+        let ok = 0, fail = 0;
+        const detalhes = [];
+
         for (let i = 0; i < arquivosSelecionados.length; i++) {
             const file = arquivosSelecionados[i];
             const row = $(`#tabelaArquivos tbody tr[data-idx="${i}"] .status`);
 
-            // Mostra barra de progresso
+            // barra de progresso
             row.html(`
-            <div class="progress" style="height:20px;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                     role="progressbar" style="width: 100%">
-                    Importando...
-                </div>
-            </div>
-        `);
+      <div class="progress" style="height:20px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+             role="progressbar" style="width: 100%">
+          Importando...
+        </div>
+      </div>
+    `);
 
             try {
                 const xmlText = await file.text();
                 const notaJson = xmlToJson(xmlText);
 
-                const res = await axios.post(baseUrl, {
+                const { data: resp } = await axios.post(baseUrl, {
                     method: "importNotaFiscal",
                     token,
                     data: {
@@ -150,71 +155,126 @@
                     }
                 });
 
-                if (res.data.success) {
+                if (resp && resp.success) {
+                    ok++;
                     row.html(`<span class="status-ok"><i class="fa fa-check"></i> Importada com sucesso</span>`);
                 } else {
-                    row.html(`<span class="status-erro"><i class="fa fa-times"></i> Erro: ${res.data.message || 'Falha ao importar'}</span>`);
+                    fail++;
+                    const msg = (resp && (resp.message || resp.error)) || "Falha ao importar";
+                    row.html(`<span class="status-erro"><i class="fa fa-times"></i> Erro: ${msg}</span>`);
+                    detalhes.push(`<li><strong>${file.name}</strong>: ${msg}</li>`);
                 }
             } catch (e) {
-                console.error(e);
-                row.html(`<span class="status-erro"><i class="fa fa-times"></i> Erro ao processar XML</span>`);
+                fail++;
+                const msg = e?.response?.data?.message || e?.message || "Erro ao processar XML";
+                row.html(`<span class="status-erro"><i class="fa fa-times"></i> ${msg}</span>`);
+                detalhes.push(`<li><strong>${file.name}</strong>: ${msg}</li>`);
             }
         }
 
-        Swal.fire("Finalizado", "Processo de importação concluído.", "success");
+        $("#btnImportar").prop("disabled", false);
+
+        const icon = fail === 0 ? "success" : (ok === 0 ? "error" : "warning");
+        const title = fail === 0 ? "Importação concluída" : (ok === 0 ? "Nenhuma nota importada" : "Importação parcial");
+        const html = `
+    <p><b>Sucesso:</b> ${ok} &nbsp; | &nbsp; <b>Falhas:</b> ${fail}</p>
+    ${detalhes.length ? `<ul style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">${detalhes.join("")}</ul>` : ""}
+  `;
+
+        await Swal.fire({ title, icon, html });
     }
 
-
-    // Converte XML string -> JSON simplificado compatível com importNotaFiscal
+    // Converte XML string -> JSON (inclui fornecedor + destinatario + itens)
     function xmlToJson(xmlString) {
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlString, "text/xml");
 
-        const getText = (tag, ctx = xml) => {
-            const el = ctx.getElementsByTagName(tag)[0];
+        // Helpers seguros
+        const first = (tag, ctx = xml) => (ctx ? ctx.getElementsByTagName(tag)[0] : null);
+        const pick  = (tag, ctx = xml) => {
+            const el = first(tag, ctx);
             return el ? el.textContent : null;
         };
 
+        // Nós relevantes
+        const emit      = first("emit");
+        const enderEmit = first("enderEmit");
+        const dest      = first("dest");
+        const enderDest = first("enderDest");
+        const infNFe    = first("infNFe");
+
+        // Itens
         const itens = [];
         const dets = xml.getElementsByTagName("det");
         for (let d of dets) {
-            const prod = d.getElementsByTagName("prod")[0];
+            const prod = first("prod", d);
             itens.push({
                 numero_item: d.getAttribute("nItem"),
-                codigo_produto: getText("cProd", prod),
-                descricao: getText("xProd", prod),
-                ncm: getText("NCM", prod),
-                cfop: getText("CFOP", prod),
-                unidade: getText("uCom", prod),
-                quantidade: parseFloat(getText("qCom", prod) || 0),
-                valor_unitario: parseFloat(getText("vUnCom", prod) || 0),
-                valor_total: parseFloat(getText("vProd", prod) || 0),
-                valor_frete: parseFloat(getText("vFrete", prod) || 0)
+                codigo_produto: pick("cProd", prod),
+                descricao: pick("xProd", prod),
+                ncm: pick("NCM", prod),
+                cfop: pick("CFOP", prod),
+                unidade: pick("uCom", prod),
+                quantidade: parseFloat(pick("qCom", prod) || 0),
+                valor_unitario: parseFloat(pick("vUnCom", prod) || 0),
+                valor_total: parseFloat(pick("vProd", prod) || 0),
+                valor_frete: parseFloat(pick("vFrete", prod) || 0)
             });
         }
 
+        // Monta endereço como string (só inclui partes presentes)
+        const joinEndereco = (ender) => {
+            const partes = [
+                pick("xLgr", ender),
+                pick("nro", ender),
+                pick("xCpl", ender),
+                pick("xBairro", ender),
+                [pick("xMun", ender), pick("UF", ender)].filter(Boolean).join("/")
+            ].filter(Boolean);
+            return partes.join(", ");
+        };
+
         return {
             fornecedor: {
-                cnpj_cpf: getText("CNPJ", xml.getElementsByTagName("emit")[0]),
-                razao: getText("xNome", xml.getElementsByTagName("emit")[0]),
-                nome: getText("xFant", xml.getElementsByTagName("emit")[0]),
-                endereco: `${getText("xLgr", xml.getElementsByTagName("enderEmit")[0])}, ${getText("nro", xml.getElementsByTagName("enderEmit")[0])}, ${getText("xCpl", xml.getElementsByTagName("enderEmit")[0])}, ${getText("xBairro", xml.getElementsByTagName("enderEmit")[0])}, ${getText("xMun", xml.getElementsByTagName("enderEmit")[0])}/${getText("UF", xml.getElementsByTagName("enderEmit")[0])}`,
-                cep: getText("CEP", xml.getElementsByTagName("enderEmit")[0]),
-                insc_estadual: getText("IE", xml.getElementsByTagName("emit")[0]),
-                fone: getText("fone", xml.getElementsByTagName("enderEmit")[0])
+                cnpj_cpf: pick("CNPJ", emit) || pick("CPF", emit),
+                razao: pick("xNome", emit),
+                nome: pick("xFant", emit),
+                endereco: joinEndereco(enderEmit),
+                cep: pick("CEP", enderEmit),
+                insc_estadual: pick("IE", emit),
+                fone: pick("fone", enderEmit)
             },
-            chave_acesso: xml.getElementsByTagName("infNFe")[0].getAttribute("Id").replace("NFe", ""),
-            numero_nf: getText("nNF"),
-            serie: getText("serie"),
-            data_emissao: getText("dhEmi"),
-            data_saida: getText("dhSaiEnt"),
-            natureza_operacao: getText("natOp"),
-            valor_total: parseFloat(getText("vNF") || 0),
-            valor_produtos: parseFloat(getText("vProd") || 0),
-            valor_frete: parseFloat(getText("vFrete") || 0),
+
+            // <<< NOVO: destinatário a partir de <dest> / <enderDest>
+            destinatario: {
+                cnpj_cpf: pick("CNPJ", dest) || pick("CPF", dest),
+                razao: pick("xNome", dest),
+                endereco: joinEndereco(enderDest),
+                cep: pick("CEP", enderDest),
+                municipio_codigo: pick("cMun", enderDest),
+                municipio: pick("xMun", enderDest),
+                uf: pick("UF", enderDest),
+                pais_codigo: pick("cPais", enderDest),
+                pais: pick("xPais", enderDest),
+                indicador_ie: pick("indIEDest", dest),
+                insc_estadual: pick("IE", dest),
+                fone: pick("fone", enderDest)
+            },
+
+            chave_acesso: (infNFe?.getAttribute("Id") || "").replace(/^NFe/i, ""),
+            numero_nf: pick("nNF"),
+            serie: pick("serie"),
+            data_emissao: pick("dhEmi"),
+            data_saida: pick("dhSaiEnt"),
+            natureza_operacao: pick("natOp"),
+            valor_total: parseFloat(pick("vNF") || 0),
+            valor_produtos: parseFloat(pick("vProd") || 0),
+            valor_frete: parseFloat(pick("vFrete") || 0),
+
             itens
         };
     }
+
 
     // Ativar FilePond no input
     const inputElement = document.querySelector('#inputXml');
