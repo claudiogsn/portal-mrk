@@ -300,31 +300,26 @@
                         <input type="text" id="finFornecedorNome" class="form-control" readonly>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label>Documento</label>
                         <input type="text" id="finDocumento" class="form-control">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label>Emissão</label>
                         <input type="date" id="finEmissao" class="form-control">
                     </div>
-
-                    <div class="col-md-6">
-                        <label>Vencimento</label>
+                    <div class="col-md-4">
+                        <label>Vencimento Inicial</label>
                         <input type="date" id="finVencimento" class="form-control">
                     </div>
-                    <div class="col-md-6">
-                        <label>Valor</label>
+
+                    <div class="col-md-4">
+                        <label>Valor Total</label>
                         <input type="text" id="finValor" class="form-control" readonly>
                     </div>
-
-                    <div class="col-md-6">
-                        <label>Adicional</label>
-                        <input type="text" id="finAdicional" class="form-control" value="0">
-                    </div>
-                    <div class="col-md-6">
-                        <label>Desconto</label>
-                        <input type="text" id="finDesconto" class="form-control" value="0">
+                    <div class="col-md-4">
+                        <label>Parcelas</label>
+                        <input type="number" id="finParcelas" class="form-control" min="1" step="1" value="1">
                     </div>
 
                     <div class="col-md-6">
@@ -336,14 +331,28 @@
                         <select id="finPlano" class="form-control"></select>
                     </div>
 
-
                     <div class="col-md-12" id="grupoObservacao" style="margin-top:18px;">
                         <label>Observação</label>
-                        <textarea id="finObs" class="form-control" rows="3"></textarea>
+                        <textarea id="finObs" class="form-control" rows="2"></textarea>
                     </div>
+                </div>
 
+                <hr>
+
+                <div class="table-responsive">
+                    <table class="table table-striped" id="tblParcelas">
+                        <thead>
+                        <tr>
+                            <th style="width: 90px;">Parcela</th>
+                            <th style="width: 200px;">Vencimento</th>
+                            <th style="width: 220px;">Valor</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
+
 
             <div class="modal-footer" style="border-top: 1px solid #eee;">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
@@ -419,7 +428,6 @@
             listarNotas();
         });
     });
-
     // abre a tela de entrada/edição no estoque em fullscreen
     $(document).on('click', 'a.abrir-estoque', function (e) {
         e.preventDefault();
@@ -445,13 +453,11 @@
         $('#iframeEntradaEstoque').attr('src', urlIframe);
         $('#modalEntradaEstoque').modal('show');
     });
-
     // sempre que fechar o modal, recarrega a lista
     $('#modalEntradaEstoque').on('hidden.bs.modal', function () {
         $('#iframeEntradaEstoque').attr('src', 'about:blank'); // limpa
         listarNotas(); // atualiza o grid
     });
-
     async function listarNotas() {
         Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
         try {
@@ -473,7 +479,6 @@
             Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
         }
     }
-
     function recalcKpis(data) {
         const pendFin = data.filter(n => Number(n.incluida_financeiro) !== 1).length;
         const pendEst = data.filter(n => Number(n.incluida_estoque) !== 1).length;
@@ -485,7 +490,6 @@
             soma.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         );
     }
-
     function aplicarFiltros() {
         let dataFiltrada = [...notasOriginais];
 
@@ -549,21 +553,18 @@
         recalcKpis(dataFiltrada);
         renderTabela(dataFiltrada);
     }
-
     function escapeHtml(s) {
         return String(s ?? '')
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
-
     function truncateWithTooltip(text, max = 30) {
         const full = (text || '').trim();
         const truncated = full.length > max ? (full.slice(0, max - 1).trimEnd() + '…') : full;
         // tooltip do Bootstrap (v3) usa data-toggle="tooltip"
         return `<span title="${escapeHtml(full)}" data-toggle="tooltip" data-placement="top">${escapeHtml(truncated)}</span>`;
     }
-
     function formatDateBR(s) {
         if (!s) return '';
         const t = String(s).replace(' ', 'T'); // cobre 'YYYY-MM-DD HH:mm:ss'
@@ -579,14 +580,117 @@
         }
         return s;
     }
-
     function formatCnpjCpf(v) {
         const d = String(v || '').replace(/\D/g, '');
         if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
         if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         return v || '';
     }
+    // ===== Helpers de parcelas =====
+    function addDays(dateStr, days) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return '';
+        d.setDate(d.getDate() + days);
+        return d.toISOString().substr(0,10);
+    }
 
+    function addDaysISO(dateStr, days) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr.replace(' ', 'T'));
+        if (isNaN(d)) return '';
+        d.setDate(d.getDate() + days);
+        return d.toISOString().substr(0,10);
+    }
+
+    function getValorFinalParaParcelas() {
+        const total = toNumberBR($('#finValor').val());
+        const adic  = toNumberBR($('#finAdicional').val());
+        const desc  = toNumberBR($('#finDesconto').val());
+        // nunca negativo
+        return Math.max(0, +(total + adic - desc).toFixed(2));
+    }
+
+
+    function splitIgual(total, n) {
+        const cents = Math.round((Number(total)||0) * 100);
+        const base = Math.floor(cents / n);
+        const resto = cents - base * n;
+        const out = Array(n).fill(base);
+        for (let i=0; i<resto; i++) out[i] += 1; // distribui 1 cent nas primeiras
+        // volta para reais com 2 casas
+        return out.map(c => (c/100));
+    }
+
+    function renderTabelaParcelas(linhas) {
+        const $tb = $('#tblParcelas tbody');
+        $tb.empty();
+        linhas.forEach((parc, idx) => {
+            const i = idx + 1;
+            const v = toBRL(parc.valor);
+            $tb.append(`
+      <tr data-i="${i}">
+        <td>${i}/${linhas.length}</td>
+        <td><input type="date" class="form-control parc-venc" value="${(parc.vencimento||'')}" /></td>
+        <td><input type="text" class="form-control parc-valor" value="${v.replace('R$','').trim()}" /></td>
+      </tr>
+    `);
+        });
+        recalcTotaisParcelas();
+    }
+
+    function gerarParcelasAuto(qtd, total, vencInicial) {
+        const valores = splitIgual(total, qtd);
+        const linhas = [];
+        for (let i=0; i<qtd; i++) {
+            const venc = vencInicial ? addDays(vencInicial, 30*i) : '';
+            linhas.push({ vencimento: venc, valor: valores[i] });
+        }
+        // Ajuste de arredondamento: soma das linhas = total
+        const soma = valores.reduce((a,b)=>a+b,0);
+        const diff = Number((total - soma).toFixed(2));
+        if (Math.abs(diff) >= 0.01 && linhas.length > 0) {
+            linhas[linhas.length-1].valor = Number((linhas[linhas.length-1].valor + diff).toFixed(2));
+        }
+        return linhas;
+    }
+
+    function recalcTotaisParcelas() {
+        // normaliza valores editados pelo usuário e atualiza total
+        let soma = 0;
+        $('#tblParcelas tbody tr').each(function () {
+            const $inp = $(this).find('.parc-valor');
+            const num = toNumberBR($inp.val());
+            // re-formata no blur para manter padrão
+            $inp.off('blur').on('blur', function(){
+                $(this).val( toBRL(toNumberBR($(this).val())).replace('R$','').trim() );
+            });
+            soma += num;
+        });
+        $('#somaParcelas').text( toBRL(soma) );
+        $('#finTotalParcelas').text( toBRL(soma) );
+    }
+
+    function lerParcelasDoGrid() {
+        const $rows = $('#tblParcelas tbody tr');
+        const total = $rows.length;
+        const out = [];
+
+        $rows.each(function(i) {
+            const venc = $(this).find('.parc-venc').val() || '';
+            const valStr = $(this).find('.parc-valor').val() || '0';
+            const valor = toNumberBR(valStr);  // agora entende "R$ 235,20"
+
+            out.push({
+                indice: i + 1,
+                total_parcelas: total,
+                vencimento: venc,  // "YYYY-MM-DD"
+                valor: valor       // number
+            });
+        });
+
+        return out;
+    }
 
 
     function renderTabela(lista) {
@@ -649,17 +753,25 @@
 
         $('[data-toggle="tooltip"]').tooltip({ container: 'body' }); // mantém o tooltip funcionando
     }
-
-
     function toNumberBR(v) {
         if (v === null || v === undefined) return 0;
         if (typeof v === 'number') return v;
-        let s = (v + '').trim();
-        // remove milhar e troca vírgula por ponto
-        s = s.replace(/\./g, '').replace(',', '.');
+
+        let s = String(v).trim();
+        // mantém apenas dígitos, vírgula, ponto e sinal
+        s = s.replace(/[^\d.,-]/g, '');
+
+        // se tiver vírgula, assumimos que a vírgula é decimal (pt-BR)
+        if (s.indexOf(',') >= 0) {
+            s = s.replace(/\./g, '');   // remove separadores de milhar
+            s = s.replace(',', '.');    // vírgula -> ponto decimal
+        }
+        // se não tiver vírgula, deixamos como está (pode ser "1234.56" ou "1234")
+
         const n = parseFloat(s);
         return isNaN(n) ? 0 : n;
     }
+
     function toBRL(n) {
         return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
@@ -691,13 +803,13 @@
 
             const d = res.data.data;
 
-            // Preenche campos básicos
+            // Preenche campos básicos (como antes)
             $('#finFornecedorId').val(d.fornecedor_id || '');
             $('#finChaveAcesso').val(chave_acesso || '');
-            $('#finFornecedorNome').val(fornecedor_nome || '');              // somente visual
+            $('#finFornecedorNome').val(fornecedor_nome || '');
             $('#finDocumento').val(d.documento || documento_hint || '');
             $('#finEmissao').val(d.emissao || emissao_hint || '');
-            $('#finVencimento').val('');                                     // usuário define
+            $('#finVencimento').val(''); // vamos setar abaixo pelo algoritmo novo
             $('#finValor').val((d.valor_total !== undefined && d.valor_total !== null)
                 ? ('' + Number(d.valor_total).toFixed(2)).replace('.', ',')
                 : (valor_hint ? ('' + Number(valor_hint).toFixed(2)).replace('.', ',') : '0,00')
@@ -706,7 +818,7 @@
             $('#finDesconto').val('0');
             $('#finObs').val(d.chave_acesso ? ('Chave NFe: ' + d.chave_acesso) : (chave_acesso ? ('Chave NFe: ' + chave_acesso) : ''));
 
-            // === Plano de Contas (hierarquia): ordena por tamanho do código e depois por código ===
+            // Planos e formas (como antes)
             const planos = Array.isArray(d.planos_de_conta) ? d.planos_de_conta.slice() : [];
             planos.sort((a, b) => {
                 const ca = (a.codigo || ''), cb = (b.codigo || '');
@@ -717,11 +829,9 @@
             const $plano = $('#finPlano');
             $plano.empty().append(`<option value="">Selecione...</option>`);
             planos.forEach(p => {
-                // valor = código (string). Se quiser pelo id, troque p.id aqui.
                 $plano.append(`<option value="${p.codigo}" data-id="${p.id || ''}">${p.label || (p.codigo + ' - ' + (p.descricao || ''))}</option>`);
             });
 
-            // === Formas de Pagamento ===
             const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (Array.isArray(d.formas_de_pagamento) ? d.formas_de_pagamento : []);
             const $forma = $('#finForma');
             $forma.empty().append(`<option value="">Selecione...</option>`);
@@ -729,10 +839,27 @@
                 $forma.append(`<option value="${f.id}">${f.descricao || f.nome || f.codigo}</option>`);
             });
 
-            // Ativa selects pesquisáveis
             const $modal = $('#modalFinanceiro');
             $plano.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
             $forma.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
+
+            // ===== NOVO: carregar duplicatas (apenas para definir qtd e 1º vencimento) =====
+            let qtdParcelas = 1;
+            let vencIni = '';
+
+            if (Array.isArray(d.duplicatas) && d.duplicatas.length > 0) {
+                // usa a primeira duplicata como "vencimento inicial"
+                // se quiser garantir a menor data, descomente o sort:
+                // d.duplicatas.sort((a,b)=> String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
+                qtdParcelas = d.duplicatas.length;
+                vencIni = (d.duplicatas[0].vencimento|| '').substr(0,10);
+            }
+
+            $('#finParcelas').val(qtdParcelas);
+            $('#finVencimento').val(vencIni); // pode ficar vazio se não havia duplicata
+
+            // Constrói a grade com datas (30/30) e valores travados
+            rebuildParcelasGrid(qtdParcelas, vencIni);
 
             Swal.close();
             $modal.modal('show');
@@ -743,46 +870,123 @@
             Swal.fire('Erro', 'Falha ao carregar dados para o financeiro.', 'error');
         }
     }
+
+    function rebuildParcelasGrid(qtd, vencIni) {
+        const $tb = $('#tblParcelas tbody');
+        $tb.empty();
+
+        const n = Math.max(1, parseInt(qtd || 1, 10));
+
+        // calcula valores iguais (com ajuste de centavos na primeira(s) parcela(s))
+        const total = getValorFinalParaParcelas();
+        const base = Math.floor((total / n) * 100) / 100; // duas casas
+        let resto = +(total - (base * n)).toFixed(2);     // ajuste
+
+        for (let i = 0; i < n; i++) {
+            const ajuste = (resto > 0) ? Math.min(resto, 0.01) : 0;
+            const valorParc = +(base + ajuste).toFixed(2);
+            resto = +(resto - ajuste).toFixed(2);
+
+            let venc = '';
+            if (vencIni) {
+                venc = addDaysISO(vencIni, i * 30);
+            }
+
+            $tb.append(`
+      <tr>
+        <td class="text-center">${i + 1}</td>
+        <td>
+          <input type="date" class="form-control parc-venc" value="${venc}">
+        </td>
+        <td>
+          <input type="text" class="form-control parc-valor" value="${toBRL(valorParc)}" readonly tabindex="-1">
+        </td>
+      </tr>
+    `);
+        }
+    }
+
+    function recalcValoresParcelas() {
+        // só recalcula os valores, NÃO mexe nas datas (permite ajuste manual das datas)
+        const $rows = $('#tblParcelas tbody tr');
+        if ($rows.length === 0) return;
+
+        const n = $rows.length;
+        const total = getValorFinalParaParcelas();
+        const base = Math.floor((total / n) * 100) / 100;
+        let resto = +(total - (base * n)).toFixed(2);
+
+        $rows.each(function(idx) {
+            const ajuste = (resto > 0) ? Math.min(resto, 0.01) : 0;
+            const valorParc = +(base + ajuste).toFixed(2);
+            resto = +(resto - ajuste).toFixed(2);
+            $(this).find('.parc-valor').val(toBRL(valorParc));
+        });
+    }
+
     async function gravarFinanceiro() {
         try {
             const fornecedor_id = Number($('#finFornecedorId').val());
             const chave_acesso  = $('#finChaveAcesso').val();
-            const documento     = $('#finDocumento').val().trim();
+            const documento     = ($('#finDocumento').val() || '').trim();
             const emissao       = $('#finEmissao').val();
-            const vencimento    = $('#finVencimento').val();
-            const valor         = $('#finValor').val().trim();           // já vem como "123,45"
-            const adicional     = $('#finAdicional').val().trim();
-            const desconto      = $('#finDesconto').val().trim();
-            const plano_contas  = $('#finPlano').val();                  // valor = código
+            const plano_contas  = $('#finPlano').val();      // código
             const forma_id      = $('#finForma').val();
-            const obs_extra     = ($('#finObs').val() || '').trim();
+            const obs_base      = ($('#finObs').val() || '').trim();
+            const totalNota     = toNumberBR($('#finValor').val());
 
             if (!fornecedor_id) return Swal.fire('Atenção', 'Fornecedor inválido.', 'warning');
             if (!documento)     return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
             if (!emissao)       return Swal.fire('Atenção', 'Informe a Emissão.', 'warning');
-            if (!vencimento)    return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
-            if (!valor)         return Swal.fire('Atenção', 'Valor inválido.', 'warning');
             if (!plano_contas)  return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
             if (!forma_id)      return Swal.fire('Atenção', 'Selecione a Forma de Pagamento.', 'warning');
 
+            // Lê as parcelas da grade
+            const linhas = lerParcelasDoGrid();
+            if (linhas.length === 0) {
+                return Swal.fire('Atenção', 'Informe ao menos 1 parcela.', 'warning');
+            }
+            // valida vencimentos e valores
+            for (const ln of linhas) {
+                if (!ln.vencimento) {
+                    return Swal.fire('Atenção', `Parcela ${ln.indice}/${ln.total_parcelas} sem vencimento.`, 'warning');
+                }
+            }
+            // checa soma == total (tolerância de 1 cent)
+            const soma = linhas.reduce((a,b)=>a + (b.valor||0), 0);
+            if (Math.abs(soma - totalNota) >= 0.01) {
+                return Swal.fire('Atenção', `A soma das parcelas (${toBRL(soma)}) difere do valor total (${toBRL(totalNota)}). Ajuste os valores.`, 'warning');
+            }
+
             Swal.fire({ title: 'Gravando...', didOpen: () => Swal.showLoading() });
 
+            // monta array de contas
+            const contas = linhas.map(ln => {
+                const obs = [
+                    obs_base,
+                    `Parcela ${ln.indice}/${ln.total_parcelas}`,
+                    (chave_acesso ? `Chave NFe: ${chave_acesso}` : '')
+                ].filter(Boolean).join(' | ');
+
+                return {
+                    fornecedor_id: fornecedor_id,
+                    documento: `${documento}-${String(ln.indice).padStart(2,'0')}`,
+                    emissao: emissao,                // YYYY-MM-DD
+                    vencimento: ln.vencimento,       // YYYY-MM-DD
+                    valor: ln.valor.toFixed(2).replace('.', ','), // "123,45"
+                    plano_contas: plano_contas,      // código
+                    forma_pagamento_id: Number(forma_id),
+                    obs_extra: obs,
+                    chave_acesso: chave_acesso
+                };
+            });
+
             const req = {
-                method: 'lancarNotaNoFinanceiroConta',
+                method: 'lancarNotaNoFinanceiroContaLote', // <-- ajuste no backend
                 token,
                 data: {
                     system_unit_id: Number(unit_id),
-                    fornecedor_id: fornecedor_id,
-                    documento: documento,
-                    emissao: emissao,                // aceita YYYY-MM-DD
-                    vencimento: vencimento,          // idem
-                    valor: valor,                    // "1.290,50" OK
-                    adicional: adicional || '0',
-                    desconto: desconto || '0',
-                    plano_contas: plano_contas,      // código
-                    forma_pagamento_id: Number(forma_id),
-                    obs_extra: obs_extra,
-                    chave_acesso: chave_acesso
+                    contas: contas
                 }
             };
 
@@ -790,18 +994,17 @@
             Swal.close();
 
             if (!res.data || !res.data.success) {
-                return Swal.fire('Erro', res.data?.error || 'Falha ao gravar lançamento.', 'error');
+                return Swal.fire('Erro', res.data?.error || 'Falha ao gravar lançamentos.', 'error');
             }
 
             $('#modalFinanceiro').modal('hide');
-            Swal.fire('Sucesso', 'Lançamento criado com sucesso.', 'success');
-            // atualiza a lista
+            Swal.fire('Sucesso', 'Lançamentos criados com sucesso.', 'success');
             await listarNotas();
 
         } catch (e) {
             console.error(e);
             Swal.close();
-            Swal.fire('Erro', 'Falha ao gravar lançamento.', 'error');
+            Swal.fire('Erro', 'Falha ao gravar lançamentos.', 'error');
         }
     }
 
@@ -825,6 +1028,30 @@
             valor_hint: val
         });
     });
+
+    $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
+        recalcTotaisParcelas();
+    });
+
+    // quando usuário muda quantidade de parcelas -> reconstrói grade (datas em 30/30)
+    $(document).on('input change', '#finParcelas', function() {
+        const qtd = parseInt($(this).val() || '1', 10);
+        const vencIni = $('#finVencimento').val() || '';
+        rebuildParcelasGrid(qtd, vencIni);
+    });
+
+    // quando muda o vencimento inicial -> refaz as datas 30/30 (mantém divisão)
+    $(document).on('change', '#finVencimento', function() {
+        const qtd = parseInt($('#finParcelas').val() || '1', 10);
+        const vencIni = $(this).val() || '';
+        rebuildParcelasGrid(qtd, vencIni);
+    });
+
+    // quando muda adicional/desconto/valor total -> só recalcula valores (não altera datas)
+    $(document).on('input', '#finAdicional, #finDesconto', function() {
+        recalcValoresParcelas();
+    });
+
 
 
 

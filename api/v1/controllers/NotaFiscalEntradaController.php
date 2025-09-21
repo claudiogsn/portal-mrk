@@ -99,26 +99,28 @@ class NotaFiscalEntradaController {
             }
 
             // === Monta WHERE dinamicamente ===
-            $where = ['system_unit_id = :unit'];
+            $where  = ['system_unit_id = :unit'];
             $params = [':unit' => $system_unit_id];
 
             if ($hasId) {
-                $where[] = 'id = :id';
+                $where[]       = 'id = :id';
                 $params[':id'] = (int)$data['nota_id'];
             } elseif ($hasChave) {
-                $where[] = 'chave_acesso = :chave';
+                $where[]          = 'chave_acesso = :chave';
                 $params[':chave'] = trim((string)$data['chave_acesso']);
             } else { // numero_nf (+ opcional série)
-                $where[] = 'numero_nf = :numero';
-                $params[':numero'] = trim((string)$data['numero_nf']);
+                $where[]             = 'numero_nf = :numero';
+                $params[':numero']   = trim((string)$data['numero_nf']);
                 if (!empty($data['serie'])) {
-                    $where[] = 'serie = :serie';
-                    $params[':serie'] = trim((string)$data['serie']);
+                    $where[]            = 'serie = :serie';
+                    $params[':serie']   = trim((string)$data['serie']);
                 }
             }
 
+            // inclui 'id' para buscar duplicatas depois
             $sqlNota = "
             SELECT 
+                id,
                 fornecedor_id,
                 numero_nf,
                 data_emissao,
@@ -145,21 +147,64 @@ class NotaFiscalEntradaController {
             }
 
             // Valor total normalizado com ponto decimal
-            $valorTotal = isset($nota['valor_total']) ? number_format((float)$nota['valor_total'], 2, '.', '') : '0.00';
+            $valorTotal = isset($nota['valor_total'])
+                ? number_format((float)$nota['valor_total'], 2, '.', '')
+                : '0.00';
 
-            // === Planos de contas (da unidade + globais) ===
+            // === Duplicatas da nota ===
+            // requer a tabela: estoque_nota_duplicata (nota_id, system_unit_id, numero_duplicata, data_vencimento, valor_parcela, ...)
+            $sqlDup = "
+            SELECT id, numero_duplicata, data_vencimento, valor_parcela
+            FROM estoque_nota_duplicata
+            WHERE system_unit_id = :unit AND nota_id = :nid
+            ORDER BY 
+                CASE WHEN data_vencimento IS NULL THEN 1 ELSE 0 END,
+                data_vencimento,
+                numero_duplicata
+        ";
+            $stDup = $pdo->prepare($sqlDup);
+            $stDup->execute([
+                ':unit' => $system_unit_id,
+                ':nid'  => (int)$nota['id']
+            ]);
+            $rowsDup = $stDup->fetchAll(PDO::FETCH_ASSOC);
+
+            $duplicatas = [];
+            $somaDup    = 0.0;
+
+            if ($rowsDup) {
+                foreach ($rowsDup as $r) {
+                    $venc = null;
+                    if (!empty($r['data_vencimento'])) {
+                        $ts = strtotime($r['data_vencimento']);
+                        if ($ts !== false) {
+                            $venc = date('Y-m-d', $ts);
+                        }
+                    }
+                    $valor = (float)$r['valor_parcela'];
+                    $somaDup += $valor;
+
+                    $duplicatas[] = [
+                        'id'         => (int)$r['id'],
+                        'numero'     => (string)$r['numero_duplicata'],
+                        'vencimento' => $venc,                                        // "YYYY-MM-DD" ou null
+                        'valor'      => number_format($valor, 2, '.', ''),           // "1237.05"
+                    ];
+                }
+            }
+
+            // === Planos de contas (da unidade) ===
             $stPlano = $pdo->prepare("
             SELECT id, codigo, descricao
             FROM financeiro_plano
             WHERE system_unit_id = :unit 
             ORDER BY 
-                CASE WHEN codigo = '' THEN 1 ELSE 0 END,  -- códigos vazios por último
+                CASE WHEN codigo = '' THEN 1 ELSE 0 END,
                 codigo, descricao
         ");
             $stPlano->execute([':unit' => $system_unit_id]);
             $planos = $stPlano->fetchAll(PDO::FETCH_ASSOC);
 
-            // Mapeia para formato enxuto
             $planosDeConta = array_map(function ($p) {
                 return [
                     'id'        => (int)$p['id'],
@@ -169,15 +214,14 @@ class NotaFiscalEntradaController {
                 ];
             }, $planos);
 
-            // === Formas de pagamento padrão (IDs estáveis) ===
-            // Ajuste os IDs conforme sua convenção interna, se necessitar.
+            // === Formas de pagamento padrão (ajuste IDs/códigos se necessário) ===
             $formasPagamento = [
                 ['id' => 1, 'codigo' => 'dinheiro',      'descricao' => 'Dinheiro'],
-                ['id' => 2, 'codigo' => 'dda',      'descricao' => 'DDA'],
+                ['id' => 2, 'codigo' => 'dda',           'descricao' => 'DDA'],
                 ['id' => 3, 'codigo' => 'pix',           'descricao' => 'PIX'],
                 ['id' => 4, 'codigo' => 'debito',        'descricao' => 'Cartão de Débito'],
                 ['id' => 5, 'codigo' => 'credito',       'descricao' => 'Cartão de Crédito'],
-                ['id' => 6, 'codigo' => 'DDA',        'descricao' => 'Boleto'],
+                ['id' => 6, 'codigo' => 'boleto',        'descricao' => 'Boleto'],
                 ['id' => 7, 'codigo' => 'transferencia', 'descricao' => 'Transferência'],
                 ['id' => 8, 'codigo' => 'cheque',        'descricao' => 'Cheque'],
                 ['id' => 9, 'codigo' => 'deposito',      'descricao' => 'Depósito']
@@ -185,12 +229,14 @@ class NotaFiscalEntradaController {
 
             // === Monta payload ===
             $payload = [
-                'fornecedor_id'     => (int)$nota['fornecedor_id'],
-                'documento'         => (string)$nota['numero_nf'],
-                'emissao'           => $emissao,                  // "YYYY-MM-DD" ou null
-                'valor_total'       => $valorTotal,               // "1290.50"
-                'planos_de_conta'   => $planosDeConta,            // lista de {id, codigo, descricao, label}
-                'formas_pagamento'  => $formasPagamento           // lista de {id, codigo, descricao}
+                'fornecedor_id'            => (int)$nota['fornecedor_id'],
+                'documento'                => (string)$nota['numero_nf'],
+                'emissao'                  => $emissao,                        // "YYYY-MM-DD" ou null
+                'valor_total'              => $valorTotal,                     // "1290.50" (da NF)
+                'valor_total_duplicatas'   => number_format($somaDup, 2, '.', ''), // "soma" das duplicatas
+                'duplicatas'               => $duplicatas,                     // <<< AQUI: lista das duplicatas
+                'planos_de_conta'          => $planosDeConta,
+                'formas_pagamento'         => $formasPagamento
             ];
 
             return ['success' => true, 'data' => $payload];

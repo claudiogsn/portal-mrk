@@ -517,6 +517,226 @@ class FinanceiroContaController {
         }
     }
 
+    public static function lancarNotaNoFinanceiroContaLote(array $data): array
+    {
+        global $pdo;
+
+        $gotLock = false; // visível no finally
+
+        try {
+            // ===== Helpers =====
+            $parseDate = function (?string $s) {
+                if (!$s) return null;
+                $s = trim($s);
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;            // YYYY-MM-DD
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {                   // DD/MM/YYYY
+                    [$d,$m,$y] = explode('/',$s);
+                    return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
+                }
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            $parseMoney = function ($v) {
+                if ($v === null || $v === '') return 0.0;
+                if (is_string($v)) {
+                    $v = str_replace(['.', ' '], ['', ''], $v);
+                    $v = str_replace(',', '.', $v);
+                }
+                if (!is_numeric($v)) throw new Exception("Valor numérico inválido: {$v}");
+                return round((float)$v, 2);
+            };
+
+            // ===== Entrada =====
+            if (empty($data['system_unit_id'])) {
+                throw new Exception('system_unit_id é obrigatório.');
+            }
+            $system_unit_id = (int)$data['system_unit_id'];
+
+            if (empty($data['contas']) || !is_array($data['contas'])) {
+                throw new Exception('contas deve ser um array com ao menos 1 item.');
+            }
+
+            // Normalização prévia + coleta de pares (entidade, doc) e chaves
+            $norm = [];
+            $pairs = [];               // para checagem de duplicidade prévia (entidade+doc)
+            $pairsSeen = [];
+            $chaves = [];              // chaves únicas para marcar nota depois
+
+            foreach ($data['contas'] as $idx => $c) {
+                $required = ['fornecedor_id','documento','emissao','vencimento','valor'];
+                foreach ($required as $k) {
+                    if (!isset($c[$k]) || $c[$k] === '' || $c[$k] === null) {
+                        throw new Exception("Conta #".($idx+1).": Campo obrigatório ausente: {$k}");
+                    }
+                }
+
+                $entidade     = (int)$c['fornecedor_id'];
+                $doc          = trim((string)$c['documento']);
+                $emissao      = $parseDate($c['emissao']);
+                $vencimento   = $parseDate($c['vencimento']);
+                $valorBruto   = $parseMoney($c['valor']);
+                $adicional    = isset($c['adicional']) ? $parseMoney($c['adicional']) : 0.0;
+                $desconto     = isset($c['desconto'])  ? $parseMoney($c['desconto'])  : 0.0;
+                $planoContas  = isset($c['plano_contas']) ? trim((string)$c['plano_contas']) : null;
+                $formaPgtoId  = isset($c['forma_pagamento_id']) ? (int)$c['forma_pagamento_id'] : null;
+                $obsExtra     = isset($c['obs_extra']) ? trim((string)$c['obs_extra']) : '';
+                $chaveAcesso  = isset($c['chave_acesso']) ? trim((string)$c['chave_acesso']) : null;
+
+                $norm[] = [
+                    'entidade' => $entidade,
+                    'doc' => $doc,
+                    'emissao' => $emissao,
+                    'vencimento' => $vencimento,
+                    'valorBruto' => $valorBruto,
+                    'adicional' => $adicional,
+                    'desconto' => $desconto,
+                    'planoContas' => $planoContas,
+                    'formaPgtoId' => $formaPgtoId,
+                    'obsExtra'    => $obsExtra,
+                    'chaveAcesso' => $chaveAcesso,
+                ];
+
+                $key = $entidade.'#'.$doc;
+                if (!isset($pairsSeen[$key])) {
+                    $pairsSeen[$key] = true;
+                    $pairs[] = ['entidade'=>$entidade, 'doc'=>$doc];
+                }
+                if ($chaveAcesso) $chaves[$chaveAcesso] = true;
+            }
+
+            // ===== Checagem de duplicidade prévia (em relação ao que JÁ existe no banco) =====
+            // Regra: não permitir se já houver conta com mesmo (system_unit_id, entidade, doc)
+            $stChk = $pdo->prepare("
+            SELECT id FROM financeiro_conta 
+            WHERE system_unit_id = :unit AND entidade = :ent AND doc = :doc 
+            LIMIT 1
+        ");
+            foreach ($pairs as $p) {
+                $stChk->execute([':unit'=>$system_unit_id, ':ent'=>$p['entidade'], ':doc'=>$p['doc']]);
+                if ($stChk->fetchColumn()) {
+                    throw new Exception("Já existe lançamento para este fornecedor/documento nesta unidade (fornecedor_id={$p['entidade']}, doc={$p['doc']}).");
+                }
+            }
+
+            // ===== Cache de fornecedor (cgc/nome) =====
+            $fornCache = [];
+            $getFornecedor = function(int $ent) use (&$fornCache, $pdo, $system_unit_id) {
+                if (!isset($fornCache[$ent])) {
+                    $st = $pdo->prepare("
+                    SELECT cnpj_cpf, nome
+                    FROM financeiro_fornecedor
+                    WHERE id = :id AND system_unit_id = :unit
+                    LIMIT 1
+                ");
+                    $st->execute([':id'=>$ent, ':unit'=>$system_unit_id]);
+                    $row = $st->fetch(PDO::FETCH_ASSOC);
+                    if (!$row) {
+                        throw new Exception("Fornecedor {$ent} não encontrado para a unidade informada.");
+                    }
+                    $fornCache[$ent] = [
+                        'cgc'  => (string)($row['cnpj_cpf'] ?? ''),
+                        'nome' => (string)($row['nome'] ?? ''),
+                    ];
+                }
+                return $fornCache[$ent];
+            };
+
+            // ===== Transação =====
+            $pdo->beginTransaction();
+
+            // ===== Lock lógico para geração do código (evita corrida) =====
+            $lockName = 'financeiro_conta_codigo_local_lock';
+            $stLock = $pdo->prepare("SELECT GET_LOCK(:name, 5)");
+            $stLock->execute([':name'=>$lockName]);
+            $gotLock = ((int)$stLock->fetchColumn() === 1);
+
+            // ===== Gera CODIGO "de zero para baixo" =====
+            $stMin = $pdo->query("SELECT MIN(codigo) FROM financeiro_conta WHERE codigo <= 0");
+            $minCodigo = $stMin->fetchColumn();
+            if ($minCodigo !== null) {
+                $nextCodigo = ((int)$minCodigo) - 1;  // 0 -> -1 -> -2 -> ...
+            } else {
+                $nextCodigo = 0;                      // primeiro local
+            }
+
+            // ===== Prepare do INSERT =====
+            $stmtIns = $pdo->prepare("
+            INSERT INTO financeiro_conta
+            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
+             valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+            VALUES
+            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
+             :valor, :plano_contas, :banco, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL)
+        ");
+
+            $ids = [];
+            $codigos = [];
+
+            foreach ($norm as $i => $c) {
+                $forn = $getFornecedor($c['entidade']);
+                $nome = $forn['nome'] !== '' ? $forn['nome'] : "NF {$c['doc']} – Fornecedor {$c['entidade']}";
+
+                $valorFinal = round($c['valorBruto'] + $c['adicional'] - $c['desconto'], 2);
+                if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo (item #".($i+1).").");
+
+                $stmtIns->execute([
+                    ':system_unit_id' => $system_unit_id,
+                    ':codigo'         => $nextCodigo,
+                    ':nome'           => $nome,
+                    ':entidade'       => $c['entidade'],
+                    ':cgc'            => $forn['cgc'],
+                    ':tipo'           => 'd', // a pagar
+                    ':doc'            => $c['doc'],
+                    ':emissao'        => $c['emissao'],
+                    ':vencimento'     => $c['vencimento'],
+                    ':valor'          => $valorFinal,
+                    ':plano_contas'   => $c['planoContas'],
+                    ':banco'          => $c['formaPgtoId'],
+                    ':obs'            => $obsExtra,
+                    ':adic'           => $c['adicional'],
+                ]);
+
+                $ids[]     = (int)$pdo->lastInsertId();
+                $codigos[] = (int)$nextCodigo;
+                $nextCodigo -= 1; // decresce para a próxima
+            }
+
+            // ===== Marca notas como incluídas no financeiro (por chave + unidade) =====
+            $notasAtualizadas = 0;
+            if (!empty($chaves)) {
+                $stU = $pdo->prepare("
+                UPDATE estoque_nota
+                SET incluida_financeiro = 1, updated_at = CURRENT_TIMESTAMP
+                WHERE system_unit_id = :unit AND chave_acesso = :chave
+                LIMIT 1
+            ");
+                foreach (array_keys($chaves) as $ch) {
+                    $stU->execute([':unit'=>$system_unit_id, ':chave'=>$ch]);
+                    $notasAtualizadas += $stU->rowCount();
+                }
+            }
+
+            $pdo->commit();
+
+            return [
+                'success'           => true,
+                'inseridos'         => count($ids),
+                'ids'               => $ids,
+                'codigos'           => $codigos,
+                'notas_atualizadas' => $notasAtualizadas > 0
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['success'=>false, 'error'=>$e->getMessage()];
+        } finally {
+            if (!empty($gotLock)) {
+                try { $pdo->query("SELECT RELEASE_LOCK('financeiro_conta_codigo_local_lock')"); } catch (\Throwable $t) {}
+            }
+        }
+    }
+
+
     public static function lancarNotaNoFinanceiroConta(array $data): array
     {
         global $pdo;

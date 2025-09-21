@@ -78,12 +78,6 @@
     let arquivosSelecionados = [];
 
     $(document).ready(function () {
-        $("#inputXml").on("change", function () {
-            arquivosSelecionados = Array.from(this.files);
-            renderTabelaArquivos();
-            $("#btnImportar").prop("disabled", arquivosSelecionados.length === 0);
-        });
-
         $("#btnImportar").click(importarNotas);
     });
 
@@ -189,14 +183,14 @@
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlString, "text/xml");
 
-        // Helpers seguros
+        // Helpers
         const first = (tag, ctx = xml) => (ctx ? ctx.getElementsByTagName(tag)[0] : null);
         const pick  = (tag, ctx = xml) => {
             const el = first(tag, ctx);
             return el ? el.textContent : null;
         };
 
-        // Nós relevantes
+        // Nós
         const emit      = first("emit");
         const enderEmit = first("enderEmit");
         const dest      = first("dest");
@@ -222,7 +216,7 @@
             });
         }
 
-        // Monta endereço como string (só inclui partes presentes)
+        // Endereço
         const joinEndereco = (ender) => {
             const partes = [
                 pick("xLgr", ender),
@@ -233,6 +227,17 @@
             ].filter(Boolean);
             return partes.join(", ");
         };
+
+        // Duplicatas (corrigido: usar 'pick' em vez de 'getText')
+        const duplicatas = [];
+        const dups = xml.getElementsByTagName("dup");
+        for (let dup of dups) {
+            duplicatas.push({
+                numero_duplicata: pick("nDup", dup),
+                data_vencimento:  pick("dVenc", dup),                  // AAAA-MM-DD
+                valor_parcela:    parseFloat(pick("vDup", dup) || 0)
+            });
+        }
 
         return {
             fornecedor: {
@@ -245,7 +250,6 @@
                 fone: pick("fone", enderEmit)
             },
 
-            // <<< NOVO: destinatário a partir de <dest> / <enderDest>
             destinatario: {
                 cnpj_cpf: pick("CNPJ", dest) || pick("CPF", dest),
                 razao: pick("xNome", dest),
@@ -271,7 +275,8 @@
             valor_produtos: parseFloat(pick("vProd") || 0),
             valor_frete: parseFloat(pick("vFrete") || 0),
 
-            itens
+            itens,
+            duplicatas
         };
     }
 

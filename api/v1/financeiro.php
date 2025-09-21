@@ -140,6 +140,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'lancarNotaNoFinanceiroConta':
                 $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
                 break;
+            case 'lancarNotaNoFinanceiroContaLote':
+                $response = FinanceiroContaController::lancarNotaNoFinanceiroContaLote($requestData);
+                break;
             case 'exportContasF360':
                 $response = FinanceiroContaController::exportContasF360($requestData);
                 break;
