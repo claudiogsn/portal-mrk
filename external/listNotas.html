@@ -199,6 +199,16 @@
                     </button>
                 </div>
             </div>
+            <div class="row" id="rowFiltros2" style="margin-top:10px;">
+                <div class="col-md-4">
+                    <label>Número da NF</label>
+                    <input type="text" id="filtroNumeroNF" class="form-control" placeholder="Ex.: 12345">
+                </div>
+                <div class="col-md-5">
+                    <label>Chave de Acesso</label>
+                    <input type="text" id="filtroChave" class="form-control" placeholder="Digite parte ou a chave completa">
+                </div>
+            </div>
 
             <div class="row" id="rowKpis" style="margin-top:10px;">
                 <div class="col-md-4">
@@ -237,17 +247,18 @@
                     <thead>
                     <tr>
                         <th style="width: 40px;"></th>
-                        <th style="width: 40px;"></th>
                         <th>Número</th>
                         <th>Data Emissão</th>
                         <th>Razão Social</th>
+                        <th>Chave de Acesso</th>
                         <th>CPF/CNPJ</th>
                         <th>Valor NF-e</th>
-                        <th>Incluída Estoque</th>
-                        <th>Incluída Financeiro</th>
+                        <th>Estoque</th>
+                        <th>Financeiro</th>
                         <th>Data Entrada</th>
                     </tr>
                     </thead>
+
                     <tbody></tbody>
                 </table>
             </div>
@@ -384,8 +395,9 @@
     $(document).ready(function () {
         $('#btnListarNotas').click(listarNotas);
 
-        $('#filtroDataInicial, #filtroDataFinal, #filtroCnpj, #filtroStatus')
+        $('#filtroDataInicial, #filtroDataFinal, #filtroCnpj, #filtroStatus, #filtroNumeroNF, #filtroChave')
             .on('input change', aplicarFiltros);
+
 
         $('#btnAbrirImportacao').click(() => {
             const url = `${baseUrlRedirect}/external/importXmlNfe.html?username=${username}&token=${token}&unit_id=${unit_id}&tag=${modelo.tag}`;
@@ -451,8 +463,7 @@
 
             if (res.data.success) {
                 notasOriginais = res.data.data || [];
-                recalcKpis(notasOriginais);
-                renderTabela(notasOriginais);
+                aplicarFiltros();
                 Swal.close();
             } else {
                 Swal.fire('Erro', 'Não foi possível carregar as notas.', 'error');
@@ -480,8 +491,13 @@
 
         const dataIni = $('#filtroDataInicial').val();
         const dataFim = $('#filtroDataFinal').val();
-        const cnpj = $('#filtroCnpj').val().replace(/\D/g, '');
+        const cnpj = ($('#filtroCnpj').val() || '').replace(/\D/g, '');
         const status = $('#filtroStatus').val();
+
+        // NOVOS
+        const numeroNF = ($('#filtroNumeroNF').val() || '').trim().toLowerCase();
+        const chave    = ($('#filtroChave').val() || '').replace(/\s/g, ''); // tira espaços
+        const chaveNums = chave.replace(/\D/g, ''); // só dígitos para comparar
 
         if (dataIni) {
             dataFiltrada = dataFiltrada.filter(n =>
@@ -495,11 +511,25 @@
         }
         if (cnpj) {
             dataFiltrada = dataFiltrada.filter(n =>
-                (n.fornecedor_cnpj || '').includes(cnpj)
+                (n.fornecedor_cnpj || '').replace(/\D/g, '').includes(cnpj)
             );
         }
 
-        // status combinado
+        // 🔎 filtro por número da NF (parcial, case-insensitive)
+        if (numeroNF) {
+            dataFiltrada = dataFiltrada.filter(n =>
+                String(n.numero_nf || '').toLowerCase().includes(numeroNF)
+            );
+        }
+
+        // 🔎 filtro por chave de acesso (parcial; ignora separadores)
+        if (chaveNums) {
+            dataFiltrada = dataFiltrada.filter(n =>
+                String(n.chave_acesso || '').replace(/\D/g, '').includes(chaveNums)
+            );
+        }
+
+        // status combinado (como já estava)
         if (status) {
             if (status === 'sem_pendencia') {
                 dataFiltrada = dataFiltrada.filter(n =>
@@ -520,12 +550,51 @@
         renderTabela(dataFiltrada);
     }
 
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function truncateWithTooltip(text, max = 30) {
+        const full = (text || '').trim();
+        const truncated = full.length > max ? (full.slice(0, max - 1).trimEnd() + '…') : full;
+        // tooltip do Bootstrap (v3) usa data-toggle="tooltip"
+        return `<span title="${escapeHtml(full)}" data-toggle="tooltip" data-placement="top">${escapeHtml(truncated)}</span>`;
+    }
+
+    function formatDateBR(s) {
+        if (!s) return '';
+        const t = String(s).replace(' ', 'T'); // cobre 'YYYY-MM-DD HH:mm:ss'
+        const d = new Date(t);
+        if (!isNaN(d)) {
+            const [y, m, da] = d.toISOString().substr(0, 10).split('-');
+            return `${da}/${m}/${y}`;
+        }
+        // fallback rápido pra 'YYYY-MM-DD...'
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+            const [y, m, da] = s.substr(0, 10).split('-');
+            return `${da}/${m}/${y}`;
+        }
+        return s;
+    }
+
+    function formatCnpjCpf(v) {
+        const d = String(v || '').replace(/\D/g, '');
+        if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        return v || '';
+    }
+
+
+
     function renderTabela(lista) {
         const tbody = $('#tabelaNotas tbody');
         tbody.empty();
 
         if (!lista.length) {
-            tbody.append('<tr><td colspan="10" class="text-center">Nenhuma nota encontrada.</td></tr>');
+            tbody.append('<tr><td colspan="11" class="text-center">Nenhuma nota encontrada.</td></tr>');
             return;
         }
 
@@ -534,45 +603,54 @@
                 ? '<span class="label label-success">Sim</span>'
                 : '<i class="fas fa-exclamation-triangle orange sino-animado" title="Não incluída no estoque"></i>';
 
-            // botão sempre ativo, independente do status
             const estoqueBadge = `
-              <a href="#" class="abrir-estoque"
-                 title="Abrir Entrada no Estoque"
-                 data-chave="${n.chave_acesso || ''}"
-                 data-fornecedor="${n.fornecedor_id || ''}">
-                 ${estoqueBadgeConteudo}
-              </a>`;
-
+      <a href="#" class="abrir-estoque"
+         title="Abrir Entrada no Estoque"
+         data-chave="${n.chave_acesso || ''}"
+         data-fornecedor="${n.fornecedor_id || ''}">
+         ${estoqueBadgeConteudo}
+      </a>`;
 
             const financeiroBadge = Number(n.incluida_financeiro) === 1
                 ? '<span class="label label-success">Sim</span>'
                 : `<a href="#" class="abrir-financeiro"
-                    data-chave="${n.chave_acesso || ''}"
-                    data-id="${n.id || ''}"
-                    data-fornecedor="${(n.fornecedor_razao || '').replace(/"/g,'&quot;')}"
-                    data-doc="${n.numero_nf || ''}"
-                    data-emissao="${n.data_emissao ? n.data_emissao.substr(0,10) : ''}"
-                    data-valor="${n.valor_total || 0}"
-                    title="Incluir no Financeiro">
-                    <i class="fas fa-exclamation-triangle orange sino-animado"></i>
-                 </a>`;
+          data-chave="${n.chave_acesso || ''}"
+          data-id="${n.id || ''}"
+          data-fornecedor="${escapeHtml(n.fornecedor_razao || '')}"
+          data-doc="${n.numero_nf || ''}"
+          data-emissao="${n.data_emissao ? n.data_emissao.substr(0,10) : ''}"
+          data-valor="${n.valor_total || 0}"
+          title="Incluir no Financeiro">
+          <i class="fas fa-exclamation-triangle orange sino-animado"></i>
+       </a>`;
+
+            const razaoHtml      = truncateWithTooltip(n.fornecedor_razao || '', 30);
+            const chaveHtml      = truncateWithTooltip(n.chave_acesso || '', 44); // NOVO (20 chars)
+            const dataEmissaoBR  = formatDateBR(n.data_emissao);
+            const dataEntradaBR  = formatDateBR(n.data_entrada);
+            const docFmt         = formatCnpjCpf(n.fornecedor_cnpj);
+            const valorFmt       = (parseFloat(n.valor_total) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
             tbody.append(`
       <tr>
-        <td><a href="#" title="Editar"><i class="fa fa-edit blue"></i></a></td>
         <td><a href="#" title="Entrada"><i class="fa fa-download green"></i></a></td>
-        <td>${n.numero_nf ?? ''}</td>
-        <td>${n.data_emissao ? n.data_emissao.substr(0, 10) : ''}</td>
-        <td>${n.fornecedor_razao ?? ''}</td>
-        <td>${n.fornecedor_cnpj ?? ''}</td>
-        <td>${(parseFloat(n.valor_total) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+        <td>${escapeHtml(n.numero_nf ?? '')}</td>
+        <td>${escapeHtml(dataEmissaoBR)}</td>
+        <td>${razaoHtml}</td>
+        <td>${chaveHtml}</td> <!-- NOVO -->
+        <td>${escapeHtml(docFmt)}</td>
+        <td>${escapeHtml(valorFmt)}</td>
         <td>${estoqueBadge}</td>
         <td>${financeiroBadge}</td>
-        <td>${n.data_entrada ? n.data_entrada.substr(0, 10) : ''}</td>
+        <td>${escapeHtml(dataEntradaBR)}</td>
       </tr>
     `);
         });
+
+        $('[data-toggle="tooltip"]').tooltip({ container: 'body' }); // mantém o tooltip funcionando
     }
+
+
     function toNumberBR(v) {
         if (v === null || v === undefined) return 0;
         if (typeof v === 'number') return v;
@@ -703,7 +781,7 @@
                     desconto: desconto || '0',
                     plano_contas: plano_contas,      // código
                     forma_pagamento_id: Number(forma_id),
-                    obs_extra: obs_extra ? obs_extra : (chave_acesso ? ('Chave NFe: ' + chave_acesso) : ''),
+                    obs_extra: obs_extra,
                     chave_acesso: chave_acesso
                 }
             };
