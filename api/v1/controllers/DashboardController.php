@@ -1308,7 +1308,7 @@ class DashboardController
             $taxaServico = (float)$res['total_taxa_servico'] ?? 0;
             $clientes = (int)$res['total_clientes'] ?? 0;
 
-            $liquido = $bruto - $taxaServico;
+            $liquido = $bruto - $taxaServico - $descontos;
             $ticketMedio = $clientes > 0 ? $bruto / $clientes : 0;
 
             return [
