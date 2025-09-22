@@ -431,6 +431,9 @@
     
                     if (response.data && response.data.success) {
                         swal("Sucesso", `Itens enviados com sucesso! Foi gerado o balanço ${response.data.balanco}`, "success");
+                        $('.quantidade').each(function () {
+                            $(this).val('');
+                        });
                     } else {
                         swal("Erro", "Erro ao enviar itens: " + response.data.message, "error");
                     }
