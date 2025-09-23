@@ -16,16 +16,30 @@
   <menuitem label="Financeiro">
     <icon>fas:dollar-sign fa-fw</icon>
     <menu>
+      <menuitem label="Relatórios Financeiro">
+            <icon>fas:circle fa-fw</icon>
+          <menu>
+            <menuitem label="DRE Gerencial">
+              <action>Dre</action>
+              <icon>fas:circle fa-fw</icon>
+            </menuitem>
+          </menu>
+        </menuitem>
       <menuitem label="Relação de Contas">
         <action>RelacaoDeContas</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>
+      <menuitem label="Fornecedores">
+        <icon>fas:industry fa-fw</icon>
+        <menu>
+          <menuitem label="Listar Fornecedores">
+            <action>ListarFornecedores</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
       <menuitem label="Importar Dados">
         <action>ImportFinanceiro</action>
-        <icon>fas:circle fa-fw</icon>
-      </menuitem>
-      <menuitem label="DRE Gerencial">
-        <action>Dre</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>
     </menu>
@@ -33,6 +47,31 @@
   <menuitem label="Estoque">
     <icon>fas:warehouse fa-fw</icon>
     <menu>
+      <menuitem label="Relatórios Estoque">
+        <icon>fas:newspaper fa-fw</icon>
+        <menu>
+          <menuitem label="Extrato Insumo">
+            <action>ExtratoInsumo</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+          <menuitem label="Relatório de Balanços">
+            <action>ListBalanco</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+          <menuitem label="Consultar Movimentações">
+            <action>ListarMovimentacoes</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+          <menuitem label="Relatório de Diferenças">
+            <action>RelatorioDiferencas</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+          <menuitem label="Vendas Detalhado">
+            <action>VendasDetalhado</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+        </menu>
+      </menuitem>
       <menuitem label="Produtos">
         <icon>fas:boxes fa-fw</icon>
         <menu>
@@ -82,10 +121,6 @@
             <action>CreateBalanco</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-          <menuitem label="Relatório de Balanços">
-            <action>ListBalanco</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Previsão Demanda">
@@ -105,15 +140,6 @@
           </menuitem>
         </menu>
       </menuitem>
-      <menuitem label="Fornecedores">
-        <icon>fas:industry fa-fw</icon>
-        <menu>
-          <menuitem label="Listar Fornecedores">
-            <action>ListarFornecedores</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
-        </menu>
-      </menuitem>
       <menuitem label="Compra">
         <icon>fas:dolly-flatbed fa-fw</icon>
         <menu>
@@ -123,10 +149,6 @@
           </menuitem>
           <menuitem label="Previsão de Compras">
             <action>PrevisaoCompras</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
-          <menuitem label="Importar Notas Fiscais Entrada">
-            <action>ImportarNotasFiscaisEntrada</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
@@ -147,14 +169,6 @@
             <action>AprovarMovimentacoes</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-          <menuitem label="Consultar Movimentações">
-            <action>ListarMovimentacoes</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
-          <menuitem label="Extrato Insumo">
-            <action>ExtratoInsumo</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
           <menuitem label="Ajuste de Saldo">
             <action>AjusteSaldo</action>
             <icon>fas:circle fa-fw</icon>
@@ -165,26 +179,14 @@
           </menuitem>
         </menu>
       </menuitem>
-      <menuitem label="Importar Compras">
-        <action>ImportComprasCsv</action>
-        <icon>fas:file-excel fa-fw</icon>
-      </menuitem>
       <menuitem label="Diferenças de Estoque">
         <icon>fas:code fa-fw</icon>
         <menu>
-          <menuitem label="Relatório de Diferenças">
-            <action>RelatorioDiferencas</action>
-            <icon>fas:circle fa-fw</icon>
-          </menuitem>
           <menuitem label="Consolidar Diferenças">
             <action>DiferencaEstoque</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
         </menu>
-      </menuitem>
-      <menuitem label="Vendas Detalhadas">
-        <action>VendasDetalhado</action>
-        <icon>fas:newspaper fa-fw</icon>
       </menuitem>
     </menu>
   </menuitem>
