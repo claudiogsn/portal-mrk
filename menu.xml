@@ -47,6 +47,10 @@
   <menuitem label="Estoque">
     <icon>fas:warehouse fa-fw</icon>
     <menu>
+      <menuitem label="Importar Notas Fiscais Entrada">
+        <action>ImportarNotasFiscaisEntrada</action>
+        <icon>fas:circle fa-fw</icon>
+      </menuitem>
       <menuitem label="Relatórios Estoque">
         <icon>fas:newspaper fa-fw</icon>
         <menu>
