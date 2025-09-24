@@ -241,11 +241,15 @@
             </div>
             <br>
             <center>
-                <div class="d-flex justify-content-end mb-2">
-                    <button class="btn btn-success" id="btnGravarNota" disabled>
-                        <i class="fa fa-save"></i>&nbsp;Gravar Nota (Entrada no Estoque)
-                    </button>
-                </div>
+            <div class="d-flex justify-content-end mb-2" style="gap:8px;">
+                <button class="btn btn-danger" id="btnFecharTela" style="border-width:2px;">
+                    <i class="fa fa-times"></i>&nbsp;Fechar
+                </button>
+
+                <button class="btn btn-success" id="btnGravarNota" disabled>
+                    <i class="fa fa-save"></i>&nbsp;Gravar Nota (Entrada no Estoque)
+                </button>
+            </div>
             </center>
 
         </div><!-- /body -->
@@ -366,10 +370,49 @@
         $('#selInsumo').on('change', onChangeInsumo);
         $('#btnGravarVinculo').on('click', gravarVinculo);
         $('#btnGravarNota').on('click', gravarNota);
+        $('#btnFecharTela').on('click', fecharTelaConfirm);
+
 
         carregarNotaEItens();
         carregarInsumos();
     });
+    function closeParentModal() {
+        // Bootstrap com jQuery (AdminBSB/BS3/4)
+        try {
+            if (window.parent && window.parent.$) {
+                window.parent.$('#modalEntradaEstoque').modal('hide');
+                return;
+            }
+        } catch (e) {}
+
+        // Bootstrap 5 sem jQuery (fallback)
+        try {
+            const modalEl = window.parent.document.getElementById('modalEntradaEstoque');
+            if (modalEl && window.parent.bootstrap) {
+                const inst = window.parent.bootstrap.Modal.getInstance(modalEl)
+                    || new window.parent.bootstrap.Modal(modalEl);
+                inst.hide();
+            }
+        } catch (e) {}
+    }
+
+    function fecharTelaConfirm() {
+        const pendente = Number(nota?.incluida_estoque) !== 1;
+
+        Swal.fire({
+            icon: pendente ? 'warning' : 'question',
+            title: pendente ? 'Fechar sem lançar no estoque?' : 'Fechar tela?',
+            text: pendente
+                ? 'A nota ainda NÃO foi incluída no estoque. Tem certeza que deseja fechar e voltar?'
+                : 'Tem certeza que deseja fechar e voltar?',
+            showCancelButton: true,
+            confirmButtonText: pendente ? 'Sim, fechar' : 'Fechar',
+            cancelButtonText: 'Cancelar'
+        }).then((res) => {
+            if (res.isConfirmed) closeParentModal();
+        });
+    }
+
 
 
     async function carregarNotaEItens() {

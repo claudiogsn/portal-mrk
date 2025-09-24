@@ -153,6 +153,41 @@
             border: 0;
             display: block;
         }
+
+        /* X do modal sem borda/círculo, apenas o glifo com brilho */
+        #modalEntradaEstoque .modal-header .close.close-x-red {
+            opacity: 1;                    /* ignora fade padrão */
+            background: transparent;       /* sem fundo */
+            border: none;                  /* sem contorno */
+            border-radius: 0;              /* nada de bola */
+            box-shadow: none;              /* sem sombra de caixa */
+
+            color: #e53935;                /* vermelho do X */
+            font-size: 28px;               /* maior */
+            line-height: 1;                /* compacta */
+            padding: 6px;                  /* área de clique confortável */
+            width: auto;
+            height: auto;
+            text-shadow:
+                    0 0 6px rgba(229, 57, 53, .6),
+                    0 0 12px rgba(229, 57, 53, .4);  /* glow só no X */
+
+            transition: transform .15s ease, text-shadow .15s ease;
+            cursor: pointer;
+        }
+
+        /* hover: cresce um pouco e intensifica o brilho (sem círculo) */
+        #modalEntradaEstoque .modal-header .close.close-x-red:hover,
+        #modalEntradaEstoque .modal-header .close.close-x-red:focus {
+            transform: scale(1.12);
+            text-shadow:
+                    0 0 8px rgba(229, 57, 53, .8),
+                    0 0 18px rgba(229, 57, 53, .55);
+            outline: none;
+        }
+
+
+
     </style>
 </head>
 <body class="theme-blue">
@@ -383,7 +418,7 @@
         <div class="modal-content">
             <div class="modal-header" style="border-bottom:1px solid #eee;">
                 <h4 class="modal-title">Compra – Importação de Nota</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">&times;</button>
+                <button type="button" class="close close-x-red" data-dismiss="modal" aria-label="Fechar">&times;</button>
             </div>
             <div class="modal-body p-0">
                 <iframe id="iframeEntradaEstoque" class="modal-iframe-full"></iframe>
