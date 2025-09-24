@@ -351,7 +351,20 @@
                         <tbody></tbody>
                     </table>
                 </div>
+                <br>
+                <div class="row" style="margin-top:8px;">
+                    <div class="col-md-6">
+                        <small id="avisoParcelas" class="text-danger" style="display:none;">
+                            A soma das parcelas difere do valor total da nota.
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-right">
+                        <strong>Total das parcelas: <span id="finTotalParcelas">R$ 0,00</span></strong>
+                    </div>
+                </div>
+
             </div>
+
 
 
             <div class="modal-footer" style="border-top: 1px solid #eee;">
@@ -586,7 +599,7 @@
         if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         return v || '';
     }
-    // ===== Helpers de parcelas =====
+    // ===== Helpers de parcelas ===== //
     function addDays(dateStr, days) {
         if (!dateStr) return '';
         const d = new Date(dateStr);
@@ -594,7 +607,6 @@
         d.setDate(d.getDate() + days);
         return d.toISOString().substr(0,10);
     }
-
     function addDaysISO(dateStr, days) {
         if (!dateStr) return '';
         const d = new Date(dateStr.replace(' ', 'T'));
@@ -602,7 +614,6 @@
         d.setDate(d.getDate() + days);
         return d.toISOString().substr(0,10);
     }
-
     function getValorFinalParaParcelas() {
         const total = toNumberBR($('#finValor').val());
         const adic  = toNumberBR($('#finAdicional').val());
@@ -610,8 +621,6 @@
         // nunca negativo
         return Math.max(0, +(total + adic - desc).toFixed(2));
     }
-
-
     function splitIgual(total, n) {
         const cents = Math.round((Number(total)||0) * 100);
         const base = Math.floor(cents / n);
@@ -621,7 +630,6 @@
         // volta para reais com 2 casas
         return out.map(c => (c/100));
     }
-
     function renderTabelaParcelas(linhas) {
         const $tb = $('#tblParcelas tbody');
         $tb.empty();
@@ -638,7 +646,6 @@
         });
         recalcTotaisParcelas();
     }
-
     function gerarParcelasAuto(qtd, total, vencInicial) {
         const valores = splitIgual(total, qtd);
         const linhas = [];
@@ -654,7 +661,6 @@
         }
         return linhas;
     }
-
     function recalcTotaisParcelas() {
         // normaliza valores editados pelo usuário e atualiza total
         let soma = 0;
@@ -670,7 +676,6 @@
         $('#somaParcelas').text( toBRL(soma) );
         $('#finTotalParcelas').text( toBRL(soma) );
     }
-
     function lerParcelasDoGrid() {
         const $rows = $('#tblParcelas tbody tr');
         const total = $rows.length;
@@ -691,8 +696,6 @@
 
         return out;
     }
-
-
     function renderTabela(lista) {
         const tbody = $('#tabelaNotas tbody');
         tbody.empty();
@@ -771,7 +774,6 @@
         const n = parseFloat(s);
         return isNaN(n) ? 0 : n;
     }
-
     function toBRL(n) {
         return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
@@ -870,17 +872,15 @@
             Swal.fire('Erro', 'Falha ao carregar dados para o financeiro.', 'error');
         }
     }
-
     function rebuildParcelasGrid(qtd, vencIni) {
         const $tb = $('#tblParcelas tbody');
         $tb.empty();
 
         const n = Math.max(1, parseInt(qtd || 1, 10));
 
-        // calcula valores iguais (com ajuste de centavos na primeira(s) parcela(s))
         const total = getValorFinalParaParcelas();
-        const base = Math.floor((total / n) * 100) / 100; // duas casas
-        let resto = +(total - (base * n)).toFixed(2);     // ajuste
+        const base = Math.floor((total / n) * 100) / 100;
+        let resto = +(total - (base * n)).toFixed(2);
 
         for (let i = 0; i < n; i++) {
             const ajuste = (resto > 0) ? Math.min(resto, 0.01) : 0;
@@ -899,10 +899,40 @@
           <input type="date" class="form-control parc-venc" value="${venc}">
         </td>
         <td>
-          <input type="text" class="form-control parc-valor" value="${toBRL(valorParc)}" readonly tabindex="-1">
+          <input type="text" class="form-control parc-valor" value="${toBRL(valorParc).replace('R$','').trim()}">
         </td>
       </tr>
     `);
+        }
+
+        // atualiza totais e aviso visual
+        recalcTotaisParcelas();
+    }
+
+    function recalcTotaisParcelas() {
+        let soma = 0;
+        $('#tblParcelas tbody tr').each(function () {
+            const $inp = $(this).find('.parc-valor');
+            const num = toNumberBR($inp.val());
+
+            // re-formata no blur para manter padrão "1.234,56"
+            $inp.off('blur').on('blur', function(){
+                $(this).val( toBRL(toNumberBR($(this).val())).replace('R$','').trim() );
+            });
+
+            soma += num;
+        });
+
+        // Atualiza o total exibido
+        $('#finTotalParcelas').text( toBRL(soma) );
+
+        // Aviso visual se soma != total da nota (tolerância de 1 centavo)
+        const totalNota = toNumberBR($('#finValor').val());
+        const dif = Math.abs(soma - totalNota);
+        if (dif >= 0.01) {
+            $('#avisoParcelas').show();
+        } else {
+            $('#avisoParcelas').hide();
         }
     }
 
@@ -923,7 +953,6 @@
             $(this).find('.parc-valor').val(toBRL(valorParc));
         });
     }
-
     async function gravarFinanceiro() {
         try {
             const fornecedor_id = Number($('#finFornecedorId').val());
@@ -1009,7 +1038,6 @@
     }
 
     $(document).on('click', '#btnGravarFinanceiro', gravarFinanceiro);
-
     // abre o modal ao clicar no ícone de exclamação
     $(document).on('click', 'a.abrir-financeiro', function (e) {
         e.preventDefault();
@@ -1028,32 +1056,28 @@
             valor_hint: val
         });
     });
-
     $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
         recalcTotaisParcelas();
     });
-
     // quando usuário muda quantidade de parcelas -> reconstrói grade (datas em 30/30)
     $(document).on('input change', '#finParcelas', function() {
         const qtd = parseInt($(this).val() || '1', 10);
         const vencIni = $('#finVencimento').val() || '';
         rebuildParcelasGrid(qtd, vencIni);
     });
-
     // quando muda o vencimento inicial -> refaz as datas 30/30 (mantém divisão)
     $(document).on('change', '#finVencimento', function() {
         const qtd = parseInt($('#finParcelas').val() || '1', 10);
         const vencIni = $(this).val() || '';
         rebuildParcelasGrid(qtd, vencIni);
     });
-
     // quando muda adicional/desconto/valor total -> só recalcula valores (não altera datas)
     $(document).on('input', '#finAdicional, #finDesconto', function() {
         recalcValoresParcelas();
     });
-
-
-
+    $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
+        recalcTotaisParcelas();
+    });
 
 </script>
 </body>
