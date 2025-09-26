@@ -1848,6 +1848,272 @@ class MovimentacaoController
     }
 
 
+    public static function extratoCopEntreBalancos(int $systemUnitId, string $dtInicio, string $dtFim): array
+    {
+        try {
+            global $pdo;
+
+            // ------------------------------------------------------------------
+            // 1) Achar TODOS os balanços do período e selecionar o primeiro e o último
+            //    Considera tanto colunas 'tipo_mov'='balanco' quanto 'tipo'='b'
+            // ------------------------------------------------------------------
+            $sqlBalancos = "
+            SELECT m.doc,
+                   MAX(m.data) AS data_ref
+            FROM movimentacao m
+            WHERE m.system_unit_id = :unitId
+              AND m.status = 1
+              AND (m.tipo_mov = 'balanco' OR m.tipo = 'b')
+              AND m.data BETWEEN :ini AND :fim
+            GROUP BY m.doc
+            ORDER BY data_ref ASC
+        ";
+            $stmt = $pdo->prepare($sqlBalancos);
+            $stmt->execute([
+                ':unitId' => $systemUnitId,
+                ':ini'    => $dtInicio,
+                ':fim'    => $dtFim,
+            ]);
+            $balancos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (count($balancos) < 2) {
+                return [
+                    'error' => 'Período informado precisa conter pelo menos dois balanços.',
+                    'detalhe' => [
+                        'qtde_balancos_no_periodo' => count($balancos),
+                        'periodo' => [$dtInicio, $dtFim],
+                    ]
+                ];
+            }
+
+            $primeiro = $balancos[0];
+            $ultimo   = $balancos[count($balancos) - 1];
+
+            $docInicial = $primeiro['doc'];
+            $docFinal   = $ultimo['doc'];
+            $dataInicialRef = $primeiro['data_ref'];
+            $dataFinalRef   = $ultimo['data_ref'];
+
+            // ------------------------------------------------------------------
+            // 2) Buscar itens (por produto) do BALANÇO INICIAL (somente COP=1)
+            // ------------------------------------------------------------------
+            $sqlIniItens = "
+            SELECT 
+                m.produto,
+                SUM(m.quantidade) AS quantidade, -- caso exista mais de uma linha por produto/doc
+                p.nome AS nome_produto,
+                c.codigo AS categoria_id,
+                c.nome AS nome_categoria
+            FROM movimentacao m
+            INNER JOIN products p 
+                ON p.codigo = m.produto 
+               AND p.system_unit_id = m.system_unit_id
+            INNER JOIN categorias c 
+                ON c.codigo = p.categoria 
+               AND c.system_unit_id = p.system_unit_id
+            WHERE m.system_unit_id = :unitId
+              AND m.status = 1
+              AND (m.tipo_mov = 'balanco' OR m.tipo = 'b')
+              AND m.doc = :docIni
+              AND p.cop = 1
+            GROUP BY m.produto, p.nome, c.codigo, c.nome
+        ";
+            $stmt = $pdo->prepare($sqlIniItens);
+            $stmt->execute([
+                ':unitId' => $systemUnitId,
+                ':docIni' => $docInicial,
+            ]);
+            $iniItens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Mapa de produto -> dados iniciais
+            $mapIni = [];
+            foreach ($iniItens as $row) {
+                $mapIni[$row['produto']] = [
+                    'produto'         => (int)$row['produto'],
+                    'nome_produto'    => $row['nome_produto'],
+                    'categoria_id'    => (int)$row['categoria_id'],
+                    'nome_categoria'  => $row['nome_categoria'],
+                    'saldo_inicial'   => (float)$row['quantidade'],
+                ];
+            }
+
+            // ------------------------------------------------------------------
+            // 3) Buscar itens do BALANÇO FINAL (somente COP=1) - para saldo final
+            // ------------------------------------------------------------------
+            $sqlFimItens = "
+            SELECT 
+                m.produto,
+                SUM(m.quantidade) AS quantidade,
+                p.nome AS nome_produto,
+                c.codigo AS categoria_id,
+                c.nome AS nome_categoria
+            FROM movimentacao m
+            INNER JOIN products p 
+                ON p.codigo = m.produto 
+               AND p.system_unit_id = m.system_unit_id
+            INNER JOIN categorias c 
+                ON c.codigo = p.categoria 
+               AND c.system_unit_id = p.system_unit_id
+            WHERE m.system_unit_id = :unitId
+              AND m.status = 1
+              AND (m.tipo_mov = 'balanco' OR m.tipo = 'b')
+              AND m.doc = :docFim
+              AND p.cop = 1
+            GROUP BY m.produto, p.nome, c.codigo, c.nome
+        ";
+            $stmt = $pdo->prepare($sqlFimItens);
+            $stmt->execute([
+                ':unitId' => $systemUnitId,
+                ':docFim' => $docFinal,
+            ]);
+            $fimItens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapFim = [];
+            foreach ($fimItens as $row) {
+                $mapFim[$row['produto']] = [
+                    'saldo_final_balanco' => (float)$row['quantidade'],
+                    // também guardamos metadados caso o produto só exista no final
+                    'nome_produto'    => $row['nome_produto'],
+                    'categoria_id'    => (int)$row['categoria_id'],
+                    'nome_categoria'  => $row['nome_categoria'],
+                ];
+            }
+
+            // ------------------------------------------------------------------
+            // 4) Determinar o conjunto de produtos alvo (união ini ∪ fim) com cop=1
+            // ------------------------------------------------------------------
+            $produtosAlvo = array_values(array_unique(array_merge(
+                array_keys($mapIni),
+                array_keys($mapFim)
+            )));
+
+            if (empty($produtosAlvo)) {
+                return [
+                    'message' => "Sem itens COP=1 nos balanços selecionados.",
+                    'janela' => [
+                        'data_inicial_balanco' => $dataInicialRef,
+                        'doc_inicial'          => $docInicial,
+                        'data_final_balanco'   => $dataFinalRef,
+                        'doc_final'            => $docFinal,
+                    ],
+                    'itens' => []
+                ];
+            }
+
+            // ------------------------------------------------------------------
+            // 5) Somar ENTRADAS e SAÍDAS entre os dois balanços (exclui balanço)
+            //     Janela: (data > dataInicialRef) AND (data <= dataFinalRef)
+            // ------------------------------------------------------------------
+            // Monta placeholders para IN(...)
+            $placeholders = [];
+            $bind = [
+                ':unitId' => $systemUnitId,
+                ':dIni'   => $dataInicialRef,
+                ':dFim'   => $dataFinalRef,
+            ];
+            foreach ($produtosAlvo as $i => $codigoProd) {
+                $ph = ":p{$i}";
+                $placeholders[] = $ph;
+                $bind[$ph] = $codigoProd;
+            }
+
+            $sqlMovs = "
+                SELECT 
+                    m.produto,
+                    SUM(CASE WHEN m.tipo_mov = 'entrada' THEN m.quantidade ELSE 0 END) AS entradas,
+                    SUM(CASE WHEN m.tipo_mov = 'saida'   THEN m.quantidade ELSE 0 END) AS saidas
+                FROM movimentacao m
+                WHERE m.system_unit_id = :unitId
+                  AND m.status = 1
+                  AND m.data >  :dIni
+                  AND m.data <= :dFim
+                  AND m.tipo_mov IN ('entrada','saida')
+                  AND m.produto IN (" . implode(',', $placeholders) . ")
+                GROUP BY m.produto
+            ";
+
+
+            $stmt = $pdo->prepare($sqlMovs);
+            $stmt->execute($bind);
+            $movSomas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapMov = [];
+            foreach ($movSomas as $row) {
+                $mapMov[$row['produto']] = [
+                    'entradas' => (float)($row['entradas'] ?? 0),
+                    'saidas'   => (float)($row['saidas']   ?? 0),
+                ];
+            }
+
+            // ------------------------------------------------------------------
+            // 6) Montar resultado por item
+            // ------------------------------------------------------------------
+            $itens = [];
+            foreach ($produtosAlvo as $codigoProd) {
+                $ini   = $mapIni[$codigoProd] ?? null;
+                $fim   = $mapFim[$codigoProd] ?? null;
+                $mov   = $mapMov[$codigoProd] ?? ['entradas' => 0.0, 'saidas' => 0.0];
+
+                // Metadados (nome/categoria) vindos do que estiver disponível
+                $nomeProduto   = $ini['nome_produto']   ?? ($fim['nome_produto']   ?? null);
+                $categoriaId   = $ini['categoria_id']   ?? ($fim['categoria_id']   ?? null);
+                $nomeCategoria = $ini['nome_categoria'] ?? ($fim['nome_categoria'] ?? null);
+
+                $saldoInicial = $ini['saldo_inicial'] ?? 0.0;
+                $entradas     = $mov['entradas'];
+                $saidas       = $mov['saidas'];
+                $saldoEsperado = $saldoInicial + $entradas - $saidas;
+                $saldoFinalBalanco = $fim['saldo_final_balanco'] ?? null;
+                $divergencia = isset($saldoFinalBalanco) ? ($saldoFinalBalanco - $saldoEsperado) : null;
+
+                $itens[] = [
+                    'produto'              => (int)$codigoProd,
+                    'nome_produto'         => $nomeProduto,
+                    'categoria_id'         => $categoriaId,
+                    'nome_categoria'       => $nomeCategoria,
+                    'saldo_inicial'        => $saldoInicial,
+                    'entradas'             => $entradas,
+                    'saidas'               => $saidas,
+                    'saldo_esperado'       => $saldoEsperado,
+                    'saldo_final_balanco'  => $saldoFinalBalanco,
+                    'divergencia'          => $divergencia,
+                ];
+            }
+
+            // ------------------------------------------------------------------
+            // 7) Mensagem amigável com DOCs e datas
+            // ------------------------------------------------------------------
+            $fmtBR = function(string $isoDate) {
+                // assume 'YYYY-MM-DD' ou 'YYYY-MM-DD HH:MM:SS' -> retorna DD/MM/YYYY
+                $d = substr($isoDate, 0, 10);
+                [$Y,$M,$D] = explode('-', $d);
+                return "{$D}/{$M}/{$Y}";
+            };
+
+            $mensagem = sprintf(
+                "Usando período %s (%s) à %s (%s).",
+                $fmtBR($dataInicialRef), $docInicial,
+                $fmtBR($dataFinalRef),   $docFinal
+            );
+
+            return [
+                'mensagem' => $mensagem,
+                'janela' => [
+                    'data_inicial_balanco' => $dataInicialRef,
+                    'doc_inicial'          => $docInicial,
+                    'data_final_balanco'   => $dataFinalRef,
+                    'doc_final'            => $docFinal,
+                ],
+                'itens' => $itens,
+            ];
+
+        } catch (Exception $e) {
+            return ['error' => 'Erro interno: ' . $e->getMessage()];
+        }
+    }
+
+
+
 
 
 
