@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatorio de Auditoria - COP</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px 15px; }
+        #conteudo-pdf { padding: 0 5px; }
+        h1, h2, h3 { margin: 0; padding: 0; }
+        h1 { font-size: 22px; font-weight: bold; }
+        h2 { font-size: 16px; margin-top: 4px; color: #555; }
+        h3 { font-size: 15px; margin-top: 10px; color: #333; }
+        hr { border: 1px solid #000; margin: 10px 0 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+        table, th, td { border: 1px solid #000; }
+        th, td { padding: 6px 6px; }
+        th { text-align: center; }
+        td { text-align: left; }
+        .tright { text-align: right; }
+        .muted { color: #666; font-size: 12px; }
+        .totais { margin-top: 10px; text-align: right; font-size: 12px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; }
+        .header-left { display: flex; flex-direction: column; }
+        .header-right img { max-height: 50px; }
+    </style>
+</head>
+<body>
+
+<div id="conteudo-pdf"></div>
+
+<script>
+    // Lê pacote do localStorage
+    const pacote = JSON.parse(localStorage.getItem('copPdfData'));
+    if (!pacote || !Array.isArray(pacote.itens)) {
+        document.body.innerHTML = "<p>Erro: Nenhum dado encontrado.</p>";
+        throw new Error('Dados do relatório COP não encontrados');
+    }
+
+    function formatDateBR(iso) {
+        if (!iso) return '';
+        const d = String(iso).slice(0,10).split('-');
+        if (d.length !== 3) return '';
+        return `${d[2]}/${d[1]}/${d[0]}`;
+    }
+    function brQty(v) {
+        if (v == null || isNaN(v)) return '-';
+        return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function brMoney(v) {
+        if (v == null || isNaN(v)) return '-';
+        return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    const ini = formatDateBR(pacote?.janela?.data_inicial_balanco);
+    const fim = formatDateBR(pacote?.janela?.data_final_balanco);
+
+    // cabeçalhos com data
+    const thSaldoInicial = `Saldo Inicial${ini ? ' ('+ini+')' : ''}`;
+    const thBalancoFinal = `Balanço Final${fim ? ' ('+fim+')' : ''}`;
+
+    // Totais
+    let totalIni=0, totalEnt=0, totalSai=0, totalEsp=0, totalFin=0, totalDiv=0, totalVal=0;
+
+    // Monta linhas
+    const linhas = pacote.itens.map(item => {
+        const nome = item.nome_produto || '-';
+        const ini   = Number(item.saldo_inicial || 0);
+        const ent   = Number(item.entradas || 0);
+        const sai   = Number(item.saidas || 0);
+        const esp   = Number(item.saldo_esperado || 0);
+        const fin   = (item.saldo_final_balanco != null ? Number(item.saldo_final_balanco) : null);
+        const div   = (item.divergencia != null ? Number(item.divergencia) : null);
+        const custo = (item.custo_unitario != null ? Number(item.custo_unitario) : null);
+        const valD  = (item.valor_diferenca != null ? Number(item.valor_diferenca)
+            : (div != null && custo != null ? div * custo : null));
+
+        totalIni += ini;
+        totalEnt += ent;
+        totalSai += sai;
+        totalEsp += esp;
+        totalFin += (fin || 0);
+        totalDiv += (div || 0);
+        totalVal += (valD || 0);
+
+        return `
+      <tr>
+        <td>${nome}</td>
+        <td class="tright">${brQty(ini)}</td>
+        <td class="tright">${brQty(ent)}</td>
+        <td class="tright">${brQty(sai)}</td>
+        <td class="tright">${brQty(esp)}</td>
+        <td class="tright">${fin != null ? brQty(fin) : '-'}</td>
+        <td class="tright">${div != null ? brQty(div) : '-'}</td>
+        <td class="tright">${custo != null ? brMoney(custo) : '-'}</td>
+        <td class="tright">${valD != null ? brMoney(valD) : '-'}</td>
+      </tr>
+    `;
+    }).join('');
+
+    // HTML principal
+    const html = `
+    <div class="header-flex">
+      <div class="header-left">
+        <h1>Portal MRK</h1>
+        <h2>Relatorio de Auditoria - COP </h2>
+        <h2>${pacote.unidade.id} - ${pacote.unidade.nome}</h2>
+        ${pacote.mensagem ? `<div class="muted" style="margin-top:6px;">${pacote.mensagem}</div>` : ''}
+      </div>
+      <div class="header-right">
+        <img id="logo" alt="Logo">
+      </div>
+    </div>
+
+    <hr>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Insumo</th>
+          <th>${thSaldoInicial}</th>
+          <th>Entradas</th>
+          <th>Saídas</th>
+          <th>Saldo Estimado Final</th>
+          <th>${thBalancoFinal}</th>
+          <th>Diferença (quant.)</th>
+          <th>Custo Unitário (R$)</th>
+          <th>Valor Diferença (R$)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhas}
+      </tbody>
+    </table>
+
+    <div class="totais">
+      Totais |
+      Inicial: <b>${brQty(totalIni)}</b> ·
+      Entradas: <b>${brQty(totalEnt)}</b> ·
+      Saídas: <b>${brQty(totalSai)}</b> ·
+      Esperado: <b>${brQty(totalEsp)}</b> ·
+      Balanço Final: <b>${brQty(totalFin)}</b> ·
+      Diferença (quant.): <b>${brQty(totalDiv)}</b> ·
+      Valor Diferença: <b>${brMoney(totalVal)}</b>
+    </div>
+  `;
+
+    document.getElementById('conteudo-pdf').innerHTML = html;
+
+    // Carrega um logo opcional (coloque um logo.png na pasta /reports/)
+    (async () => {
+        try {
+            const resp = await fetch('logo.png', { cache: 'no-store' });
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    document.getElementById('logo').src = reader.result;
+                    await gerarPdf(); // gera após logo
+                };
+                reader.readAsDataURL(blob);
+            } else {
+                await gerarPdf();
+            }
+        } catch {
+            await gerarPdf();
+        }
+    })();
+
+    async function gerarPdf() {
+        // GERA EM LANDSCAPE
+        const opt = {
+            margin: [10, 10, 10, 10],
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        const fileName = `Conferencia_COP.pdf`;
+
+        // Pergunta ação
+        const result = await Swal.fire({
+            title: 'O que deseja fazer?',
+            text: 'Escolha uma ação para o PDF gerado:',
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: '📥 Baixar PDF',
+            denyButtonText: '🔗 Compartilhar PDF'
+        });
+
+        // Gera blob do PDF
+        const arrayBuffer = await html2pdf().from(document.getElementById('conteudo-pdf')).set(opt).toPdf().output('arraybuffer');
+        const file = new File([arrayBuffer], fileName, { type: 'application/pdf' });
+
+        if (result.isConfirmed) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } else if (result.isDenied) {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: fileName,
+                    text: 'Segue relatório COP gerado.',
+                    files: [file]
+                });
+            } else {
+                Swal.fire('Aviso', 'Seu navegador não suporta compartilhamento de arquivos.', 'info');
+            }
+        }
+    }
+</script>
+</body>
+</html>

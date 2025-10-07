@@ -54,6 +54,10 @@
       <menuitem label="Relatórios Estoque">
         <icon>fas:newspaper fa-fw</icon>
         <menu>
+          <menuitem label="COP">
+            <action>ReportCop</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Extrato Insumo">
             <action>ExtratoInsumo</action>
             <icon>fas:circle fa-fw</icon>
