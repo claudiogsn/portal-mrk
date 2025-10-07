@@ -10,12 +10,13 @@ class ReportCop extends TPage
 
         $token = TSession::getValue('sessionid');
         $system_unit_id = TSession::getValue('userunitid');
+        $unit_name = TSession::getValue('userunitname');
 
 
         if ($_SERVER['SERVER_NAME'] == "localhost") {
-            $link = "http://localhost/portal-mrk/external/reportCop.html?token={$token}&system_unit_id={$system_unit_id}";
+            $link = "http://localhost/portal-mrk/external/reportCop.html?token={$token}&system_unit_id={$system_unit_id}&unit_name={$unit_name}";
         } else {
-            $link = "https://portal.mrksolucoes.com.br/external/reportCop.html?token={$token}&system_unit_id={$system_unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/reportCop.html?token={$token}&system_unit_id={$system_unit_id}&unit_name={$unit_name}";
         }
 
         $iframe = new TElement('iframe');
