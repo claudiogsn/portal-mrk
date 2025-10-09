@@ -162,6 +162,112 @@ class MdeController
         }
     }
 
+    /**
+     * Baixa o arquivo (PDF ou XML) da NF-e na PlugStorage e retorna APENAS o base64.
+     *
+     * @param int    $system_unit_id
+     * @param string $chaveAcesso  44 dígitos
+     * @param string $tipo         'pdf' ou 'xml' (case-insensitive)
+     * @return array              base64 do arquivo solicitado
+     * @throws Exception           em caso de validação ou falha na API
+     */
+    public static function baixarArquivo(int $system_unit_id, string $chaveAcesso, string $tipo): array
+    {
+        // normalizações/validações
+        $tipo = strtolower(trim($tipo));
+        if (!in_array($tipo, ['pdf', 'xml'], true)) {
+            throw new Exception("Tipo inválido: use 'pdf' ou 'xml'.");
+        }
+        $chaveAcesso = preg_replace('/\D+/', '', (string)$chaveAcesso);
+        if (strlen($chaveAcesso) !== 44) {
+            throw new Exception("Chave de acesso inválida (esperado 44 dígitos).");
+        }
+
+        global $pdo;
+
+        // CNPJ da unidade
+        $stmt = $pdo->prepare("SELECT cnpj FROM system_unit WHERE id = :id LIMIT 1");
+        $stmt->bindValue(':id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row || empty($row['cnpj'])) {
+            throw new Exception("CNPJ não encontrado para a unidade informada.");
+        }
+        $cnpj = preg_replace('/\D+/', '', $row['cnpj']);
+        if (strlen($cnpj) !== 14) {
+            throw new Exception("CNPJ da unidade inválido.");
+        }
+
+        // Monta URL conforme tipo
+        $params = [
+            'softwarehouse_token' => self::PLUG_TOKEN,
+            'cpf_cnpj'            => $cnpj,
+            'invoice_key'         => $chaveAcesso,
+            'resume'              => 'false',
+            'downloaded'          => 'true',
+        ];
+
+        if ($tipo === 'pdf') {
+            $params['mode'] = 'PDF';
+            // retorno vem dentro de data.xml.data.pdf (base64)
+            $expectPath = ['data','xml','data','pdf'];
+        } else { // xml
+            $params['mode']        = 'XML';
+            $params['return_type'] = 'ENCODE'; // pede XML em base64
+            // retorno vem em data.xml (base64)
+            $expectPath = ['data','xml'];
+        }
+
+        $url = self::PLUG_BASE_URL . 'export?' . http_build_query($params);
+
+        // Chamada HTTP
+        [$code, $body, $err] = UtilsController::httpGet($url);
+        if ($err) {
+            throw new Exception("Falha na chamada à API: $err");
+        }
+        if ($code < 200 || $code >= 300) {
+            throw new Exception("API retornou HTTP $code: $body");
+        }
+
+        $json = json_decode($body, true);
+        if (!is_array($json)) {
+            throw new Exception("Resposta da API inválida (JSON).");
+        }
+        if (!empty($json['error'])) {
+            $msg = $json['message'] ?? 'Erro desconhecido pela API';
+            throw new Exception("API retornou erro: $msg");
+        }
+
+        // Extrai base64 no caminho esperado
+        $node = $json;
+        foreach ($expectPath as $k) {
+            if (!isset($node[$k])) {
+                throw new Exception("Estrutura inesperada no retorno da API para {$tipo}.");
+            }
+            $node = $node[$k];
+        }
+
+        // $node deve ser o base64. Se vier XML cru (caso a API ignore ENCODE), encode.
+        $base64 = (string)$node;
+        $looksLikeBase64 = (bool)preg_match('/^[A-Za-z0-9+\/=\r\n]+$/', $base64) && strlen($base64) > 0;
+
+        if ($tipo === 'xml' && !$looksLikeBase64) {
+            // fallback: se veio XML puro, converte para base64
+            $base64 = base64_encode($base64);
+        }
+
+        if (!$base64) {
+            throw new Exception("Conteúdo vazio recebido da API.");
+        }
+
+        return [
+            'success' => true,
+            'content' => $base64
+        ];
+    }
+
+
     public static function importNotasPorChaves(int $system_unit_id, array $chaves): array
     {
         global $pdo;

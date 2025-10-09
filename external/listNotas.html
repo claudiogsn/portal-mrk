@@ -775,7 +775,11 @@
 
             tbody.append(`
       <tr>
-        <td><a href="#" title="Entrada"><i class="fa fa-download green"></i></a></td>
+        <td>
+          <a href="#" class="btn-download" title="Baixar NF-e" data-chave="${n.chave_acesso || ''}">
+            <i class="fa fa-download green"></i>
+          </a>
+        </td>
         <td>${escapeHtml(n.numero_nf ?? '')}</td>
         <td>${escapeHtml(dataEmissaoBR)}</td>
         <td>${razaoHtml}</td>
@@ -1111,6 +1115,82 @@
     $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
         recalcTotaisParcelas();
     });
+
+    // Clique no botão de download da linha (3 botões: PDF / XML / Cancelar)
+    $(document).on('click', 'a.btn-download', async function (e) {
+        e.preventDefault();
+        const chave = $(this).data('chave');
+        if (!chave) {
+            await Swal.fire('Atenção', 'Chave de acesso não encontrada para esta nota.', 'warning');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'Baixar arquivo',
+            text: 'Escolha o formato desejado:',
+            icon: 'question',
+            showConfirmButton: true,              // botão principal
+            confirmButtonText: 'PDF',             // confirma -> PDF
+            showDenyButton: true,                 // botão secundário
+            denyButtonText: 'XML',                // nega -> XML
+            showCancelButton: true,               // botão cancelar
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,                 // Cancelar fica à esquerda (UX comum)
+            allowOutsideClick: false
+        });
+
+        if (result.isDismissed) return; // cancelou
+        const tipo = result.isConfirmed ? 'pdf' : (result.isDenied ? 'xml' : null);
+        if (!tipo) return;
+
+        try {
+            Swal.fire({ title: 'Gerando arquivo...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            const { data: resp } = await axios.post(baseUrl, {
+                method: 'baixarArquivo',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    chave: String(chave),
+                    tipo
+                }
+            });
+
+            if (!resp?.success || !resp?.content) {
+                throw new Error(resp?.message || 'Falha ao obter arquivo.');
+            }
+
+            const fileName = `${String(chave)}.${tipo}`;
+            const mime = (tipo === 'pdf') ? 'application/pdf' : 'application/xml';
+            downloadBase64(resp.content, fileName, mime);
+
+            Swal.close();
+        } catch (err) {
+            console.error(err);
+            Swal.close();
+            await Swal.fire('Erro', err?.message || 'Não foi possível baixar o arquivo.', 'error');
+        }
+    });
+
+    // Converte base64 -> Blob e dispara download (mantém igual)
+    function downloadBase64(b64, filename, mimeType) {
+        const byteChars = atob(b64.replace(/\s/g, ''));
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mimeType || 'application/octet-stream' });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'arquivo';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+
 
 </script>
 </body>

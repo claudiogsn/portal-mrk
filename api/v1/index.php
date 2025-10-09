@@ -142,6 +142,15 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou chaves ausentes'];
                 }
                 break;
+            case 'baixarArquivo':
+                if (isset($requestData['system_unit_id']) && isset($requestData['chave']) && isset($requestData['tipo'])) {
+                    $response = MdeController::baixarArquivo($requestData['system_unit_id'], $requestData['chave'], $requestData['tipo']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro system_unit_id, chave ou tipo ausente'];
+                }
+                break;
+
 
             // Métodos para UserController
             case 'getUserDetails':
