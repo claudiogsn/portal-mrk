@@ -37,6 +37,7 @@ require_once 'controllers/SystemUnitController.php';
 require_once 'controllers/UserController.php';
 require_once 'controllers/MenuMobileController.php';
 require_once 'controllers/MdeController.php';
+require_once 'controllers/UtilsController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -123,6 +124,22 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id ausente'];
+                }
+                break;
+            case 'listarChavesNfeComStatusImportacao':
+                if (isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
+                    $response = MdeController::listarChavesNfeComStatusImportacao($requestData['system_unit_id'], $requestData['data_inicial'], $requestData['data_final']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id , data_inicial ou data_final ausentes'];
+                }
+                break;
+            case 'importNotasPorChaves':
+                if (isset($requestData['system_unit_id']) && isset($requestData['chaves'])) {
+                    $response = MdeController::importNotasPorChaves($requestData['system_unit_id'], $requestData['chaves']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou chaves ausentes'];
                 }
                 break;
 
@@ -1573,6 +1590,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+            case 'deleteProduct':
+                if ( isset($requestData['user_id']) && isset($requestData['codigo']) && isset($requestData['system_unit_id'])) {
+                    $response = ProductController::deleteProduct($requestData['codigo'], $requestData['system_unit_id'], $requestData['user_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros codigo ou system_unit_id ausente'];
+                }
+                break;
             case 'getProximoCodigoProduto':
                 if (isset($requestData['unit_id']) && isset($requestData['is_insumo'])) {
                     $response = ProductController::getProximoCodigoProduto($requestData['unit_id'], $requestData['is_insumo']);
@@ -1741,8 +1766,8 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'deleteProduto':
-                if (isset($requestData['unit_id']) && isset($requestData['codigo'])) {
-                    $response = ProductController::deleteProduto($requestData['codigo'], $requestData['unit_id']);
+                if (isset($requestData['unit_id']) && isset($requestData['codigo']) && isset($requestData['user'])) {
+                    $response = ProductController::deleteProduto($requestData['codigo'], $requestData['unit_id'], $requestData['user']);
                 } else {
                     http_response_code(400);
                     $response = ['success' => false, 'message' => 'Parâmetros unit_id ou codigo ausente'];

@@ -225,20 +225,81 @@ class ProductController {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public static function deleteProduct($id, $system_unit_id) {
+    public static function deleteProduct($codigo, $system_unit_id, $user_id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("DELETE FROM products WHERE id = :id AND system_unit_id = :system_unit_id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-        $stmt->execute();
+        try {
+            // Garanta que erros do PDO virem exceções
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        if ($stmt->rowCount() > 0) {
-            return array('success' => true, 'message' => 'Produto excluído com sucesso');
-        } else {
-            return array('success' => false, 'message' => 'Falha ao excluir produto');
+            $pdo->beginTransaction();
+
+            // 1) Carrega o produto completo
+            $sel = $pdo->prepare("
+            SELECT *
+            FROM products
+            WHERE codigo = :codigo AND system_unit_id = :system_unit_id
+            LIMIT 1
+        ");
+            $sel->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+            $sel->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $sel->execute();
+
+            $product = $sel->fetch(PDO::FETCH_ASSOC);
+
+            if (!$product) {
+                $pdo->rollBack();
+                return ['success' => false, 'message' => 'Produto não encontrado'];
+            }
+
+            // 2) Prepara snapshot JSON com todas as colunas do produto
+            //    (mantém acentos e barras sem escape)
+            $snapshot = json_encode($product, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            // 3) Escreve no log (inclui id/codigo/unidade/usuário + snapshot completo)
+            $ins = $pdo->prepare("
+            INSERT INTO product_delete_log
+                (system_unit_id, codigo, user_id, product_id, product_snapshot, deleted_at)
+            VALUES
+                (:system_unit_id, :codigo, :user_id, :product_id, CAST(:snapshot AS JSON), NOW())
+        ");
+            $ins->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $ins->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+            $ins->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+            $ins->bindValue(':product_id', $product['id'] ?? null, $product['id'] !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
+
+            // Se sua coluna for LONGTEXT em vez de JSON, use apenas ':snapshot' sem CAST
+            $ins->bindValue(':snapshot', $snapshot, PDO::PARAM_STR);
+
+            $ins->execute();
+
+            // 4) Deleta o produto
+            $del = $pdo->prepare("
+            DELETE FROM products
+            WHERE codigo = :codigo AND system_unit_id = :system_unit_id
+        ");
+            $del->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+            $del->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $del->execute();
+
+            if ($del->rowCount() > 0) {
+                $pdo->commit();
+                return ['success' => true, 'message' => 'Produto excluído com sucesso'];
+            } else {
+                // Caso raríssimo (produto sumiu entre SELECT e DELETE)
+                $pdo->rollBack();
+                return ['success' => false, 'message' => 'Falha ao excluir produto'];
+            }
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['success' => false, 'message' => 'Erro ao excluir produto: ' . $e->getMessage()];
         }
     }
+
+
 
     public static function listProdutosDetalhado($unit_id) {
         global $pdo;
@@ -972,67 +1033,171 @@ class ProductController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public static function deleteProduto($codigo, $unit_id)
+    public static function deleteProduto($codigo, $unit_id, $user_id)
     {
         global $pdo;
 
         try {
-            // Verificar se o produto existe
-            $stmt = $pdo->prepare("SELECT * FROM products WHERE system_unit_id = ? AND codigo = ?");
-            $stmt->execute([$unit_id, $codigo]);
-            $produto = $stmt->fetch(PDO::FETCH_ASSOC);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $pdo->beginTransaction();
 
-            if (!$produto) {
+            // 1) Carrega o produto completo
+            $sel = $pdo->prepare("
+            SELECT *
+            FROM products
+            WHERE system_unit_id = :unit_id AND codigo = :codigo
+            LIMIT 1
+        ");
+            $sel->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
+            $sel->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+            $sel->execute();
+
+            $product = $sel->fetch(PDO::FETCH_ASSOC);
+
+            if (!$product) {
+                $pdo->rollBack();
                 http_response_code(404);
                 return ['success' => false, 'message' => 'Produto não encontrado'];
             }
 
-            // Verificar se existe movimentação
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM movimentacao WHERE system_unit_id = ? AND produto = ?");
-            $stmt->execute([$unit_id, $codigo]);
-            $temMovimentacao = $stmt->fetchColumn() > 0;
+            // 2) Snapshot JSON do produto (antes de qualquer alteração)
+            $snapshot = json_encode($product, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-            // Verificar e apagar fichas de composição/ficha técnica
+            // 3) Verifica movimentações
+            $stmtMov = $pdo->prepare("
+            SELECT COUNT(*) 
+            FROM movimentacao 
+            WHERE system_unit_id = :unit_id AND produto = :codigo
+        ");
+            $stmtMov->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
+            $stmtMov->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+            $stmtMov->execute();
+            $temMovimentacao = $stmtMov->fetchColumn() > 0;
+
+            // 4) Apaga fichas de composição / produção (como produto e como insumo)
             $msgs = [];
+            $extra = [
+                'had_movements' => $temMovimentacao,
+                'deleted'       => [],   // contagens de linhas removidas em relações
+                'action'        => null  // 'inactivated' | 'deleted'
+            ];
 
-            $composicoesComoProduto = $pdo->prepare("DELETE FROM compositions WHERE system_unit_id = ? AND product_id = ?");
-            $composicoesComoProduto->execute([$unit_id, $codigo]);
-            if ($composicoesComoProduto->rowCount() > 0) {
+            // compositions como produto
+            $delCompProd = $pdo->prepare("
+            DELETE FROM compositions 
+            WHERE system_unit_id = :unit_id AND product_id = :codigo
+        ");
+            $delCompProd->execute([':unit_id' => $unit_id, ':codigo' => $codigo]);
+            $rcCompProd = $delCompProd->rowCount();
+            if ($rcCompProd > 0) {
                 $msgs[] = 'Ficha de Composição removida';
             }
+            $extra['deleted']['compositions_as_product'] = $rcCompProd;
 
-            $composicoesComoInsumo = $pdo->prepare("DELETE FROM compositions WHERE system_unit_id = ? AND insumo_id = ?");
-            $composicoesComoInsumo->execute([$unit_id, $codigo]);
-            if ($composicoesComoInsumo->rowCount() > 0) {
+            // compositions como insumo
+            $delCompIns = $pdo->prepare("
+            DELETE FROM compositions 
+            WHERE system_unit_id = :unit_id AND insumo_id = :codigo
+        ");
+            $delCompIns->execute([':unit_id' => $unit_id, ':codigo' => $codigo]);
+            $rcCompIns = $delCompIns->rowCount();
+            if ($rcCompIns > 0) {
                 $msgs[] = 'Utilização como insumo em composição removida';
             }
+            $extra['deleted']['compositions_as_insumo'] = $rcCompIns;
 
-            $productionsComoProduto = $pdo->prepare("DELETE FROM productions WHERE system_unit_id = ? AND product_id = ?");
-            $productionsComoProduto->execute([$unit_id, $codigo]);
-            if ($productionsComoProduto->rowCount() > 0) {
+            // productions como produto
+            $delProdProd = $pdo->prepare("
+            DELETE FROM productions 
+            WHERE system_unit_id = :unit_id AND product_id = :codigo
+        ");
+            $delProdProd->execute([':unit_id' => $unit_id, ':codigo' => $codigo]);
+            $rcProdProd = $delProdProd->rowCount();
+            if ($rcProdProd > 0) {
                 $msgs[] = 'Ficha de Produção removida';
             }
+            $extra['deleted']['productions_as_product'] = $rcProdProd;
 
-            $productionsComoInsumo = $pdo->prepare("DELETE FROM productions WHERE system_unit_id = ? AND insumo_id = ?");
-            $productionsComoInsumo->execute([$unit_id, $codigo]);
-            if ($productionsComoInsumo->rowCount() > 0) {
+            // productions como insumo
+            $delProdIns = $pdo->prepare("
+            DELETE FROM productions 
+            WHERE system_unit_id = :unit_id AND insumo_id = :codigo
+        ");
+            $delProdIns->execute([':unit_id' => $unit_id, ':codigo' => $codigo]);
+            $rcProdIns = $delProdIns->rowCount();
+            if ($rcProdIns > 0) {
                 $msgs[] = 'Utilização como insumo em ficha de produção removida';
             }
+            $extra['deleted']['productions_as_insumo'] = $rcProdIns;
 
+            // 5) Decide: inativar (se tem movimentação) ou excluir (se não tem)
             if ($temMovimentacao) {
-                // Apenas inativa o produto
-                $update = $pdo->prepare("UPDATE products SET status = 0 WHERE system_unit_id = ? AND codigo = ?");
-                $update->execute([$unit_id, $codigo]);
+                $upd = $pdo->prepare("
+                UPDATE products 
+                SET status = 0 
+                WHERE system_unit_id = :unit_id AND codigo = :codigo
+            ");
+                $upd->execute([':unit_id' => $unit_id, ':codigo' => $codigo]);
+
                 $msgs[] = 'Produto inativado pois possui movimentações registradas';
+                $extra['action'] = 'inactivated';
+
+                // Loga a inativação (mantém o snapshot do estado antigo)
+                $insLog = $pdo->prepare("
+                INSERT INTO product_delete_log
+                    (system_unit_id, codigo, user_id, product_id, product_snapshot, deleted_at, extra)
+                VALUES
+                    (:unit_id, :codigo, :user_id, :product_id, CAST(:snapshot AS JSON), NOW(), CAST(:extra AS JSON))
+            ");
+                $insLog->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
+                $insLog->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+                $insLog->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+                $insLog->bindValue(':product_id', $product['id'], PDO::PARAM_INT);
+                $insLog->bindValue(':snapshot', $snapshot, PDO::PARAM_STR);
+                $insLog->bindValue(':extra', json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PDO::PARAM_STR);
+                $insLog->execute();
+
+                $pdo->commit();
+                return ['success' => true, 'message' => implode('. ', $msgs)];
             } else {
-                // Remove o produto
-                $delete = $pdo->prepare("DELETE FROM products WHERE system_unit_id = ? AND codigo = ?");
-                $delete->execute([$unit_id, $codigo]);
-                $msgs[] = 'Produto excluído com sucesso';
+                // Excluir o produto
+                $del = $pdo->prepare("
+                DELETE FROM products
+                WHERE system_unit_id = :unit_id AND codigo = :codigo
+            ");
+                $del->execute([':unit_id' => $unit_id, ':codigo' => $codigo]);
+
+                if ($del->rowCount() > 0) {
+                    $msgs[] = 'Produto excluído com sucesso';
+                    $extra['action'] = 'deleted';
+
+                    // Loga a exclusão
+                    $insLog = $pdo->prepare("
+                    INSERT INTO product_delete_log
+                        (system_unit_id, codigo, user_id, product_id, product_snapshot, deleted_at, extra)
+                    VALUES
+                        (:unit_id, :codigo, :user_id, :product_id, CAST(:snapshot AS JSON), NOW(), CAST(:extra AS JSON))
+                ");
+                    $insLog->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
+                    $insLog->bindValue(':codigo', $codigo, PDO::PARAM_INT);
+                    $insLog->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+                    $insLog->bindValue(':product_id', $product['id'], PDO::PARAM_INT);
+                    $insLog->bindValue(':snapshot', $snapshot, PDO::PARAM_STR);
+                    $insLog->bindValue(':extra', json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PDO::PARAM_STR);
+                    $insLog->execute();
+
+                    $pdo->commit();
+                    return ['success' => true, 'message' => implode('. ', $msgs)];
+                } else {
+                    $pdo->rollBack();
+                    return ['success' => false, 'message' => 'Falha ao excluir produto'];
+                }
             }
 
-            return ['success' => true, 'message' => implode('. ', $msgs)];
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             http_response_code(500);
             return ['success' => false, 'message' => 'Erro ao excluir produto: ' . $e->getMessage()];
         }

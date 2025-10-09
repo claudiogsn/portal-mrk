@@ -79,6 +79,9 @@
                 max-height: 200px;
             }
         }
+
+        .swal2-container { z-index: 2000 !important; }
+
     </style>
 </head>
 <body class="theme-blue">
@@ -260,8 +263,10 @@
 
             <div class="modal-footer">
                 <button id="salvarProduto" class="btn btn-primary">Salvar</button>
+                <button id="btnDeletarProduto" class="btn btn-danger" style="display:none;">Excluir</button>
                 <button class="btn btn-default" data-dismiss="modal">Fechar</button>
             </div>
+
         </div>
     </div>
 </div>
@@ -273,6 +278,11 @@
 
     const token = new URLSearchParams(window.location.search).get('token');
     const system_unit_id = new URLSearchParams(window.location.search).get('system_unit_id');
+
+    const currentUser = new URLSearchParams(window.location.search).get('user');
+    let canDelete = false;
+    const ALLOWED_GROUP_IDS_FOR_DELETE = [1, 2, 3];
+
     let todosProdutos = [];
     let ordenacaoCampo = 'codigo';
     let ordenacaoAsc = true;
@@ -291,6 +301,28 @@
         $(iconId).removeClass('fa-sort').addClass(ordenacaoAsc ? 'fa-sort-up' : 'fa-sort-down');
 
         aplicarFiltros(); // re-renderiza ordenado
+    }
+
+    async function carregarPermissoesUsuario() {
+        try {
+            if (!currentUser) return; // se não veio user na URL, não habilita exclusão
+
+            const resp = await axios.post(baseUrl, {
+                method: 'getUserDetails',
+                token,
+                data: { user: currentUser }   // pode ser "1" (id) ou "login"
+            });
+
+            if (resp.data && resp.data.success && resp.data.userDetails && Array.isArray(resp.data.userDetails.groups)) {
+                const groups = resp.data.userDetails.groups;
+                canDelete = groups.some(g => ALLOWED_GROUP_IDS_FOR_DELETE.includes(Number(g.id)));
+            } else {
+                canDelete = false;
+            }
+        } catch (e) {
+            console.warn('Falha ao carregar permissões do usuário:', e);
+            canDelete = false;
+        }
     }
 
 
@@ -388,6 +420,8 @@
             }
         });
 
+        carregarPermissoesUsuario();
+
         carregarProdutos();
         $('#filtroNome, #filtroStatus').on('input change', aplicarFiltros);
     });
@@ -405,6 +439,9 @@
         loadCategories();
         $('#tabelaFicha, #tabelaComposicao').empty();
         $('#modalProduto').modal('show');
+        $('#btnDeletarProduto').hide().off('click');
+        $(document).off('focusin.bs.modal');
+
     }
 
     async function abrirModalEditar(produto) {
@@ -452,40 +489,80 @@
              </tr>`).join('');
         $('#tabelaMovimentacoes').html(movHTML);
 
+        if (canDelete) {
+            $('#btnDeletarProduto')
+                .show()
+                .off('click')
+                .on('click', async () => {
+                    await excluirProduto(produto.codigo); // usa a confirmação com "EXCLUIR"
+                });
+        } else {
+            $('#btnDeletarProduto').hide().off('click');
+        }
+
 
         $('#modalProduto').modal('show');
     }
 
     async function excluirProduto(codigo) {
-        const confirm = await Swal.fire({
-            title: 'Confirma exclusão?',
-            text: 'O sistema irá verificar movimentações e inativar ou excluir o produto.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, continuar',
-            cancelButtonText: 'Cancelar'
-        });
-
-        if (!confirm.isConfirmed) return;
-
-        try {
-            Swal.fire({ title: 'Processando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-
-            const response = await axios.post(baseUrl, {
-                method: 'deleteProduto',
-                token,
-                data: { codigo, unit_id: system_unit_id }
+        await withModalFocusDisabled(async () => {
+            const confirm = await Swal.fire({
+                title: 'Confirma a exclusão permanente?',
+                html: `
+        <p style="text-align:left">
+          Esta ação <b>não poderá ser desfeita</b> e removerá o produto definitivamente.
+        </p>
+        <p style="text-align:left;margin-top:8px">
+          Para confirmar, <b>digite a palavra EXCLUIR</b> no campo abaixo:
+        </p>
+      `,
+                input: 'text',
+                inputPlaceholder: 'Digite EXCLUIR para confirmar',
+                showCancelButton: true,
+                confirmButtonText: 'Apagar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: true,
+                returnFocus: false, // não tenta voltar o foco pro botão do Swal
+                didOpen: () => {
+                    const input = Swal.getInput();
+                    if (input) input.focus(); // força foco no campo
+                },
+                preConfirm: (valor) => {
+                    if ((valor || '').trim().toUpperCase() !== 'EXCLUIR') {
+                        Swal.showValidationMessage('Você precisa digitar exatamente: EXCLUIR');
+                    }
+                }
             });
 
-            Swal.close();
-            Swal.fire('Resultado', response.data.message, 'info');
-            carregarProdutos();
+            if (!confirm.isConfirmed) return;
 
-        } catch (error) {
-            Swal.fire('Erro', 'Erro ao excluir/inativar produto.', 'error');
-            console.error(error);
-        }
+            try {
+                Swal.fire({ title: 'Processando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+                const response = await axios.post(baseUrl, {
+                    method: 'deleteProduto',
+                    token,
+                    data: {
+                        codigo,
+                        unit_id: system_unit_id,
+                        user: currentUser // envia para log no backend
+                    }
+                });
+
+                Swal.close();
+                Swal.fire('Resultado', response.data.message || 'Operação concluída', 'info');
+                $('#modalProduto').modal('hide');
+                carregarProdutos();
+
+            } catch (error) {
+                Swal.fire('Erro', 'Erro ao excluir/inativar produto.', 'error');
+                console.error(error);
+            }
+        });
     }
+
+
 
 
     async function carregarProdutos() {
@@ -613,6 +690,36 @@
             select.val(selectedCategory);
         }
     }
+
+
+    function withModalFocusDisabled(fn) {
+        // guarda a função original do Bootstrap que força foco no modal
+        const originalEnforceFocus = $.fn.modal && $.fn.modal.Constructor
+            ? $.fn.modal.Constructor.prototype.enforceFocus
+            : null;
+
+        // desativa a forçagem de foco do Bootstrap
+        try {
+            if (originalEnforceFocus) {
+                $.fn.modal.Constructor.prototype.enforceFocus = function () {};
+                // "cinto e suspensório": remove o handler global que trava o focus
+                $(document).off('focusin.bs.modal');
+            }
+        } catch (e) {
+            // ignora se não existir Bootstrap ou algo assim
+        }
+
+        // executa a função (normalmente um await Swal.fire(...))
+        return Promise.resolve()
+            .then(fn)
+            .finally(() => {
+                // restaura comportamento original
+                if (originalEnforceFocus) {
+                    $.fn.modal.Constructor.prototype.enforceFocus = originalEnforceFocus;
+                }
+            });
+    }
+
 </script>
 </body>
 </html>

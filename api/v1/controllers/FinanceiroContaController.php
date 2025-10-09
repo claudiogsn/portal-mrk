@@ -809,20 +809,7 @@ class FinanceiroContaController {
             $valorFinal = round($valorBruto + $adicional - $desconto, 2);
             if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo.");
 
-            // Observação (breakdown)
-            $obsPartes = [];
-            $obsPartes[] = "NF {$doc}";
-            $obsPartes[] = "Bruto: " . number_format($valorBruto, 2, ',', '.');
-            $obsPartes[] = "Adic: "  . number_format($adicional, 2, ',', '.');
-            $obsPartes[] = "Desc: "  . number_format($desconto, 2, ',', '.');
-            $obsPartes[] = "Final: " . number_format($valorFinal, 2, ',', '.');
-            if ($planoContas) $obsPartes[] = "Plano: {$planoContas}";
-            if (!empty($data['obs_extra'])) $obsPartes[] = trim((string)$data['obs_extra']);
-            if ($chaveAcesso && strpos(implode(' ', $obsPartes), 'Chave NFe:') === false) {
-                $obsPartes[] = "Chave NFe: {$chaveAcesso}";
-            }
-            $obsPartes[] = "[ORIGEM: LOCAL]";
-            $obs = implode(' | ', $obsPartes);
+            $obs = $data['obs_extra'] ?? '';
 
             // ===== Transação =====
             $pdo->beginTransaction();

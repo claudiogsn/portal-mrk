@@ -853,7 +853,6 @@
             );
             $('#finAdicional').val('0');
             $('#finDesconto').val('0');
-            $('#finObs').val(d.chave_acesso ? ('Chave NFe: ' + d.chave_acesso) : (chave_acesso ? ('Chave NFe: ' + chave_acesso) : ''));
 
             // Planos e formas (como antes)
             const planos = Array.isArray(d.planos_de_conta) ? d.planos_de_conta.slice() : [];
@@ -1028,8 +1027,7 @@
             const contas = linhas.map(ln => {
                 const obs = [
                     obs_base,
-                    `Parcela ${ln.indice}/${ln.total_parcelas}`,
-                    (chave_acesso ? `Chave NFe: ${chave_acesso}` : '')
+                    `Parcela ${ln.indice}/${ln.total_parcelas}`
                 ].filter(Boolean).join(' | ');
 
                 return {

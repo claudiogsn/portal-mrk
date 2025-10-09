@@ -16,57 +16,138 @@
     <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet" />
     <!-- FilePond JS -->
     <script src="https://unpkg.com/filepond@^4/dist/filepond.js"></script>
-
-
     <style>
         .status-ok { color: green; font-weight: bold; }
         .status-erro { color: red; font-weight: bold; }
-        .custom-file-label::after {
-            content: "Procurar";
-        }
-        .filepond--list {
-            display: none !important;
-        }
-
-        .filepond--file-info {
-            display: none !important;
-        }
-
-        .filepond--file-status {
-            display: none !important;
-        }
+        .filepond--list, .filepond--file-info, .filepond--file-status { display: none !important; }
+        .selected-row { background-color: rgba(0, 123, 255, 0.2); }
+        .table thead th { white-space: nowrap; }
+        .small-text { font-size: 12px; color:#666; }
     </style>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
     <br>
-    <div class="card">
-        <div class="body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <input type="file" id="inputXml" accept=".xml" multiple>
-                </div>
-                <div class="col-md-6 text-right">
-                    <button class="btn btn-primary" id="btnImportar" disabled>Importar</button>
-                </div>
-            </div>
 
-            <div class="table-responsive">
-                <table class="table table-striped" id="tabelaArquivos">
-                    <thead>
-                    <tr>
-                        <th>Arquivo</th>
-                        <th>Status</th>
-                    </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+    <!-- NAV TABS -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li role="presentation" class="active">
+            <a href="#tab-xml" aria-controls="tab-xml" role="tab" data-toggle="tab">
+                <i class="fas fa-file-code"></i> XML Manual
+            </a>
+        </li>
+        <li role="presentation">
+            <a href="#tab-sefaz" aria-controls="tab-sefaz" role="tab" data-toggle="tab">
+                <i class="fas fa-cloud-download-alt"></i> Via SEFAZ
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- =========================
+             TAB 1: XML MANUAL
+             ========================= -->
+        <div role="tabpanel" class="tab-pane active" id="tab-xml">
+            <div class="card">
+                <div class="body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <input type="file" id="inputXml" accept=".xml" multiple>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <button class="btn btn-primary" id="btnImportarXml" disabled>Importar</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="tabelaArquivos">
+                            <thead>
+                            <tr>
+                                <th>Arquivo</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                </div>
             </div>
         </div>
+
+        <!-- =========================
+             TAB 2: VIA SEFAZ
+             ========================= -->
+        <div role="tabpanel" class="tab-pane" id="tab-sefaz">
+            <div class="card">
+                <div class="body">
+                    <!-- filtros -->
+                    <div class="row">
+                        <div class="col-sm-3">
+                            <label for="dataIni">Data inicial</label>
+                            <input type="date" class="form-control" id="dataIni">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="dataFim">Data final</label>
+                            <input type="date" class="form-control" id="dataFim">
+                        </div>
+                        <div class="col-sm-3">
+                            <label>&nbsp;</label>
+                            <div class="checkbox" style="margin-top:6px;">
+                                <input type="checkbox" id="ckMostrarImportadas" class="chk-col-blue">
+                                <label for="ckMostrarImportadas"> Mostrar notas já importadas</label>
+                            </div>
+                            <div class="small-text">Por padrão, listamos apenas as <b>não importadas</b>.</div>
+                        </div>
+                        <div class="col-sm-3 text-right">
+                            <label>&nbsp;</label><br>
+                            <button class="btn btn-info" id="btnBuscar"><i class="fas fa-search"></i> Buscar</button>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <button class="btn btn-success" id="btnImportarSelecionadas" disabled>
+                                <i class="fas fa-download"></i> Importar selecionadas
+                            </button>
+                        </div>
+                        <div class="col-sm-6 text-right">
+                            <span id="resumoNotas" class="small-text"></span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="margin-top:10px;">
+                        <table class="table table-striped" id="tabelaSefaz">
+                            <thead>
+                            <tr>
+                                <th style="width:48px;">
+                                    <input class="chk-col-blue" type="checkbox" id="selectAll" title="Selecionar Todos">
+                                    <label for="selectAll"></label>
+                                </th>
+                                <th>Chave de Acesso</th>
+                                <th>Emitente (Razão)</th>
+                                <th>Valor Total</th>
+                                <th>Data Emissão</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script>
+    // ==============================
+    // CONFIG & CONTEXTO
+    // ==============================
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
@@ -75,37 +156,61 @@
     const token = urlParams.get('token');
     const unit_id = urlParams.get('unit_id');
 
+    // ==============================
+    // XML MANUAL (FILEPOND)
+    // ==============================
     let arquivosSelecionados = [];
 
-    $(document).ready(function () {
-        $("#btnImportar").click(importarNotas);
+    const pond = FilePond.create(document.querySelector('#inputXml'), {
+        allowMultiple: true,
+        credits: false,
+        labelIdle: 'Arraste seus arquivos XML ou <span class="filepond--label-action">Selecione</span>',
+        acceptedFileTypes: ['application/xml', 'text/xml'],
+        allowFileEncode: false,
+        allowFilePreview: false,
+        allowFileTypeValidation: true,
+        allowFileSizeValidation: true,
+        allowReorder: false,
+        allowReplace: false,
+        itemInsertLocation: null,
+        maxFiles: 100,
+        fileValidateTypeLabelExpectedTypes: 'Apenas arquivos XML são permitidos',
     });
 
     function renderTabelaArquivos() {
         const tbody = $("#tabelaArquivos tbody");
         tbody.empty();
-
         if (arquivosSelecionados.length === 0) {
             tbody.append('<tr><td colspan="2" class="text-center">Nenhum arquivo selecionado.</td></tr>');
             return;
         }
-
         arquivosSelecionados.forEach((file, idx) => {
             tbody.append(`
-                <tr data-idx="${idx}">
-                    <td>${file.name}</td>
-                    <td class="status">Aguardando importação</td>
-                </tr>
-            `);
+        <tr data-idx="${idx}">
+          <td>${file.name}</td>
+          <td class="status">Aguardando importação</td>
+        </tr>
+      `);
         });
     }
 
-    async function importarNotas() {
+    pond.on('updatefiles', (fileItems) => {
+        arquivosSelecionados = fileItems.map(f => f.file);
+        const qtd = arquivosSelecionados.length;
+        pond.labelIdle = qtd === 0
+            ? 'Arraste seus arquivos XML ou <span class="filepond--label-action">Selecione</span>'
+            : `${qtd} arquivo(s) selecionado(s)`;
+        renderTabelaArquivos();
+        $("#btnImportarXml").prop("disabled", qtd === 0);
+    });
+
+    $("#btnImportarXml").on('click', importarNotasXml);
+
+    async function importarNotasXml() {
         if (arquivosSelecionados.length === 0) {
             await Swal.fire("Aviso", "Selecione pelo menos um arquivo XML.", "warning");
             return;
         }
-
         const confirm = await Swal.fire({
             title: "Confirmar Importação",
             text: `Deseja importar ${arquivosSelecionados.length} nota(s) fiscal(is)?`,
@@ -114,10 +219,9 @@
             confirmButtonText: "Sim, importar",
             cancelButtonText: "Cancelar"
         });
-
         if (!confirm.isConfirmed) return;
 
-        $("#btnImportar").prop("disabled", true);
+        $("#btnImportarXml").prop("disabled", true);
 
         let ok = 0, fail = 0;
         const detalhes = [];
@@ -125,30 +229,21 @@
         for (let i = 0; i < arquivosSelecionados.length; i++) {
             const file = arquivosSelecionados[i];
             const row = $(`#tabelaArquivos tbody tr[data-idx="${i}"] .status`);
-
-            // barra de progresso
             row.html(`
-      <div class="progress" style="height:20px;">
-        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-             role="progressbar" style="width: 100%">
-          Importando...
+        <div class="progress" style="height:20px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 100%">
+            Importando...
+          </div>
         </div>
-      </div>
-    `);
-
+      `);
             try {
                 const xmlText = await file.text();
                 const notaJson = xmlToJson(xmlText);
-
                 const { data: resp } = await axios.post(baseUrl, {
                     method: "importNotaFiscal",
                     token,
-                    data: {
-                        system_unit_id: unit_id,
-                        notaJson
-                    }
+                    data: { system_unit_id: unit_id, notaJson }
                 });
-
                 if (resp && resp.success) {
                     ok++;
                     row.html(`<span class="status-ok"><i class="fa fa-check"></i> Importada com sucesso</span>`);
@@ -166,38 +261,32 @@
             }
         }
 
-        $("#btnImportar").prop("disabled", false);
+        $("#btnImportarXml").prop("disabled", false);
 
         const icon = fail === 0 ? "success" : (ok === 0 ? "error" : "warning");
         const title = fail === 0 ? "Importação concluída" : (ok === 0 ? "Nenhuma nota importada" : "Importação parcial");
         const html = `
-    <p><b>Sucesso:</b> ${ok} &nbsp; | &nbsp; <b>Falhas:</b> ${fail}</p>
-    ${detalhes.length ? `<ul style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">${detalhes.join("")}</ul>` : ""}
-  `;
-
+      <p><b>Sucesso:</b> ${ok} &nbsp; | &nbsp; <b>Falhas:</b> ${fail}</p>
+      ${detalhes.length ? `<ul style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">${detalhes.join("")}</ul>` : ""}
+    `;
         await Swal.fire({ title, icon, html });
     }
 
-    // Converte XML string -> JSON (inclui fornecedor + destinatario + itens)
+    // Converte XML string -> JSON (igual ao seu)
     function xmlToJson(xmlString) {
         const parser = new DOMParser();
         const xml = parser.parseFromString(xmlString, "text/xml");
-
-        // Helpers
         const first = (tag, ctx = xml) => (ctx ? ctx.getElementsByTagName(tag)[0] : null);
         const pick  = (tag, ctx = xml) => {
             const el = first(tag, ctx);
             return el ? el.textContent : null;
         };
-
-        // Nós
         const emit      = first("emit");
         const enderEmit = first("enderEmit");
         const dest      = first("dest");
         const enderDest = first("enderDest");
         const infNFe    = first("infNFe");
 
-        // Itens
         const itens = [];
         const dets = xml.getElementsByTagName("det");
         for (let d of dets) {
@@ -216,25 +305,20 @@
             });
         }
 
-        // Endereço
         const joinEndereco = (ender) => {
             const partes = [
-                pick("xLgr", ender),
-                pick("nro", ender),
-                pick("xCpl", ender),
-                pick("xBairro", ender),
+                pick("xLgr", ender), pick("nro", ender), pick("xCpl", ender), pick("xBairro", ender),
                 [pick("xMun", ender), pick("UF", ender)].filter(Boolean).join("/")
             ].filter(Boolean);
             return partes.join(", ");
         };
 
-        // Duplicatas (corrigido: usar 'pick' em vez de 'getText')
         const duplicatas = [];
         const dups = xml.getElementsByTagName("dup");
         for (let dup of dups) {
             duplicatas.push({
                 numero_duplicata: pick("nDup", dup),
-                data_vencimento:  pick("dVenc", dup),                  // AAAA-MM-DD
+                data_vencimento:  pick("dVenc", dup),
                 valor_parcela:    parseFloat(pick("vDup", dup) || 0)
             });
         }
@@ -249,7 +333,6 @@
                 insc_estadual: pick("IE", emit),
                 fone: pick("fone", enderEmit)
             },
-
             destinatario: {
                 cnpj_cpf: pick("CNPJ", dest) || pick("CPF", dest),
                 razao: pick("xNome", dest),
@@ -264,7 +347,6 @@
                 insc_estadual: pick("IE", dest),
                 fone: pick("fone", enderDest)
             },
-
             chave_acesso: (infNFe?.getAttribute("Id") || "").replace(/^NFe/i, ""),
             numero_nf: pick("nNF"),
             serie: pick("serie"),
@@ -274,47 +356,260 @@
             valor_total: parseFloat(pick("vNF") || 0),
             valor_produtos: parseFloat(pick("vProd") || 0),
             valor_frete: parseFloat(pick("vFrete") || 0),
-
-            itens,
-            duplicatas
+            itens, duplicatas
         };
     }
 
+    // ==============================
+    // VIA SEFAZ
+    // ==============================
+    let notasSefaz = []; // último resultado da busca
 
-    // Ativar FilePond no input
-    const inputElement = document.querySelector('#inputXml');
+    $("#btnBuscar").on('click', buscarSefaz);
+    $("#ckMostrarImportadas").on('change', renderTabelaSefaz);
+    $("#selectAll").on('change', toggleSelectAll);
+    $("#btnImportarSelecionadas").on('click', importarSelecionadasSequencial);
 
-    const pond = FilePond.create(inputElement, {
-        allowMultiple: true,
-        credits: false,
-        labelIdle: 'Arraste seus arquivos XML ou <span class="filepond--label-action">Selecione</span>',
-        acceptedFileTypes: ['application/xml', 'text/xml'],
-        allowFileEncode: false,
-        allowFilePreview: false,
-        allowFileTypeValidation: true,
-        allowFileSizeValidation: true,
-        allowReorder: false,
-        allowReplace: false,
-        itemInsertLocation: null,
-        maxFiles: 100,
-        fileValidateTypeLabelExpectedTypes: 'Apenas arquivos XML são permitidos',
-    });
+    function validarPeriodo() {
+        const di = $("#dataIni").val();
+        const df = $("#dataFim").val();
+        if (!di || !df) return { ok: false, msg: "Informe a data inicial e a data final." };
 
-    // Sempre que os arquivos mudarem, atualizamos nossa lista
-    pond.on('updatefiles', (fileItems) => {
-        arquivosSelecionados = fileItems.map(f => f.file);
+        const d1 = new Date(di + "T00:00:00");
+        const d2 = new Date(df + "T00:00:00");
+        if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return { ok:false, msg:"Datas inválidas." };
+        if (d1 > d2) return { ok:false, msg:"Data inicial não pode ser maior que a final." };
 
-        // Mostra quantidade selecionada
-        const qtd = arquivosSelecionados.length;
-        const label = qtd === 0
-            ? 'Arraste seus arquivos XML ou <span class="filepond--label-action">Selecione</span>'
-            : `${qtd} arquivo(s) selecionado(s)`;
+        // limite de 31 dias
+        const diffMs = d2 - d1;
+        const diffDays = diffMs / (1000*60*60*24);
+        if (diffDays > 31) return { ok:false, msg:"O período máximo é de 31 dias." };
 
-        pond.labelIdle = label;
+        return { ok: true };
+    }
 
-        renderTabelaArquivos();
-        $("#btnImportar").prop("disabled", qtd === 0);
-    });
+    async function buscarSefaz() {
+        const val = validarPeriodo();
+        if (!val.ok) {
+            await Swal.fire("Atenção", val.msg, "warning");
+            return;
+        }
+
+        const di = $("#dataIni").val();
+        const df = $("#dataFim").val();
+
+        $("#btnBuscar").prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Buscando...');
+        try {
+            const { data: resp } = await axios.post(baseUrl, {
+                method: "listarChavesNfeComStatusImportacao",
+                token,
+                data: { system_unit_id: unit_id, data_inicial: di, data_final: df }
+            });
+
+            if (!resp?.success) {
+                throw new Error(resp?.message || "Falha ao consultar SEFAZ");
+            }
+
+            notasSefaz = (resp.data?.notas || []).map(n => ({
+                chave_acesso: n.chave_acesso,
+                emitente_razao: n.emitente_razao || n.emitente_fantasia || "",
+                valor_total: Number(n.valor_total || 0),
+                data_emissao: n.data_emissao || "",
+                status: n.status || "nao_importada"
+            }));
+
+            renderTabelaSefaz();
+
+        } catch (e) {
+            await Swal.fire("Erro", e?.message || "Erro ao buscar notas", "error");
+        } finally {
+            $("#btnBuscar").prop("disabled", false).html('<i class="fas fa-search"></i> Buscar');
+        }
+    }
+
+    function renderTabelaSefaz() {
+        const tbody = $("#tabelaSefaz tbody");
+        tbody.empty();
+
+        const mostrarImportadas = $("#ckMostrarImportadas").is(":checked");
+        let dados = notasSefaz;
+
+        if (!mostrarImportadas) {
+            dados = dados.filter(x => (x.status || '').toLowerCase() !== 'importada');
+        }
+
+        // resumo
+        const total = notasSefaz.length;
+        const naoImport = notasSefaz.filter(n => (n.status||'').toLowerCase() !== 'importada').length;
+        $("#resumoNotas").text(`Total: ${total} | Não importadas: ${naoImport}`);
+
+        if (dados.length === 0) {
+            tbody.append('<tr><td colspan="6" class="text-center">Nenhuma nota encontrada para o filtro.</td></tr>');
+            $("#btnImportarSelecionadas").prop("disabled", true);
+            $("#selectAll").prop("checked", false).prop("indeterminate", false);
+            return;
+        }
+
+        dados.forEach((n, idx) => {
+            const elegivel = (n.status || '').toLowerCase() !== 'importada';
+            const idChk = `nfe-${n.chave_acesso}`;
+            tbody.append(`
+        <tr data-idx="${idx}" data-chave="${n.chave_acesso}">
+          <td>
+            ${elegivel ? `
+              <input type="checkbox" id="${idChk}" class="chk-col-blue row-selector">
+              <label for="${idChk}"> </label>
+            ` : `
+              <input type="checkbox" disabled>
+            `}
+          </td>
+          <td><code style="font-size:12px;">${n.chave_acesso}</code></td>
+          <td>${escapeHtml(n.emitente_razao || '')}</td>
+          <td>R$ ${n.valor_total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+          <td>${formatDateBr(n.data_emissao)}</td>
+          <td>${n.status === 'importada' ? '<span class="label bg-green">importada</span>' : '<span class="label bg-orange">nao_importada</span>'}</td>
+        </tr>
+      `);
+        });
+
+        // listeners das linhas/checkboxes
+        $(".row-selector").off('change').on('change', function() {
+            const tr = $(this).closest('tr');
+            tr.toggleClass('selected-row', $(this).is(':checked'));
+            updateSelectAllState();
+            updateImportButtonState();
+        });
+
+        // clique na linha para alternar seleção
+        $("#tabelaSefaz tbody tr").off('click').on('click', function(e) {
+            // evita conflito quando clica no próprio checkbox/label
+            if ($(e.target).is('input[type=checkbox]') || $(e.target).is('label')) return;
+            const chk = $(this).find('.row-selector:enabled');
+            if (chk.length) {
+                chk.prop('checked', !chk.prop('checked')).trigger('change');
+            }
+        });
+
+        // reset cabeçalho
+        $("#selectAll").prop("checked", false).prop("indeterminate", false);
+        updateImportButtonState();
+    }
+
+    function toggleSelectAll() {
+        const check = $("#selectAll").is(":checked");
+        const elegiveis = $("#tabelaSefaz tbody .row-selector:enabled");
+        elegiveis.prop("checked", check).trigger('change');
+    }
+
+    function updateSelectAllState() {
+        const elegiveis = $("#tabelaSefaz tbody .row-selector:enabled");
+        const marcados = elegiveis.filter(':checked');
+        const all = elegiveis.length;
+        const any = marcados.length;
+
+        if (any === 0) {
+            $("#selectAll").prop("checked", false).prop("indeterminate", false);
+        } else if (any === all) {
+            $("#selectAll").prop("checked", true).prop("indeterminate", false);
+        } else {
+            $("#selectAll").prop("checked", false).prop("indeterminate", true);
+        }
+    }
+
+    function updateImportButtonState() {
+        const anySelected = $("#tabelaSefaz tbody .row-selector:checked").length > 0;
+        $("#btnImportarSelecionadas").prop("disabled", !anySelected);
+    }
+
+    async function importarSelecionadasSequencial() {
+        const di = $("#dataIni").val();
+        const df = $("#dataFim").val();
+
+        const selecionadas = $("#tabelaSefaz tbody .row-selector:checked").closest('tr')
+            .map((_, tr) => $(tr).data('chave')).get();
+
+        if (selecionadas.length === 0) {
+            await Swal.fire("Aviso", "Selecione ao menos uma nota.", "warning");
+            return;
+        }
+
+        // progresso sequencial
+        let ok = 0, fail = 0;
+        let detalhes = [];
+
+        // modal com progresso
+        await Swal.fire({
+            title: 'Importando notas...',
+            html: `<div id="swal-progress">Iniciando...</div>`,
+            allowOutsideClick: false,
+            didOpen: async () => {
+                Swal.showLoading();
+
+                for (let i = 0; i < selecionadas.length; i++) {
+                    const chave = selecionadas[i];
+                    const pos = i + 1;
+                    $("#swal-progress").html(`Importando ${pos}/${selecionadas.length}<br><code style="font-size:12px">${chave}</code>`);
+
+                    try {
+                        const { data: resp } = await axios.post(baseUrl, {
+                            method: "importNotasPorChaves",
+                            token,
+                            data: { system_unit_id: unit_id, chaves: [chave] } // UMA A UMA
+                        });
+
+                        const item = resp?.data?.itens?.[0];
+                        const sucesso = !!(item?.success || resp?.success);
+                        if (sucesso) {
+                            ok++;
+                        } else {
+                            fail++;
+                            const msg = (item?.message || resp?.message || "Falha ao importar");
+                            detalhes.push(`<li><code>${chave}</code>: ${escapeHtml(msg)}</li>`);
+                        }
+                    } catch (e) {
+                        fail++;
+                        const msg = e?.response?.data?.message || e?.message || "Erro na requisição";
+                        detalhes.push(`<li><code>${chave}</code>: ${escapeHtml(msg)}</li>`);
+                    }
+                }
+
+                Swal.close();
+            }
+        });
+
+        // resultado
+        const icon = fail === 0 ? "success" : (ok === 0 ? "error" : "warning");
+        const title = fail === 0 ? "Importação concluída" : (ok === 0 ? "Nenhuma nota importada" : "Importação parcial");
+        const html = `
+      <p><b>Sucesso:</b> ${ok} &nbsp; | &nbsp; <b>Falhas:</b> ${fail}</p>
+      ${detalhes.length ? `<ul style="text-align:left;max-height:220px;overflow:auto;margin-top:8px;">${detalhes.join("")}</ul>` : ""}
+    `;
+        await Swal.fire({ title, icon, html });
+
+        // Rebusca para atualizar status
+        // (reaproveita os filtros usados)
+        if (di && df) {
+            await buscarSefaz();
+        }
+    }
+
+    // Helpers front
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return s.toString().replace(/[&<>"'`=\/]/g, function (c) {
+            return {
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+                "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
+            }[c];
+        });
+    }
+    function formatDateBr(iso) {
+        if (!iso) return '';
+        // aceita YYYY-MM-DD
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+        if (!m) return iso;
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
 
 </script>
 </body>

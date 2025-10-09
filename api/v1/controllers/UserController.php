@@ -18,10 +18,20 @@ class UserController {
         $isId = is_numeric($user);
 
         if ($isId) {
-            $stmt = $pdo->prepare("SELECT id, name, login, function_name, system_unit_id FROM system_users WHERE id = :user AND active = 'Y' LIMIT 1");
+            $stmt = $pdo->prepare("
+            SELECT id, name, login, function_name, system_unit_id
+            FROM system_users
+            WHERE id = :user AND active = 'Y'
+            LIMIT 1
+        ");
             $stmt->bindParam(':user', $user, PDO::PARAM_INT);
         } else {
-            $stmt = $pdo->prepare("SELECT id, name, login, function_name, system_unit_id FROM system_users WHERE login = :user AND active = 'Y' LIMIT 1");
+            $stmt = $pdo->prepare("
+            SELECT id, name, login, function_name, system_unit_id
+            FROM system_users
+            WHERE login = :user AND active = 'Y'
+            LIMIT 1
+        ");
             $stmt->bindParam(':user', $user, PDO::PARAM_STR);
         }
 
@@ -44,12 +54,12 @@ class UserController {
             $userDetails['unit_name'] = null;
         }
 
-        // Busca o último acesso sem logout
+        // Busca o último acesso sem logout (token da sessão)
         $stmtLog = $pdo->prepare("
         SELECT sessionid
         FROM system_access_log
         WHERE login = :login
-        AND logout_time is null
+          AND logout_time IS NULL
         ORDER BY login_time DESC
         LIMIT 1
     ");
@@ -60,8 +70,28 @@ class UserController {
         $userDetails['token'] = $lastAccess['sessionid'] ?? null;
         $userDetails['is_logged'] = isset($lastAccess['sessionid']);
 
+        // -------- NOVO: permissões (grupos) ----------
+        // Lista todos os grupos do usuário
+        $stmtGroups = $pdo->prepare("
+        SELECT g.id, g.name
+        FROM system_user_group ug
+        INNER JOIN system_group g ON g.id = ug.system_group_id
+        WHERE ug.system_user_id = :uid
+        ORDER BY g.name
+    ");
+        $stmtGroups->bindParam(':uid', $userDetails['id'], PDO::PARAM_INT);
+        $stmtGroups->execute();
+        $groups = $stmtGroups->fetchAll(PDO::FETCH_ASSOC);
+
+        // Anexa ao payload
+        $userDetails['groups'] = $groups ?: []; // [{ id, name }, ...]
+        $userDetails['group_names'] = array_map(static function ($g) {
+            return $g['name'];
+        }, $groups ?: []);
+
         return ['success' => true, 'userDetails' => $userDetails];
     }
+
 
 
     public static function getUnitsUser($user_id)
