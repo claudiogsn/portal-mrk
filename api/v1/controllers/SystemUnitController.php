@@ -144,4 +144,72 @@ class SystemUnitController
         }
     }
 
+
+    public static function listSystemUnitsSameGroup($system_unit_id, $incluirAtual = true)
+    {
+        global $pdo;
+
+        try {
+            // Garantir inteiro
+            $system_unit_id = (int)$system_unit_id;
+
+            // Busca todas as unidades que compartilham qualquer grupo com a unidade informada
+            // Estratégia: auto-join na tabela de relação por grupo_id
+            $sql = "
+            SELECT DISTINCT su.*
+            FROM grupo_estabelecimento_rel ger_cur
+            INNER JOIN grupo_estabelecimento_rel ger
+                ON ger.grupo_id = ger_cur.grupo_id
+            INNER JOIN system_unit su
+                ON su.id = ger.system_unit_id
+            WHERE ger_cur.system_unit_id = :unit_id
+        ";
+
+            if (!$incluirAtual) {
+                $sql .= " AND su.id <> :unit_id";
+            }
+
+            $sql .= " ORDER BY su.id ASC";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindValue(':unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'unidades' => $unidades];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar unidades do mesmo grupo: ' . $e->getMessage()];
+        }
+    }
+
+    public static function listSystemUnitsByGrupo($grupo_id, $incluirAtivasSomente = false)
+    {
+        global $pdo;
+
+        try {
+            $grupo_id = (int)$grupo_id;
+
+            $sql = "
+            SELECT su.*
+            FROM grupo_estabelecimento_rel ger
+            INNER JOIN system_unit su ON su.id = ger.system_unit_id
+            WHERE ger.grupo_id = :grupo_id
+            ORDER BY su.id ASC
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindValue(':grupo_id', $grupo_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $unidades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'unidades' => $unidades];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar unidades por grupo: ' . $e->getMessage()];
+        }
+    }
+
+
+
 }

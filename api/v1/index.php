@@ -1640,6 +1640,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro ausentes'];
                 }
                 break;
+            case 'replicateModelo':
+                if (isset($requestData)) {
+                    $response = ModeloBalancoController::replicateModelo($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros ausentes'];
+                }
+                break;
             case 'getProductCards':
                 if (isset ($requestData['system_unit_id'])) {
                     $response = ProductController::getProductCards($requestData['system_unit_id']);
@@ -2111,6 +2119,23 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro id ausente'];
                 }
                 break;
+            case 'listSystemUnitsSameGroup':
+                if (isset($requestData['system_unit_id']) && isset($requestData['incluirAtual'])) {
+                    $response = SystemUnitController::listSystemUnitsSameGroup($requestData['system_unit_id'], $requestData['incluirAtual']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+            case 'listSystemUnitsByGrupo':
+                if (isset($requestData['grupo']) && isset($requestData['incluirAtivasSomente'])) {
+                    $response = SystemUnitController::listSystemUnitsByGrupo($requestData['grupo'], $requestData['incluirAtivasSomente']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro id ausente'];
+                }
+                break;
+
             case 'listMenus':
                 $response = MenuMobileController::listMenus();
                 break;

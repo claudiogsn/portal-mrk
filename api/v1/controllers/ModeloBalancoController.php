@@ -158,8 +158,6 @@ class ModeloBalancoController {
         }
     }
 
-
-
     // Listar todos os modelos de balanço
     public static function listModelos($ativo = null) {
         global $pdo;
@@ -312,7 +310,6 @@ class ModeloBalancoController {
         }
     }
 
-
     public static function getModelByTag($tag) {
         global $pdo;
 
@@ -383,8 +380,6 @@ class ModeloBalancoController {
         }
     }
 
-
-
     public static function listModelosWithProducts($system_unit_id) {
         global $pdo;
     
@@ -435,7 +430,6 @@ class ModeloBalancoController {
         }
     }
 
-
     public static function toggleModeloStatus($system_unit_id, $tag, $status) {
         global $pdo;
     
@@ -466,9 +460,117 @@ class ModeloBalancoController {
             self::sendResponse(false, 'Erro ao atualizar status do modelo: ' . $e->getMessage(), [], 500);
         }
     }
-    
-    
-    
+
+    public static function replicateModelo($data) {
+        global $pdo;
+
+        try {
+            // validação de parâmetros obrigatórios
+            $required = ['system_unit_id', 'system_unit_id_destino', 'tag'];
+            foreach ($required as $f) {
+                if (!isset($data[$f]) || $data[$f] === '') {
+                    self::sendResponse(false, "O campo '{$f}' é obrigatório.", [], 400);
+                }
+            }
+
+            $srcUnit  = (int)$data['system_unit_id'];
+            $dstUnit  = (int)$data['system_unit_id_destino'];
+            $srcTag   = (string)$data['tag'];
+
+            if ($srcUnit === $dstUnit) {
+                self::sendResponse(false, "A unidade de origem e destino não podem ser iguais.", [], 400);
+            }
+
+            // monta a dest_tag: troca o prefixo (antes do primeiro '-') pelo system_unit_id_destino
+            $hifenPos = strpos($srcTag, '-');
+            if ($hifenPos !== false) {
+                $suffix   = substr($srcTag, $hifenPos + 1); // tudo após o primeiro hífen
+                $destTag  = "{$dstUnit}-{$suffix}";
+            } else {
+                $destTag  = "{$dstUnit}-{$srcTag}";
+            }
+
+            $pdo->beginTransaction();
+
+            // 1) Busca modelo de origem (lock para segurança)
+            $sqlSrc = "SELECT id, nome, usuario_id, tag
+                   FROM modelos_balanco
+                   WHERE system_unit_id = :srcUnit AND tag = :srcTag
+                   LIMIT 1
+                   FOR UPDATE";
+            $stmtSrc = $pdo->prepare($sqlSrc);
+            $stmtSrc->execute([':srcUnit' => $srcUnit, ':srcTag' => $srcTag]);
+            $modeloSrc = $stmtSrc->fetch(PDO::FETCH_ASSOC);
+
+            if (!$modeloSrc) {
+                $pdo->rollBack();
+                self::sendResponse(false, "Modelo de origem não encontrado.", [], 404);
+            }
+
+            // 2) Se já existir modelo com a dest_tag, desativar e renomear (evita colisão na UNIQUE)
+            $sqlFindDest = "SELECT id, tag FROM modelos_balanco WHERE tag = :destTag LIMIT 1 FOR UPDATE";
+            $stmtFindDest = $pdo->prepare($sqlFindDest);
+            $stmtFindDest->execute([':destTag' => $destTag]);
+            $modeloExistente = $stmtFindDest->fetch(PDO::FETCH_ASSOC);
+
+            if ($modeloExistente) {
+                $newOldTag = $modeloExistente['tag'] . '-desativado-' . date('YmdHis');
+                $sqlDeactivate = "UPDATE modelos_balanco
+                              SET ativo = 0, tag = :newOldTag, updated_at = NOW()
+                              WHERE id = :id";
+                $stmtDeactivate = $pdo->prepare($sqlDeactivate);
+                $stmtDeactivate->execute([
+                    ':newOldTag' => $newOldTag,
+                    ':id'        => $modeloExistente['id']
+                ]);
+            }
+
+            // 3) Criar novo modelo no destino
+            $sqlInsModelo = "INSERT INTO modelos_balanco
+                         (system_unit_id, nome, usuario_id, ativo, tag, created_at, updated_at)
+                         VALUES (:dstUnit, :nome, :usuario_id, 1, :destTag, NOW(), NOW())";
+            $stmtInsModelo = $pdo->prepare($sqlInsModelo);
+            $stmtInsModelo->execute([
+                ':dstUnit'    => $dstUnit,
+                ':nome'       => $modeloSrc['nome'],
+                ':usuario_id' => $modeloSrc['usuario_id'],
+                ':destTag'    => $destTag
+            ]);
+            if ($stmtInsModelo->rowCount() <= 0) {
+                $pdo->rollBack();
+                self::sendResponse(false, "Falha ao criar o modelo no destino.", [], 500);
+            }
+            $newModeloId = (int)$pdo->lastInsertId();
+
+            // 4) Replicar itens do modelo origem -> destino
+            // Observação: copia exatamente o que estiver em modelos_balanco_itens.id_produto
+            // sem mapear produtos entre unidades. Ajuste aqui se precisar de mapeamento.
+            $sqlCopyItens = "INSERT INTO modelos_balanco_itens
+                         (system_unit_id, id_modelo, id_produto, created_at, updated_at)
+                         SELECT :dstUnit, :newModeloId, mbi.id_produto, NOW(), NOW()
+                         FROM modelos_balanco_itens mbi
+                         WHERE mbi.id_modelo = :srcModeloId";
+            $stmtCopy = $pdo->prepare($sqlCopyItens);
+            $stmtCopy->execute([
+                ':dstUnit'     => $dstUnit,
+                ':newModeloId' => $newModeloId,
+                ':srcModeloId' => (int)$modeloSrc['id']
+            ]);
+
+            $pdo->commit();
+
+            self::sendResponse(true, 'Modelo replicado com sucesso.', [
+                'novo_modelo_id'  => $newModeloId,
+                'novo_modelo_tag' => $destTag
+            ], 201);
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            self::sendResponse(false, 'Erro ao replicar modelo: ' . $e->getMessage(), [], 500);
+        }
+    }
 
 }
 ?>

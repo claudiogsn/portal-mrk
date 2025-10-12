@@ -47,6 +47,7 @@
                         <th style="width: 18px;"></th> <!-- Realizar -->
                         <th style="width: 18px;"></th> <!-- Ativar/Inativar -->
                         <th style="width: 18px;"></th> <!-- Ativar/Inativar -->
+                        <th style="width: 18px;"></th> <!-- Replicar -->
                         <th>Tag</th>
                         <th>Nome</th>
                         <th>URL</th>
@@ -92,6 +93,48 @@
         </div>
     </div>
 </div>
+<!-- Modal Replicação -->
+<div class="modal fade" id="modalReplicar" tabindex="-1" role="dialog" aria-labelledby="modalReplicarTitulo">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="modalReplicarTitulo">Replicar Modelo de Balanço</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Origem -->
+                <div class="form-group">
+                    <label>Unidade de origem</label>
+                    <input type="text" id="replicaOrigem" class="form-control" readonly
+                           value="">
+                </div>
+
+                <!-- Modelo (somente ativos da tela) -->
+                <div class="form-group">
+                    <label>Modelo (apenas ativos)</label>
+                    <select id="replicaModeloTag" class="form-control"></select>
+                </div>
+
+                <!-- Destino (unidades do mesmo grupo - apenas uma) -->
+                <div class="form-group">
+                    <label>Unidade de destino</label>
+                    <select id="replicaDestino" class="form-control">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="btnConfirmarReplicacao">Replicar</button>
+                <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script>
     // Endpoints iguais aos seus padrões
@@ -219,6 +262,11 @@
             <i class="fa fa-power-off ${ativo ? 'red' : 'green'}"></i>
           </a>
         </td>
+        <td class="text-center">
+          <a href="#" onclick="abrirModalReplicar('${m.tag}')" title="Replicar Modelo">
+            <i class="fa fa-copy teal"></i>
+          </a>
+        </td>
 
         <!-- Colunas de dados -->
         <td>${m.tag || '-'}</td>
@@ -332,6 +380,122 @@
             $('#detalhesTable tbody').html('<tr><td colspan="3">Erro ao carregar detalhes.</td></tr>');
         }
     }
+
+    // Abre o modal de replicação.
+    // Se vier uma tag de uma linha clicada, já seleciona no dropdown.
+    async function abrirModalReplicar(tagSelecionada) {
+        try {
+            // mostra unidade de origem
+            $('#replicaOrigem').val(unitId);
+
+            // popula select de modelos (apenas ativos da tela)
+            popularModelosAtivos(tagSelecionada);
+
+            // carrega unidades destino (mesmo grupo, sem incluir a atual)
+            await carregarUnidadesDestino();
+
+            // bind do botão confirmar (evita múltiplos binds)
+            $('#btnConfirmarReplicacao').off('click').on('click', replicarModelo);
+
+            // ao fechar, recarrega a tela (como você pediu)
+            $('#modalReplicar').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+                listarModelos();
+            });
+
+            $('#modalReplicar').modal('show');
+        } catch (e) {
+            Swal.fire('Erro', 'Não foi possível abrir o modal de replicação.', 'error');
+        }
+    }
+
+    // Preenche o select com os modelos ativos já carregados na tela
+    function popularModelosAtivos(tagSelecionada) {
+        const $sel = $('#replicaModeloTag');
+        $sel.empty();
+
+        const ativos = (modelosCache || []).filter(m => (m.ativo === 1 || m.ativo === '1' || m.ativo === true || m.ativo === 'true'));
+
+        if (!ativos.length) {
+            $sel.append('<option value="">Não há modelos ativos</option>');
+            $sel.prop('disabled', true);
+            return;
+        }
+
+        $sel.prop('disabled', false);
+
+        // Exibir "tag - nome" para facilitar
+        ativos.forEach(m => {
+            const optText = `${m.tag} — ${m.nome || ''}`.trim();
+            $sel.append(`<option value="${m.tag}">${optText}</option>`);
+        });
+
+        if (tagSelecionada) {
+            $sel.val(tagSelecionada);
+        }
+    }
+
+    // Busca as unidades do mesmo grupo (sem incluir a atual) e preenche o select
+    async function carregarUnidadesDestino() {
+        const $sel = $('#replicaDestino');
+        $sel.empty().append('<option value="">Carregando...</option>');
+
+        try {
+            const resp = await axios.post(baseUrl, {
+                method: 'listSystemUnitsSameGroup',
+                token,
+                data: { system_unit_id: parseInt(unitId, 10), incluirAtual: false }
+            });
+
+            $sel.empty();
+
+            if (resp.data && resp.data.success && Array.isArray(resp.data.unidades) && resp.data.unidades.length) {
+                $sel.append('<option value="">Selecione uma unidade</option>');
+                resp.data.unidades.forEach(u => {
+                    $sel.append(`<option value="${u.id}">${u.id} — ${u.name || '(sem nome)'}</option>`);
+                });
+            } else {
+                $sel.append('<option value="">Nenhuma unidade disponível</option>');
+            }
+        } catch (e) {
+            $sel.empty().append('<option value="">Erro ao carregar unidades</option>');
+        }
+    }
+
+    // Envia a replicação para a API
+    async function replicarModelo() {
+        const tag = $('#replicaModeloTag').val();
+        const destino = $('#replicaDestino').val();
+
+        if (!tag)   return Swal.fire('Atenção', 'Selecione um modelo.', 'warning');
+        if (!destino) return Swal.fire('Atenção', 'Selecione a unidade de destino.', 'warning');
+
+        try {
+            Swal.fire({ title: 'Replicando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            const resp = await axios.post(baseUrl, {
+                method: 'replicateModelo',
+                token,
+                data: {
+                    system_unit_id: parseInt(unitId, 10),
+                    system_unit_id_destino: parseInt(destino, 10),
+                    tag
+                }
+            });
+
+            Swal.close();
+
+            if (resp.data && resp.data.success) {
+                Swal.fire('Sucesso', 'Modelo replicado com sucesso.', 'success');
+                // fecha modal -> o hidden.bs.modal já chama listarModelos()
+                $('#modalReplicar').modal('hide');
+            } else {
+                Swal.fire('Erro', resp.data?.message || 'Falha na replicação.', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Erro', 'Erro ao replicar o modelo.', 'error');
+        }
+    }
+
 </script>
 </body>
 </html>
