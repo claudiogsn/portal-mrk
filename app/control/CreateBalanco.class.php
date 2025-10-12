@@ -12,9 +12,9 @@ class CreateBalanco extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/createBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/external/listModelBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/createBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/listModelBalanco.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }
 
         $iframe = new TElement('iframe');
