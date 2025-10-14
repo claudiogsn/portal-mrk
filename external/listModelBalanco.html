@@ -137,7 +137,7 @@
 
 
 <script>
-    // Endpoints iguais aos seus padrões
+
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
@@ -157,7 +157,6 @@
         const d = new Date(dateStr);
         return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
     };
-
     const makeURL = (tag) => `${baseUrlRedirect}/balanco/${encodeURIComponent(tag)}`;
 
     $(document).ready(() => {
@@ -199,7 +198,6 @@
         }
     }
 
-    // helper: detectar se a linha é ativa
     function isLinhaAtiva($tr) {
         const val = ($tr.attr('data-ativo') || '').toString().toLowerCase().trim();
         if (val === '1' || val === 'true') return true;
@@ -211,7 +209,6 @@
         return temAtivo && !temInativo;
     }
 
-    // filtro texto + checkbox
     function filtrarModelos() {
         const termo = ($('#filtroModelo').val() || '').toLowerCase();
         const apenasAtivos = $('#filtroApenasAtivos').is(':checked');
@@ -229,7 +226,6 @@
         });
     }
 
-    // adicionar na criação da linha no montarTabela:
     function montarTabela(lista) {
         const tbody = $('#tabela-modelos tbody');
         tbody.empty();
@@ -282,7 +278,6 @@
         });
     }
 
-    // Função copiarTexto (reutilizável)
     function copiarTexto(text) {
         const input = document.createElement('input');
         input.value = text;
@@ -299,8 +294,6 @@
             timer: 1000
         });
     }
-
-
 
     function editarModelo(tag) {
         const href = `${baseUrlRedirect}/external/editBalanco.html?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}&unit_id=${encodeURIComponent(unitId)}&tag=${encodeURIComponent(tag)}`;
@@ -381,8 +374,6 @@
         }
     }
 
-    // Abre o modal de replicação.
-    // Se vier uma tag de uma linha clicada, já seleciona no dropdown.
     async function abrirModalReplicar(tagSelecionada) {
         try {
             // mostra unidade de origem
@@ -408,7 +399,6 @@
         }
     }
 
-    // Preenche o select com os modelos ativos já carregados na tela
     function popularModelosAtivos(tagSelecionada) {
         const $sel = $('#replicaModeloTag');
         $sel.empty();
@@ -434,7 +424,6 @@
         }
     }
 
-    // Busca as unidades do mesmo grupo (sem incluir a atual) e preenche o select
     async function carregarUnidadesDestino() {
         const $sel = $('#replicaDestino');
         $sel.empty().append('<option value="">Carregando...</option>');
@@ -461,7 +450,6 @@
         }
     }
 
-    // Envia a replicação para a API
     async function replicarModelo() {
         const tag = $('#replicaModeloTag').val();
         const destino = $('#replicaDestino').val();
