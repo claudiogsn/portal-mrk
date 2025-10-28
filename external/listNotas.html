@@ -946,7 +946,6 @@
         // atualiza totais e aviso visual
         recalcTotaisParcelas();
     }
-
     function recalcTotaisParcelas() {
         let soma = 0;
         $('#tblParcelas tbody tr').each(function () {
@@ -973,7 +972,6 @@
             $('#avisoParcelas').hide();
         }
     }
-
     function recalcValoresParcelas() {
         // só recalcula os valores, NÃO mexe nas datas (permite ajuste manual das datas)
         const $rows = $('#tblParcelas tbody tr');
@@ -1073,7 +1071,6 @@
             Swal.fire('Erro', 'Falha ao gravar lançamentos.', 'error');
         }
     }
-
     $(document).on('click', '#btnGravarFinanceiro', gravarFinanceiro);
     // abre o modal ao clicar no ícone de exclamação
     $(document).on('click', 'a.abrir-financeiro', function (e) {
@@ -1115,7 +1112,6 @@
     $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
         recalcTotaisParcelas();
     });
-
     // Clique no botão de download da linha (3 botões: PDF / XML / Cancelar)
     $(document).on('click', 'a.btn-download', async function (e) {
         e.preventDefault();
@@ -1171,7 +1167,6 @@
             await Swal.fire('Erro', err?.message || 'Não foi possível baixar o arquivo.', 'error');
         }
     });
-
     // Converte base64 -> Blob e dispara download (mantém igual)
     function downloadBase64(b64, filename, mimeType) {
         const byteChars = atob(b64.replace(/\s/g, ''));

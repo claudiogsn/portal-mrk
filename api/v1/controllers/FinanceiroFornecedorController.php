@@ -74,12 +74,16 @@ class FinanceiroFornecedorController {
         }
     }
 
-    public static function listFornecedores() {
+    public static function listFornecedores($system_unit_id) {
         global $pdo;
 
-        $stmt = $pdo->query("SELECT * FROM financeiro_fornecedor");
+        $stmt = $pdo->prepare("SELECT * FROM financeiro_fornecedor WHERE system_unit_id = :system_unit_id");
+        $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+        $stmt->execute();
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function importarFornecedoresApi($system_unit_id) {
         global $pdo;

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Nova Conta Financeira</title>
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- AdminBSB / Bootstrap -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <style>
+        .form-control { margin-bottom:10px; }
+        .table th, .table td { vertical-align: middle !important; }
+        .modal-body { max-height: 500px; overflow-y: auto; }
+        .select2-container .select2-selection--single { height: 34px !important; }
+        .select2-selection__rendered { line-height: 34px !important; }
+        .select2-selection__arrow { height: 34px !important; }
+        .text-right { text-align:right; }
+        /* força fundo branco em tudo dentro do iframe */
+        html, body, .container-fluid, .card, .card .body {
+            background: #fff !important;
+        }
+
+        /* remove qualquer cinza do tema na área principal (AdminBSB costuma pintar .content) */
+        .content, .content .container-fluid {
+            background: #fff !important;
+        }
+
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <div class="block-header"><h2></h2><br></div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header"><h2>Nova Conta Financeira</h2></div>
+
+                <div class="body">
+                    <!-- Topo -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Fornecedor</label>
+                            <select id="fornecedor" class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Plano de Contas</label>
+                            <select id="plano_contas" class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label>Documento</label>
+                            <input type="text" id="doc" class="form-control" autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Emissão</label>
+                            <input type="date" id="emissao" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Vencimento Inicial</label>
+                            <input type="date" id="vencimento" class="form-control">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label>Valor Total</label>
+                            <input type="number" step="0.01" id="valor_total" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Desconto</label>
+                            <input type="number" step="0.01" id="desconto" class="form-control" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Acréscimo</label>
+                            <input type="number" step="0.01" id="acrescimo" class="form-control" value="0">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label>Forma de Pagamento</label>
+                            <select id="forma_pagamento_id" class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Observação</label>
+                            <input type="text" id="obs_extra" class="form-control" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Toggle parcelamento -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="checkbox">
+                                <input id="chkParcelar" type="checkbox" class="filled-in">
+                                <label for="chkParcelar">Deseja parcelar?</label>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Área de parcelamento (esconde/mostra) -->
+                    <div id="areaParcelas" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label>Quantidade de parcelas</label>
+                                <input type="number" id="qtParcelas" class="form-control" min="1" step="1" value="1">
+                            </div>
+                            <div class="col-md-3" style="margin-top:25px;">
+                                <button type="button" class="btn btn-primary" id="btnGerarParcelas">Gerar parcelas</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="margin-top:10px;">
+                            <table class="table table-striped" id="tblParcelas">
+                                <thead>
+                                <tr>
+                                    <th style="width:90px;">Parcela</th>
+                                    <th>Documento</th>
+                                    <th style="width:160px;">Emissão</th>
+                                    <th style="width:160px;">Vencimento</th>
+                                    <th style="width:160px;">Valor</th>
+                                </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                        <div class="row" style="margin-top:8px;">
+                            <div class="col-md-6">
+                                <small id="avisoParcelas" class="text-danger" style="display:none;">
+                                    A soma das parcelas difere do total ajustado (valor total - desconto + acréscimo).
+                                </small>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <strong>Total das parcelas: <span id="totalParcelas">R$ 0,00</span></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right" style="margin-top:18px;">
+                        <button type="button" class="btn btn-success" id="btnSalvar">
+                            <i class="fa fa-save"></i> Salvar
+                        </button>
+                    </div>
+                </div><!-- body -->
+            </div><!-- card -->
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Select2 -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    // ======= Params e URLs =======
+    const urlParams   = new URLSearchParams(window.location.search);
+    const token       = urlParams.get('token');
+    const unit_id     = urlParams.get('system_unit_id') || urlParams.get('unit_id');
+    const user_id     = urlParams.get('user_id') || urlParams.get('username'); // compat
+
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    // ======= Helpers =======
+    function toBRL(v){ const n = Number(v)||0; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function addMonths(dateStr, months){
+        const d = new Date(dateStr);
+        d.setMonth(d.getMonth() + months);
+        const tz = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+        return tz.toISOString().slice(0,10);
+    }
+
+    const FORMAS_FIXAS = [
+        { id: 1, codigo: 'dinheiro',      descricao: 'Dinheiro' },
+        { id: 2, codigo: 'dda',           descricao: 'DDA' },
+        { id: 3, codigo: 'pix',           descricao: 'PIX' },
+        { id: 4, codigo: 'debito',        descricao: 'Cartão de Débito' },
+        { id: 5, codigo: 'credito',       descricao: 'Cartão de Crédito' },
+        { id: 6, codigo: 'boleto',        descricao: 'Boleto' },
+        { id: 7, codigo: 'transferencia', descricao: 'Transferência' },
+        { id: 8, codigo: 'cheque',        descricao: 'Cheque' },
+        { id: 9, codigo: 'deposito',      descricao: 'Depósito' },
+    ];
+
+    // ======= Init =======
+    $(document).ready(() => {
+        // Select2 com pesquisa e placeholder
+        $('#fornecedor').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
+        $('#plano_contas').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
+        $('#forma_pagamento_id').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
+
+        carregarFornecedores();
+        carregarPlanos();
+        carregarFormasFixas();
+
+        // Toggle de parcelamento
+        $('#chkParcelar').on('change', function(){
+            const show = $(this).is(':checked');
+            $('#areaParcelas').toggle(show);
+            if (show) gerarParcelas(); else limparParcelasUI();
+        });
+
+        // Geração de parcelas
+        $('#btnGerarParcelas').on('click', gerarParcelas);
+
+        // Se qualquer base mudar e estiver parcelando, pode regenerar
+        $('#qtParcelas, #valor_total, #desconto, #acrescimo, #vencimento, #doc').on('change input', () => {
+            if ($('#chkParcelar').is(':checked')) gerarParcelas();
+        });
+
+        // Recalcular total quando editar manualmente valores
+        $(document).on('input change', '.valorParcela, .emissaoParcela, .vencParcela', atualizarTotalParcelas);
+
+        $('#btnSalvar').on('click', salvarConta);
+    });
+
+    // ======= Loaders =======
+    async function carregarFornecedores(){
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'listFornecedores',
+                token,
+                data: { system_unit_id: Number(unit_id) }
+            });
+            const list = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+            const sel = $('#fornecedor');
+            // mantém "Selecione..."
+            list.forEach(f => {
+                sel.append(new Option(((f.codigo? f.codigo+' - ' : '') + f.nome), f.id, false, false));
+            });
+            sel.trigger('change.select2');
+        }catch(e){
+            console.error(e);
+            Swal.fire('Erro','Falha ao carregar fornecedores.','error');
+        }
+    }
+
+    async function carregarPlanos(){
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'listPlanos',
+                token,
+                data: { system_unit_id: Number(unit_id) }
+            });
+            const list = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+            const sel = $('#plano_contas');
+            list.forEach(p => {
+                sel.append(new Option(`${p.codigo} - ${p.descricao}`, p.codigo, false, false));
+            });
+            sel.trigger('change.select2');
+        }catch(e){
+            console.error(e);
+            Swal.fire('Erro','Falha ao carregar planos de conta.','error');
+        }
+    }
+
+    function carregarFormasFixas(){
+        const sel = $('#forma_pagamento_id');
+        FORMAS_FIXAS.forEach(fp => {
+            sel.append(new Option(fp.descricao, fp.id, false, false));
+        });
+        sel.trigger('change.select2');
+    }
+
+    // ======= Parcelas =======
+    function limparParcelasUI(){
+        $('#tblParcelas tbody').empty();
+        $('#totalParcelas').text('R$ 0,00');
+        $('#avisoParcelas').hide();
+    }
+
+    function gerarParcelas(){
+        const qt           = Math.max(1, parseInt($('#qtParcelas').val() || '1', 10));
+        const docBase      = ($('#doc').val() || '').trim();
+        const emissao      = $('#emissao').val();
+        const vencInicial  = $('#vencimento').val();
+
+        const valor_total  = parseFloat($('#valor_total').val() || 0);
+        const desconto     = parseFloat($('#desconto').val() || 0);
+        const acrescimo    = parseFloat($('#acrescimo').val() || 0);
+
+        const totalAjustado = (valor_total - desconto + acrescimo);
+
+        if (!docBase || !vencInicial || totalAjustado <= 0 || qt < 1) {
+            limparParcelasUI();
+            return;
+        }
+
+        const baseParcela = Math.floor((totalAjustado / qt) * 100) / 100; // trunc 2 casas
+        let soma = 0;
+        const tbody = $('#tblParcelas tbody').empty();
+
+        for (let i=1; i<=qt; i++){
+            let valor = (i < qt) ? baseParcela : (Math.round((totalAjustado - soma)*100)/100);
+            soma = Math.round((soma + valor)*100)/100;
+
+            const doc = `${docBase}-${pad2(i)}`;
+            const emiss = emissao || '';
+            const venc  = addMonths(vencInicial, i-1);
+
+            tbody.append(`
+        <tr>
+          <td>${i}/${qt}</td>
+          <td><input type="text" class="form-control docParcela" value="${doc}"></td>
+          <td><input type="date" class="form-control emissaoParcela" value="${emiss}"></td>
+          <td><input type="date" class="form-control vencParcela" value="${venc}"></td>
+          <td><input type="number" step="0.01" class="form-control valorParcela" value="${valor.toFixed(2)}"></td>
+        </tr>
+      `);
+        }
+
+        $('#totalParcelas').text(toBRL(soma));
+        const dif = Math.abs(soma - totalAjustado);
+        $('#avisoParcelas').toggle(dif > 0.009);
+    }
+
+    function atualizarTotalParcelas(){
+        let soma = 0;
+        $('#tblParcelas tbody tr').each(function(){
+            const v = parseFloat($(this).find('.valorParcela').val() || 0);
+            soma += v;
+        });
+
+        const valor_total  = parseFloat($('#valor_total').val() || 0);
+        const desconto     = parseFloat($('#desconto').val() || 0);
+        const acrescimo    = parseFloat($('#acrescimo').val() || 0);
+        const totalAjustado = (valor_total - desconto + acrescimo);
+
+        $('#totalParcelas').text(toBRL(soma));
+        $('#avisoParcelas').toggle(Math.abs(soma - totalAjustado) > 0.009);
+    }
+
+    // ======= Salvar =======
+    async function salvarConta(){
+        const fornecedor_id       = $('#fornecedor').val();
+        const documentoBase       = ($('#doc').val() || '').trim();
+        const emissao             = $('#emissao').val();
+        const vencInicial         = $('#vencimento').val();
+        const plano_contas        = $('#plano_contas').val();
+        const forma_pagamento_id  = $('#forma_pagamento_id').val();
+        const obs_extra           = $('#obs_extra').val();
+
+        const valor_total         = parseFloat($('#valor_total').val() || 0);
+        const desconto            = parseFloat($('#desconto').val() || 0);
+        const acrescimo           = parseFloat($('#acrescimo').val() || 0);
+
+        if (!fornecedor_id || !documentoBase || !vencInicial || !valor_total) {
+            return Swal.fire('Atenção','Preencha Fornecedor, Documento, Vencimento e Valor Total.','warning');
+        }
+
+        const parcelar = $('#chkParcelar').is(':checked');
+
+        let contas = [];
+
+        if (parcelar) {
+            // monta pelas linhas da tabela (variáveis por parcela)
+            let soma = 0; let linhas = 0;
+            $('#tblParcelas tbody tr').each(function(){
+                const doc  = ($(this).find('.docParcela').val() || '').trim();
+                const em   = $(this).find('.emissaoParcela').val() || null;
+                const ven  = $(this).find('.vencParcela').val();
+                const val  = parseFloat($(this).find('.valorParcela').val() || 0);
+
+                if (doc && ven && val > 0) {
+                    linhas++;
+                    soma += val;
+                    const formaSel = getFormaSelecionada();
+
+                    contas.push({
+                        fornecedor_id: Number(fornecedor_id),
+                        documento: doc,
+                        emissao: em,              // pode variar por parcela
+                        vencimento: ven,          // pode variar por parcela
+                        valor: val,               // já final por parcela
+                        adicional: 0,             // zera p/ não duplicar
+                        desconto: 0,              // zera p/ não duplicar
+                        plano_contas: plano_contas || null,
+                        forma_pagamento: formaSel ? formaSel.id : null,
+                        banco:           formaSel ? formaSel.id : null,
+                        forma_pagamento_id: formaSel ? formaSel.id : null,                        obs_extra
+                    });
+                }
+            });
+
+            if (!linhas) {
+                return Swal.fire('Atenção','Gere/edite as parcelas antes de salvar.','warning');
+            }
+            const totalAjustado = (valor_total - desconto + acrescimo);
+            if (Math.abs(soma - totalAjustado) > 0.009) {
+                return Swal.fire('Atenção','A soma das parcelas difere do total ajustado (valor - desconto + acréscimo).','warning');
+            }
+        } else {
+            // 1 única conta (dados do topo)
+            const formaSel = getFormaSelecionada();
+
+            contas.push({
+                fornecedor_id: Number(fornecedor_id),
+                documento: documentoBase,
+                emissao: emissao || null,
+                vencimento: vencInicial,
+                valor: valor_total,                // bruto informado
+                adicional: acrescimo,              // aplica no item único
+                desconto: desconto,                // aplica no item único
+                plano_contas: plano_contas || null,
+                forma_pagamento: formaSel ? formaSel.id : null,
+                banco:           formaSel ? formaSel.id : null,
+                forma_pagamento_id: formaSel ? formaSel.id : null,
+                obs_extra
+            });
+        }
+
+        Swal.fire({ title:'Salvando...', didOpen:()=>Swal.showLoading() });
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'createContaLote',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    usuario_id: user_id || null,
+                    contas
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso',
+                    text: `Conta(s) criada(s): ${res.data.inseridos}`
+                }).then(() => {
+                    // limpa primeiro
+                    limparFormulario();
+
+                    // fecha modal do parent
+                    fecharModalParent();
+
+                    // dispara refresh no parent, se existir
+                    if (window.parent) {
+                        if (typeof window.parent.buscar === 'function') window.parent.buscar();
+                        if (typeof window.parent.recarregarContas === 'function') window.parent.recarregarContas();
+                    }
+                });
+            } else {
+                Swal.fire('Erro', res.data?.error || res.data?.message || 'Falha ao salvar conta.', 'error');
+            }
+
+        } catch(e){
+            console.error(e);
+            Swal.fire('Erro','Falha na comunicação com o servidor.','error');
+        }
+    }
+
+    // Fecha modal do parent (por ID conhecido ou qualquer modal visível)
+    function fecharModalParent() {
+        const $p = (window.parent && window.parent.$) ? window.parent.$ : null;
+        if (!$p) return;
+        const ids = ['#modalNovaConta', '#modalImportacao', '#modalFinanceiro'];
+        let fechou = false;
+        for (const sel of ids) {
+            if ($p(sel).length) { $p(sel).modal('hide'); fechou = true; }
+        }
+        if (!fechou) { $p('.modal.in, .modal.show').modal('hide'); }
+    }
+
+    (function enableEscClose(){
+        // dá foco no body do iframe pra capturar teclas
+        if (!document.body.hasAttribute('tabindex')) document.body.setAttribute('tabindex','-1');
+        document.body.focus();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                e.preventDefault();
+                fecharModalParent();
+            }
+        });
+    })();
+
+    function limparFormulario() {
+        // Se existir um form raiz
+        const form = document.getElementById('formConta');
+        if (form) form.reset();
+
+        // Campos simples (garante que fiquem vazios, mesmo sem <form>)
+        $('#doc, #valor_total, #emissao, #vencimento, #desconto, #acrescimo, #obs').val('');
+
+        // Select2 (fornecedor, plano de contas, forma de pagamento)
+        if ($('#fornecedor').length)     $('#fornecedor').val(null).trigger('change');
+        if ($('#plano_contas')?.length)  $('#plano_contas').val(null).trigger('change');
+        if ($('#forma_pagamento')?.length) $('#forma_pagamento').val(null).trigger('change');
+
+        // Checkbox “Deseja parcelar?” (cobrimos os dois IDs usados nas versões anteriores)
+        const $chk = $('#chkParcelar').length ? $('#chkParcelar') : $('#chkProgramar');
+        if ($chk.length) {
+            $chk.prop('checked', false);
+            // esconde a área de parcelas, conforme tua lógica
+            $('#divParcelas, #divProgramar').hide();
+        }
+
+        // Limpa grid de parcelas e totalizador/aviso
+        $('#tblParcelas tbody').empty();
+        $('#avisoParcelas').hide();
+        $('#finTotalParcelas, #lblTotalParcelas').text('R$ 0,00');
+
+        // (opcional) foca no primeiro campo
+        $('#doc').focus();
+    }
+
+
+    function getFormaSelecionada(){
+        const id = Number($('#forma_pagamento_id').val());
+        return FORMAS_FIXAS.find(f => f.id === id) || null;
+    }
+
+
+</script>
+</body>
+</html>

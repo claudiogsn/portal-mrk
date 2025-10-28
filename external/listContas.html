@@ -103,6 +103,10 @@
                 </div>
                 <div class="col-md-2 text-right">
                     <label>&nbsp;</label><br>
+                    <button class="btn btn-success btn-header-right" id="btnNovaConta"><i class="fa fa-plus"></i> Nova Conta</button>
+                </div>
+                <div class="col-md-2 text-right">
+                    <label>&nbsp;</label><br>
                     <button class="btn btn-primary" id="btnBuscar">Buscar</button>
                 </div>
             </div>
@@ -227,6 +231,33 @@
         </div>
     </div>
 </div>
+<!-- Modal Nova Conta (fullscreen com iframe) -->
+<div class="modal fade" id="modalNovaConta" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom:1px solid #eee;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="iframeNovaConta" class="modal-iframe"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Nova Conta (fullscreen com iframe) -->
+<div class="modal fade" id="modalEditConta" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom:1px solid #eee;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="iframeEditConta" class="modal-iframe"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 
 <script>
@@ -402,20 +433,35 @@
             if (t === 'd') tipoIcon = '<span class="icon-circle red" title="Débito"><i class="fa fa-minus"></i></span>';
 
             tbody.append(`
-                <tr>
-                    <td><a href="#" title="Editar"><i class="fa fa-edit blue"></i></a></td>
-                    <td><a href="#" title="Outras ações"><i class="fa fa-ellipsis-v green"></i></a></td>
-                    <td class="text-center">${tipoIcon}</td>
-                    <td>${n.nome ?? ''}</td>
-                    <td>${n.doc ?? ''}</td>
-                    <td>${emissao}</td>
-                    <td>${vencimento}</td>
-                    <td title="${n.obs ?? ''}">${n.obs ? String(n.obs).slice(0, 80) : ''}</td>
-                    <td>${statusBadge}</td>
-                    <td>${pagamento}</td>
-                    <td class="text-right">${toBRL(n.valor)}</td>
-                </tr>
-            `);
+      <tr>
+        <td>
+          <a href="#" class="btn-edit-conta" title="Editar"
+             data-id="${n.id}">
+            <i class="fa fa-edit blue"></i>
+          </a>
+        </td>
+        <td>
+          <a href="#" class="btn-delete-conta" title="Excluir"
+             data-id="${n.id}"
+             data-nome="${(n.nome ?? '').replace(/"/g,'&quot;')}"
+             data-doc="${n.doc ?? ''}"
+             data-emissao="${emissao}"
+             data-vencimento="${vencimento}"
+             data-valor="${n.valor ?? 0}">
+            <i class="fa fa-trash red"></i>
+          </a>
+        </td>
+        <td class="text-center">${tipoIcon}</td>
+        <td>${n.nome ?? ''}</td>
+        <td>${n.doc ?? ''}</td>
+        <td>${emissao}</td>
+        <td>${vencimento}</td>
+        <td title="${n.obs ?? ''}">${n.obs ? String(n.obs).slice(0, 80) : ''}</td>
+        <td>${statusBadge}</td>
+        <td>${pagamento}</td>
+        <td class="text-right">${toBRL(n.valor)}</td>
+      </tr>
+    `);
         }
     }
 
@@ -665,6 +711,137 @@
             $('#btnOpenExportF360').remove();     // em erro, não mostra
         }
     }
+
+    // Nova Conta (fullscreen com iframe)
+    $(document).on('click', '#btnNovaConta', function () {
+        var url = baseUrlRedirect + '/external/createFinanceiroConta.html'
+            + '?user_id=' + encodeURIComponent(username)
+            + '&token=' + encodeURIComponent(token)
+            + '&system_unit_id=' + encodeURIComponent(unit_id);
+
+        $('#iframeNovaConta').attr('src', url);
+        $('#modalNovaConta').modal({ backdrop: 'static', keyboard: true }).modal('show');
+    });
+
+    // Ao FECHAR a Nova Conta: limpa iframe e recarrega a lista
+    $('#modalNovaConta').on('hidden.bs.modal', function () {
+        $('#iframeNovaConta').attr('src', 'about:blank');
+        if (typeof buscar === 'function') buscar();
+    });
+
+    // Abrir modal de Edição (você já tem o click no ícone edit com data-id)
+    $(document).on('click', '.btn-edit-conta', function (e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        if (!id) return;
+
+        const url = baseUrlRedirect + '/external/editFinanceiroConta.html'
+            + '?user_id=' + encodeURIComponent(username)
+            + '&token=' + encodeURIComponent(token)
+            + '&system_unit_id=' + encodeURIComponent(unit_id)
+            + '&id=' + encodeURIComponent(id);
+
+        $('#iframeEditConta').attr('src', url);
+        $('#modalEditConta').modal({ backdrop: 'static', keyboard: true }).modal('show');
+    });
+
+    // Ao FECHAR a Edição: limpa iframe e recarrega a lista
+    $('#modalEditConta').on('hidden.bs.modal', function () {
+        $('#iframeEditConta').attr('src', 'about:blank');
+        if (typeof buscar === 'function') buscar();
+    });
+
+    // Clique no ícone de lixeira
+    $(document).on('click', '.btn-delete-conta', function(e){
+        e.preventDefault();
+        const id         = $(this).data('id');
+        const nome       = $(this).data('nome') || '';
+        const doc        = $(this).data('doc') || '';
+        const emissao    = $(this).data('emissao') || '';
+        const vencimento = $(this).data('vencimento') || '';
+        const valor      = $(this).data('valor') || 0;
+
+        abrirPopupExclusao({ id, nome, doc, emissao, vencimento, valor });
+    });
+
+    async function abrirPopupExclusao(info){
+        const htmlResumo = `
+    <div style="text-align:left">
+      <p><strong>Entidade:</strong> ${info.nome || '-'}</p>
+      <p><strong>Documento:</strong> ${info.doc || '-'}</p>
+      <p><strong>Emissão:</strong> ${info.emissao || '-'}</p>
+      <p><strong>Vencimento:</strong> ${info.vencimento || '-'}</p>
+      <p><strong>Valor:</strong> ${toBRL(info.valor)}</p>
+    </div>
+    <hr>
+    <label for="motivoExclusao" style="font-weight:600;">Motivo da exclusão</label>
+    <textarea id="motivoExclusao" class="swal2-textarea" placeholder="Descreva o motivo..." rows="4"></textarea>
+  `;
+
+        const { isConfirmed, value } = await Swal.fire({
+            title: 'Excluir conta?',
+            html: htmlResumo,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Excluir',
+            cancelButtonText: 'Cancelar',
+            focusConfirm: false,
+            preConfirm: () => {
+                const motivo = (document.getElementById('motivoExclusao')?.value || '').trim();
+                if (!motivo) {
+                    Swal.showValidationMessage('Informe o motivo da exclusão.');
+                    return false;
+                }
+                return motivo;
+            }
+        });
+
+        if (!isConfirmed) return;
+
+        const motivo = value;
+        await excluirConta(info.id, motivo);
+    }
+
+    async function excluirConta(id, motivo){
+        if (!token || !unit_id) {
+            return Swal.fire('Atenção', 'Parâmetros ausentes na URL (token e/ou unit_id).', 'warning');
+        }
+
+        try {
+            Swal.fire({ title:'Excluindo...', didOpen:()=>Swal.showLoading() });
+
+            const res = await axios.post(baseUrl, {
+                method: 'deleteConta',
+                token,
+                data: {
+                    id: Number(id),
+                    usuario_id: username, // ajuste se seu back espera string
+                    motivo: motivo
+                }
+            });
+
+            Swal.close();
+
+            if (!res.data || !res.data.success) {
+                return Swal.fire('Erro', res.data?.message || 'Falha ao excluir conta.', 'error');
+            }
+
+            await Swal.fire('Sucesso', 'Conta excluída e backup registrado.', 'success');
+
+            // Recarrega a lista
+            if (typeof buscar === 'function') buscar();
+
+        } catch (e){
+            console.error(e);
+            Swal.close();
+            Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+        }
+    }
+
+
+
+
+
 
 </script>
 </body>

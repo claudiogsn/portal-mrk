@@ -56,7 +56,6 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
-            // Metodos da API Menew 
             case 'ApiMenewAuthenticate':
                 $response = FinanceiroApiMenewController::authenticate();
                 break;
@@ -125,9 +124,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros inválidos'];
                 }
                 break;
-
-
-
             case 'getContaByMonth':
                 if(isset($requestData['system_unit_id']) && isset($requestData['month']) && isset($requestData['year'])){
                     $response = FinanceiroContaController::getContaByMonth($requestData['system_unit_id'], $requestData['month'], $requestData['year'], $requestData['plano_contas']);
@@ -136,7 +132,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros inválidos'];
                 }
                 break;
-
             case 'lancarNotaNoFinanceiroConta':
                 $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
                 break;
@@ -157,8 +152,24 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'ID do estabelecimento não informado'];
                 }
                 break;
-
-
+            case 'createConta':
+                $response = FinanceiroContaController::createConta($requestData);
+                break;
+            case 'editConta':
+                $response = FinanceiroContaController::editConta($requestData);
+                break;
+            case 'deleteConta':
+                $response = FinanceiroContaController::deleteConta($requestData['id'],$requestData['usuario_id'],$requestData['motivo']);
+                break;
+            case 'createContaLote':
+                $response = FinanceiroContaController::createContaLote($requestData);
+                break;
+            case 'getContaById':
+                $response = FinanceiroContaController::getContaById($requestData['id']);
+                break;
+            case 'listFornecedores':
+                $response = FinanceiroFornecedorController::listFornecedores($requestData['system_unit_id']);
+                break;
 
 
             default:
