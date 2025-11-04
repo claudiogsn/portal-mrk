@@ -126,22 +126,56 @@
             : 'http://localhost/portal-mrk/api/v1/index.php';
 
         const urlParams = new URLSearchParams(window.location.search);
-        const token  = urlParams.get('token');
-        const unitId = urlParams.get('unit_id');
+        const token   = urlParams.get('token');
+        const unitId  = urlParams.get('unit_id') || urlParams.get('system_unit_id');
+        const qsInsumoId = urlParams.get('insumo_id');        // opcional
+        const qsDtIni    = urlParams.get('dt_inicio');        // opcional
+        const qsDtFim    = urlParams.get('dt_fim');           // opcional
+        const redirect   = (urlParams.get('redirect') || 'false').toLowerCase() === 'true';
 
-        function showLoader() { $('.page-loader-wrapper').fadeIn(); }
-        function hideLoader() { $('.page-loader-wrapper').fadeOut(); }
+        function showLoader() { /* opcional: plugue seu loader se tiver */ }
+        function hideLoader() { /* opcional */ }
 
+        // Se redirect=true, esconde card de filtros (header-card) e deixa só a tabela
+        if (redirect) {
+            $('.header-card').hide();
+        }
+
+        // Se vieram parâmetros, preenche inputs
+        if (qsDtIni) $('#dataInicial').val(qsDtIni);
+        if (qsDtFim) $('#dataFinal').val(qsDtFim);
+        if (qsInsumoId) {
+            $('#item-id').val(qsInsumoId);
+            $('#item-description').val(`Insumo ${qsInsumoId}`); // opcional: texto amigável
+        }
+
+        // Carrega lista de itens ao clicar no campo (workflow manual)
         $('#item-description').on('click', function () {
             loadItems(unitId);
         });
 
-        // Buscar extrato -> agora preenche tabela
-        $('#btnFiltrar').on('click', async function () {
+        // Botão Buscar (workflow manual)
+        $('#btnFiltrar').on('click', buscarExtrato);
+
+        // Auto-buscar se todos os parâmetros necessários vierem pela URL
+        if (token && unitId && qsInsumoId && (qsDtIni || $('#dataInicial').val()) && (qsDtFim || $('#dataFinal').val())) {
+            buscarExtrato();
+        } else {
+            // Datas padrão = hoje (somente se não vieram por QS)
+            const hoje = new Date().toISOString().split('T')[0];
+            if (!$('#dataInicial').val()) $('#dataInicial').val(hoje);
+            if (!$('#dataFinal').val())   $('#dataFinal').val(hoje);
+        }
+
+        async function buscarExtrato() {
             const dt_inicio = $('#dataInicial').val();
             const dt_fim    = $('#dataFinal').val();
             const insumo_id = $('#item-id').val();
 
+            if (!token || !unitId) {
+                Swal.fire('Erro', 'Parâmetros ausentes: token e unidade.', 'error');
+                return;
+            }
             if (!dt_inicio || !dt_fim) {
                 Swal.fire('Erro', 'Preencha as datas!', 'error');
                 return;
@@ -152,7 +186,6 @@
             }
 
             showLoader();
-
             try {
                 const response = await axios.post(baseUrl, {
                     method: 'extratoInsumo',
@@ -165,9 +198,8 @@
                     }
                 });
 
-                const result = response.data;
+                const result = response.data || {};
                 $('#saldo_inicial').text('Saldo inicial: ' + (result.saldo_inicial ?? '-'));
-
                 montarTabelaExtrato(result.extrato || []);
             } catch (err) {
                 Swal.fire('Erro', 'Não foi possível carregar o extrato.', 'error');
@@ -175,17 +207,15 @@
             } finally {
                 hideLoader();
             }
-        });
+        }
 
         function montarTabelaExtrato(extrato) {
             const $tb = $('#extrato-table tbody');
             $tb.empty();
 
-            // percorre dias
             extrato.forEach(dia => {
                 const diaFmt = formatarData(dia.data);
 
-                // Saldo anterior (se existir)
                 if (dia.saldo_anterior) {
                     $tb.append(linhaTabela(
                         diaFmt,
@@ -197,7 +227,6 @@
                     ));
                 }
 
-                // Movimentações (entradas/saídas)
                 (dia.movimentacoes || []).forEach(mov => {
                     const tipoLabel = mov.tipo_mov === 'entrada' ? 'Entrada' : 'Saída';
                     const sinal = mov.tipo_mov === 'entrada' ? '+' : '-';
@@ -211,7 +240,6 @@
                     ));
                 });
 
-                // Saldo estimado
                 if (typeof dia.saldo_estimado !== 'undefined' && dia.saldo_estimado !== null) {
                     $tb.append(linhaTabela(
                         diaFmt,
@@ -223,7 +251,6 @@
                     ));
                 }
 
-                // Balanço (se houver)
                 if (dia.balanco) {
                     $tb.append(linhaTabela(
                         diaFmt,
@@ -248,19 +275,18 @@
                         classeTipo === 'balanco' ? 'badge-balanco' : 'badge-saldo';
 
             return `
-          <tr>
-            <td class="nowrap">${dataFmt}</td>
-            <td><span class="badge badge-tipo ${badgeClass}">${tipo}</span></td>
-            <td>${documento || ''}</td>
-            <td class="text-right nowrap">${q}</td>
-            <td>${obs || ''}</td>
-          </tr>
-        `;
+      <tr>
+        <td class="nowrap">${dataFmt}</td>
+        <td><span class="badge badge-tipo ${badgeClass}">${tipo}</span></td>
+        <td>${documento || ''}</td>
+        <td class="text-right nowrap">${q}</td>
+        <td>${obs || ''}</td>
+      </tr>`;
         }
 
         async function loadItems(unitId) {
             if (!unitId) {
-                Swal.fire('Atenção', 'Selecione a unidade de origem antes de buscar produtos.', 'warning');
+                Swal.fire('Atenção', 'Selecione a unidade antes de buscar produtos.', 'warning');
                 return;
             }
 
@@ -278,22 +304,21 @@
 
                     items.forEach(item => {
                         const row = `
-                <tr>
-                  <td>${item.codigo}</td>
-                  <td>${item.nome}</td>
-                  <td>${item.und || ''}</td>
-                  <td>
-                    <button class="btn btn-primary select-item"
-                            data-codigo="${item.codigo}"
-                            data-nome="${item.nome}">
-                      Selecionar
-                    </button>
-                  </td>
-                </tr>`;
+            <tr>
+              <td>${item.codigo}</td>
+              <td>${item.nome}</td>
+              <td>${item.und || ''}</td>
+              <td>
+                <button class="btn btn-primary select-item"
+                        data-codigo="${item.codigo}"
+                        data-nome="${item.nome}">
+                  Selecionar
+                </button>
+              </td>
+            </tr>`;
                         tbody.append(row);
                     });
 
-                    // Filtro local
                     $('#item-search').off('input').on('input', function () {
                         const termo = $(this).val().toLowerCase();
                         $('#item-table tbody tr').each(function () {
@@ -303,14 +328,11 @@
                         });
                     });
 
-                    // Selecionar item
                     $('.select-item').off('click').on('click', function () {
                         const id = $(this).data('codigo');
                         const nome = $(this).data('nome');
-
                         $('#item-id').val(id);
                         $('#item-description').val(nome);
-
                         $('#itemModal').modal('hide');
                     });
                 } else {
@@ -327,11 +349,6 @@
             const [ano, mes, dia] = dataStr.split('-');
             return `${dia}/${mes}/${ano}`;
         }
-
-        // Datas padrão = hoje
-        const hoje = new Date().toISOString().split('T')[0];
-        $('#dataInicial').val(hoje);
-        $('#dataFinal').val(hoje);
     });
 </script>
 </body>

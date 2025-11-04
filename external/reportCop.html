@@ -13,6 +13,28 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <style>
+      /* Modal fullscreen para Bootstrap 3 */
+      .modal-fullscreen .modal-dialog {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+      }
+      .modal-fullscreen .modal-content {
+          height: 100%;
+          border: 0;
+          border-radius: 0;
+      }
+      .modal-fullscreen .modal-body {
+          height: calc(100% - 55px);
+          padding: 0;
+          overflow: hidden;
+      }
+      .modal-fullscreen iframe {
+          width: 100%;
+          height: 100%;
+          border: 0;
+      }
     .form-control { margin-bottom: 10px; }
     .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
     .table thead th { white-space: nowrap; }
@@ -65,7 +87,8 @@
         <table class="table table-striped table-hover" id="tabela-resultado">
           <thead>
           <tr>
-            <th>Insumo</th>
+              <th class="nowrap">Detalhes</th>
+              <th>Insumo</th>
             <th id="thSaldoInicial">Saldo Inicial</th>
             <th>Entradas</th>
             <th>Saídas</th>
@@ -82,6 +105,22 @@
       <div id="resumoTotais" class="text-right muted text-small" style="margin-top:5px;"></div>
     </div>
   </div>
+</div>
+<!-- Modal Fullscreen para Detalhes do Insumo -->
+<div class="modal fade modal-fullscreen" id="modalExtrato" tabindex="-1" role="dialog" aria-labelledby="modalExtratoLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="padding:10px 15px;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size:28px;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="modalExtratoLabel">Detalhes do Insumo</h4>
+            </div>
+            <div class="modal-body">
+                <iframe id="iframeExtrato" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -213,56 +252,100 @@
   }
 
   function renderTabela(itens) {
-    const $tbody = $('#tabela-resultado tbody');
-    $tbody.empty();
+      const $tbody = $('#tabela-resultado tbody');
+      $tbody.empty();
 
-    // totais
-    let totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDivQtd = 0, totalValDiff = 0;
+      let totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDivQtd = 0, totalValDiff = 0;
 
-    itens.forEach(item => {
-      const custo = item.custo_unitario != null ? Number(item.custo_unitario)
+      itens.forEach(item => {
+          const custo = item.custo_unitario != null ? Number(item.custo_unitario)
               : (item.preco_custo != null ? Number(item.preco_custo) : null);
 
-      const diverg = item.divergencia != null ? Number(item.divergencia) : null;
-      const valorDiferenca = (custo != null && diverg != null) ? (custo * diverg) : null;
+          const diverg = item.divergencia != null ? Number(item.divergencia) : null;
+          const valorDiferenca = (custo != null && diverg != null) ? (custo * diverg) : null;
 
-      // Totais
-      totalIni     += Number(item.saldo_inicial || 0);
-      totalEnt     += Number(item.entradas || 0);
-      totalSai     += Number(item.saidas || 0);
-      totalEsp     += Number(item.saldo_esperado || 0);
-      totalFin     += Number(item.saldo_final_balanco || 0);
-      totalDivQtd  += Number(diverg || 0);
-      totalValDiff += Number(valorDiferenca || 0);
+          totalIni     += Number(item.saldo_inicial || 0);
+          totalEnt     += Number(item.entradas || 0);
+          totalSai     += Number(item.saidas || 0);
+          totalEsp     += Number(item.saldo_esperado || 0);
+          totalFin     += Number(item.saldo_final_balanco || 0);
+          totalDivQtd  += Number(diverg || 0);
+          totalValDiff += Number(valorDiferenca || 0);
 
-      const tr = `
-        <tr>
-          <td>${escapeHtml(item.nome_produto) || '-'}</td>
-          <td class="text-right">${brQty(item.saldo_inicial)}</td>
-          <td class="text-right">${brQty(item.entradas)}</td>
-          <td class="text-right">${brQty(item.saidas)}</td>
-          <td class="text-right">${brQty(item.saldo_esperado)}</td>
-          <td class="text-right">${item.saldo_final_balanco != null ? brQty(item.saldo_final_balanco) : '-'}</td>
-          <td class="text-right">${badgeDivergencia(diverg)}</td>
-          <td class="text-right">${custo != null ? brMoney(custo) : '-'}</td>
-          <td class="text-right">${valorDiferenca != null ? brMoney(valorDiferenca) : '-'}</td>
-        </tr>
-      `;
-      $tbody.append(tr);
-    });
+          // tenta obter o id/codigo do insumo
+          const insumoId = item.produto;
+          const insumoName= item.nome_produto;
 
-    $('#resumoTotais').html(`
-      Totais &nbsp;|&nbsp;
-      Inicial: <b>${brQty(totalIni)}</b> &nbsp;·&nbsp;
-      Entradas: <b>${brQty(totalEnt)}</b> &nbsp;·&nbsp;
-      Saídas: <b>${brQty(totalSai)}</b> &nbsp;·&nbsp;
-      Esperado: <b>${brQty(totalEsp)}</b> &nbsp;·&nbsp;
-      Balanço Final: <b>${brQty(totalFin)}</b> &nbsp;·&nbsp;
-      Diferença (quant.): <b>${brQty(totalDivQtd)}</b> &nbsp;·&nbsp;
-      Valor Diferença: <b>${brMoney(totalValDiff)}</b>
-    `);
+          const linkDetalhes = insumoId
+              ? `<a href="#modalExtrato"
+                    class="lnk-detalhes"
+                    data-toggle="modal"
+                    data-insumo="${insumoId}"
+                    data-insumo-name="${escapeHtml(insumoName)}"
+                    data-dt-inicio="${$('#dtInicio').val()}"
+                    data-dt-fim="${$('#dtFim').val()}"
+                    title="Ver detalhes do insumo">
+                    <i class="fa fa-search"></i>
+                 </a>`
+              : '<span class="text-muted">-</span>';
+
+
+          const tr = `
+      <tr>
+        <td class="nowrap" style="width:70px;">${linkDetalhes}</td>
+        <td>${escapeHtml(item.nome_produto) || '-'}</td>
+        <td class="text-right">${brQty(item.saldo_inicial)}</td>
+        <td class="text-right">${brQty(item.entradas)}</td>
+        <td class="text-right">${brQty(item.saidas)}</td>
+        <td class="text-right">${brQty(item.saldo_esperado)}</td>
+        <td class="text-right">${item.saldo_final_balanco != null ? brQty(item.saldo_final_balanco) : '-'}</td>
+        <td class="text-right">${badgeDivergencia(diverg)}</td>
+        <td class="text-right">${custo != null ? brMoney(custo) : '-'}</td>
+        <td class="text-right">${valorDiferenca != null ? brMoney(valorDiferenca) : '-'}</td>
+      </tr>`;
+          $tbody.append(tr);
+      });
+
+      $('#resumoTotais').html(`
+    Totais &nbsp;|&nbsp;
+    Inicial: <b>${brQty(totalIni)}</b> &nbsp;·&nbsp;
+    Entradas: <b>${brQty(totalEnt)}</b> &nbsp;·&nbsp;
+    Saídas: <b>${brQty(totalSai)}</b> &nbsp;·&nbsp;
+    Esperado: <b>${brQty(totalEsp)}</b> &nbsp;·&nbsp;
+    Balanço Final: <b>${brQty(totalFin)}</b> &nbsp;·&nbsp;
+    Diferença (quant.): <b>${brQty(totalDivQtd)}</b> &nbsp;·&nbsp;
+    Valor Diferença: <b>${brMoney(totalValDiff)}</b>
+  `);
+
+      // bind do botão "ver detalhes" (abre modal fullscreen com extrato)
+      $('#modalExtrato').off('show.bs.modal').on('show.bs.modal', function (ev) {
+          const $a = $(ev.relatedTarget); // o <a> clicado
+
+          const insumoId   = $a.data('insumo');                       // OK
+          const insumoName = $a.data('insumoName')                    // jQuery mapeia data-insumo-name -> insumoName
+              || $a.attr('data-insumo-name') || '';      // fallback
+
+          const dt_inicio  = $a.data('dt-inicio') || $('#dtInicio').val();
+          const dt_fim     = $a.data('dt-fim')    || $('#dtFim').val();
+
+          const qs = $.param({
+              token: token,
+              unit_id: system_unit_id,
+              insumo_id: insumoId,
+              dt_inicio,
+              dt_fim,
+              redirect: 'true'
+          });
+
+          // confirme o caminho correto do arquivo:
+          const url = `${baseUrlredirect}/extratoInsumo.html?${qs}`;
+          $('#iframeExtrato').attr('src', url);
+
+          $('#modalExtratoLabel').text(`Detalhes do Insumo ${insumoId} - ${insumoName}`);
+      });
+
+
   }
-
   $('#btnExportPdf').on('click', () => {
     if (!ultimoPayload || !Array.isArray(ultimoPayload.itens) || ultimoPayload.itens.length === 0) {
       return Swal.fire('Atenção', 'Consulte primeiro para gerar o PDF.', 'warning');
