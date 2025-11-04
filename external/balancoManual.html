@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Balanço de Itens</title>
+
+    <!-- Favicon-->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- DataTable (skin do AdminBSB) -->
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        table { margin-top: 20px; }
+        th, td { text-align: left; }
+        .modal-body { max-height: 500px; overflow-y: auto; }
+        .remove-item { padding: 2px 8px; }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="block-header">
+        <h2></h2>
+        <br />
+    </div>
+
+    <!-- Card principal -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Balanço de Itens</h2>
+                </div>
+                <div class="body">
+                    <form id="balanceForm">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label for="balance-date">Data do Balanço</label>
+                                <input type="date" id="balance-date" class="form-control" required />
+                            </div>
+
+                            <div class="col-md-5">
+                                <label for="unit-id">Unidade</label>
+                                <select id="unit-id" class="form-control" required>
+                                    <option value="">Selecione</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-5">
+                                <label for="item-description">Produto</label>
+                                <input type="hidden" id="item-codigo" />
+                                <input type="hidden" id="item-unit" />
+                                <input type="text"
+                                       id="item-description"
+                                       class="form-control"
+                                       readonly
+                                       placeholder="Clique para selecionar um produto"
+                                       data-toggle="modal"
+                                       data-target="#itemModal" />
+                            </div>
+
+                            <div class="col-md-3">
+                                <label for="item-quantity">Quantidade</label>
+                                <input type="text" inputmode="numeric" id="item-quantity" class="form-control" placeholder="Digite a quantidade" />
+                            </div>
+
+                            <div class="col-md-1">
+                                <label>&nbsp;</label>
+                                <button type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color:#fff">Adicionar</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div><!-- card -->
+        </div>
+    </div>
+
+    <!-- Grid de Itens -->
+    <div class="card">
+        <div class="row">
+            <div class="col-md-12">
+                <table id="result-table" class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>Cod.</th>
+                        <th>Descrição</th>
+                        <th>Quant</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody><!-- linhas dinamicamente --></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <center>
+        <button type="button" id="balance-button" class="btn btn-success waves-effect">Salvar Balanço</button>
+    </center>
+</div>
+
+<div><br /><br /></div>
+
+<!-- Modal de Itens -->
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog" aria-labelledby="itemModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="itemModalLabel">Selecionar Item</h4>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição" />
+                </div>
+                <table id="item-table" class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>Cod.</th>
+                        <th>Descrição</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody><!-- preenchido via JS --></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Libs -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        // captura do user pela URL: aceita ?user= e fallback para ?username=
+        const userId = parseInt(urlParams.get('user') || urlParams.get('username'));
+
+        const balanceDateInput = document.getElementById('balance-date');
+
+        // Define data máxima (hoje) e valor padrão = hoje
+        const today = new Date().toISOString().split('T')[0];
+        balanceDateInput.setAttribute('max', today);
+        balanceDateInput.value = today;
+
+        // Carregar unidades (mesma lógica da tela anterior)
+        async function loadUnidades() {
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getFiliaisByMatriz',
+                        token: token,
+                        data: { unit_matriz_id: userId } // mantém padrão anterior
+                    })
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar unidades');
+
+                const filiais = await response.json();
+                const unitSelect = document.getElementById('unit-id');
+                unitSelect.innerHTML = '<option value="">Selecione</option>';
+
+                // (Opcional) adicionar manual se quiser manter o exemplo anterior
+                // const manual = new Option('RED Burguer - Produção', '10');
+                // unitSelect.appendChild(manual);
+
+                filiais.forEach(f => {
+                    const opt = new Option(f.filial_nome, f.filial_id);
+                    unitSelect.appendChild(opt);
+                });
+            } catch (e) {
+                Swal.fire('Erro', e.message, 'error');
+            }
+        }
+
+        // Carrega itens para a unidade selecionada
+        async function loadItems(unitId) {
+            if (!unitId) {
+                Swal.fire('Atenção', 'Selecione a unidade antes de buscar itens.', 'warning');
+                return;
+            }
+
+            try {
+                const { data } = await axios.post(baseUrl, {
+                    method: 'listInsumos',
+                    token: token,
+                    data: { unit_id: unitId }
+                });
+
+                if (!data?.success) {
+                    Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+                    return;
+                }
+
+                const tbody = $('#item-table tbody');
+                tbody.empty();
+
+                data.insumos.forEach(item => {
+                    const tr = `
+                    <tr>
+                        <td>${item.codigo}</td>
+                        <td>${item.nome}</td>
+                        <td>
+                            <button class="btn btn-primary select-item"
+                                    data-codigo="${item.codigo}"
+                                    data-nome="${item.nome}"
+                                    data-und="${item.und}">
+                                Inserir
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                    tbody.append(tr);
+                });
+
+                $('#item-search').off('input').on('input', function () {
+                    const searchValue = $(this).val().toLowerCase();
+                    $('#item-table tbody tr').each(function () {
+                        const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
+                        const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+                        $(this).toggle(codigo.includes(searchValue) || nome.includes(searchValue));
+                    });
+                });
+
+                $('.select-item').off('click').on('click', function () {
+                    const codigo = $(this).data('codigo');
+                    const nome = $(this).data('nome');
+                    const und = $(this).data('und');
+
+                    $('#item-codigo').val(codigo);
+                    $('#item-description').val(nome);
+                    $('#item-unit').val(und);
+                    $('#itemModal').modal('hide');
+                    // foca na quantidade para acelerar o fluxo
+                    $('#item-quantity').focus();
+                });
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
+            }
+        }
+
+        // Quantidade: se unidade for KG/LT/L, permite decimais em milésimos (exibição com vírgula)
+        $('#item-quantity').on('input', function () {
+            const unidade = $('#item-unit').val();
+            if (['KG', 'LT', 'L'].includes((unidade || '').toUpperCase())) {
+                let val = $(this).val().replace(/[^\d]/g, '');
+                val = (parseInt(val || '0', 10) / 1000).toFixed(3); // exibe 3 casas
+                // exibição com vírgula (usuário BR)
+                $(this).val(val.replace('.', ','));
+            } else {
+                // Somente inteiros
+                $(this).val($(this).val().replace(/[^\d]/g, ''));
+            }
+        });
+
+        // Abrir modal de itens (carregar itens da unidade selecionada)
+        $('#item-description').on('click', function () {
+            const unitId = $('#unit-id').val();
+            loadItems(unitId);
+        });
+
+        // Adiciona a linha ao grid
+        $('#add-item').on('click', function () {
+            const codigo = $('#item-codigo').val();
+            const descricao = $('#item-description').val();
+            const quantidade = $('#item-quantity').val();
+
+            if (!codigo || !descricao || !quantidade) {
+                Swal.fire('Erro', 'Selecione um produto e informe a quantidade.', 'error');
+                return;
+            }
+
+            const row = `
+            <tr>
+                <td>${codigo}</td>
+                <td>${descricao}</td>
+                <td>${quantidade}</td>
+                <td><button class="btn btn-danger remove-item">X</button></td>
+            </tr>
+        `;
+            $('#result-table tbody').append(row);
+
+            // Limpa campos
+            $('#item-codigo').val('');
+            $('#item-description').val('');
+            $('#item-unit').val('');
+            $('#item-quantity').val('');
+
+            // Remover item
+            $('.remove-item').off('click').on('click', function () {
+                $(this).closest('tr').remove();
+            });
+        });
+
+        // Enviar balanço
+        async function sendBalance() {
+            const dateBalance = $('#balance-date').val();
+            const unitId = $('#unit-id').val();
+
+            if (!dateBalance) {
+                Swal.fire('Erro', 'Selecione uma data válida para o balanço.', 'error');
+                return;
+            }
+            if (!unitId) {
+                Swal.fire('Erro', 'Selecione a unidade.', 'error');
+                return;
+            }
+            if (!userId) {
+                Swal.fire('Erro', 'Usuário não identificado na URL (?user=).', 'error');
+                return;
+            }
+
+            const itens = [];
+            $('#result-table tbody tr').each(function (index, row) {
+                const codigo = $(row).find('td:eq(0)').text().trim();
+                let quantidade = $(row).find('td:eq(2)').text().trim();
+
+                if (!codigo || !quantidade) return;
+
+                // Converte vírgula para ponto na hora de ENVIAR
+                quantidade = quantidade.replace(/\./g, '').replace(',', '.'); // se usuário digitar "1.000,123", vira "1000.123"
+                // se veio como "1,000" de entrada decimal, acima normaliza para ponto
+
+                itens.push({
+                    codigo: parseInt(codigo, 10),
+                    seq: index + 1,
+                    quantidade: quantidade
+                });
+            });
+
+            if (itens.length === 0) {
+                Swal.fire('Erro', 'Adicione ao menos um item ao balanço.', 'error');
+                return;
+            }
+
+            const confirm = await Swal.fire({
+                title: 'Confirmar Balanço?',
+                text: 'Você está prestes a salvar o balanço de itens.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, Salvar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Enviando...',
+                text: 'Por favor, aguarde.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const { data } = await axios.post(baseUrl, {
+                    method: 'saveBalanceItems',
+                    token: token,
+                    data: {
+                        system_unit_id: parseInt(unitId, 10),
+                        date_balance: dateBalance,
+                        itens,
+                        user: userId
+                    }
+                });
+
+                Swal.close();
+
+                if (data?.success) {
+                    const doc = data?.balanco || '-';
+                    await Swal.fire({
+                        title: 'Balanço salvo!',
+                        html: `Documento: <b>${doc}</b><br/>${data?.message || ''}`,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    });
+
+                    // 👉 Abre a impressão numa nova aba (usa o template balanco.html)
+                    const printUrl = `./reports/balanco.html?token=${encodeURIComponent(token)}&unit=${encodeURIComponent(unitId)}&doc=${encodeURIComponent(doc)}`;
+                    window.open(printUrl, '_blank', 'width=1024,height=768,scrollbars=yes,resizable=yes');
+
+                    // limpa o grid/campos (mantém data e unidade)
+                    $('#result-table tbody').empty();
+                    $('#item-codigo').val('');
+                    $('#item-description').val('');
+                    $('#item-unit').val('');
+                    $('#item-quantity').val('');
+                } else {
+                    Swal.fire('Erro', data?.message || 'Falha ao salvar o balanço.', 'error');
+                }
+
+            } catch (err) {
+                console.error(err);
+                Swal.close();
+                Swal.fire('Erro', 'Ocorreu um erro ao enviar os dados.', 'error');
+            }
+        }
+
+        // Botão principal
+        $('#balance-button').on('click', sendBalance);
+
+        // Inicializações
+        loadUnidades();
+    });
+</script>
+</body>
+</html>

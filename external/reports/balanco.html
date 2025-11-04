@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Impressão do Balanço</title>
+
+    <!-- Bootstrap básico (mesmo do seu template) -->
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet" />
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1, h2 { margin: 0; padding: 0; }
+        h1 { font-size: 24px; font-weight: bold; }
+        h2 { font-size: 18px; margin-bottom: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .header img { max-height: 60px; }
+        hr { border: 1px solid black; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 10px; text-align: left; }
+        .signature-line { margin-top: 40px; text-align: center; font-size: 14px; }
+        .signature-line span { display: inline-block; margin-top: 10px; border-top: 1px solid black; width: 400px; }
+        .totals { margin-top: 10px; font-size: 14px; }
+        .small-muted { color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div>
+        <h1>Portal MRK</h1>
+        <h2>Estoque / Balanço</h2>
+    </div>
+    <div>
+        <img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+    </div>
+</div>
+
+<hr/>
+
+<p><strong>Estabelecimento:</strong> <span id="estab"></span></p>
+<p class="small-muted"><strong>CNPJ:</strong> <span id="cnpj"></span></p>
+
+<p><strong>Documento:</strong> <span id="doc"></span></p>
+<p><strong>Data do Balanço:</strong> <span id="date_balance"></span></p>
+<p><strong>Criado em:</strong> <span id="created_at"></span></p>
+<p><strong>Usuário:</strong> <span id="user"></span></p>
+
+<hr/>
+
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th>Código</th>
+        <th>Produto</th>
+        <th>Categoria</th>
+        <th style="width: 140px; text-align: right;">Quantidade</th>
+    </tr>
+    </thead>
+    <tbody id="tbody-itens">
+    <!-- Linhas inseridas via JS -->
+    </tbody>
+</table>
+
+<div class="totals">
+    <strong>Total de Itens:</strong> <span id="items_count">0</span> &nbsp;&nbsp;|&nbsp;&nbsp;
+    <strong>Soma das Quantidades:</strong> <span id="qty_sum">0</span>
+</div>
+
+<div class="signature-line">
+    <span>Assinatura do Responsável</span>
+</div>
+
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+
+<script>
+    (function () {
+        // baseUrl no mesmo padrão que você usa
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
+
+        // util: pega params
+        const qs = new URLSearchParams(window.location.search);
+        const token = qs.get('token') || '';                 // obrigatório
+        const systemUnitId = qs.get('unit') || qs.get('system_unit_id') || ''; // obrigatório
+        const doc = qs.get('doc') || '';                     // obrigatório
+
+        // refs
+        const elEstab = document.getElementById('estab');
+        const elCnpj = document.getElementById('cnpj');
+        const elDoc = document.getElementById('doc');
+        const elDateBalance = document.getElementById('date_balance');
+        const elCreatedAt = document.getElementById('created_at');
+        const elUser = document.getElementById('user');
+        const elTbody = document.getElementById('tbody-itens');
+        const elItemsCount = document.getElementById('items_count');
+        const elQtySum = document.getElementById('qty_sum');
+
+        // formata data (YYYY-MM-DD -> DD/MM/YYYY ou datetime -> DD/MM/YYYY HH:mm)
+        function fmtDate(d) {
+            if (!d) return '-';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                const [y,m,day] = d.split('-');
+                return `${day}/${m}/${y}`;
+            }
+            // tenta parse de "YYYY-MM-DD HH:mm:ss"
+            const parts = d.split(' ');
+            if (parts.length === 2) {
+                const [ymd, hms] = parts;
+                const [y,m,day] = ymd.split('-');
+                const [hh,mm] = hms.split(':');
+                return `${day}/${m}/${y} ${hh}:${mm}`;
+            }
+            return d;
+        }
+
+        // quantidade sempre com 3 casas quando não inteiro (sem mexer em inteiros puros)
+        function fmtQty(q) {
+            if (q === null || q === undefined) return '0';
+            const num = Number(q);
+            if (Number.isNaN(num)) return String(q);
+            return Number.isInteger(num) ? String(num) : num.toFixed(3);
+        }
+
+        async function loadAndRender() {
+            if (!token || !systemUnitId || !doc) {
+                alert('Parâmetros ausentes. Use ?token=...&unit=...&doc=...');
+                return;
+            }
+
+            try {
+                const { data } = await axios.post(baseUrl, {
+                    method: 'getBalanceByDoc',
+                    token: token,
+                    data: {
+                        system_unit_id: String(systemUnitId),
+                        doc: doc
+                    }
+                });
+
+                if (!data?.success) {
+                    throw new Error(data?.message || 'Falha ao buscar detalhes do balanço.');
+                }
+
+                const bal = data.balance || {};
+
+                // Cabeçalho
+                elEstab.textContent = bal?.unit?.name || '-';
+                elCnpj.textContent = bal?.unit?.cnpj || '-';
+                elDoc.textContent = bal?.doc || doc;
+                elDateBalance.textContent = fmtDate(bal?.date_balance);
+                elCreatedAt.textContent = fmtDate(bal?.created_at);
+                elUser.textContent = (bal?.user?.name || '-') + (bal?.user?.login ? ` (${bal.user.login})` : '');
+
+                // Itens
+                elTbody.innerHTML = '';
+                const itens = Array.isArray(bal?.itens) ? bal.itens : [];
+                itens.forEach(item => {
+                    const tr = document.createElement('tr');
+
+                    const tdCod = document.createElement('td');
+                    tdCod.textContent = item.codigo ?? '-';
+
+                    const tdProd = document.createElement('td');
+                    tdProd.textContent = item.produto ?? '-';
+
+                    const tdCat = document.createElement('td');
+                    tdCat.textContent = item.categoria ?? '-';
+
+                    const tdQty = document.createElement('td');
+                    tdQty.style.textAlign = 'right';
+                    tdQty.textContent = fmtQty(item.quantidade);
+
+                    tr.appendChild(tdCod);
+                    tr.appendChild(tdProd);
+                    tr.appendChild(tdCat);
+                    tr.appendChild(tdQty);
+                    elTbody.appendChild(tr);
+                });
+
+                // Totais
+                elItemsCount.textContent = bal?.totals?.items_count ?? itens.length;
+                elQtySum.textContent = fmtQty(bal?.totals?.qty_sum ?? itens.reduce((acc, i) => acc + Number(i.quantidade || 0), 0));
+
+                // Imprime e salva PDF
+                // (Espere o layout assentar)
+                setTimeout(() => {
+                    window.print();
+
+                    const options = {
+                        margin: 10,
+                        filename: (bal?.doc ? `${bal.doc}` : 'balanco') + '.pdf',
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
+                    html2pdf().set(options).from(document.body).save();
+                }, 300);
+
+            } catch (err) {
+                console.error(err);
+                alert('Erro ao carregar dados do balanço: ' + (err?.message || ''));
+            }
+        }
+
+        // start
+        loadAndRender();
+    })();
+</script>
+</body>
+</html>

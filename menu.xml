@@ -125,10 +125,15 @@
       <menuitem label="Balanco">
         <icon>fas:balance-scale fa-fw</icon>
         <menu>
+            <menuitem label="Balanço Manual">
+                <action>BalancoManual</action>
+                <icon>fas:circle fa-fw</icon>
+            </menuitem>
           <menuitem label="Modelos de Balanço">
             <action>CreateBalanco</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+
         </menu>
       </menuitem>
       <menuitem label="Previsão Demanda">

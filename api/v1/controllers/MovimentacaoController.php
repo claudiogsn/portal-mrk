@@ -468,79 +468,154 @@ class MovimentacaoController
         ];
     }
 
-    public static function getBalanceByDoc($system_unit_id, $doc): array
+    public static function getBalanceByDoc(int $system_unit_id, string $doc): array
     {
         global $pdo;
 
-        // Validação de parâmetros obrigatórios
         if (!$system_unit_id || !$doc) {
             return [
                 "success" => false,
-                "message" => "Parâmetros obrigatórios ausentes.",
+                "message" => "Parâmetros obrigatórios ausentes."
             ];
         }
 
         try {
-            // Consulta os detalhes do balanço, incluindo nome do produto, categoria e nome do usuário
-            $stmt = $pdo->prepare("
+            // Consulta com joins para já trazer:
+            // - Dados da unidade (system_unit)
+            // - Dados do usuário (system_users)
+            // - Dados dos itens (products + categorias)
+            $sql = "
             SELECT 
+                -- Cabeçalho / metadados
                 m.doc,
-                p.codigo as produto_codigo,
-                p.nome AS produto_nome,
-                m.quantidade,
-                c.nome AS categoria_nome,
-                u.login AS usuario_nome,
-                m.created_at
+                DATE(m.created_at) AS date_balance,
+                MIN(m.created_at) OVER (PARTITION BY m.system_unit_id, m.doc) AS created_at_first,
+                m.usuario_id,
+                
+                -- Usuário
+                u.id              AS user_id,
+                u.name            AS user_name,
+                u.login           AS user_login,
+                u.email           AS user_email,
+                u.system_unit_id  AS user_system_unit_id,
+
+                -- Unidade
+                su.id                          AS unit_id,
+                su.name                        AS unit_name,
+                su.cnpj                        AS unit_cnpj,
+                su.connection_name             AS unit_connection_name,
+                su.custom_code                 AS unit_custom_code,
+                su.intg_financeiro             AS unit_intg_financeiro,
+                su.token_zig                   AS unit_token_zig,
+                su.rede_zig                    AS unit_rede_zig,
+                su.zig_integration_faturamento AS unit_zig_integration_faturamento,
+                su.zig_integration_estoque     AS unit_zig_integration_estoque,
+                su.menew_integration_estoque   AS unit_menew_integration_estoque,
+                su.menew_integration_faturamento AS unit_menew_integration_faturamento,
+                su.f360_integration            AS unit_f360_integration,
+                su.status                      AS unit_status,
+
+                -- Itens
+                p.codigo        AS produto_codigo,
+                p.nome          AS produto_nome,
+                m.quantidade    AS quantidade,
+                c.nome          AS categoria_nome
+
             FROM movimentacao m
-            LEFT JOIN products p ON m.produto = p.codigo AND m.system_unit_id = p.system_unit_id
-            LEFT JOIN categorias c ON p.categoria = c.codigo AND m.system_unit_id = c.system_unit_id
-            LEFT JOIN system_users u ON m.usuario_id = u.id
-            WHERE m.system_unit_id = :system_unit_id AND m.doc = :doc
-        ");
-            $stmt->bindParam(
-                ":system_unit_id",
-                $system_unit_id,
-                PDO::PARAM_INT
-            );
-            $stmt->bindParam(":doc", $doc);
+            LEFT JOIN products p
+                   ON p.codigo = m.produto
+                  AND p.system_unit_id = m.system_unit_id
+            LEFT JOIN categorias c
+                   ON c.codigo = p.categoria
+                  AND c.system_unit_id = m.system_unit_id
+            LEFT JOIN system_users u
+                   ON u.id = m.usuario_id
+            LEFT JOIN system_unit su
+                   ON su.id = m.system_unit_id
+            WHERE m.system_unit_id = :system_unit_id
+              AND m.doc = :doc
+            ORDER BY p.nome ASC, p.codigo ASC
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
+            $stmt->bindValue(':doc', $doc, PDO::PARAM_STR);
             $stmt->execute();
 
-            $movimentacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Verifica se encontrou o balanço
-            if ($movimentacoes) {
-                // Agrupa os dados do balanço e dos itens
-                $response = [
-                    "success" => true,
-                    "balance" => [
-                        "doc" => $movimentacoes[0]["doc"],
-                        "usuario_nome" => $movimentacoes[0]["usuario_nome"],
-                        "created_at" => $movimentacoes[0]["created_at"],
-                        "itens" => [],
-                    ],
-                ];
-
-                // Adiciona os itens ao array de itens
-                foreach ($movimentacoes as $movimentacao) {
-                    $response["balance"]["itens"][] = [
-                        "codigo" => $movimentacao["produto_codigo"],
-                        "produto" => $movimentacao["produto_nome"],
-                        "quantidade" => $movimentacao["quantidade"],
-                        "categoria" => $movimentacao["categoria_nome"],
-                    ];
-                }
-
-                return $response;
-            } else {
+            if (!$rows) {
                 return [
                     "success" => false,
-                    "message" => "Balanço não encontrado.",
+                    "message" => "Balanço não encontrado."
                 ];
             }
+
+            // Cabeçalho (pega da primeira linha)
+            $first = $rows[0];
+
+            // Monta objeto da unidade (system_unit)
+            $unit = [
+                "id"                          => (int)$first["unit_id"],
+                "name"                        => $first["unit_name"],
+                "cnpj"                        => $first["unit_cnpj"],
+                "custom_code"                 => $first["unit_custom_code"],
+                "status"                      => isset($first["unit_status"]) ? (int)$first["unit_status"] : null,
+            ];
+
+            // Monta objeto do usuário (system_users)
+            $user = [
+                "id"              => isset($first["user_id"]) ? (int)$first["user_id"] : null,
+                "name"            => $first["user_name"] ?? null,
+                "login"           => $first["user_login"] ?? null,
+                "email"           => $first["user_email"] ?? null,
+                "system_unit_id"  => isset($first["user_system_unit_id"]) ? (int)$first["user_system_unit_id"] : null,
+            ];
+
+            // Itens
+            $itens = [];
+            $totalQuantidade = 0;
+
+            foreach ($rows as $r) {
+                $qtd = is_numeric($r["quantidade"]) ? (float)$r["quantidade"] : $r["quantidade"];
+
+                // soma apenas quando for numérico
+                if (is_numeric($r["quantidade"])) {
+                    $totalQuantidade += (float)$r["quantidade"];
+                }
+
+                $itens[] = [
+                    "codigo"     => isset($r["produto_codigo"]) ? (int)$r["produto_codigo"] : null,
+                    "produto"    => $r["produto_nome"],
+                    "quantidade" => $qtd,
+                    "categoria"  => $r["categoria_nome"],
+                ];
+            }
+
+            $response = [
+                "success" => true,
+                "balance" => [
+                    "doc"          => $first["doc"],
+                    // date_balance: data “lógica” do balanço; usei DATE(created_at) do movimento
+                    "date_balance" => $first["date_balance"],
+                    // created_at: primeira ocorrência do doc (caso haja várias linhas)
+                    "created_at"   => $first["created_at_first"],
+                    "unit"         => $unit,
+                    "user"         => $user,
+                    "itens"        => $itens,
+                    "totals"       => [
+                        "items_count" => count($itens),
+                        "qty_sum"     => $totalQuantidade,
+                    ],
+                ],
+            ];
+
+            return $response;
+
         } catch (Exception $e) {
             return [
                 "success" => false,
-                "message" => "Erro ao buscar balanço: " . $e->getMessage(),
+                "message" => "Erro ao buscar balanço: " . $e->getMessage()
             ];
         }
     }
