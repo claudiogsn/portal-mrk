@@ -317,32 +317,66 @@
     Valor Diferença: <b>${brMoney(totalValDiff)}</b>
   `);
 
-      // bind do botão "ver detalhes" (abre modal fullscreen com extrato)
       $('#modalExtrato').off('show.bs.modal').on('show.bs.modal', function (ev) {
           const $a = $(ev.relatedTarget); // o <a> clicado
 
-          const insumoId   = $a.data('insumo');                       // OK
-          const insumoName = $a.data('insumoName')                    // jQuery mapeia data-insumo-name -> insumoName
-              || $a.attr('data-insumo-name') || '';      // fallback
+          const insumoId   = $a.data('insumo');
+          const insumoName = $a.data('insumoName') || $a.attr('data-insumo-name') || '';
 
-          const dt_inicio  = $a.data('dt-inicio') || $('#dtInicio').val();
-          const dt_fim     = $a.data('dt-fim')    || $('#dtFim').val();
+          // Helpers de data
+          const parseToDate = (str) => {
+              if (!str) return null;
+              // YYYY-MM-DD
+              if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                  const [y, m, d] = str.split('-').map(Number);
+                  return new Date(y, m - 1, d);
+              }
+              // DD/MM/YYYY
+              if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+                  const [d, m, y] = str.split('/').map(Number);
+                  return new Date(y, m - 1, d);
+              }
+              // fallback
+              return new Date(str);
+          };
+
+          const formatYMD = (date) => {
+              const y = date.getFullYear();
+              const m = String(date.getMonth() + 1).padStart(2, '0');
+              const d = String(date.getDate()).padStart(2, '0');
+              return `${y}-${m}-${d}`;
+          };
+
+          const addDays = (date, days) => {
+              const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); // normaliza sem hora
+              d.setDate(d.getDate() + days);
+              return d;
+          };
+
+          // datas originais
+          const dt_inicio_raw = $a.data('dt-inicio') || $('#dtInicio').val();
+          const dt_fim_raw    = $a.data('dt-fim')    || $('#dtFim').val();
+
+          // aplica -1 dia em dt_inicio
+          const dtInicioDate   = parseToDate(dt_inicio_raw);
+          const dtInicioMenos1 = dtInicioDate ? formatYMD(addDays(dtInicioDate, +1)) : dt_inicio_raw;
 
           const qs = $.param({
               token: token,
               unit_id: system_unit_id,
               insumo_id: insumoId,
-              dt_inicio,
-              dt_fim,
+              dt_inicio: dtInicioMenos1, // << envia 1 dia a menos
+              dt_fim: dt_fim_raw,
               redirect: 'true'
           });
 
-          // confirme o caminho correto do arquivo:
           const url = `${baseUrlredirect}/extratoInsumo.html?${qs}`;
           $('#iframeExtrato').attr('src', url);
 
-          $('#modalExtratoLabel').text(`Detalhes do Insumo ${insumoId} - ${insumoName}`);
+          // se precisar do nome no título:
+          $('#modalExtratoLabel').text(`Extrato - ${insumoName}`);
       });
+
 
 
   }

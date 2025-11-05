@@ -2072,11 +2072,14 @@ class MovimentacaoController
             }
 
             // 5) Somatório de ENTRADAS/SAÍDAS na janela (exclui o balanço inicial)
+            $dIniDate = substr($dataInicialRef, 0, 10); // 'YYYY-MM-DD'
+            $dFimDate = substr($dataFinalRef,   0, 10); // 'YYYY-MM-DD'
+
             $placeholders = [];
             $bind = [
-                ':unitId' => $systemUnitId,
-                ':dIni'   => $dataInicialRef,
-                ':dFim'   => $dataFinalRef,
+                ':unitId'   => $systemUnitId,
+                ':dIniDate' => $dIniDate,
+                ':dFimDate' => $dFimDate,
             ];
             foreach ($produtosAlvo as $i => $codigoProd) {
                 $ph = ":p{$i}";
@@ -2085,19 +2088,20 @@ class MovimentacaoController
             }
 
             $sqlMovs = "
-            SELECT 
-                m.produto,
-                SUM(CASE WHEN m.tipo_mov = 'entrada' THEN m.quantidade ELSE 0 END) AS entradas,
-                SUM(CASE WHEN m.tipo_mov = 'saida'   THEN m.quantidade ELSE 0 END) AS saidas
-            FROM movimentacao m
-            WHERE m.system_unit_id = :unitId
-              AND m.status = 1
-              AND m.data >  :dIni
-              AND m.data <= :dFim
-              AND m.tipo_mov IN ('entrada','saida')
-              AND m.produto IN (" . implode(',', $placeholders) . ")
-            GROUP BY m.produto
-        ";
+                SELECT 
+                    m.produto,
+                    SUM(CASE WHEN m.tipo_mov = 'entrada' THEN m.quantidade ELSE 0 END) AS entradas,
+                    SUM(CASE WHEN m.tipo_mov = 'saida'   THEN m.quantidade ELSE 0 END) AS saidas
+                FROM movimentacao m
+                WHERE m.system_unit_id = :unitId
+                  AND m.status = 1
+                  -- ❗ Exclui o dia do balanço inicial e inclui o dia do balanço final
+                  AND DATE(m.data) >= DATE_ADD(:dIniDate, INTERVAL 1 DAY)
+                  AND DATE(m.data) <= :dFimDate
+                  AND m.tipo_mov IN ('entrada','saida')
+                  AND m.produto IN (" . implode(',', $placeholders) . ")
+                GROUP BY m.produto
+            ";
             $stmt = $pdo->prepare($sqlMovs);
             $stmt->execute($bind);
             $movSomas = $stmt->fetchAll(PDO::FETCH_ASSOC);
