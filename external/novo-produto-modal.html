@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Novo Produto – Formulário (sem modal)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap + AdminBSB base -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+
+    <!-- Ícones / libs -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        body { background:#f7f9fc; }
+        .page-wrap { max-width: 900px; margin: 32px auto; }
+        .card { border-radius: 8px; }
+        .card .header { background:#2196F3; color:#fff; padding:12px 16px; border-top-left-radius:8px; border-top-right-radius:8px; }
+        .help-err { color:#e53935; font-size:12px; display:none; }
+        .input-error { border:1px solid #e53935 !important; }
+        .swal2-container { z-index: 2000 !important; }
+        .rule-hint { display:inline-block; margin-top:8px; }
+        .btn-space { gap:8px; display:flex; flex-wrap:wrap; }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="page-wrap">
+    <div class="card">
+<!--        <div class="header">-->
+<!--            <h4 style="margin:0; display:flex; align-items:center; gap:8px;">-->
+<!--                <i class="fa fa-box-open"></i> Novo Produto-->
+<!--            </h4>-->
+<!--        </div>-->
+        <div class="body">
+            <!-- TAGS -->
+            <div class="demo-checkbox">
+                <input type="checkbox" id="np_venda" class="chk-col-blue" />
+                <label for="np_venda">Venda</label>
+
+                <input type="checkbox" id="np_insumo" class="chk-col-blue" />
+                <label for="np_insumo">Insumo</label>
+
+                <input type="checkbox" id="np_composicao" class="chk-col-blue" />
+                <label for="np_composicao">Composição</label>
+            </div>
+
+            <!-- Código + Gerar -->
+            <div class="row" style="margin-top:10px;">
+                <div class="col-sm-6">
+                    <label for="np_codigo">Código *</label>
+                    <div style="position:relative;">
+                        <input type="number" id="np_codigo" class="form-control" />
+                        <small id="np_errCodigo" class="help-err">Erro</small>
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <label>&nbsp;</label><br>
+                    <a href="javascript:void(0);" id="np_btnGerar" title="Gerar Código">
+                        <i class="fa fa-plus"></i> Gerar
+                    </a>
+                </div>
+            </div>
+
+            <!-- PDV -->
+            <div class="form-group" style="margin-top:10px;">
+                <label for="np_codigo_pdv">Código PDV</label>
+                <input type="text" id="np_codigo_pdv" class="form-control" placeholder="Código utilizado no PDV">
+            </div>
+
+            <!-- Nome -->
+            <div class="form-group">
+                <label for="np_nome">Nome *</label>
+                <input type="text" id="np_nome" class="form-control" placeholder="Nome do produto">
+            </div>
+
+            <!-- Categoria + Unidade -->
+            <div class="row">
+                <div class="col-sm-6">
+                    <label for="np_categoria">Categoria *</label>
+                    <select id="np_categoria" class="form-control">
+                        <option value="">Selecione</option>
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label for="np_und">Unidade *</label>
+                    <select id="np_und" class="form-control">
+                        <option value="UND">Unidades (UND)</option>
+                        <option value="L">Litros (L)</option>
+                        <option value="PCT">Pacotes (PCT)</option>
+                        <option value="KG">Quilogramas (KG)</option>
+                    </select>
+                </div>
+            </div>
+
+            <span class="label label-default rule-hint">
+        Regras: Insumo (código ≥ 5 dígitos) • Venda (código ≤ 4 dígitos) • Insumo × Composição são exclusivos
+      </span>
+
+            <hr>
+
+            <div class="btn-space">
+                <button id="np_salvar" class="btn btn-primary">
+                    <i class="fa fa-save"></i> Salvar
+                </button>
+                <button id="np_fechar" class="btn btn-default">
+                    <i class="fa fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========= CONFIG =========
+    (function(){
+        const qs = new URLSearchParams(window.location.search);
+
+        const DEFAULT_BASE = (window.location.hostname !== 'localhost')
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
+
+        const CONFIG = window.NOVO_PRODUTO_CONFIG || {
+            baseUrl: DEFAULT_BASE,
+            token: qs.get('token'),
+            system_unit_id: qs.get('system_unit_id')
+        };
+
+        // ========= Utils =========
+        function toastLoading(t){ Swal.fire({title:t||'Processando...', didOpen:()=>Swal.showLoading(), allowOutsideClick:false}); }
+        function toastClose(){ Swal.close(); }
+        function toastErr(m){ Swal.fire('Erro', m||'Falha na operação', 'error'); }
+
+        function clearErrors(){
+            $('#np_codigo').removeClass('input-error');
+            $('#np_errCodigo').hide();
+        }
+        function setErrCodigo(msg){
+            $('#np_codigo').addClass('input-error');
+            $('#np_errCodigo').text(msg).show();
+        }
+
+        function exclusividadeInsumoComposicao(){
+            $('#np_insumo').change(() => {
+                if ($('#np_insumo').is(':checked')) $('#np_composicao').prop('checked', false);
+            });
+            $('#np_composicao').change(() => {
+                if ($('#np_composicao').is(':checked')) $('#np_insumo').prop('checked', false);
+            });
+        }
+
+        async function loadCategorias(selected=null){
+            try{
+                const resp = await axios.post(CONFIG.baseUrl, {
+                    method: 'listCategorias',
+                    token: CONFIG.token,
+                    data: { unit_id: CONFIG.system_unit_id }
+                });
+                const sel = $('#np_categoria');
+                sel.empty().append('<option value="">Selecione</option>');
+                (resp.data?.categorias || []).forEach(c => {
+                    sel.append(`<option value="${c.codigo}">${c.nome}</option>`);
+                });
+                if(selected) sel.val(String(selected));
+            }catch(e){
+                console.warn('Falha ao carregar categorias', e);
+            }
+        }
+
+        async function gerarCodigo(){
+            try{
+                const isInsumo = $('#np_insumo').is(':checked');
+                const resp = await axios.post(CONFIG.baseUrl, {
+                    method: 'getProximoCodigoProduto',
+                    token: CONFIG.token,
+                    data: { unit_id: CONFIG.system_unit_id, is_insumo: isInsumo ? 1 : 0 }
+                });
+                if(resp.data?.proximo_codigo){
+                    $('#np_codigo').val(resp.data.proximo_codigo).trigger('blur');
+                }
+            }catch(e){
+                toastErr('Não foi possível gerar código automaticamente.');
+            }
+        }
+
+        async function validarCodigoDisponivel(){
+            clearErrors();
+            const codigo = String($('#np_codigo').val()||'').trim();
+            const isInsumo = $('#np_insumo').is(':checked');
+
+            if(!codigo){
+                setErrCodigo('Informe o código.');
+                return false;
+            }
+            if(isInsumo && codigo.length < 5){
+                setErrCodigo('Insumos devem ter código com no mínimo 5 dígitos.');
+                return false;
+            }
+            if(!isInsumo && codigo.length > 4){
+                setErrCodigo('Produtos de venda devem ter código até 4 dígitos.');
+                return false;
+            }
+
+            try{
+                const resp = await axios.post(CONFIG.baseUrl, {
+                    method: 'checkCodigoDisponivel',
+                    token: CONFIG.token,
+                    data: { codigo, unit_id: CONFIG.system_unit_id }
+                });
+                if(resp.data && resp.data.disponivel === false){
+                    setErrCodigo('Código já utilizado. Escolha outro.');
+                    return false;
+                }
+            }catch(e){
+                setErrCodigo('Erro ao verificar disponibilidade do código.');
+                return false;
+            }
+
+            return true;
+        }
+
+        async function salvar(){
+            clearErrors();
+
+            const codigo    = String($('#np_codigo').val()||'').trim();
+            const nome      = String($('#np_nome').val()||'').trim();
+            const und       = String($('#np_und').val()||'').trim();
+            const categoria = String($('#np_categoria').val()||'').trim();
+
+            const venda      = $('#np_venda').is(':checked') ? 1 : 0;
+            const insumo     = $('#np_insumo').is(':checked') ? 1 : 0;
+            const composicao = $('#np_composicao').is(':checked') ? 1 : 0;
+
+            if(!(await validarCodigoDisponivel())) return;
+            if(!nome){ Swal.fire('Atenção','Informe o nome.','warning'); return; }
+            if(!categoria){ Swal.fire('Atenção','Selecione a categoria.','warning'); return; }
+            if(!und){ Swal.fire('Atenção','Selecione a unidade.','warning'); return; }
+
+            const data = {
+                sku_zig: $('#np_codigo_pdv').val() || '',
+                unit_id: CONFIG.system_unit_id,
+                codigo,
+                nome,
+                und,
+                categoria,
+                venda,
+                composicao,
+                insumo
+            };
+
+            try{
+                toastLoading('Salvando...');
+                const resp = await axios.post(CONFIG.baseUrl, { method:'createProduto', token:CONFIG.token, data });
+                toastClose();
+
+                if(resp.data?.success === false){
+                    toastErr(resp.data?.message || 'Não foi possível salvar.');
+                    return;
+                }
+
+                const criado = resp.data?.produto || { ...data };
+
+                // ✅ Se estiver em iframe e o PAI tiver callback, entrega para o PAI e encerra aqui.
+                try {
+                    if (window.parent && typeof window.parent.onNovoProdutoSalvo === 'function') {
+                        window.parent.onNovoProdutoSalvo(criado);
+                        return; // não exibe alert no filho; o pai assume feedback/fechamento
+                    }
+                } catch(_) {}
+
+                // Fallback: aberto direto (sem pai)
+                await Swal.fire('Sucesso','Produto criado com sucesso!','success');
+                window.history.length > 1 ? window.history.back() : window.close();
+
+            }catch(e){
+                toastErr('Erro ao salvar produto.');
+                console.error(e);
+            }
+        }
+
+        function fechar(){
+            // se estiver embutido, peça para o pai esconder o iframe
+            try {
+                if (window.parent && typeof window.parent.fecharIframeNovoProduto === 'function') {
+                    window.parent.fecharIframeNovoProduto();
+                    return;
+                }
+            } catch(_) {}
+            // fallback: voltar/fechar
+            window.history.length > 1 ? window.history.back() : window.close();
+        }
+
+        function bindUI(){
+            exclusividadeInsumoComposicao();
+            loadCategorias();
+
+            $('#np_btnGerar').on('click', gerarCodigo);
+            $('#np_codigo').on('blur', validarCodigoDisponivel);
+            $('#np_salvar').on('click', salvar);
+            $('#np_fechar').on('click', fechar);
+
+            // foco inicial
+            setTimeout(()=>{ document.getElementById('np_nome')?.focus(); }, 200);
+        }
+
+        $(document).ready(bindUI);
+    })();
+</script>
+
+</body>
+</html>

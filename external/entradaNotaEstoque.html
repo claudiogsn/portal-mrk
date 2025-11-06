@@ -79,6 +79,11 @@
         .eq-val{font-weight:700;padding:2px 6px;background:#f5f5f5;border-radius:4px}
         .eq-op{font-weight:700;padding:0 6px}
         .eq-unit{opacity:.8}
+        
+        /* Opcional: deixa o bloco 100% da largura do container */
+        .sync-box .input-group { width: 100%; }
+
+        #btnNovoInsumo { margin-left: 4px; }
 
     </style>
 </head>
@@ -136,7 +141,22 @@
                             </div>
                             <div class="col-md-6">
                                 <label>Produto Estoque</label>
-                                <select id="selInsumo" class="form-control"></select>
+                                <div class="input-group">
+                                    <select id="selInsumo" class="form-control"></select>
+
+                                    <span class="input-group-btn">
+                                        <button
+                                                id="btnNovoInsumo"
+                                                class="btn btn-success"
+                                                type="button"
+                                                data-toggle="tooltip"
+                                                data-placement="left"
+                                                title="Adicionar novo produto/insumo"
+                                        >
+                                          <i class="fa fa-plus"></i>
+                                        </button>
+                                  </span>
+                                </div>
                                 <div class="row" style="margin-top:6px;">
                                     <div class="col-md-5">
                                         <label>Código</label>
@@ -225,15 +245,17 @@
                                 <th>Descricao NF</th>
                                 <th>UN NF</th>
                                 <th>Qtd NF</th>
+                                <th>P. Unit NF</th>        <!-- ✅ NOVO -->
                                 <th>Cód. Estoque</th>
                                 <th>Descricao Estoque</th>
                                 <th>UN Estoque</th>
                                 <th>Qtd Estoque</th>
+                                <th>P Unit</th>            <!-- ✅ NOVO -->
                                 <th style="width:48px;">&nbsp;</th>
                             </tr>
                             </thead>
                             <tbody>
-                            <tr><td colspan="10" class="text-center">Carregando...</td></tr>
+                            <tr><td colspan="12" class="text-center">Carregando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -256,11 +278,33 @@
     </div><!-- /card -->
 </div>
 
+<!-- Modal que embute o formulário de novo produto -->
+<div class="modal fade" id="modalNovoInsumoIframe" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" style="width:95%;max-width:980px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Novo Produto</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding:0; height:80vh;">
+                <iframe id="iframeNovoProduto" src="" style="width:100%;height:100%;border:0;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <script>
     // ===== Configs base =====
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const baseUrlredirect = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/external'
+        : 'http://localhost/portal-mrk/external';
 
     // URL params
     const params = new URLSearchParams(window.location.search);
@@ -278,33 +322,22 @@
 
     // === Helpers de unidade/quantidade (ATUALIZADOS) ===
     const INT_UNITS = ['UN', 'U', 'UND', 'PC', 'PÇ', 'PÇS'];
+    const isIntUnit = u => INT_UNITS.includes(String(u || '').toUpperCase());
 
-    function isIntUnit(u) {
-        return INT_UNITS.includes(String(u || '').toUpperCase());
+    function fmtMoneyBR(v){
+        const n = Number(v);
+        if (!isFinite(n)) return '';
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
+    const hasFraction = x => Math.abs((Number(x) || 0) - Math.round(Number(x) || 0)) > 1e-9;
 
-    function hasFraction(x) {
-        return Math.abs((Number(x) || 0) - Math.round(Number(x) || 0)) > 1e-9;
-    }
-
-    /** Normaliza:
-     * - Unidades inteiras: se tiver fração, mantém com 3 casas; senão arredonda p/ inteiro.
-     * - Demais unidades: sempre 3 casas.
-     */
-    function normalizeQtyByUnit(unit, val) {
+    function normalizeQtyByUnit(unit, val){
         const x = Number(val) || 0;
-        if (isIntUnit(unit)) {
-            return hasFraction(x) ? Math.round(x * 1000) / 1000 : Math.round(x);
-        }
+        if (isIntUnit(unit)) return hasFraction(x) ? Math.round(x * 1000) / 1000 : Math.round(x);
         return Math.round(x * 1000) / 1000;
     }
 
-    /** Formata p/ exibição:
-     * - Inteira sem fração -> inteiro
-     * - Inteira com fração -> 3 casas
-     * - Demais -> 3 casas
-     */
-    function formatQtyByUnit(unit, val) {
+    function formatQtyByUnit(unit, val){
         const x = Number(val) || 0;
         if (isIntUnit(unit)) {
             if (hasFraction(x)) return (Math.round(x * 1000) / 1000).toFixed(3).replace('.', ',');
@@ -313,50 +346,39 @@
         return (Math.round(x * 1000) / 1000).toFixed(3).replace('.', ',');
     }
 
-
-
     // Helpers
     const fmtDate = s => (!s ? '' : s.substring(0,10));
 
-    // Formata para DD/MM/YYYY
-    function fmtDateBR(s) {
+    function fmtDateBR(s){
         if (!s) return '';
-
-        // string ISO: "2025-09-01" ou "2025-09-01 23:10:00" / "2025-09-01T23:10:00Z"
         if (typeof s === 'string') {
             const t = s.trim();
             let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (m) return `${m[3]}/${m[2]}/${m[1]}`;  // -> DD/MM/YYYY
-
-            // já vem em DD/MM/YYYY? garante retorno padronizado
+            if (m) return `${m[3]}/${m[2]}/${m[1]}`;
             m = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
             if (m) return `${m[1]}/${m[2]}/${m[3]}`;
         }
-
-        // Date ou timestamp
         const d = new Date(s);
         if (!isNaN(d)) {
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2,'0');
+            const mm = String(d.getMonth()+1).padStart(2,'0');
             const yy = d.getFullYear();
             return `${dd}/${mm}/${yy}`;
         }
-
-        return ''; // fallback
+        return '';
     }
 
     const allSynced = () => itens.every(it => it.codigo_produto_interno !== null && it.unidade_interno && Number(it.fator_conversao) > 0);
 
-    function setFlagEstoque(n) {
+    function setFlagEstoque(n){
         const el = $('#flagEstoque');
         if (Number(n?.incluida_estoque) === 1) {
-            el.removeClass().addClass('badge  bg-green').text('Incluída no estoque');
+            el.removeClass().addClass('badge bg-green').text('Incluída no estoque');
             $('#btnGravarNota').prop('disabled', true);
         } else {
             el.removeClass().addClass('badge bg-orange').text('Ainda não incluída no estoque');
         }
     }
-
 
     $(document).ready(function () {
         if (!system_unit_id || !chave_acesso || !fornecedor_id || !token) {
@@ -372,20 +394,25 @@
         $('#btnGravarNota').on('click', gravarNota);
         $('#btnFecharTela').on('click', fecharTelaConfirm);
 
+        // abre modal + iframe de novo produto
+        $('#btnNovoInsumo').on('click', abrirNovoProdutoModalViaIframe);
+
+        // quando fechar o modal, limpamos o src do iframe (evita cache/estado antigo)
+        $('#modalNovoInsumoIframe').on('hidden.bs.modal', function () {
+            $('#iframeNovoProduto').attr('src', '');
+        });
 
         carregarNotaEItens();
-        carregarInsumos();
+        carregarInsumos(); // primeira carga
     });
-    function closeParentModal() {
-        // Bootstrap com jQuery (AdminBSB/BS3/4)
+
+    function closeParentModal(){
         try {
             if (window.parent && window.parent.$) {
                 window.parent.$('#modalEntradaEstoque').modal('hide');
                 return;
             }
         } catch (e) {}
-
-        // Bootstrap 5 sem jQuery (fallback)
         try {
             const modalEl = window.parent.document.getElementById('modalEntradaEstoque');
             if (modalEl && window.parent.bootstrap) {
@@ -396,9 +423,8 @@
         } catch (e) {}
     }
 
-    function fecharTelaConfirm() {
+    function fecharTelaConfirm(){
         const pendente = Number(nota?.incluida_estoque) !== 1;
-
         Swal.fire({
             icon: pendente ? 'warning' : 'question',
             title: pendente ? 'Fechar sem lançar no estoque?' : 'Fechar tela?',
@@ -408,16 +434,12 @@
             showCancelButton: true,
             confirmButtonText: pendente ? 'Sim, fechar' : 'Fechar',
             cancelButtonText: 'Cancelar'
-        }).then((res) => {
-            if (res.isConfirmed) closeParentModal();
-        });
+        }).then((res) => { if (res.isConfirmed) closeParentModal(); });
     }
 
-
-
-    async function carregarNotaEItens() {
-        Swal.fire({title:'Carregando...', didOpen:()=>Swal.showLoading()});
-        try {
+    async function carregarNotaEItens(){
+        Swal.fire({ title:'Carregando...', didOpen:()=>Swal.showLoading() });
+        try{
             const res = await axios.post(baseUrl, {
                 method: 'getNotaItensFornecedorPayload',
                 token,
@@ -427,13 +449,11 @@
                     fornecedor_id: Number(fornecedor_id)
                 }
             });
-
             if (!res.data.success) throw new Error(res.data.error || 'Falha ao carregar');
 
             nota  = res.data.data.nota;
             itens = res.data.data.itens || [];
 
-            // Cabeçalho
             $('#notaFornecedor').text(nota.fornecedor_nome || nota.fornecedor_razao || '');
             $('#notaNumero').text(nota.numero_nf || '');
             $('#notaSerie').text(nota.serie || '');
@@ -441,7 +461,6 @@
             $('#notaChave').text(nota.chave_acesso || '');
             setFlagEstoque(nota);
 
-            // data entrada default (nota ou hoje)
             const hoje = new Date();
             const y = hoje.getFullYear(), m = String(hoje.getMonth()+1).padStart(2,'0'), d = String(hoje.getDate()).padStart(2,'0');
             $('#notaDataEntrada').val(nota.data_entrada ? fmtDate(nota.data_entrada) : `${y}-${m}-${d}`);
@@ -449,14 +468,15 @@
             renderTabela();
             toggleGravarNota();
             Swal.close();
-        } catch (e) {
+        }catch(e){
             console.error(e);
             Swal.fire('Erro', e.message || 'Erro ao carregar', 'error');
         }
     }
 
-    async function carregarInsumos() {
-        try {
+    // <<< AJUSTADO: aceita selectCodigo para pré-selecionar recém-criado >>>
+    async function carregarInsumos(selectCodigo = null){
+        try{
             const res = await axios.post(baseUrl, {
                 method: 'listInsumos',
                 token,
@@ -468,48 +488,46 @@
 
             const $sel = $('#selInsumo');
 
-            // destrói instância anterior (evita “herdar” seleção)
-            if ($sel.hasClass('select2-hidden-accessible')) {
-                $sel.select2('destroy');
-            }
+            if ($sel.hasClass('select2-hidden-accessible')) $sel.select2('destroy');
 
-            // limpa e adiciona uma opção vazia para habilitar placeholder
             $sel.empty().append('<option value=""></option>');
-
-            // popula sem selecionar nada
             insumos.forEach(i => {
                 const text = `${i.codigo} - ${i.nome}`;
-                $sel.append(new Option(text, String(i.codigo), false, false)); // false,false => não seleciona
+                $sel.append(new Option(text, String(i.codigo), false, false));
             });
 
-            // re-inicializa
-            $sel.select2({
-                placeholder: 'Selecione um insumo...',
-                allowClear: true,
-                width: 'resolve'
-            });
+            $sel.select2({ placeholder:'Selecione um insumo...', allowClear:true, width:'resolve' });
 
-            // garante que fique vazio após carregar
-            $sel.val(null).trigger('change');
-
-            // (opcional) zera os campos de info ao lado
+            // zera painéis laterais
             $('#insumoCodigo').text('-');
             $('#insumoUn').text('-');
             $('#insumoNome').text('-');
 
-        } catch (e) {
+            if (selectCodigo) {
+                const exists = insumos.some(i => String(i.codigo) === String(selectCodigo));
+                if (!exists) {
+                    // fallback: injeta opção temporária para permitir seleção imediata
+                    $sel.append(new Option(String(selectCodigo), String(selectCodigo), false, false));
+                }
+                // aguarda o select2 montar antes de selecionar
+                setTimeout(() => {
+                    $sel.val(String(selectCodigo)).trigger('change'); // chama onChangeInsumo()
+                }, 0);
+            } else {
+                $sel.val(null).trigger('change');
+            }
+        }catch(e){
             console.error(e);
             Swal.fire('Erro', e.message || 'Erro ao carregar insumos', 'error');
         }
     }
 
-
-    function renderTabela() {
+    function renderTabela(){
         const tbody = $('#tabelaItens tbody');
         tbody.empty();
 
         if (!itens.length) {
-            tbody.append('<tr><td colspan="10" class="text-center">Sem itens.</td></tr>');
+            tbody.append('<tr><td colspan="12" class="text-center">Sem itens.</td></tr>');
             return;
         }
 
@@ -522,40 +540,43 @@
             );
             const qtdIntFmt = formatQtyByUnit(unInt, qtdIntCalc);
 
-            const trClass = pend ? 'row-pendente' : '';
+            const pUnitNF = (it.valor_unitario_nota != null) ? fmtMoneyBR(Number(it.valor_unitario_nota)) : '';
+            let pUnitConvertido = '';
+            if (!pend && Number(it.fator_conversao) > 0 && it.valor_unitario_nota != null) {
+                pUnitConvertido = fmtMoneyBR(Number(it.valor_unitario_nota) / Number(it.fator_conversao));
+            }
 
+            const trClass = pend ? 'row-pendente' : '';
             const actionHtml = `
-      <a href="#" title="Sincronizar Item" onclick="abrirSync(${idx}); return false;">
-        <i class="fa ${pend ? 'fa-exclamation-triangle text-danger' : 'fa-link text-primary'}"></i>
-      </a>
-    `;
+        <a href="#" title="Sincronizar Item" onclick="abrirSync(${idx}); return false;">
+          <i class="fa ${pend ? 'fa-exclamation-triangle text-danger' : 'fa-link text-primary'}"></i>
+        </a>`;
 
             tbody.append(`
-      <tr class="${trClass}" data-idx="${idx}">
-        <td>${it.numero_item_nota}</td>
-        <td>${it.codigo_produto_nota ?? ''}</td>
-        <td>${it.descricao_nota ?? ''}</td>
-        <td>${it.unidade_nota ?? ''}</td>
-        <td>${it.quantidade_nota ?? ''}</td>
-        <td>${it.codigo_produto_interno ?? ''}</td>
-        <td>${it.descricao_interno ?? ''}</td>
-        <td>${unInt}</td>
-        <td>${qtdIntFmt}</td>
-        <td class="text-center">${actionHtml}</td>
-      </tr>
-    `);
+        <tr class="${trClass}" data-idx="${idx}">
+          <td>${it.numero_item_nota}</td>
+          <td>${it.codigo_produto_nota ?? ''}</td>
+          <td>${it.descricao_nota ?? ''}</td>
+          <td>${it.unidade_nota ?? ''}</td>
+          <td>${it.quantidade_nota ?? ''}</td>
+          <td>${pUnitNF}</td>
+          <td>${it.codigo_produto_interno ?? ''}</td>
+          <td>${it.descricao_interno ?? ''}</td>
+          <td>${unInt}</td>
+          <td>${qtdIntFmt}</td>
+          <td>${pUnitConvertido}</td>
+          <td class="text-center">${actionHtml}</td>
+        </tr>
+      `);
         });
 
-        // seleção visual
-        tbody.off('click', 'tr').on('click', 'tr', function () {
+        $('#tabelaItens tbody').off('click', 'tr').on('click', 'tr', function () {
             const i = Number($(this).data('idx'));
             marcarSelecionado(i);
         });
     }
 
-
-
-    function marcarSelecionado(i) {
+    function marcarSelecionado(i){
         selectedIndex = i;
         $('#tabelaItens tbody tr').each(function(){
             const idx = Number($(this).data('idx'));
@@ -566,7 +587,7 @@
         });
     }
 
-    window.abrirSync = function(index) {
+    window.abrirSync = function(index){
         marcarSelecionado(index);
         const it = itens[index];
 
@@ -578,10 +599,10 @@
       <div><b>Qtd NF:</b> ${it.quantidade_nota ?? ''}</div>
     `);
 
-        // limpa e (se tiver) pré-seleciona insumo
         $('#selInsumo').val(null).trigger('change');
-        $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-');
-
+        $('#insumoCodigo').text('-');
+        $('#insumoUn').text('-');
+        $('#insumoNome').text('-');
 
         if (it.codigo_produto_interno) {
             const found = insumos.find(x => Number(x.codigo) === Number(it.codigo_produto_interno));
@@ -593,64 +614,56 @@
         $('#btnGravarVinculo').prop('disabled', false);
     };
 
-    function onChangeInsumo() {
+    function onChangeInsumo(){
         const codigo = $('#selInsumo').val();
-        if (!codigo) { $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-'); atualizarPreviewConversao(); return; }
+        if (!codigo) {
+            $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-');
+            atualizarPreviewConversao();
+            return;
+        }
         const ins = insumos.find(x => String(x.codigo) === String(codigo));
         $('#insumoCodigo').text(ins ? ins.codigo : '-');
         $('#insumoUn').text(ins ? (ins.und || '-') : '-');
         $('#insumoNome').text(ins ? ins.nome : '-');
-        atualizarPreviewConversao(); // <- atualiza unidade/resultado
+        atualizarPreviewConversao();
     }
 
-
-    function atualizarPreviewConversao() {
+    function atualizarPreviewConversao(){
         if (selectedIndex === null) return;
-
         const it      = itens[selectedIndex];
         const fator   = Number($('#fatorConv').val() || 1);
         const qtdNota = Number(it.quantidade_nota || 0);
 
         const unNota  = String(it.unidade_nota || '');
-        // unidade do produto de estoque (se houver seleção, preferimos a do insumo)
         const unIntSel = String($('#insumoUn').text() || '').trim();
         const unIntItm = String(it.unidade_interno || '').trim();
         const unInt    = unIntSel || unIntItm || '';
 
-        const qtdIntRaw = qtdNota * (fator > 0 ? fator : 0);
+        const qtdIntRaw  = qtdNota * (fator > 0 ? fator : 0);
         const qtdIntNorm = normalizeQtyByUnit(unInt, qtdIntRaw);
 
-        // Previews principais
-        $('#qtdNotaPreviewVal').text(
-            isIntUnit(unNota) ? String(Math.round(qtdNota)) : String(qtdNota).replace('.', ',')
-        );
+        $('#qtdNotaPreviewVal').text(isIntUnit(unNota) ? String(Math.round(qtdNota)) : String(qtdNota).replace('.', ','));
         $('#qtdNotaPreviewUnit').text(unNota);
-
         $('#qtdInternaPreview').text(formatQtyByUnit(unInt, qtdIntNorm));
         $('#qtdInternaUnit').text(unInt);
 
-        // Fórmula visual (apenas ilustrativa)
         const html = `
-    <div class="calc-eq">
-      <span class="eq-term"><span class="eq-val">${qtdNota}</span> <span class="eq-unit">${unNota}</span></span>
-      <span class="eq-op">×</span>
-      <span class="eq-term"><span class="eq-val">${fator}</span></span>
-      <span class="eq-op">=</span>
-      <span class="eq-term"><span class="eq-val">${formatQtyByUnit(unInt, qtdIntNorm)}</span> <span class="eq-unit">${unInt}</span></span>
-    </div>
-    <div class="k-hint">Quantidade da nota × Fator de conversão = Quantidade interna</div>
-  `;
+      <div class="calc-eq">
+        <span class="eq-term"><span class="eq-val">${qtdNota}</span> <span class="eq-unit">${unNota}</span></span>
+        <span class="eq-op">×</span>
+        <span class="eq-term"><span class="eq-val">${fator}</span></span>
+        <span class="eq-op">=</span>
+        <span class="eq-term"><span class="eq-val">${formatQtyByUnit(unInt, qtdIntNorm)}</span> <span class="eq-unit">${unInt}</span></span>
+      </div>
+      <div class="k-hint">Quantidade da nota × Fator de conversão = Quantidade interna</div>`;
         $('#formulaPreview').html(html);
     }
 
-
-
-    function toggleGravarNota() {
+    function toggleGravarNota(){
         $('#btnGravarNota').prop('disabled', !(allSynced() && Number(nota?.incluida_estoque) !== 1));
     }
 
-    // ===== Vincular item-fornecedor =====
-    async function gravarVinculo() {
+    async function gravarVinculo(){
         if (selectedIndex === null) return Swal.fire('Atenção', 'Selecione um item.', 'warning');
 
         const it = itens[selectedIndex];
@@ -679,12 +692,11 @@
             }
         };
 
-        try {
-            Swal.fire({title:'Sincronizando...', didOpen:()=>Swal.showLoading()});
+        try{
+            Swal.fire({ title:'Sincronizando...', didOpen:()=>Swal.showLoading() });
             const res = await axios.post(baseUrl, payload);
             if (!res.data.success) throw new Error(res.data.error || 'Falha ao sincronizar');
 
-            // Atualiza item na memória (com unidade + quantidade interna normalizada)
             it.codigo_produto_interno = Number(ins.codigo);
             it.descricao_interno      = String(ins.nome || '');
             it.unidade_interno        = unidadeInterna;
@@ -694,26 +706,22 @@
             renderTabela();
             toggleGravarNota();
 
-            // limpa painel
             selectedIndex = null;
             $('#syncNotaInfo').html('<span class="k-hint">Selecione um item pendente e clique “Sincronizar Item”</span>');
             $('#selInsumo').val(null).trigger('change');
             $('#insumoCodigo').text(''); $('#insumoUn').text(''); $('#insumoNome').text('');
             $('#fatorConv').val(1); $('#qtdInternaPreview').text(''); $('#formulaPreview').text('');
-            $('#qtdNotaPreviewVal').text('');
-            $('#qtdNotaPreviewUnit').text('');
-            $('#qtdInternaUnit').text('');
+            $('#qtdNotaPreviewVal').text(''); $('#qtdNotaPreviewUnit').text(''); $('#qtdInternaUnit').text('');
             $('#btnGravarVinculo').prop('disabled', true);
 
             Swal.fire('Pronto!', 'Vínculo salvo com sucesso.', 'success');
-        } catch (e) {
+        }catch(e){
             console.error(e);
             Swal.fire('Erro', e.message || 'Erro ao salvar vínculo', 'error');
         }
     }
 
-    // ===== Lançar itens no estoque =====
-    async function gravarNota() {
+    async function gravarNota(){
         if (!allSynced()) return Swal.fire('Atenção','Existem itens pendentes de sincronização.','warning');
         const data_entrada = $('#notaDataEntrada').val();
         if (!data_entrada) return Swal.fire('Atenção','Informe a data de entrada.','warning');
@@ -738,8 +746,8 @@
             }
         };
 
-        try {
-            Swal.fire({title:'Gravando entrada...', didOpen:()=>Swal.showLoading()});
+        try{
+            Swal.fire({ title:'Gravando entrada...', didOpen:()=>Swal.showLoading() });
             const res = await axios.post(baseUrl, req);
             if (!res.data.success) throw new Error(res.data.message || 'Falha ao lançar itens');
 
@@ -748,11 +756,45 @@
             toggleGravarNota();
 
             Swal.fire('Sucesso','Nota incluída no estoque.','success');
-        } catch (e) {
+        }catch(e){
             console.error(e);
             Swal.fire('Erro', e.message || 'Erro ao gravar nota no estoque', 'error');
         }
     }
+
+    // >>> Modal + Iframe do Novo Produto (pré-seleção automática) <<<
+    function abrirNovoProdutoModalViaIframe(){
+        const qs = new URLSearchParams({
+            system_unit_id: system_unit_id || '',
+            token: token || ''
+        });
+        const url = `${baseUrlredirect}/novo-produto-modal.html?${qs.toString()}`;
+
+        // callback que o filho chamará: window.parent.onNovoProdutoSalvo({...})
+        window.onNovoProdutoSalvo = function (produto) {
+            try {
+                const codigoCriado = String(produto?.codigo || '');
+                fecharIframeNovoProduto();              // fecha modal do iframe
+                carregarInsumos(codigoCriado);          // recarrega e já seleciona o novo
+                Swal.fire('Sucesso', 'Produto criado e adicionado à lista.', 'success');
+            } catch (e) {
+                console.error('onNovoProdutoSalvo error:', e);
+            }
+        };
+
+        // função opcional p/ o filho fechar o modal do iframe
+        window.fecharIframeNovoProduto = function(){
+            $('#modalNovoInsumoIframe').modal('hide');
+        };
+
+        // abre modal e injeta a página no iframe
+        $('#iframeNovoProduto').attr('src', url);
+        $('#modalNovoInsumoIframe').modal('show');
+    }
+
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+    });
 </script>
 </body>
 </html>

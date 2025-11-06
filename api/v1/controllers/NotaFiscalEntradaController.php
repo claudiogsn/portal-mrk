@@ -292,7 +292,7 @@ class NotaFiscalEntradaController {
 
             // ===== itens da nota =====
             $stItens = $pdo->prepare("
-            SELECT id, numero_item, codigo_produto, descricao, unidade, quantidade
+            SELECT id, numero_item, codigo_produto, descricao, unidade, quantidade, valor_unitario
             FROM estoque_nota_item
             WHERE system_unit_id = :unit AND nota_id = :nota
             ORDER BY numero_item ASC
@@ -354,6 +354,8 @@ class NotaFiscalEntradaController {
                 $descNota = $r['descricao']      !== null ? (string)$r['descricao']      : null;
                 $uniNota  = $r['unidade']        !== null ? (string)$r['unidade']        : null;
                 $qtdNota  = $r['quantidade']     !== null ? (float)$r['quantidade']      : 0.0;
+                $valorUnit = $r['valor_unitario'] !== null ? (float)$r['valor_unitario'] : 0.0;
+
 
                 // === tenta casar relação item_fornecedor (prioridade) ===
                 $rel = null;
@@ -406,6 +408,7 @@ class NotaFiscalEntradaController {
                     'descricao_nota'         => $descNota,
                     'unidade_nota'           => $uniNota,
                     'quantidade_nota'        => $qtdNota,
+                    'valor_unitario_nota'    => $valorUnit,
 
                     // mapeamento interno (se houver)
                     'codigo_produto_interno' => $prodCodigoInterno,

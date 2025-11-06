@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Launcher do Modal de Novo Produto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- (Opcional) Estilo básico só pra centralizar o botão -->
+    <style>
+        body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+        .btn { padding:12px 18px; border-radius:8px; border:0; font-weight:600; cursor:pointer; background:#2196F3; color:#fff; }
+        .btn:active { transform: translateY(1px); }
+    </style>
+
+    <!-- Só para toasts simples (opcional). O modal real carrega as libs dele dentro do iframe -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+<button id="btnAbrir" class="btn">Abrir modal “Novo Produto”</button>
+
+<script>
+    // ===== CONFIG FIXA PEDIDA =====
+    const SYSTEM_UNIT_ID = '9';
+    const TOKEN = '8vu1hs0pvqbr8h65napsfb2h09';
+
+    // Resolve a URL do arquivo do modal reutilizável (ajuste se estiver em outra pasta)
+    const MODAL_URL = new URL('http://localhost/portal-mrk/external/novo-produto-modal.html', window.location.href).toString();
+
+    // Guarda o iframe para reuso
+    let novoProdutoFrame = null;
+    let novoProdutoReady = false;
+
+    // utilzinho de toast
+    const toastLoading = (t) => Swal.fire({ title: t || 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    const toastClose   = () => Swal.close();
+
+    async function criarOuObterIframe() {
+        if (novoProdutoFrame && novoProdutoReady) return novoProdutoFrame;
+
+        // cria iframe oculto
+        const qs = new URLSearchParams({ token: TOKEN, system_unit_id: SYSTEM_UNIT_ID });
+        novoProdutoFrame = document.createElement('iframe');
+        novoProdutoFrame.id = 'novoProdutoFrame';
+        novoProdutoFrame.style.cssText = 'width:0;height:0;border:0;visibility:hidden;';
+        novoProdutoFrame.src = `${MODAL_URL}?${qs.toString()}`;
+
+        // Promessa de carregamento
+        await new Promise((resolve, reject) => {
+            const onLoad = () => { novoProdutoReady = true; resolve(); };
+            const onErr  = (e) => reject(e);
+            novoProdutoFrame.addEventListener('load', onLoad, { once: true });
+            novoProdutoFrame.addEventListener('error', onErr, { once: true });
+            // timeout de segurança
+            setTimeout(() => reject(new Error('timeout ao carregar iframe')), 10000);
+        });
+
+        document.body.appendChild(novoProdutoFrame);
+        return novoProdutoFrame;
+    }
+
+    async function abrirModalNovoProduto() {
+        try {
+            toastLoading('Abrindo componente...');
+            const frame = await criarOuObterIframe();
+            const fw = frame.contentWindow;
+            toastClose();
+
+            if (!fw || typeof fw.openNovoProdutoModal !== 'function') {
+                Swal.fire('Erro', 'Não foi possível abrir o modal. Verifique se o arquivo "novo-produto-modal.html" está na mesma origem e pasta correta.', 'error');
+                return;
+            }
+
+            // callback quando salvar no modal
+            fw.onNovoProdutoSalvo = (produto) => {
+                console.log('[novo-produto] salvo:', produto);
+                Swal.fire('Sucesso', `Produto ${produto?.codigo || ''} criado!`, 'success');
+                // aqui você pode chamar carregarInsumos(produto.codigo), etc...
+            };
+
+            // abre o modal já marcado como insumo e foca no nome
+            fw.openNovoProdutoModal({
+                insumo: 1,
+                focusCampo: 'np_nome',
+                // você também pode passar overrides:
+                // baseUrl: 'https://portal.mrksolucoes.com.br/api/v1/index.php',
+                // token: TOKEN,
+                // system_unit_id: SYSTEM_UNIT_ID
+            });
+
+        } catch (e) {
+            console.error(e);
+            toastClose();
+            Swal.fire('Erro', 'Falha ao carregar o componente do modal.', 'error');
+        }
+    }
+
+    document.getElementById('btnAbrir').addEventListener('click', abrirModalNovoProduto);
+</script>
+</body>
+</html>
