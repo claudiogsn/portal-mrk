@@ -978,7 +978,7 @@ class FinanceiroContaController {
             $getFornecedor = function(int $ent) use (&$fornCache, $pdo, $system_unit_id) {
                 if (!isset($fornCache[$ent])) {
                     $st = $pdo->prepare("
-                    SELECT cnpj_cpf, nome
+                    SELECT cnpj_cpf, razao
                     FROM financeiro_fornecedor
                     WHERE id = :id AND system_unit_id = :unit
                     LIMIT 1
