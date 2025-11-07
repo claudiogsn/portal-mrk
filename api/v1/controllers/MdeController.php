@@ -11,7 +11,7 @@ require_once __DIR__ . '/../database/db.php';
 class MdeController
 {
     private const PLUG_BASE_URL  = 'https://app.plugstorage.com.br/api/v2/invoices/';
-    private const PLUG_TOKEN     = 'f25fb8052fa24e43ee6f01f4fce34ca41b857448';
+    private const PLUG_TOKEN     = 'fed6936ecdeb64cf0aa540435cf0910a1c580575';
     private const XML_DIR           = __DIR__ . '/../public/xml';
     private const PUBLIC_URL_LOCAL  = 'http://localhost/portal-mrk/api/v1/public/xml/';
     private const PUBLIC_URL_PROD   = 'https://portal.mrksolucoes.com.br/api/v1/public/xml/';
