@@ -26,6 +26,10 @@ class MudarFilial extends \Adianti\Control\TWindow
         $system_unit_id = new TCombo('system_unit_id');
         $this->form->addFields([new TLabel('Unidade')], [$system_unit_id]);
         $system_unit_id->setSize('100%');
+        $system_unit_id->enableSearch();  // <<< ATIVA PESQUISA NO COMBO
+        $system_unit_id->setDefaultOption('Selecione...');
+
+
 
         $this->populateUnits($system_unit_id);
 
