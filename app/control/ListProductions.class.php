@@ -17,29 +17,38 @@ class ListProductions extends TPage
         } else {
             $link = "https://portal.mrksolucoes.com.br/external/listProductions.html?token={$token}&system_unit_id={$system_unit_id}";
         }
+        // ---- CONTAINER PRINCIPAL (TVBox) ----
+        $this->container = new TVBox;
+        $this->container->style = "width:100%; height:100vh; overflow:hidden; margin:0; padding:0;";
 
+        $breadcrumb = new TXMLBreadCrumb('menu.xml', __CLASS__);
+
+        // ---- IFRAME RESPONSIVO ----
         $iframe = new TElement('iframe');
         $iframe->id = "iframe_external";
         $iframe->src = $link;
         $iframe->frameborder = "0";
-        $iframe->scrolling = "yes";
-        $iframe->width = "100%";
-        $iframe->height = "800px";
-        $container = new TVBox;
-        $container->style = 'width: 100%';
-        $container->add(new TXMLBreadCrumb('menu.xml', __CLASS__));
-        $container->add($iframe);
+        $iframe->scrolling = "yes"; // remove scroll interno
+        $iframe->style = "width:100%; height: calc(100vh - 70px); overflow:hidden; border:none; margin:0; padding:0;";
 
-        parent::add($container);
-    }
+        // ---- ADICIONA AO CONTAINER ----
+        $this->container->add($breadcrumb);
+        $this->container->add($iframe);
 
-    function onFeed($param)
-    {
-        // $id = $param['key'];
-    }
+        parent::add($this->container);
 
-    function onEdit($param)
-    {
-        // $id = $param['key'];
+        // ---- SCRIPT PARA REAJUSTAR ALTURA DINAMICAMENTE ----
+        TScript::create("
+            function resizeIframe() {
+                try {
+                    var iframe = document.getElementById('iframe_external');
+                    var bc     = document.querySelector('.breadcrumb');
+                    var bcH    = bc ? bc.offsetHeight : 70;
+                    iframe.style.height = (window.innerHeight - bcH) + 'px';
+                } catch(e) {}
+            }
+            window.onresize = resizeIframe;
+            window.onload   = resizeIframe;
+        ");
     }
 }
