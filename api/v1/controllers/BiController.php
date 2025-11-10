@@ -999,22 +999,23 @@ class BiController {
                     updated_at = CURRENT_TIMESTAMP
             ");
 
-            foreach ($data as $item) {
+           foreach ($data as $item) {
                 // Associa os parâmetros
-                $stmt->bindParam(':data', $date, PDO::PARAM_STR);
-                $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-                $stmt->bindParam(':doc', $item['doc'], PDO::PARAM_STR);
-                $stmt->bindParam(':produto', $item['produto'], PDO::PARAM_STR);
-                $stmt->bindParam(':nome_produto', $item['nome_produto'], PDO::PARAM_STR);
-                $stmt->bindParam(':saldo_anterior', $item['saldo_anterior'], PDO::PARAM_STR);
-                $stmt->bindParam(':entradas', $item['entradas'], PDO::PARAM_STR);
-                $stmt->bindParam(':saidas', $item['saidas'], PDO::PARAM_STR);
-                $stmt->bindParam(':contagem_ideal', $item['contagem_ideal'], PDO::PARAM_STR);
-                $stmt->bindParam(':contagem_realizada', $item['contagem_realizada'], PDO::PARAM_STR);
-                $stmt->bindParam(':diferenca', $item['diferenca'], PDO::PARAM_STR);
+               $saldo_anterior       = self::normalizeNumber($item['saldo_anterior']);
+               $entradas             = self::normalizeNumber($item['entradas']);
+               $saidas               = self::normalizeNumber($item['saidas']);
+               $contagem_ideal       = self::normalizeNumber($item['contagem_ideal']);
+               $contagem_realizada   = self::normalizeNumber($item['contagem_realizada']);
+               $diferenca            = self::normalizeNumber($item['diferenca']);
 
-                // Executa a consulta
-                $stmt->execute();
+               $stmt->bindValue(':saldo_anterior', $saldo_anterior);
+               $stmt->bindValue(':entradas', $entradas);
+               $stmt->bindValue(':saidas', $saidas);
+               $stmt->bindValue(':contagem_ideal', $contagem_ideal);
+               $stmt->bindValue(':contagem_realizada', $contagem_realizada);
+               $stmt->bindValue(':diferenca', $diferenca);
+
+               $stmt->execute();
                 // Atualiza o saldo do produto
                 ProductController::updateStockBalance($system_unit_id, $item['produto'], $item['contagem_realizada'],$item['doc']);
             }
@@ -1036,6 +1037,14 @@ class BiController {
             ];
         }
     }
+
+
+    public static function normalizeNumber($value) {
+        if ($value === null || $value === '') return null;
+        // Remove pontos de milhar e troca vírgula decimal por ponto
+        return str_replace(',', '.', str_replace('.', '', $value));
+    }
+
     public static function getSalesByInsumos ($systemUnitId, $data)
     {
         global $pdo;
