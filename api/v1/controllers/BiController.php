@@ -953,87 +953,89 @@ class BiController {
             ];
         }
     }
-    public static function persistStockDifferences($system_unit_id,$date, $data) {
+    public static function persistStockDifferences($system_unit_id, $date, $data) {
         global $pdo;
 
         // Lista de campos obrigatórios
         $requiredFields = [
-            'produto', 'nome_produto', 'saldo_anterior', 'entradas', 'saidas', 'contagem_ideal', 'contagem_realizada', 'diferenca'
+            'produto', 'nome_produto', 'saldo_anterior', 'entradas', 'saidas',
+            'contagem_ideal', 'contagem_realizada', 'diferenca'
         ];
 
-        // Verifica se todos os campos obrigatórios estão presentes em cada item do array
+        // Validação dos itens
         foreach ($data as $index => $item) {
-            $missingFields = [];
             foreach ($requiredFields as $field) {
                 if (!isset($item[$field])) {
-                    $missingFields[] = $field;
+                    return [
+                        'status' => 'error',
+                        'message' => "Campos obrigatórios ausentes no item ".($index+1).": $field"
+                    ];
                 }
-            }
-            if (!empty($missingFields)) {
-                http_response_code(400); // Bad Request
-                return [
-                    'status' => 'error',
-                    'message' => 'Campos obrigatórios ausentes no item ' . ($index + 1) . ': ' . implode(", ", $missingFields)
-                ];
             }
         }
 
         try {
-            // Inicia a transação
             $pdo->beginTransaction();
 
-            // Prepara a consulta SQL para inserir ou atualizar os dados na tabela diferencas_estoque
             $stmt = $pdo->prepare("
-                INSERT INTO diferencas_estoque (
-                    data, system_unit_id, doc, produto, nome_produto, saldo_anterior, entradas, saidas, contagem_ideal, contagem_realizada, diferenca
-                ) VALUES (
-                    :data, :system_unit_id, :doc, :produto, :nome_produto, :saldo_anterior, :entradas, :saidas, :contagem_ideal, :contagem_realizada, :diferenca
-                )
-                ON DUPLICATE KEY UPDATE
-                    saldo_anterior = VALUES(saldo_anterior),
-                    entradas = VALUES(entradas),
-                    saidas = VALUES(saidas),
-                    contagem_ideal = VALUES(contagem_ideal),
-                    contagem_realizada = VALUES(contagem_realizada),
-                    diferenca = VALUES(diferenca),
-                    updated_at = CURRENT_TIMESTAMP
-            ");
+            INSERT INTO diferencas_estoque (
+                data, system_unit_id, doc, produto, nome_produto,
+                saldo_anterior, entradas, saidas, contagem_ideal,
+                contagem_realizada, diferenca
+            ) VALUES (
+                :data, :system_unit_id, :doc, :produto, :nome_produto,
+                :saldo_anterior, :entradas, :saidas, :contagem_ideal,
+                :contagem_realizada, :diferenca
+            )
+            ON DUPLICATE KEY UPDATE
+                saldo_anterior = VALUES(saldo_anterior),
+                entradas = VALUES(entradas),
+                saidas = VALUES(saidas),
+                contagem_ideal = VALUES(contagem_ideal),
+                contagem_realizada = VALUES(contagem_realizada),
+                diferenca = VALUES(diferenca),
+                updated_at = CURRENT_TIMESTAMP
+        ");
 
-           foreach ($data as $item) {
-                // Associa os parâmetros
-               $saldo_anterior       = self::normalizeNumber($item['saldo_anterior']);
-               $entradas             = self::normalizeNumber($item['entradas']);
-               $saidas               = self::normalizeNumber($item['saidas']);
-               $contagem_ideal       = self::normalizeNumber($item['contagem_ideal']);
-               $contagem_realizada   = self::normalizeNumber($item['contagem_realizada']);
-               $diferenca            = self::normalizeNumber($item['diferenca']);
+            foreach ($data as $item) {
 
-               $stmt->bindValue(':saldo_anterior', $saldo_anterior);
-               $stmt->bindValue(':entradas', $entradas);
-               $stmt->bindValue(':saidas', $saidas);
-               $stmt->bindValue(':contagem_ideal', $contagem_ideal);
-               $stmt->bindValue(':contagem_realizada', $contagem_realizada);
-               $stmt->bindValue(':diferenca', $diferenca);
+                // Corrige números com vírgula
+                $params = [
+                    ':data'               => $date,
+                    ':system_unit_id'     => $system_unit_id,
+                    ':doc'                => $item['doc'] ?? null,
+                    ':produto'            => $item['produto'],
+                    ':nome_produto'       => $item['nome_produto'],
+                    ':saldo_anterior'     => self::normalizeNumber($item['saldo_anterior']),
+                    ':entradas'           => self::normalizeNumber($item['entradas']),
+                    ':saidas'             => self::normalizeNumber($item['saidas']),
+                    ':contagem_ideal'     => self::normalizeNumber($item['contagem_ideal']),
+                    ':contagem_realizada' => self::normalizeNumber($item['contagem_realizada']),
+                    ':diferenca'          => self::normalizeNumber($item['diferenca'])
+                ];
 
-               $stmt->execute();
-                // Atualiza o saldo do produto
-                ProductController::updateStockBalance($system_unit_id, $item['produto'], $item['contagem_realizada'],$item['doc']);
+                $stmt->execute($params);
+
+                ProductController::updateStockBalance(
+                    $system_unit_id,
+                    $item['produto'],
+                    self::normalizeNumber($item['contagem_realizada']),
+                    $params[':doc']
+                );
             }
 
-            // Confirma a transação
             $pdo->commit();
 
             return [
                 'status' => 'success',
                 'message' => 'Diferenças de estoque registradas com sucesso.'
             ];
-        } catch (Exception $e) {
-            // Reverte a transação em caso de erro
-            $pdo->rollBack();
 
+        } catch (Exception $e) {
+            $pdo->rollBack();
             return [
                 'status' => 'error',
-                'message' => 'Erro ao registrar diferenças de estoque: ' . $e->getMessage()
+                'message' => 'Erro ao registrar diferenças de estoque: '.$e->getMessage()
             ];
         }
     }
