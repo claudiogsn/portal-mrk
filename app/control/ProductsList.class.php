@@ -12,9 +12,9 @@ class ProductsList extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/listProducts.html?username={$username}&token={$token}&system_unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/external/listProducts.html?user={$username}&token={$token}&system_unit_id={$unit_id}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/listProducts.html?username={$username}&token={$token}&system_unit_id={$unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/listProducts.html?user={$username}&token={$token}&system_unit_id={$unit_id}";
         }
 
                // ---- CONTAINER PRINCIPAL (TVBox) ----

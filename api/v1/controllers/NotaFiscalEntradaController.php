@@ -58,6 +58,9 @@ class NotaFiscalEntradaController {
             error_log("Transação concluída com sucesso.");
             error_log("### Fim da função importarNotasFiscaisEntrada ###");
 
+
+
+
             return [
                 'status' => 'success',
                 'message' => 'Importação concluída com sucesso.',
