@@ -1042,9 +1042,7 @@ class BiController {
 
 
     public static function normalizeNumber($value) {
-        if ($value === null || $value === '') return null;
-        // Remove pontos de milhar e troca vírgula decimal por ponto
-        return str_replace(',', '.', str_replace('.', '', $value));
+        return $value;
     }
 
     public static function getSalesByInsumos ($systemUnitId, $data)
