@@ -250,9 +250,9 @@
             });
             const list = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
             const sel = $('#fornecedor');
-            // mantém "Selecione..."
             list.forEach(f => {
-                sel.append(new Option(((f.codigo? f.codigo+' - ' : '') + f.nome), f.id, false, false));
+                const label = f.razao && f.razao.trim() !== '' ? f.razao : f.nome;
+                sel.append(new Option(`${f.id} - ${label}`, f.id, false, false));
             });
             sel.trigger('change.select2');
         }catch(e){
@@ -268,17 +268,30 @@
                 token,
                 data: { system_unit_id: Number(unit_id) }
             });
-            const list = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+
+            const lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
             const sel = $('#plano_contas');
-            list.forEach(p => {
-                sel.append(new Option(`${p.codigo} - ${p.descricao}`, p.codigo, false, false));
+
+            // ordena por código
+            lista.sort((a,b) => a.codigo.localeCompare(b.codigo));
+
+            lista.forEach(p => {
+                const nivel = Math.floor((p.codigo.length - 2) / 2);
+                const indent = '\u00A0'.repeat(nivel * 4); // espaços reais
+
+                sel.append(
+                    new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo, false, false)
+                );
             });
+
             sel.trigger('change.select2');
+
         }catch(e){
             console.error(e);
             Swal.fire('Erro','Falha ao carregar planos de conta.','error');
         }
     }
+
 
     function carregarFormasFixas(){
         const sel = $('#forma_pagamento_id');

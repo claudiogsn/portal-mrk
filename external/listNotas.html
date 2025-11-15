@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Lista de Notas Fiscais</title>
+    <title>Lista de Notas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
@@ -195,7 +195,7 @@
     <br>
     <div class="card">
         <div class="header d-flex justify-content-between align-items-center">
-            <h2>Notas Fiscais</h2>
+            <h2>Notas de Entrada</h2>
 
         </div>
         <div class="body">
@@ -209,7 +209,14 @@
                     <label>Data Final</label>
                     <input type="date" id="filtroDataFinal" class="form-control">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label>Tipo de Data</label>
+                    <select id="filtroTipoData" class="form-control">
+                        <option value="emissao" selected>Emissão</option>
+                        <option value="entrada">Entrada</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label>CPF/CNPJ Fornecedor</label>
                     <input type="text" id="filtroCnpj" class="form-control" placeholder="Digite CPF ou CNPJ">
                 </div>
@@ -224,7 +231,7 @@
                         <option value="pend_fin">Não incluída no financeiro</option>
                     </select>
                 </div>
-                <div class="col-md-3 text-right">
+                <div class="col-md-2 text-right">
                     <label>&nbsp;</label><br>
                     <button class="btn btn-primary me-2" id="btnListarNotas" style="padding: 8px 15px 12px 15px; min-width: 120px;">
                         <i class="fa fa-search me-2"></i> Listar Notas
@@ -234,9 +241,10 @@
                     </button>
                 </div>
             </div>
+
             <div class="row" id="rowFiltros2" style="margin-top:10px;">
                 <div class="col-md-4">
-                    <label>Número da NF</label>
+                    <label>Número da Nota</label>
                     <input type="text" id="filtroNumeroNF" class="form-control" placeholder="Ex.: 12345">
                 </div>
                 <div class="col-md-5">
@@ -266,7 +274,7 @@
                 </div>
                 <div class="col-md-4">
                     <div class="kpi-card kpi blue">
-                        <p class="kpi-label">Somatório Total de NF-e</p>
+                        <p class="kpi-label">Somatório Total de Notas</p>
                         <div class="kpi-row">
                             <div class="kpi-value" id="kpiSomatorio">R$ 0,00</div>
                         </div>
@@ -287,7 +295,7 @@
                         <th>Razão Social</th>
                         <th>Chave de Acesso</th>
                         <th>CPF/CNPJ</th>
-                        <th>Valor NF-e</th>
+                        <th>Valor Nota</th>
                         <th>Estoque</th>
                         <th>Financeiro</th>
                         <th>Data Entrada</th>
@@ -449,11 +457,18 @@
 
     let notasOriginais = [];
 
+    let planosContabeisCache = null;
+    let cachePlanosFinanceiro = null;
+
+
+
+
     $(document).ready(function () {
         $('#btnListarNotas').click(listarNotas);
 
-        $('#filtroDataInicial, #filtroDataFinal, #filtroCnpj, #filtroStatus, #filtroNumeroNF, #filtroChave')
+        $('#filtroDataInicial, #filtroDataFinal, #filtroTipoData, #filtroCnpj, #filtroStatus, #filtroNumeroNF, #filtroChave')
             .on('input change', aplicarFiltros);
+
 
 
         $('#btnAbrirImportacao').click(() => {
@@ -475,6 +490,10 @@
         $('#modalImportacao').on('hidden.bs.modal', function () {
             listarNotas();
         });
+
+        carregarPlanosFinanceiro();
+
+
     });
     // abre a tela de entrada/edição no estoque em fullscreen
     $(document).on('click', 'a.abrir-estoque', function (e) {
@@ -541,26 +560,32 @@
     function aplicarFiltros() {
         let dataFiltrada = [...notasOriginais];
 
-        const dataIni = $('#filtroDataInicial').val();
-        const dataFim = $('#filtroDataFinal').val();
-        const cnpj = ($('#filtroCnpj').val() || '').replace(/\D/g, '');
-        const status = $('#filtroStatus').val();
+        const dataIni   = $('#filtroDataInicial').val();
+        const dataFim   = $('#filtroDataFinal').val();
+        const tipoData  = $('#filtroTipoData').val() || 'emissao'; // emissao | entrada
+        const cnpj      = ($('#filtroCnpj').val() || '').replace(/\D/g, '');
+        const status    = $('#filtroStatus').val();
+
+        // campo que será usado no filtro de data
+        const campoData = (tipoData === 'entrada') ? 'data_entrada' : 'data_emissao';
 
         // NOVOS
-        const numeroNF = ($('#filtroNumeroNF').val() || '').trim().toLowerCase();
-        const chave    = ($('#filtroChave').val() || '').replace(/\s/g, ''); // tira espaços
+        const numeroNF  = ($('#filtroNumeroNF').val() || '').trim().toLowerCase();
+        const chave     = ($('#filtroChave').val() || '').replace(/\s/g, ''); // tira espaços
         const chaveNums = chave.replace(/\D/g, ''); // só dígitos para comparar
 
         if (dataIni) {
             dataFiltrada = dataFiltrada.filter(n =>
-                n.data_emissao && n.data_emissao.substr(0, 10) >= dataIni
+                n[campoData] && n[campoData].substr(0, 10) >= dataIni
             );
         }
+
         if (dataFim) {
             dataFiltrada = dataFiltrada.filter(n =>
-                n.data_emissao && n.data_emissao.substr(0, 10) <= dataFim
+                n[campoData] && n[campoData].substr(0, 10) <= dataFim
             );
         }
+
         if (cnpj) {
             dataFiltrada = dataFiltrada.filter(n =>
                 (n.fornecedor_cnpj || '').replace(/\D/g, '').includes(cnpj)
@@ -816,6 +841,8 @@
     function toBRL(n) {
         return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
+    // ======================== MODAL FINANCEIRO ======================== //
+
     async function abrirModalFinanceiro({ chave_acesso, id, fornecedor_nome, documento_hint, emissao_hint, valor_hint }) {
         try {
             if (!chave_acesso && !id) {
@@ -836,6 +863,7 @@
             };
 
             const res = await axios.post(baseUrl, payloadReq);
+
             if (!res.data || !res.data.success || !res.data.data) {
                 Swal.close();
                 Swal.fire('Erro', res.data?.error || 'Não foi possível obter os dados da nota.', 'error');
@@ -844,61 +872,65 @@
 
             const d = res.data.data;
 
-            // Preenche campos básicos (como antes)
+            // 🔹 carrega/garante a lista de planos (via financeiro.php)
+            await carregarPlanosFinanceiro();
+
+            // ===== Preenche campos principais =====
             $('#finFornecedorId').val(d.fornecedor_id || '');
             $('#finChaveAcesso').val(chave_acesso || '');
             $('#finFornecedorNome').val(fornecedor_nome || '');
             $('#finDocumento').val(d.documento || documento_hint || '');
             $('#finEmissao').val(d.emissao || emissao_hint || '');
-            $('#finVencimento').val(''); // vamos setar abaixo pelo algoritmo novo
-            $('#finValor').val((d.valor_total !== undefined && d.valor_total !== null)
-                ? ('' + Number(d.valor_total).toFixed(2)).replace('.', ',')
-                : (valor_hint ? ('' + Number(valor_hint).toFixed(2)).replace('.', ',') : '0,00')
+            $('#finVencimento').val('');
+
+            $('#finValor').val(
+                d.valor_total != null
+                    ? Number(d.valor_total).toFixed(2).replace('.', ',')
+                    : valor_hint
+                        ? Number(valor_hint).toFixed(2).replace('.', ',')
+                        : '0,00'
             );
+
             $('#finAdicional').val('0');
             $('#finDesconto').val('0');
 
-            // Planos e formas (como antes)
-            const planos = Array.isArray(d.planos_de_conta) ? d.planos_de_conta.slice() : [];
-            planos.sort((a, b) => {
-                const ca = (a.codigo || ''), cb = (b.codigo || '');
-                if (ca.length !== cb.length) return ca.length - cb.length;
-                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
-            });
+            // limpa seleção atual de plano, mas NÃO mexe nas opções (já carregadas)
+            $('#finPlano').val('').trigger('change');
 
-            const $plano = $('#finPlano');
-            $plano.empty().append(`<option value="">Selecione...</option>`);
-            planos.forEach(p => {
-                $plano.append(`<option value="${p.codigo}" data-id="${p.id || ''}">${p.label || (p.codigo + ' - ' + (p.descricao || ''))}</option>`);
-            });
+            // ===== Formas de pagamento (veio do payload da nota) =====
+            const formas = Array.isArray(d.formas_pagamento)
+                ? d.formas_pagamento
+                : (Array.isArray(d.formas_de_pagamento) ? d.formas_de_pagamento : []);
 
-            const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (Array.isArray(d.formas_de_pagamento) ? d.formas_de_pagamento : []);
             const $forma = $('#finForma');
-            $forma.empty().append(`<option value="">Selecione...</option>`);
+            $forma.empty().append('<option value="">Selecione...</option>');
             formas.forEach(f => {
-                $forma.append(`<option value="${f.id}">${f.descricao || f.nome || f.codigo}</option>`);
+                $forma.append(new Option(f.descricao || f.nome || f.codigo, f.id, false, false));
             });
 
+            // ===== Ativa Select2 (sem recriar se já tiver) =====
             const $modal = $('#modalFinanceiro');
-            $plano.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
-            $forma.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
+            const $plano = $('#finPlano');
 
-            // ===== NOVO: carregar duplicatas (apenas para definir qtd e 1º vencimento) =====
+            if (!$plano.hasClass('select2-hidden-accessible')) {
+                $plano.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
+            }
+            if (!$forma.hasClass('select2-hidden-accessible')) {
+                $forma.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
+            }
+
+            // ===== Duplicatas =====
             let qtdParcelas = 1;
             let vencIni = '';
 
             if (Array.isArray(d.duplicatas) && d.duplicatas.length > 0) {
-                // usa a primeira duplicata como "vencimento inicial"
-                // se quiser garantir a menor data, descomente o sort:
-                // d.duplicatas.sort((a,b)=> String(a.data_vencimento).localeCompare(String(b.data_vencimento)));
                 qtdParcelas = d.duplicatas.length;
-                vencIni = (d.duplicatas[0].vencimento|| '').substr(0,10);
+                vencIni = (d.duplicatas[0].vencimento || '').substring(0, 10);
             }
 
             $('#finParcelas').val(qtdParcelas);
-            $('#finVencimento').val(vencIni); // pode ficar vazio se não havia duplicata
+            $('#finVencimento').val(vencIni);
 
-            // Constrói a grade com datas (30/30) e valores travados
             rebuildParcelasGrid(qtdParcelas, vencIni);
 
             Swal.close();
@@ -910,13 +942,102 @@
             Swal.fire('Erro', 'Falha ao carregar dados para o financeiro.', 'error');
         }
     }
+
+
+    function sortPlanosHierarquico(lista) {
+        // Clona o array pra não mexer no original
+        const planos = lista.slice();
+
+        // Agrupa por raiz de 2 dígitos (01, 02, 03...)
+        const grupos = {};
+        planos.forEach(p => {
+            const codigo = String(p.codigo || '');
+            if (!codigo) return;
+
+            const raiz = codigo.substring(0, 2); // "01", "02"...
+            if (!grupos[raiz]) grupos[raiz] = [];
+            grupos[raiz].push(p);
+        });
+
+        // Ordena as raízes
+        const raizesOrdenadas = Object.keys(grupos).sort((a, b) => {
+            return parseInt(a, 10) - parseInt(b, 10);
+        });
+
+        const ordenado = [];
+
+        raizesOrdenadas.forEach(raiz => {
+            const arr = grupos[raiz];
+
+            arr.sort((a, b) => {
+                const ca = String(a.codigo || '');
+                const cb = String(b.codigo || '');
+
+                // Primeiro quem tem código menor (pai antes de filho)
+                if (ca.length !== cb.length) {
+                    return ca.length - cb.length;
+                }
+
+                // Se tiverem o mesmo tamanho, ordena lexicograficamente
+                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
+            });
+
+            ordenado.push(...arr);
+        });
+
+        return ordenado;
+    }
+
+
+    // Carrega planos de contas pelo financeiro.php (listPlanos) e monta #finPlano
+    async function carregarPlanosFinanceiro() {
+        // se já carregou uma vez, só reaproveita
+        if (Array.isArray(cachePlanosFinanceiro) && cachePlanosFinanceiro.length) {
+            return cachePlanosFinanceiro;
+        }
+
+        try {
+            const res = await axios.post(baseUrlFinanceiro, {
+                method: 'listPlanos',
+                token,
+                data: { system_unit_id: Number(unit_id) }
+            });
+
+            let lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+            lista = sortPlanosHierarquico(lista);
+
+            const $sel = $('#finPlano');
+            $sel.empty().append('<option value="">Selecione...</option>');
+
+            lista.forEach(p => {
+                const codigo = String(p.codigo || '');
+                const nivel  = Math.floor((codigo.length - 2) / 2);
+                const indent = '\u00A0'.repeat(Math.max(0, nivel) * 4);
+
+                $sel.append(
+                    new Option(`${indent}${codigo} - ${p.descricao || p.nome || ''}`, codigo, false, false)
+                );
+            });
+
+            cachePlanosFinanceiro = lista;
+            return lista;
+
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha ao carregar planos de conta.', 'error');
+            return [];
+        }
+    }
+
+    // ======= Funções auxiliares do parcelamento (copiadas 1:1 da tela Editar Conta) ======= //
+
     function rebuildParcelasGrid(qtd, vencIni) {
         const $tb = $('#tblParcelas tbody');
         $tb.empty();
 
         const n = Math.max(1, parseInt(qtd || 1, 10));
 
-        const total = getValorFinalParaParcelas();
+        const total = toNumberBR($('#finValor').val());
         const base = Math.floor((total / n) * 100) / 100;
         let resto = +(total - (base * n)).toFixed(2);
 
@@ -931,21 +1052,17 @@
             }
 
             $tb.append(`
-      <tr>
-        <td class="text-center">${i + 1}</td>
-        <td>
-          <input type="date" class="form-control parc-venc" value="${venc}">
-        </td>
-        <td>
-          <input type="text" class="form-control parc-valor" value="${toBRL(valorParc).replace('R$','').trim()}">
-        </td>
-      </tr>
-    `);
+        <tr>
+            <td class="text-center">${i + 1}/${n}</td>
+            <td><input type="date" class="form-control parc-venc" value="${venc}"></td>
+            <td><input type="text" class="form-control parc-valor" value="${toBRL(valorParc).replace('R$','').trim()}"></td>
+        </tr>
+        `);
         }
 
-        // atualiza totais e aviso visual
         recalcTotaisParcelas();
     }
+
     function recalcTotaisParcelas() {
         let soma = 0;
         $('#tblParcelas tbody tr').each(function () {
@@ -1027,11 +1144,6 @@
 
             // monta array de contas
             const contas = linhas.map(ln => {
-                const obs = [
-                    obs_base,
-                    `Parcela ${ln.indice}/${ln.total_parcelas}`
-                ].filter(Boolean).join(' | ');
-
                 return {
                     fornecedor_id: fornecedor_id,
                     documento: `${documento}-${String(ln.indice).padStart(2,'0')}`,
@@ -1040,7 +1152,7 @@
                     valor: ln.valor.toFixed(2).replace('.', ','), // "123,45"
                     plano_contas: plano_contas,      // código
                     forma_pagamento_id: Number(forma_id),
-                    obs_extra: obs,
+                    obs_extra: obs_base,
                     chave_acesso: chave_acesso
                 };
             });

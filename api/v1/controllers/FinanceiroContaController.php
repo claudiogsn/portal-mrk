@@ -202,12 +202,12 @@ class FinanceiroContaController {
                 throw new Exception('contas deve ser um array válido.');
             }
 
-            // ===== Função utilitária de fornecedor (só para nome/cgc) =====
+            // ===== Função utilitária de fornecedor (pega cgc e razao social) =====
             $fornCache = [];
             $getFornecedor = function ($id) use (&$fornCache, $pdo, $system_unit_id) {
                 if (!isset($fornCache[$id])) {
                     $st = $pdo->prepare("
-                    SELECT cnpj_cpf, nome
+                    SELECT cnpj_cpf, razao
                     FROM financeiro_fornecedor
                     WHERE id = :id AND system_unit_id = :unit
                     LIMIT 1
@@ -215,12 +215,16 @@ class FinanceiroContaController {
                     $st->execute([':id' => $id, ':unit' => $system_unit_id]);
                     $row = $st->fetch(PDO::FETCH_ASSOC);
                     if (!$row) throw new Exception("Fornecedor {$id} não encontrado.");
-                    $fornCache[$id] = ['cgc' => (string)$row['cnpj_cpf'], 'nome' => (string)$row['nome']];
+
+                    $fornCache[$id] = [
+                        'cgc'   => (string)($row['cnpj_cpf'] ?? ''),
+                        'razao' => (string)($row['razao'] ?? ''),
+                    ];
                 }
                 return $fornCache[$id];
             };
 
-            // ===== Transação / lock para gerar codigo =====
+            // ===== Transação e lock para geração de código sequencial =====
             $pdo->beginTransaction();
 
             $lockName = 'financeiro_conta_codigo_local_lock';
@@ -232,7 +236,7 @@ class FinanceiroContaController {
             $minCodigo = $stMin->fetchColumn();
             $nextCodigo = ($minCodigo !== null) ? ($minCodigo - 1) : 0;
 
-            // ===== INSERT direto (sem normalizar) =====
+            // ===== INSERT (sem normalizar valores, exatamente como veio na requisição) =====
             $stmtIns = $pdo->prepare("
             INSERT INTO financeiro_conta
             (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
@@ -245,28 +249,27 @@ class FinanceiroContaController {
             $ids = [];
 
             foreach ($data['contas'] as $idx => $c) {
-                // Campos mínimos obrigatórios
+
                 foreach (['fornecedor_id','documento','emissao','vencimento','valor'] as $req) {
                     if (!isset($c[$req]) || $c[$req] === '') {
                         throw new Exception("Conta #".($idx+1).": Campo obrigatório ausente: {$req}");
                     }
                 }
 
-                // Busca fornecedor p/ nome/cgc
+                // Dados do fornecedor
                 $forn = $getFornecedor($c['fornecedor_id']);
-                $nome = $forn['nome'] ? $forn['nome'] : ("Conta ".$c['documento']." – Fornecedor ".$c['fornecedor_id']);
+                $nome = $forn['razao'];  // <<< SEM FALLBACK
 
-                // Usa exatamente o que veio
-                $valor          = $c['valor']; // sem ajustar por desconto/adicional
+                // Usa exatamente os valores enviados
+                $valor          = $c['valor'];
                 $plano_contas   = isset($c['plano_contas']) ? $c['plano_contas'] : null;
                 $obs            = isset($c['obs']) ? $c['obs'] : (isset($c['obs_extra']) ? $c['obs_extra'] : '');
                 $banco          = array_key_exists('banco', $c) ? $c['banco'] : null;
-                // compat: forma_pagamento_id
                 $forma_pagamento = array_key_exists('forma_pagamento', $c) ? $c['forma_pagamento']
                     : (array_key_exists('forma_pagamento_id', $c) ? $c['forma_pagamento_id'] : null);
+
                 $adic           = isset($c['acrescimo']) ? $c['acrescimo'] : (isset($c['adicional']) ? $c['adicional'] : 0);
 
-                // (opcional) checagens bem leves
                 if (!is_numeric($valor)) throw new Exception("Conta #".($idx+1).": valor inválido.");
                 if ($valor + 0 <= 0) throw new Exception("Conta #".($idx+1).": valor deve ser > 0.");
 
@@ -276,10 +279,10 @@ class FinanceiroContaController {
                     ':nome'            => $nome,
                     ':entidade'        => $c['fornecedor_id'],
                     ':cgc'             => $forn['cgc'],
-                    ':tipo'            => isset($c['tipo']) && $c['tipo'] !== '' ? $c['tipo'] : 'd',
+                    ':tipo'            => isset($c['tipo']) ? $c['tipo'] : 'd',
                     ':doc'             => $c['documento'],
-                    ':emissao'         => $c['emissao'],   // entra como veio
-                    ':vencimento'      => $c['vencimento'],// entra como veio
+                    ':emissao'         => $c['emissao'],
+                    ':vencimento'      => $c['vencimento'],
                     ':valor'           => $valor,
                     ':plano_contas'    => $plano_contas,
                     ':banco'           => $banco,
@@ -291,7 +294,6 @@ class FinanceiroContaController {
                 $id = $pdo->lastInsertId();
                 $ids[] = $id;
 
-                // Auditoria
                 $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
                 $stConta->execute([':id' => $id]);
                 $novaConta = $stConta->fetch(PDO::FETCH_ASSOC);
@@ -923,21 +925,22 @@ class FinanceiroContaController {
                 $required = ['fornecedor_id', 'documento', 'emissao', 'vencimento', 'valor'];
                 foreach ($required as $k) {
                     if (!isset($c[$k]) || $c[$k] === '' || $c[$k] === null) {
-                        throw new Exception("Conta #".($idx+1).": Campo obrigatório ausente: {$k}");
+                        throw new Exception("Conta #" . ($idx + 1) . ": Campo obrigatório ausente: {$k}");
                     }
                 }
 
-                $entidade     = (int)$c['fornecedor_id'];
-                $doc          = trim((string)$c['documento']);
-                $emissao      = $parseDate($c['emissao']);
-                $vencimento   = $parseDate($c['vencimento']);
-                $valorBruto   = $parseMoney($c['valor']);
-                $adicional    = isset($c['adicional']) ? $parseMoney($c['adicional']) : 0.0;
-                $desconto     = isset($c['desconto'])  ? $parseMoney($c['desconto'])  : 0.0;
-                $planoContas  = isset($c['plano_contas']) ? trim((string)$c['plano_contas']) : null;
-                $formaPgtoId  = isset($c['forma_pagamento_id']) ? (int)$c['forma_pagamento_id'] : null;
-                $obsExtra     = isset($c['obs_extra']) ? trim((string)$c['obs_extra']) : '';
-                $chaveAcesso  = isset($c['chave_acesso']) ? trim((string)$c['chave_acesso']) : null;
+                $entidade = (int)$c['fornecedor_id'];
+                $doc = trim((string)$c['documento']);
+                $emissao = $parseDate($c['emissao']);
+                $vencimento = $parseDate($c['vencimento']);
+                $valorBruto = $parseMoney($c['valor']);
+                $adicional = isset($c['adicional']) ? $parseMoney($c['adicional']) : 0.0;
+                $desconto = isset($c['desconto']) ? $parseMoney($c['desconto']) : 0.0;
+
+                $planoContas = isset($c['plano_contas']) ? trim((string)$c['plano_contas']) : null;
+                $formaPgtoId = isset($c['forma_pagamento_id']) ? (int)$c['forma_pagamento_id'] : null;
+                $obsExtra    = isset($c['obs_extra']) ? trim((string)$c['obs_extra']) : '';
+                $chaveAcesso = isset($c['chave_acesso']) ? trim((string)$c['chave_acesso']) : null;
 
                 $norm[] = [
                     'entidade' => $entidade,
@@ -949,33 +952,33 @@ class FinanceiroContaController {
                     'desconto' => $desconto,
                     'planoContas' => $planoContas,
                     'formaPgtoId' => $formaPgtoId,
-                    'obsExtra'    => $obsExtra,
+                    'obsExtra' => $obsExtra,
                     'chaveAcesso' => $chaveAcesso,
                 ];
 
-                $key = $entidade.'#'.$doc;
+                $key = $entidade . '#' . $doc;
                 if (!isset($pairsSeen[$key])) {
                     $pairsSeen[$key] = true;
-                    $pairs[] = ['entidade'=>$entidade, 'doc'=>$doc];
+                    $pairs[] = ['entidade' => $entidade, 'doc' => $doc];
                 }
                 if ($chaveAcesso) $chaves[$chaveAcesso] = true;
             }
 
-            // ===== Verifica duplicidades
+            // ===== Verifica duplicidades =====
             $stChk = $pdo->prepare("
             SELECT id FROM financeiro_conta 
             WHERE system_unit_id = :unit AND entidade = :ent AND doc = :doc LIMIT 1
         ");
             foreach ($pairs as $p) {
-                $stChk->execute([':unit'=>$system_unit_id, ':ent'=>$p['entidade'], ':doc'=>$p['doc']]);
+                $stChk->execute([':unit' => $system_unit_id, ':ent' => $p['entidade'], ':doc' => $p['doc']]);
                 if ($stChk->fetchColumn()) {
                     throw new Exception("Já existe lançamento para fornecedor/documento nesta unidade ({$p['entidade']}, {$p['doc']}).");
                 }
             }
 
-            // ===== Cache de fornecedor
+            // ===== Cache de fornecedor =====
             $fornCache = [];
-            $getFornecedor = function(int $ent) use (&$fornCache, $pdo, $system_unit_id) {
+            $getFornecedor = function (int $ent) use (&$fornCache, $pdo, $system_unit_id) {
                 if (!isset($fornCache[$ent])) {
                     $st = $pdo->prepare("
                     SELECT cnpj_cpf, razao
@@ -983,25 +986,26 @@ class FinanceiroContaController {
                     WHERE id = :id AND system_unit_id = :unit
                     LIMIT 1
                 ");
-                    $st->execute([':id'=>$ent, ':unit'=>$system_unit_id]);
+                    $st->execute([':id' => $ent, ':unit' => $system_unit_id]);
                     $row = $st->fetch(PDO::FETCH_ASSOC);
+
                     if (!$row) {
                         throw new Exception("Fornecedor {$ent} não encontrado para a unidade informada.");
                     }
                     $fornCache[$ent] = [
-                        'cgc'  => (string)($row['cnpj_cpf'] ?? ''),
-                        'nome' => (string)($row['nome'] ?? ''),
+                        'cgc'   => (string)($row['cnpj_cpf'] ?? ''),
+                        'razao' => (string)($row['razao'] ?? ''),
                     ];
                 }
                 return $fornCache[$ent];
             };
 
-            // ===== Transação
+            // ===== Transação =====
             $pdo->beginTransaction();
 
             $lockName = 'financeiro_conta_codigo_local_lock';
             $stLock = $pdo->prepare("SELECT GET_LOCK(:name, 5)");
-            $stLock->execute([':name'=>$lockName]);
+            $stLock->execute([':name' => $lockName]);
             $gotLock = ((int)$stLock->fetchColumn() === 1);
 
             $stMin = $pdo->query("SELECT MIN(codigo) FROM financeiro_conta WHERE codigo <= 0");
@@ -1021,9 +1025,13 @@ class FinanceiroContaController {
 
             foreach ($norm as $i => $c) {
                 $forn = $getFornecedor($c['entidade']);
-                $nome = $forn['nome'] !== '' ? $forn['nome'] : "NF {$c['doc']} – Fornecedor {$c['entidade']}";
+
+                // Nome da conta = razão social do fornecedor
+                $nome = $forn['razao'];
+
+
                 $valorFinal = round($c['valorBruto'] + $c['adicional'] - $c['desconto'], 2);
-                if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo (item #".($i+1).").");
+                if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo (item #" . ($i + 1) . ").");
 
                 $stmtIns->execute([
                     ':system_unit_id' => $system_unit_id,
@@ -1045,18 +1053,8 @@ class FinanceiroContaController {
                 $id = (int)$pdo->lastInsertId();
                 $ids[] = $id;
 
-                // 🔍 Busca registro para log
-                $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
-                $stConta->execute([':id' => $id]);
-                $novaConta = $stConta->fetch(PDO::FETCH_ASSOC);
-
-                // 🧾 Log auditoria
-                self::logAuditoria(
-                    'CREATE',
-                    'financeiro_conta',
-                    $id,
-                    null,
-                    $novaConta,
+                self::logAuditoria('CREATE','financeiro_conta',$id,null,
+                    $pdo->query("SELECT * FROM financeiro_conta WHERE id = {$id}")->fetch(PDO::FETCH_ASSOC),
                     $system_unit_id,
                     $usuario_id
                 );
@@ -1073,7 +1071,7 @@ class FinanceiroContaController {
                 LIMIT 1
             ");
                 foreach (array_keys($chaves) as $ch) {
-                    $stU->execute([':unit'=>$system_unit_id, ':chave'=>$ch]);
+                    $stU->execute([':unit' => $system_unit_id, ':chave' => $ch]);
                 }
             }
 
@@ -1087,7 +1085,7 @@ class FinanceiroContaController {
 
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
-            return ['success'=>false, 'error'=>$e->getMessage()];
+            return ['success' => false, 'error' => $e->getMessage()];
         } finally {
             if (!empty($gotLock)) {
                 try { $pdo->query("SELECT RELEASE_LOCK('financeiro_conta_codigo_local_lock')"); } catch (\Throwable $t) {}
@@ -1155,7 +1153,7 @@ class FinanceiroContaController {
             if (!$forn) throw new Exception("Fornecedor não encontrado.");
 
             $cgc  = $forn['cnpj_cpf'] ?? '';
-            $nome = $forn['nome'] ?: "NF {$doc} – Fornecedor {$entidade}";
+            $nome = $forn['razao'];
 
             $valorFinal = round($valorBruto + $adicional - $desconto, 2);
             if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo.");

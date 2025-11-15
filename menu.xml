@@ -156,7 +156,7 @@
       <menuitem label="Compra">
         <icon>fas:dolly-flatbed fa-fw</icon>
         <menu>
-          <menuitem label="MD-e">
+          <menuitem label="Notas de Entrada">
             <action>NotasFiscais</action>
             <icon>far:file-alt fa-fw</icon>
           </menuitem>

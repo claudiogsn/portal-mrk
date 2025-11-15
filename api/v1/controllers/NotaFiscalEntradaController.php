@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
+require_once __DIR__ . '/../controllers/FinanceiroPlanoController.php';
 
 class NotaFiscalEntradaController {
     public static function importarNotasFiscaisEntrada($system_unit_id, $notas, $usuario_id): array
@@ -197,25 +198,11 @@ class NotaFiscalEntradaController {
             }
 
             // === Planos de contas (da unidade) ===
-            $stPlano = $pdo->prepare("
-            SELECT id, codigo, descricao
-            FROM financeiro_plano
-            WHERE system_unit_id = :unit 
-            ORDER BY 
-                CASE WHEN codigo = '' THEN 1 ELSE 0 END,
-                codigo, descricao
-        ");
-            $stPlano->execute([':unit' => $system_unit_id]);
-            $planos = $stPlano->fetchAll(PDO::FETCH_ASSOC);
 
-            $planosDeConta = array_map(function ($p) {
-                return [
-                    'id'        => (int)$p['id'],
-                    'codigo'    => (string)$p['codigo'],
-                    'descricao' => (string)$p['descricao'],
-                    'label'     => trim(($p['codigo'] ? "{$p['codigo']} - " : "") . $p['descricao']),
-                ];
-            }, $planos);
+            $planosDeConta = FinanceiroPlanoController::listPlanos($system_unit_id);
+            error_log("DEBUG payload planos: " . json_encode($planosDeConta));
+
+
 
             // === Formas de pagamento padrão (ajuste IDs/códigos se necessário) ===
             $formasPagamento = [
@@ -640,7 +627,7 @@ class NotaFiscalEntradaController {
             $unitId      = (int)$data['system_unit_id'];
             $usuarioId   = (int)$data['usuario_id'];
             $chaveAcess  = trim((string)$data['chave_acesso']);
-            $dataEntrada = $parseDate((string)$data['data_entrada']); // <- agora vindo do payload (obrigatória)
+            $dataEntrada = $data['data_entrada'];
             $dataEmissaoOverride = isset($data['data_emissao']) && $data['data_emissao'] !== ''
                 ? $parseDate((string)$data['data_emissao'])
                 : null;
@@ -777,7 +764,7 @@ class NotaFiscalEntradaController {
             try {
                 $stU = $pdo->prepare("
                 UPDATE estoque_nota
-                SET incluida_estoque = 1, updated_at = CURRENT_TIMESTAMP
+                SET incluida_estoque = 1, updated_at = CURRENT_TIMESTAMP, data_entrada = CURRENT_TIMESTAMP
                 WHERE id = :id AND system_unit_id = :unit
                 LIMIT 1
             ");

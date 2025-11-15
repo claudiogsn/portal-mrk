@@ -69,9 +69,12 @@ class FinanceiroPlanoController {
     public static function listPlanos($system_unit_id) {
         global $pdo;
 
-        $stmt = $pdo->query("SELECT * FROM financeiro_plano where system_unit_id = $system_unit_id");
+        $stmt = $pdo->prepare("SELECT * FROM financeiro_plano WHERE system_unit_id = :unit");
+        $stmt->execute([':unit' => $system_unit_id]);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function importarPlanosApi($system_unit_id) {
         global $pdo;
