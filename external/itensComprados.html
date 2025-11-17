@@ -172,13 +172,12 @@
                         <th class="nowrap">Data Entrada</th>
                         <th class="nowrap">Data Emissão</th>
                         <th class="nowrap">Produto Interno</th>
-                        <th class="nowrap">Item Nota (Fornecedor)</th>
                         <th class="text-right nowrap">Qtd Interna</th>
-                        <th class="text-right nowrap">Qtd Nota</th>
                         <th class="text-right nowrap">Vlr Unit. Interno (R$)</th>
-                        <th class="text-right nowrap">Vlr Total Interno (R$)</th>
+                        <th class="nowrap">Item Nota (Fornecedor)</th>
+                        <th class="text-right nowrap">Qtd Nota</th>
                         <th class="text-right nowrap">Vlr Unit. Nota (R$)</th>
-                        <th class="text-right nowrap">Vlr Total Nota (R$)</th>
+                        <th class="text-right nowrap">Vlr Total (R$)</th>
                         <th class="text-right nowrap">Fator Conv.</th>
                     </tr>
                     </thead>
@@ -461,19 +460,19 @@
             const notaDesc  = it.in_descricao_nota || '';
             const notaUnd   = it.in_unidade_nota || '';
 
-            const qtdInt    = Number(it.mv_quantidade_interna || 0);
-            const vlrUnitInt= Number(it.mv_valor_unitario_interno || 0);
-            const vlrTotInt = it.mv_valor_total_interno != null
+            const qtdInt     = Number(it.mv_quantidade_interna || 0);
+            const vlrUnitInt = Number(it.mv_valor_unitario_interno || 0);
+            const vlrTotInt  = it.mv_valor_total_interno != null
                 ? Number(it.mv_valor_total_interno)
                 : (qtdInt * vlrUnitInt);
 
-            const qtdNota   = Number(it.in_quantidade_nota || 0);
-            const vlrUnitNt = Number(it.in_valor_unitario_nota || 0);
-            const vlrTotNt  = it.in_valor_total_nota != null
+            const qtdNota    = Number(it.in_quantidade_nota || 0);
+            const vlrUnitNt  = Number(it.in_valor_unitario_nota || 0);
+            const vlrTotNt   = it.in_valor_total_nota != null
                 ? Number(it.in_valor_total_nota)
                 : (qtdNota * vlrUnitNt);
 
-            const fatorConv = it.rf_fator_conversao != null ? Number(it.rf_fator_conversao) : null;
+            const fatorConv  = it.rf_fator_conversao != null ? Number(it.rf_fator_conversao) : null;
 
             const linha = `
         <tr>
@@ -486,20 +485,18 @@
             <div class="text-small muted">Unid. interna: ${escapeHtml(prodUnd || '-')}</div>
           </td>
 
+          <td class="text-right nowrap">${brNumber(qtdInt, 4)}</td>
+          <td class="text-right nowrap">${brMoney(vlrUnitInt)}</td>
+
           <td>
             <div><strong>${escapeHtml(notaCod)}</strong> - ${escapeHtml(notaDesc)}</div>
             <div class="text-small muted">Unid. nota: ${escapeHtml(notaUnd || '-')}</div>
           </td>
 
-          <td class="text-right nowrap">${brNumber(qtdInt, 4)}</td>
           <td class="text-right nowrap">${brNumber(qtdNota, 4)}</td>
-
-          <td class="text-right nowrap">${brMoney(vlrUnitInt)}</td>
-          <td class="text-right nowrap">${brMoney(vlrTotInt)}</td>
-
           <td class="text-right nowrap">${brMoney(vlrUnitNt)}</td>
-          <td class="text-right nowrap">${brMoney(vlrTotNt)}</td>
 
+          <td class="text-right nowrap">${brMoney(vlrTotNt)}</td>
           <td class="text-right nowrap">${fatorConv != null ? brNumber(fatorConv, 6) : '-'}</td>
         </tr>
       `;
@@ -510,7 +507,7 @@
         if (itens.length === 0) {
             $tbody.append(`
         <tr>
-          <td colspan="12" class="text-center text-small muted">
+          <td colspan="11" class="text-center text-small muted">
             Nenhum registro para os filtros atuais.
           </td>
         </tr>
