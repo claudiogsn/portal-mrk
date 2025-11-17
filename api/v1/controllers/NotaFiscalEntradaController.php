@@ -804,6 +804,414 @@ class NotaFiscalEntradaController {
         }
     }
 
+    public static function getItensCompradosPorPeriodo(array $data): array
+    {
+        global $pdo;
+
+        try {
+            // ===== validação básica =====
+            $required = ['system_unit_id', 'data_inicio', 'data_fim'];
+            foreach ($required as $field) {
+                if (!isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$field}");
+                }
+            }
+
+            $unitId    = (int)$data['system_unit_id'];
+            $dtInicio  = trim((string)$data['data_inicio']); // esperado: 'YYYY-MM-DD'
+            $dtFim     = trim((string)$data['data_fim']);    // esperado: 'YYYY-MM-DD'
+
+            // filtros opcionais
+            $numeroNf      = !empty($data['numero_nf'])      ? trim((string)$data['numero_nf']) : null;
+            $produtoCodigo = !empty($data['produto_codigo']) ? (int)$data['produto_codigo'] : null;
+            $fornecedorId  = !empty($data['fornecedor_id'])  ? (int)$data['fornecedor_id'] : null;
+
+            // ===== 1) busca movimentações (base) =====
+            $whereMov = [
+                'system_unit_id = :unit',
+                "tipo = 'c'",            // compras
+                "tipo_mov = 'entrada'",  // entradas
+                'data BETWEEN :dt_inicio AND :dt_fim'
+            ];
+            $paramsMov = [
+                ':unit'      => $unitId,
+                ':dt_inicio' => $dtInicio,
+                ':dt_fim'    => $dtFim,
+            ];
+
+            if ($numeroNf) {
+                $whereMov[]          = 'doc = :doc';
+                $paramsMov[':doc']   = $numeroNf;
+            }
+            if ($produtoCodigo) {
+                $whereMov[]            = 'produto = :prod';
+                $paramsMov[':prod']    = $produtoCodigo;
+            }
+
+            $sqlMov = "
+            SELECT 
+                id,
+                system_unit_id,
+                doc,
+                tipo,
+                tipo_mov,
+                produto,
+                seq,
+                data,
+                data_emissao,
+                data_original,
+                valor,
+                quantidade,
+                usuario_id
+            FROM movimentacao
+            WHERE " . implode(' AND ', $whereMov) . "
+            ORDER BY data ASC, doc ASC, seq ASC
+        ";
+
+            $stMov = $pdo->prepare($sqlMov);
+            $stMov->execute($paramsMov);
+            $movRows = $stMov->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!$movRows) {
+                return [
+                    'success' => true,
+                    'data'    => [
+                        'resumo' => [
+                            'total_itens'      => 0,
+                            'total_quantidade' => 0,
+                            'total_valor'      => 0.0,
+                        ],
+                        'itens'  => []
+                    ]
+                ];
+            }
+
+            // ===== 2) notas fiscais (estoque_nota) =====
+            $docs        = [];
+            $prodCodigos = [];
+            foreach ($movRows as $row) {
+                $docs[$row['doc']]          = true;
+                $prodCodigos[$row['produto']] = true;
+            }
+
+            $docsList = array_keys($docs);
+            $prodList = array_keys($prodCodigos);
+
+            if (empty($docsList)) {
+                return [
+                    'success' => true,
+                    'data'    => [
+                        'resumo' => [
+                            'total_itens'      => 0,
+                            'total_quantidade' => 0,
+                            'total_valor'      => 0.0,
+                        ],
+                        'itens'  => []
+                    ]
+                ];
+            }
+
+            $placeDocs = implode(',', array_fill(0, count($docsList), '?'));
+            $sqlNotas = "
+            SELECT 
+                id,
+                system_unit_id,
+                fornecedor_id,
+                numero_nf,
+                serie,
+                data_emissao,
+                data_entrada,
+                valor_total,
+                valor_produtos,
+                valor_frete
+            FROM estoque_nota
+            WHERE system_unit_id = ?
+              AND numero_nf IN ($placeDocs)
+        ";
+            $paramsNotas = array_merge([$unitId], $docsList);
+
+            $stNotas = $pdo->prepare($sqlNotas);
+            $stNotas->execute($paramsNotas);
+            $notaRows = $stNotas->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapNotaByDoc = [];
+            $notaIds      = [];
+            foreach ($notaRows as $n) {
+                $mapNotaByDoc[$n['numero_nf']] = $n;
+                $notaIds[$n['id']]             = true;
+            }
+
+            // filtro por fornecedor, se informado
+            if ($fornecedorId) {
+                $movRowsFiltradas = [];
+                foreach ($movRows as $r) {
+                    $doc = $r['doc'];
+                    if (!isset($mapNotaByDoc[$doc])) {
+                        continue;
+                    }
+                    if ((int)$mapNotaByDoc[$doc]['fornecedor_id'] === $fornecedorId) {
+                        $movRowsFiltradas[] = $r;
+                    }
+                }
+                $movRows = $movRowsFiltradas;
+
+                if (!$movRows) {
+                    return [
+                        'success' => true,
+                        'data'    => [
+                            'resumo' => [
+                                'total_itens'      => 0,
+                                'total_quantidade' => 0,
+                                'total_valor'      => 0.0,
+                            ],
+                            'itens'  => []
+                        ]
+                    ];
+                }
+
+                // recalcula docs/notaIds após filtro
+                $docs    = [];
+                $notaIds = [];
+                foreach ($movRows as $r) {
+                    $docs[$r['doc']] = true;
+                    if (isset($mapNotaByDoc[$r['doc']])) {
+                        $notaIds[$mapNotaByDoc[$r['doc']]['id']] = true;
+                    }
+                }
+                $docsList   = array_keys($docs);
+            }
+
+            $notaIdList = array_keys($notaIds);
+
+            // ===== 3) itens de nota (estoque_nota_item) =====
+            $mapItemByNotaSeq = [];
+            if (!empty($notaIdList)) {
+                $placeNota = implode(',', array_fill(0, count($notaIdList), '?'));
+                $sqlItens = "
+                SELECT 
+                    id,
+                    system_unit_id,
+                    nota_id,
+                    numero_item,
+                    codigo_produto,
+                    descricao,
+                    unidade,
+                    quantidade,
+                    valor_unitario,
+                    valor_total
+                FROM estoque_nota_item
+                WHERE system_unit_id = ?
+                  AND nota_id IN ($placeNota)
+            ";
+                $paramsItens = array_merge([$unitId], $notaIdList);
+
+                $stItens = $pdo->prepare($sqlItens);
+                $stItens->execute($paramsItens);
+                $itensNotaRows = $stItens->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($itensNotaRows as $it) {
+                    $key = $it['nota_id'] . ':' . $it['numero_item'];
+                    $mapItemByNotaSeq[$key] = $it;
+                }
+            }
+
+            // ===== 4) produtos internos (products) =====
+            $mapProdByCodigo = [];
+            if (!empty($prodList)) {
+                $placeProd = implode(',', array_fill(0, count($prodList), '?'));
+                $sqlProd = "
+                SELECT 
+                    system_unit_id,
+                    codigo,
+                    nome,
+                    und,
+                    preco_custo
+                FROM products
+                WHERE system_unit_id = ?
+                  AND codigo IN ($placeProd)
+            ";
+                $paramsProd = array_merge([$unitId], $prodList);
+
+                $stProd = $pdo->prepare($sqlProd);
+                $stProd->execute($paramsProd);
+                $prodRows = $stProd->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($prodRows as $p) {
+                    $mapProdByCodigo[(string)$p['codigo']] = $p;
+                }
+            }
+
+            // ===== 5) relações item_fornecedor (por fornecedor + produto_codigo) =====
+            $combos = [];
+            foreach ($movRows as $r) {
+                $doc = $r['doc'];
+                if (!isset($mapNotaByDoc[$doc])) {
+                    continue;
+                }
+                $fornId  = (int)$mapNotaByDoc[$doc]['fornecedor_id'];
+                $prodCod = (int)$r['produto'];
+                $key     = $fornId . ':' . $prodCod;
+                $combos[$key] = ['fornecedor_id' => $fornId, 'produto_codigo' => $prodCod];
+            }
+
+            $mapRelByFornProd = [];
+            if (!empty($combos)) {
+                $fornIds = [];
+                $prodIds = [];
+                foreach ($combos as $c) {
+                    $fornIds[$c['fornecedor_id']]  = true;
+                    $prodIds[$c['produto_codigo']] = true;
+                }
+                $fornList    = array_keys($fornIds);
+                $prodCodList = array_keys($prodIds);
+
+                $placeForn = implode(',', array_fill(0, count($fornList), '?'));
+                $placeProd = implode(',', array_fill(0, count($prodCodList), '?'));
+
+                $sqlRel = "
+                SELECT 
+                    id,
+                    system_unit_id,
+                    fornecedor_id,
+                    produto_codigo,
+                    codigo_nota,
+                    descricao_nota,
+                    unidade_nota,
+                    fator_conversao,
+                    unidade_item
+                FROM item_fornecedor
+                WHERE system_unit_id = ?
+                  AND fornecedor_id IN ($placeForn)
+                  AND produto_codigo IN ($placeProd)
+            ";
+                $paramsRel = array_merge([$unitId], $fornList, $prodCodList);
+
+                $stRel = $pdo->prepare($sqlRel);
+                $stRel->execute($paramsRel);
+                $relRows = $stRel->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($relRows as $rel) {
+                    $key = $rel['fornecedor_id'] . ':' . $rel['produto_codigo'];
+                    if (
+                        !isset($mapRelByFornProd[$key]) ||
+                        (int)$rel['id'] > (int)$mapRelByFornProd[$key]['id']
+                    ) {
+                        $mapRelByFornProd[$key] = $rel;
+                    }
+                }
+            }
+
+            // ===== 6) monta saída FINAL (achatado) =====
+            $itensOut = [];
+            $totalQtd = 0.0;
+            $totalVal = 0.0;
+
+            foreach ($movRows as $r) {
+                $doc        = $r['doc'];
+                $prodCodigo = (int)$r['produto'];
+                $seq        = (int)$r['seq'];
+
+                $nota    = $mapNotaByDoc[$doc] ?? null;
+                $notaId  = $nota ? (int)$nota['id'] : null;
+                $produto = $mapProdByCodigo[(string)$prodCodigo] ?? null;
+
+                $notaItem = null;
+                if ($notaId !== null) {
+                    $keyItem  = $notaId . ':' . $seq;
+                    $notaItem = $mapItemByNotaSeq[$keyItem] ?? null;
+                }
+
+                $relacao = null;
+                if ($nota) {
+                    $fornId = (int)$nota['fornecedor_id'];
+                    $keyRel = $fornId . ':' . $prodCodigo;
+                    $relacao = $mapRelByFornProd[$keyRel] ?? null;
+                }
+
+                $qtdInterna    = (float)$r['quantidade'];
+                $valorUnitInt  = $r['valor'] !== null ? (float)$r['valor'] : 0.0;
+                $valorTotalInt = $qtdInterna * $valorUnitInt;
+
+                $totalQtd += $qtdInterna;
+                $totalVal += $valorTotalInt;
+
+                $itensOut[] = [
+                    // ===== MOVIMENTAÇÃO (mv_) =====
+                    'mv_id'                     => (int)$r['id'],
+                    'mv_system_unit_id'         => (int)$r['system_unit_id'],
+                    'mv_doc'                    => $r['doc'],
+                    'mv_tipo'                   => $r['tipo'],
+                    'mv_tipo_mov'               => $r['tipo_mov'],
+                    'mv_produto'                => (int)$r['produto'],
+                    'mv_seq'                    => $seq,
+                    'mv_data'                   => $r['data'],
+                    'mv_data_emissao'           => $r['data_emissao'],
+                    'mv_data_original'          => $r['data_original'],
+                    'mv_quantidade_interna'     => $qtdInterna,
+                    'mv_valor_unitario_interno' => $valorUnitInt,
+                    'mv_valor_total_interno'    => $valorTotalInt,
+                    'mv_usuario_id'             => $r['usuario_id'],
+
+                    // ===== NOTA (nt_) =====
+                    'nt_id'             => $nota ? (int)$nota['id'] : null,
+                    'nt_fornecedor_id'  => $nota ? (int)$nota['fornecedor_id'] : null,
+                    'nt_numero_nf'      => $nota['numero_nf']   ?? null,
+                    'nt_serie'          => $nota['serie']       ?? null,
+                    'nt_data_emissao'   => $nota['data_emissao'] ?? null,
+                    'nt_data_entrada'   => $nota['data_entrada'] ?? null,
+                    'nt_valor_total'    => $nota['valor_total']    ?? null,
+                    'nt_valor_produtos' => $nota['valor_produtos'] ?? null,
+                    'nt_valor_frete'    => $nota['valor_frete']    ?? null,
+
+                    // ===== PRODUTO INTERNO (pi_) =====
+                    'pi_codigo'      => $produto ? (int)$produto['codigo'] : null,
+                    'pi_nome'        => $produto['nome']       ?? null,
+                    'pi_unidade'     => $produto['und']        ?? null,
+                    'pi_preco_custo' => $produto['preco_custo'] ?? null,
+
+                    // ===== ITEM DA NOTA (in_) =====
+                    'in_id'                  => $notaItem ? (int)$notaItem['id'] : null,
+                    'in_nota_id'             => $notaItem ? (int)$notaItem['nota_id'] : null,
+                    'in_numero_item'         => $notaItem ? (int)$notaItem['numero_item'] : null,
+                    'in_codigo_produto_nota' => $notaItem['codigo_produto'] ?? null,
+                    'in_descricao_nota'      => $notaItem['descricao']      ?? null,
+                    'in_unidade_nota'        => $notaItem['unidade']        ?? null,
+                    'in_quantidade_nota'     => $notaItem['quantidade']     ?? null,
+                    'in_valor_unitario_nota' => $notaItem['valor_unitario'] ?? null,
+                    'in_valor_total_nota'    => $notaItem['valor_total']    ?? null,
+
+                    // ===== RELAÇÃO FORNECEDOR (rf_) =====
+                    'rf_id'              => $relacao ? (int)$relacao['id'] : null,
+                    'rf_produto_codigo'  => $relacao ? (int)$relacao['produto_codigo'] : null,
+                    'rf_codigo_nota'     => $relacao['codigo_nota']    ?? null,
+                    'rf_descricao_nota'  => $relacao['descricao_nota'] ?? null,
+                    'rf_unidade_nota'    => $relacao['unidade_nota']   ?? null,
+                    'rf_fator_conversao' => $relacao ? (float)$relacao['fator_conversao'] : null,
+                    'rf_unidade_item'    => $relacao['unidade_item']   ?? null,
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data'    => [
+                    'resumo' => [
+                        'total_itens'      => count($itensOut),
+                        'total_quantidade' => $totalQtd,
+                        'total_valor'      => $totalVal,
+                    ],
+                    'itens'  => $itensOut
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error'   => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 }

@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Itens Comprados</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- AdminBSB / Bootstrap -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <!-- Select2 para múltipla seleção de produtos -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
+        .table thead th { white-space: nowrap; }
+        .nowrap { white-space: nowrap; }
+        .muted { color: #777; }
+        .text-small { font-size: 12px; }
+
+        .table thead th { white-space:nowrap; }
+        .text-right { text-align:right; }
+
+        /* Cards KPI (estilo da tela de Contas) */
+        .kpi {
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        .kpi h4 {
+            margin: 4px 0 0 0;
+            font-weight: 700;
+        }
+        .kpi small {
+            color: #333;
+            opacity: .9;
+            display: block;
+        }
+        .kpi.green {
+            background: #e3f2fd;
+            border-color: #bbdefb;
+            color: #1565c0;
+        }
+        .kpi.red {
+            background: #e3f2fd;
+            border-color: #bbdefb;
+            color: #1565c0;
+        }
+        .kpi.blue {
+            background: #e3f2fd;
+            border-color: #bbdefb;
+            color: #1565c0;
+        }
+
+        .select2-container--default .select2-selection--multiple {
+            min-height: 34px;
+            border-radius: 0;
+            border: 1px solid #ccc;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
+            .kpi small { font-size: 11px; }
+            .kpi h4 { font-size: 14px; }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+
+    <div class="card">
+        <div class="header">
+            <h2>Relatório de Itens Comprados</h2>
+        </div>
+
+        <!-- FILTROS PRINCIPAIS -->
+        <div class="row" style="margin: 15px 0 5px;">
+            <div class="col-md-3">
+                <label class="muted">Data inicial</label>
+                <input type="date" id="dtInicio" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Data final</label>
+                <input type="date" id="dtFim" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Tipo de data</label>
+                <select id="tipoData" class="form-control">
+                    <option value="entrada">Data de Entrada</option>
+                    <option value="emissao">Data de Emissão NF</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Ações</label><br>
+                <button id="btnConsultar" class="btn btn-primary">
+                    <i class="fa fa-search"></i> Consultar
+                </button>
+            </div>
+        </div>
+
+        <!-- FILTROS EM TEMPO REAL -->
+        <div class="row" style="margin: 5px 0 10px;">
+            <div class="col-md-4">
+                <label class="muted">Produto (múltipla seleção)</label>
+                <select id="filtroProduto" class="form-control" multiple="multiple"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="muted">Número da Nota</label>
+                <input type="text" id="filtroNota" class="form-control" placeholder="Filtrar por Nº NF">
+            </div>
+            <div class="col-md-4">
+                <label class="muted">Busca texto (nome, código, descrição nota)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar...">
+            </div>
+            <div class="col-md-2 text-right">
+                <label class="muted">Info</label>
+                <div id="msgJanela" class="text-small muted" style="margin-top:5px;"></div>
+            </div>
+        </div>
+
+        <!-- TOTALIZADORES ESTILO KPI -->
+        <div class="row" style="margin: 0 0 5px;">
+            <div class="col-md-4">
+                <div class="kpi blue">
+                    <small>Quantidade interna total</small>
+                    <h4 id="kpiQtd">0,0000</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi green">
+                    <small>Valor interno total</small>
+                    <h4 id="kpiVlrInt">R$ 0,00</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi red">
+                    <small>Valor NF total</small>
+                    <h4 id="kpiVlrNota">R$ 0,00</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- Linha com quantidade de registros -->
+        <div class="row" style="margin: 0 0 10px;">
+            <div class="col-md-12">
+                <small class="muted">
+                    Registros filtrados: <b id="kpiRegistros">0</b>
+                </small>
+            </div>
+        </div>
+
+        <!-- TABELA -->
+        <div class="body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-resultado">
+                    <thead>
+                    <tr>
+                        <th class="nowrap">Nº NF</th>
+                        <th class="nowrap">Data Entrada</th>
+                        <th class="nowrap">Data Emissão</th>
+                        <th class="nowrap">Produto Interno</th>
+                        <th class="nowrap">Item Nota (Fornecedor)</th>
+                        <th class="text-right nowrap">Qtd Interna</th>
+                        <th class="text-right nowrap">Qtd Nota</th>
+                        <th class="text-right nowrap">Vlr Unit. Interno (R$)</th>
+                        <th class="text-right nowrap">Vlr Total Interno (R$)</th>
+                        <th class="text-right nowrap">Vlr Unit. Nota (R$)</th>
+                        <th class="text-right nowrap">Vlr Total Nota (R$)</th>
+                        <th class="text-right nowrap">Fator Conv.</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ====== CONFIG ======
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('unit_id'); // vem pela URL
+
+    // ====== STATE ======
+    let dadosBrutos = [];      // itens retornados pelo backend (data.itens)
+    let itensFiltrados = [];   // itens após aplicação dos filtros em tempo real
+
+    // ====== UTILS ======
+    function brNumber(v, casas = 2) {
+        if (v === null || v === undefined || isNaN(v)) return '0,00';
+        return Number(v).toLocaleString('pt-BR', {
+            minimumFractionDigits: casas,
+            maximumFractionDigits: casas
+        });
+    }
+
+    function brMoney(v) {
+        if (v === null || v === undefined || isNaN(v)) return 'R$ 0,00';
+        return Number(v).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function normalizeDateIso(dt) {
+        if (!dt) return null;
+        const s = String(dt);
+        // tenta pegar só YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+            return s.slice(0, 10);
+        }
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return null;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const da = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${da}`;
+    }
+
+    function formatDateBR(iso) {
+        if (!iso) return '';
+        const s = normalizeDateIso(iso);
+        if (!s) return '';
+        const [y, m, d] = s.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    // ====== INIT ======
+    $(document).ready(() => {
+        // Select2 no filtro de produto
+        $('#filtroProduto').select2({
+            placeholder: 'Selecione um ou mais produtos',
+            width: '100%',
+            allowClear: true,
+            closeOnSelect: false
+        });
+
+        // Handlers
+        $('#btnConsultar').on('click', onConsultar);
+
+        $('#filtroProduto').on('change', applyFiltros);
+        $('#filtroNota').on('input', applyFiltros);
+        $('#filtroTexto').on('input', applyFiltros);
+        $('#tipoData').on('change', applyFiltros);
+
+        // datas padrão (hoje e -7 dias)
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const d = String(hoje.getDate()).padStart(2, '0');
+        $('#dtFim').val(`${y}-${m}-${d}`);
+        const semanaPassada = new Date(hoje.getTime() - 7*24*60*60*1000);
+        const y2 = semanaPassada.getFullYear();
+        const m2 = String(semanaPassada.getMonth() + 1).padStart(2, '0');
+        const d2 = String(semanaPassada.getDate()).padStart(2, '0');
+        $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+    });
+
+    // ====== CONSULTA BACKEND ======
+    async function onConsultar() {
+        const data_inicio = $('#dtInicio').val();
+        const data_fim    = $('#dtFim').val();
+
+        if (!token || !system_unit_id) {
+            return Swal.fire('Atenção', 'URL deve conter token e system_unit_id.', 'warning');
+        }
+        if (!data_inicio || !data_fim) {
+            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+        }
+
+        Swal.fire({
+            title: 'Consultando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getItensCompradosPorPeriodo',
+                token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    data_inicio,
+                    data_fim
+                }
+            });
+
+            Swal.close();
+
+            const api = res.data;
+            if (!api || api.success === false) {
+                $('#msgJanela').text('');
+                dadosBrutos = [];
+                renderTabela([]);
+                renderTotais([]);
+                return Swal.fire('Atenção', api && api.error ? api.error : 'Falha ao consultar.', 'warning');
+            }
+
+            const payload = api.data || {};
+            dadosBrutos = Array.isArray(payload.itens) ? payload.itens : [];
+
+            $('#msgJanela').text(`Registros retornados: ${dadosBrutos.length}`);
+
+            // monta opções do filtro de produto a partir dos itens retornados
+            buildFiltroProduto();
+
+            // aplica filtros (já leva em conta tipoData, texto, etc.)
+            applyFiltros();
+
+        } catch (e) {
+            Swal.close();
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+        }
+    }
+
+    // ====== MONTA FILTRO DE PRODUTO (baseado NOS ITENS) ======
+    function buildFiltroProduto() {
+        const mapa = {}; // { codigo: nome }
+
+        dadosBrutos.forEach(it => {
+            const cod = it.pi_codigo || it.mv_produto;
+            const nome = it.pi_nome || it.in_descricao_nota || '';
+            if (!cod) return;
+            if (!mapa[cod]) {
+                mapa[cod] = nome;
+            }
+        });
+
+        const $sel = $('#filtroProduto');
+        $sel.empty();
+
+        const codigos = Object.keys(mapa).sort((a,b) => Number(a) - Number(b));
+        codigos.forEach(cod => {
+            const label = `[${cod}] ${mapa[cod] || ''}`;
+            $sel.append(`<option value="${escapeHtml(cod)}">${escapeHtml(label)}</option>`);
+        });
+
+        // reset seleção
+        $sel.val(null).trigger('change');
+    }
+
+    // ====== APLICA TODOS OS FILTROS EM TEMPO REAL ======
+    function applyFiltros() {
+        if (!Array.isArray(dadosBrutos) || dadosBrutos.length === 0) {
+            itensFiltrados = [];
+            renderTabela([]);
+            renderTotais([]);
+            return;
+        }
+
+        let arr = dadosBrutos.slice();
+
+        const tipoData   = $('#tipoData').val(); // 'entrada' ou 'emissao'
+        const dtIni      = $('#dtInicio').val();
+        const dtFim      = $('#dtFim').val();
+        const selProds   = $('#filtroProduto').val() || []; // array de códigos (string)
+        const filtroNota = ($('#filtroNota').val() || '').trim().toLowerCase();
+        const filtroTxt  = ($('#filtroTexto').val() || '').trim().toLowerCase();
+
+        // 1) filtro por tipo de data (entrada / emissão) usando range informado
+        if (dtIni && dtFim) {
+            arr = arr.filter(it => {
+                let campo;
+                if (tipoData === 'emissao') {
+                    campo = it.nt_data_emissao || it.mv_data_emissao || it.mv_data;
+                } else {
+                    // entrada
+                    campo = it.mv_data || it.nt_data_entrada;
+                }
+                const iso = normalizeDateIso(campo);
+                if (!iso) return false;
+                return iso >= dtIni && iso <= dtFim;
+            });
+        }
+
+        // 2) filtro por produto (múltipla seleção)
+        if (selProds.length > 0) {
+            const setSel = new Set(selProds.map(String));
+            arr = arr.filter(it => {
+                const cod = it.pi_codigo || it.mv_produto;
+                return cod && setSel.has(String(cod));
+            });
+        }
+
+        // 3) filtro por número de nota
+        if (filtroNota) {
+            arr = arr.filter(it => {
+                const nf  = (it.nt_numero_nf || it.mv_doc || '').toString().toLowerCase();
+                return nf.indexOf(filtroNota) !== -1;
+            });
+        }
+
+        // 4) filtro por texto (nome, código, descrição nota, etc.)
+        if (filtroTxt) {
+            arr = arr.filter(it => {
+                const campos = [
+                    it.pi_nome,
+                    it.pi_codigo,
+                    it.in_descricao_nota,
+                    it.in_codigo_produto_nota,
+                    it.rf_descricao_nota,
+                    it.mv_doc,
+                    it.nt_numero_nf
+                ];
+                return campos.some(c => {
+                    if (c === null || c === undefined) return false;
+                    return String(c).toLowerCase().indexOf(filtroTxt) !== -1;
+                });
+            });
+        }
+
+        itensFiltrados = arr;
+        renderTabela(arr);
+        renderTotais(arr);
+    }
+
+    // ====== RENDER TABELA ======
+    function renderTabela(itens) {
+        const $tbody = $('#tabela-resultado tbody');
+        $tbody.empty();
+
+        itens.forEach(it => {
+            const nf        = it.nt_numero_nf || it.mv_doc || '';
+            const dtEntrada = normalizeDateIso(it.mv_data || it.nt_data_entrada);
+            const dtEmissao = normalizeDateIso(it.nt_data_emissao || it.mv_data_emissao);
+
+            const prodCod   = it.pi_codigo || it.mv_produto || '';
+            const prodNome  = it.pi_nome || '';
+            const prodUnd   = it.pi_unidade || '';
+
+            const notaCod   = it.in_codigo_produto_nota || '';
+            const notaDesc  = it.in_descricao_nota || '';
+            const notaUnd   = it.in_unidade_nota || '';
+
+            const qtdInt    = Number(it.mv_quantidade_interna || 0);
+            const vlrUnitInt= Number(it.mv_valor_unitario_interno || 0);
+            const vlrTotInt = it.mv_valor_total_interno != null
+                ? Number(it.mv_valor_total_interno)
+                : (qtdInt * vlrUnitInt);
+
+            const qtdNota   = Number(it.in_quantidade_nota || 0);
+            const vlrUnitNt = Number(it.in_valor_unitario_nota || 0);
+            const vlrTotNt  = it.in_valor_total_nota != null
+                ? Number(it.in_valor_total_nota)
+                : (qtdNota * vlrUnitNt);
+
+            const fatorConv = it.rf_fator_conversao != null ? Number(it.rf_fator_conversao) : null;
+
+            const linha = `
+        <tr>
+          <td class="nowrap">${escapeHtml(nf)}</td>
+          <td class="nowrap">${dtEntrada ? formatDateBR(dtEntrada) : ''}</td>
+          <td class="nowrap">${dtEmissao ? formatDateBR(dtEmissao) : ''}</td>
+
+          <td>
+            <div><strong>[${escapeHtml(prodCod)}]</strong> ${escapeHtml(prodNome)}</div>
+            <div class="text-small muted">Unid. interna: ${escapeHtml(prodUnd || '-')}</div>
+          </td>
+
+          <td>
+            <div><strong>${escapeHtml(notaCod)}</strong> - ${escapeHtml(notaDesc)}</div>
+            <div class="text-small muted">Unid. nota: ${escapeHtml(notaUnd || '-')}</div>
+          </td>
+
+          <td class="text-right nowrap">${brNumber(qtdInt, 4)}</td>
+          <td class="text-right nowrap">${brNumber(qtdNota, 4)}</td>
+
+          <td class="text-right nowrap">${brMoney(vlrUnitInt)}</td>
+          <td class="text-right nowrap">${brMoney(vlrTotInt)}</td>
+
+          <td class="text-right nowrap">${brMoney(vlrUnitNt)}</td>
+          <td class="text-right nowrap">${brMoney(vlrTotNt)}</td>
+
+          <td class="text-right nowrap">${fatorConv != null ? brNumber(fatorConv, 6) : '-'}</td>
+        </tr>
+      `;
+
+            $tbody.append(linha);
+        });
+
+        if (itens.length === 0) {
+            $tbody.append(`
+        <tr>
+          <td colspan="12" class="text-center text-small muted">
+            Nenhum registro para os filtros atuais.
+          </td>
+        </tr>
+      `);
+        }
+    }
+
+    // ====== RENDER TOTAIS EM TEMPO REAL (KPI STYLE) ======
+    function renderTotais(itens) {
+        const totalRegistros = Array.isArray(itens) ? itens.length : 0;
+
+        if (!Array.isArray(itens) || itens.length === 0) {
+            $('#kpiRegistros').text('0');
+            $('#kpiQtd').text('0,0000');
+            $('#kpiVlrInt').text('R$ 0,00');
+            $('#kpiVlrNota').text('R$ 0,00');
+            return;
+        }
+
+        let totalQtd = 0;
+        let totalVlrInt = 0;
+        let totalVlrNota = 0;
+
+        itens.forEach(it => {
+            const qtdInt    = Number(it.mv_quantidade_interna || 0);
+            const vlrTotInt = it.mv_valor_total_interno != null
+                ? Number(it.mv_valor_total_interno)
+                : (qtdInt * Number(it.mv_valor_unitario_interno || 0));
+
+            const qtdNota   = Number(it.in_quantidade_nota || 0);
+            const vlrTotNt  = it.in_valor_total_nota != null
+                ? Number(it.in_valor_total_nota)
+                : (qtdNota * Number(it.in_valor_unitario_nota || 0));
+
+            totalQtd    += qtdInt;
+            totalVlrInt += vlrTotInt;
+            totalVlrNota+= vlrTotNt;
+        });
+
+        $('#kpiRegistros').text(totalRegistros);
+        $('#kpiQtd').text(brNumber(totalQtd, 4));
+        $('#kpiVlrInt').text(brMoney(totalVlrInt));
+        $('#kpiVlrNota').text(brMoney(totalVlrNota));
+    }
+</script>
+</body>
+</html>

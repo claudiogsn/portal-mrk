@@ -58,6 +58,10 @@
             <action>ReportCop</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+            <menuitem label="Produtos Comprados">
+                <action>ListCompras</action>
+                <icon>fas:circle fa-fw</icon>
+            </menuitem>
           <menuitem label="Extrato Insumo">
             <action>ExtratoInsumo</action>
             <icon>fas:circle fa-fw</icon>
