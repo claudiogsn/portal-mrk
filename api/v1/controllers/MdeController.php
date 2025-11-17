@@ -312,6 +312,31 @@ class MdeController
                     continue;
                 }
 
+                // ============================
+                // (0) Verifica se já existe nota para essa chave + unidade
+                // ============================
+                $stmtDup = $pdo->prepare("
+                SELECT id 
+                  FROM estoque_nota 
+                 WHERE system_unit_id = :unit 
+                   AND chave_acesso  = :chave
+                 LIMIT 1
+            ");
+                $stmtDup->bindValue(':unit', $system_unit_id, PDO::PARAM_INT);
+                $stmtDup->bindValue(':chave', $chave, PDO::PARAM_STR);
+                $stmtDup->execute();
+                $jaExiste = $stmtDup->fetch(PDO::FETCH_ASSOC);
+
+                if ($jaExiste) {
+                    $resultados[] = [
+                        'chave'   => $chave,
+                        'success' => false,
+                        'step'    => 'duplicidade',
+                        'message' => 'Nota já importada para esta unidade (chave de acesso já existe na base)'
+                    ];
+                    continue;
+                }
+
                 // (A) Baixa JSON
                 $urlJson = self::PLUG_BASE_URL . 'export?' . http_build_query([
                         'softwarehouse_token' => self::PLUG_TOKEN,
@@ -323,15 +348,31 @@ class MdeController
                     ]);
                 [$codeJ, $bodyJ, $errJ] = UtilsController::httpGet($urlJson);
                 if ($errJ || $codeJ < 200 || $codeJ >= 300) {
+                    // tenta extrair mensagem amigável do body (ex: "Nota não encontrada.")
+                    $plugMsg = null;
+
+                    if (!$errJ && !empty($bodyJ)) {
+                        $bodyDecoded = json_decode($bodyJ, true);
+                        if (is_array($bodyDecoded) && !empty($bodyDecoded['message'])) {
+                            $plugMsg = $bodyDecoded['message'];
+                        }
+                    }
+
+                    // monta mensagem final
+                    $msgFinal = $errJ
+                        ? "Erro de rede: $errJ"
+                        : ($plugMsg ?: "HTTP $codeJ");
+
                     $resultados[] = [
                         'chave'   => $chave,
                         'success' => false,
                         'step'    => 'json',
-                        'message' => $errJ ? "Erro de rede: $errJ" : "HTTP $codeJ",
+                        'message' => $msgFinal,
                         'raw'     => $bodyJ
                     ];
                     continue;
                 }
+
                 $json = json_decode($bodyJ, true);
                 if (!is_array($json) || !empty($json['error'])) {
                     $resultados[] = [
@@ -352,6 +393,50 @@ class MdeController
                         'success' => false,
                         'step'    => 'map',
                         'message' => 'Falha ao normalizar JSON: ' . $e->getMessage()
+                    ];
+                    continue;
+                }
+
+                // ============================
+                // (1) Valida CNPJ destinatário x CNPJ da unidade
+                // ============================
+                try {
+                    $cnpjDest = null;
+
+                    if (isset($notaJson['destinatario']['cnpj_cpf'])) {
+                        $cnpjDest = UtilsController::somenteNumeros($notaJson['destinatario']['cnpj_cpf']);
+                    } elseif (isset($notaJson['destinatario']['cnpj'])) {
+                        $cnpjDest = UtilsController::somenteNumeros($notaJson['destinatario']['cnpj']);
+                    } elseif (isset($notaJson['destinatario']['cpf'])) {
+                        // Em teoria não deveria cair aqui pra NFe de entrada pra PJ, mas deixei como fallback
+                        $cnpjDest = UtilsController::somenteNumeros($notaJson['destinatario']['cpf']);
+                    }
+
+                    if (!$cnpjDest || strlen($cnpjDest) !== 14) {
+                        $resultados[] = [
+                            'chave'   => $chave,
+                            'success' => false,
+                            'step'    => 'cnpj',
+                            'message' => 'CNPJ do destinatário não encontrado ou inválido na nota fiscal'
+                        ];
+                        continue;
+                    }
+
+                    if ($cnpjDest !== $cnpjUnidade) {
+                        $resultados[] = [
+                            'chave'   => $chave,
+                            'success' => false,
+                            'step'    => 'cnpj',
+                            'message' => 'CNPJ do destinatário da NFe é diferente do CNPJ da unidade'
+                        ];
+                        continue;
+                    }
+                } catch (Throwable $e) {
+                    $resultados[] = [
+                        'chave'   => $chave,
+                        'success' => false,
+                        'step'    => 'cnpj',
+                        'message' => 'Erro ao validar CNPJ do destinatário: ' . $e->getMessage()
                     ];
                     continue;
                 }
@@ -390,9 +475,33 @@ class MdeController
                 ];
             }
 
+            // ============================
+            // SUCESSO GLOBAL (TOPO DO JSON)
+            // ============================
+            $sucessos = 0;
+            $falhas   = 0;
+
+            foreach ($resultados as $r) {
+                if (!empty($r['success'])) {
+                    $sucessos++;
+                } else {
+                    $falhas++;
+                }
+            }
+
+            $successGlobal = $sucessos > 0;
+
+            if ($successGlobal && $falhas === 0) {
+                $mensagemGlobal = 'Processamento concluído com sucesso.';
+            } elseif ($successGlobal && $falhas > 0) {
+                $mensagemGlobal = 'Processamento concluído com falhas.';
+            } else {
+                $mensagemGlobal = 'Nenhuma nota importada.';
+            }
+
             return [
-                'success' => true,
-                'message' => 'Processamento concluído.',
+                'success' => $successGlobal,
+                'message' => $mensagemGlobal,
                 'data'    => [
                     'system_unit_id' => $system_unit_id,
                     'cnpj'           => $cnpjUnidade,
