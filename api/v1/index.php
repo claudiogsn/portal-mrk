@@ -92,7 +92,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'getMenuMobile',
         'getIntervalosMensais',
         'gerarPdfFaturamento',
-        'gerarPdfCompras'
+        'gerarPdfCompras',
+        'listarNotasNaoImportadasUltimos30Dias'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
