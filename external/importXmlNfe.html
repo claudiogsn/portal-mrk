@@ -41,6 +41,12 @@
                 <i class="fas fa-cloud-download-alt"></i> Via SEFAZ
             </a>
         </li>
+        <!-- NOVA ABA: VIA CHAVE DE ACESSO -->
+        <li role="presentation">
+            <a href="#tab-chave" aria-controls="tab-chave" role="tab" data-toggle="tab">
+                <i class="fas fa-key"></i> Via Chave de Acesso
+            </a>
+        </li>
     </ul>
 
     <div class="tab-content">
@@ -136,6 +142,37 @@
                         </table>
                     </div>
 
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================
+             TAB 3: VIA CHAVE DE ACESSO
+             ========================= -->
+        <div role="tabpanel" class="tab-pane" id="tab-chave">
+            <div class="card">
+                <div class="body">
+                    <div class="row">
+                        <div class="col-sm-9">
+                            <label for="chaveAcessoInput">Chave de acesso</label>
+                            <input type="text"
+                                   id="chaveAcessoInput"
+                                   class="form-control"
+                                   maxlength="44"
+                                   placeholder="Digite a chave de acesso (44 dígitos, apenas números)">
+                            <span class="small-text">Informe a chave numérica completa, sem espaços ou caracteres especiais.</span>
+                        </div>
+                        <div class="col-sm-3 text-right">
+                            <label>&nbsp;</label><br>
+                            <button class="btn btn-success" id="btnImportarChave">
+                                <i class="fas fa-download"></i> Importar
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div id="resultadoChave" class="small-text"></div>
                 </div>
             </div>
         </div>
@@ -589,6 +626,76 @@
         // (reaproveita os filtros usados)
         if (di && df) {
             await buscarSefaz();
+        }
+    }
+
+    // ==============================
+    // VIA CHAVE DE ACESSO (NOVA ABA)
+    // ==============================
+    $("#btnImportarChave").on('click', importarPorChave);
+
+    async function importarPorChave() {
+        let chave = ($("#chaveAcessoInput").val() || "").trim();
+
+        // Remove qualquer coisa que não seja número
+        chave = chave.replace(/\D/g, '');
+        $("#chaveAcessoInput").val(chave);
+
+        if (!chave) {
+            await Swal.fire("Atenção", "Informe a chave de acesso.", "warning");
+            return;
+        }
+
+        if (chave.length !== 44) {
+            await Swal.fire("Atenção", "A chave de acesso deve conter exatamente 44 dígitos.", "warning");
+            return;
+        }
+
+        const confirm = await Swal.fire({
+            title: "Confirmar Importação",
+            html: `Deseja importar a nota com a chave:<br><code style="font-size:12px;">${chave}</code>?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Sim, importar",
+            cancelButtonText: "Cancelar"
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        $("#btnImportarChave").prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Importando...');
+        $("#resultadoChave").html("");
+
+        try {
+            const { data: resp } = await axios.post(baseUrl, {
+                method: "importNotasPorChaves",
+                token,
+                data: { system_unit_id: unit_id, chaves: [chave] } // UMA A UMA
+            });
+
+            const item = resp?.data?.itens?.[0];
+            const sucesso = !!(item?.success || resp?.success);
+
+            if (sucesso) {
+                const msg = item?.message || resp?.message || "Nota importada com sucesso.";
+                $("#resultadoChave").html(
+                    `<span class="status-ok"><i class="fa fa-check"></i> ${escapeHtml(msg)}</span>`
+                );
+                await Swal.fire("Sucesso", msg, "success");
+            } else {
+                const msg = item?.message || resp?.message || "Falha ao importar nota.";
+                $("#resultadoChave").html(
+                    `<span class="status-erro"><i class="fa fa-times"></i> ${escapeHtml(msg)}</span>`
+                );
+                await Swal.fire("Erro", msg, "error");
+            }
+        } catch (e) {
+            const msg = e?.response?.data?.message || e?.message || "Erro na requisição.";
+            $("#resultadoChave").html(
+                `<span class="status-erro"><i class="fa fa-times"></i> ${escapeHtml(msg)}</span>`
+            );
+            await Swal.fire("Erro", msg, "error");
+        } finally {
+            $("#btnImportarChave").prop("disabled", false).html('<i class="fas fa-download"></i> Importar');
         }
     }
 
