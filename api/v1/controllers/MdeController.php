@@ -877,4 +877,75 @@ class MdeController
             ];
         }
     }
+    public static function listarNotasNaoImportadasUltimos30Dias(int $system_unit_id): array
+    {
+        try {
+            // Período: últimos 30 dias (hoje + 29 dias atrás)
+            $dtFim = new DateTime('today');
+            $dtIni = (clone $dtFim)->modify('-29 days');
+
+            $data_inicial = $dtIni->format('Y-m-d');
+            $data_final   = $dtFim->format('Y-m-d');
+
+            // Reaproveita o método existente que já consulta a Plug e o estoque_nota
+            $resp = self::listarChavesNfeComStatusImportacao($system_unit_id, $data_inicial, $data_final);
+
+            if (empty($resp['success'])) {
+                return $resp;
+            }
+
+            $dataOriginal = $resp['data'] ?? [];
+            $notas        = $dataOriginal['notas'] ?? [];
+
+            // Filtra apenas as NÃO importadas
+            $pendentesRaw = array_filter($notas, function ($n) {
+                return strtolower($n['status'] ?? '') !== 'importada';
+            });
+
+            // Mapeia e JÁ REINDEXA para não vir 0,1,2,... como chaves
+            $pendentes = array_values(array_map(function ($n) {
+                return [
+                    'chave_acesso'    => $n['chave_acesso'] ?? null,
+                    'numero_nf'       => $n['numero_nf'] ?? null,
+                    'serie'           => $n['serie'] ?? null,
+                    'data_emissao'    => $n['data_emissao'] ?? null,
+                    'valor_total'     => $n['valor_total'] ?? null,
+                    'emitente_cnpj'   => $n['emitente_cnpj'] ?? null,
+                    'emitente_razao'  => $n['emitente_razao']
+                        ?? $n['emitente_fantasia']
+                            ?? null,
+                ];
+            }, $pendentesRaw));
+
+            $totalPendentes = count($pendentes);
+            $totalApi       = $dataOriginal['total_api'] ?? count($notas);
+
+            $mensagem = $totalPendentes > 0
+                ? 'Notas não importadas encontradas nos últimos 30 dias.'
+                : 'Nenhuma nota pendente de importação nos últimos 30 dias.';
+
+            return [
+                'success' => true,
+                'message' => $mensagem,
+                'data'    => [
+                    'system_unit_id'   => $system_unit_id,
+                    'cnpj'             => $dataOriginal['cnpj']      ?? null,
+                    'periodo'          => $dataOriginal['periodo']   ?? [
+                            'inicio' => $data_inicial,
+                            'fim'    => $data_final,
+                        ],
+                    'total_api'        => $totalApi,
+                    'total_pendentes'  => $totalPendentes,
+                    'notas_pendentes'  => $pendentes, // aqui já vem como array sequencial
+                ]
+            ];
+
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro inesperado: ' . $e->getMessage()
+            ];
+        }
+    }
+
 }
