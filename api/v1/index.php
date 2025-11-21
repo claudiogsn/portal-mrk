@@ -1308,7 +1308,7 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'listFornecedores':
                 if (isset($requestData['system_unit_id'])) {
-                    $response = FornecedoresController::listFornecedores($requestData['system_unit_id']);
+                    $response = FinanceiroFornecedorController::listFornecedores($requestData['system_unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro system_unit_id ausente'];

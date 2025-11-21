@@ -171,6 +171,19 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = FinanceiroFornecedorController::listFornecedores($requestData['system_unit_id']);
                 break;
 
+            case 'getFornecedorById':
+                $response = FinanceiroFornecedorController::getFornecedorById($requestData['id'], $requestData['system_unit_id']);
+                break;
+            case 'createFornecedor':
+                $response = FinanceiroFornecedorController::createFornecedor($requestData);
+                break;
+            case 'updateFornecedor':
+                $response = FinanceiroFornecedorController::updateFornecedor($requestData);
+                break;
+            case 'listItensFornecedor':
+                $response = FinanceiroFornecedorController::listItensFornecedor($requestData['system_unit_id'], $requestData['fornecedor_id']);
+                break;
+
 
             default:
                 http_response_code(405);
