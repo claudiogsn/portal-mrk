@@ -2088,11 +2088,31 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $system_unit_id = $loja['system_unit_id'];
+                $system_unit_id = (int)$loja['system_unit_id'];
 
+                // ============================
+                // ✅ COMPRAS via estoque_nota
+                // ============================
+                $stmtCompras = $pdo->prepare("
+                SELECT 
+                    COALESCE(SUM(COALESCE(n.valor_total, n.valor_produtos, 0)), 0) AS total_compras
+                FROM estoque_nota n
+                WHERE n.system_unit_id = :unit
+                  AND n.data_entrada BETWEEN :dt_inicio AND :dt_fim
+                  -- AND n.incluida_estoque = 1
+            ");
+                $stmtCompras->execute([
+                    ':unit'      => $system_unit_id,
+                    ':dt_inicio' => $dt_inicio,
+                    ':dt_fim'    => $dt_fim
+                ]);
+                $resCompras = $stmtCompras->fetch(PDO::FETCH_ASSOC);
+
+                // ============================
+                // ✅ SAÍDAS / CMV / DESPERDÍCIO continuam no fluxo_estoque
+                // ============================
                 $stmt = $pdo->prepare("
                 SELECT 
-                    SUM(entradas * preco_custo) AS total_compras,
                     SUM(saidas * preco_custo) AS total_saidas,
                     SUM(saidas * preco_custo) AS cmv,
                     SUM(CASE 
@@ -2101,15 +2121,17 @@ class DashboardController
                         ELSE 0
                     END) AS desperdicio
                 FROM fluxo_estoque
-                WHERE system_unit_id = :unit AND data BETWEEN :dt_inicio AND :dt_fim
+                WHERE system_unit_id = :unit
+                  AND data BETWEEN :dt_inicio AND :dt_fim
             ");
                 $stmt->execute([
-                    ':unit' => $system_unit_id,
+                    ':unit'      => $system_unit_id,
                     ':dt_inicio' => $dt_inicio,
-                    ':dt_fim' => $dt_fim
+                    ':dt_fim'    => $dt_fim
                 ]);
+                $resFluxo = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                $res = $stmt->fetch(PDO::FETCH_ASSOC);
+                // Faturamento bruto (financeiros)
                 $faturamentoBruto = 0;
                 foreach ($financeiros as $fin) {
                     if ((int)$fin['lojaId'] === (int)$loja['custom_code']) {
@@ -2118,19 +2140,21 @@ class DashboardController
                     }
                 }
 
-                $percentualCmv = $faturamentoBruto > 0 ? ($res['cmv'] / $faturamentoBruto) * 100 : 0;
+                $cmv = (float)($resFluxo['cmv'] ?? 0);
+                $totalCompras = (float)($resCompras['total_compras'] ?? 0);
+
+                $percentualCmv = $faturamentoBruto > 0 ? ($cmv / $faturamentoBruto) * 100 : 0;
 
                 $resumo[] = [
-                    'lojaId' => $system_unit_id,
-                    'nomeLoja' => $loja['name'],
-                    'faturamento_bruto' => round($faturamentoBruto ?? 0, 2),
-                    'cmv' => round($res['cmv'] ?? 0, 2),
-                    'percentual_cmv' => round($percentualCmv ?? 0, 2),
-                    'total_compras' => round($res['total_compras'] ?? 0, 2),
-                    'total_saidas' => round($res['total_saidas'] ?? 0, 2),
-                    'desperdicio' => round($res['desperdicio'] ?? 0, 2),
+                    'lojaId'           => $system_unit_id,
+                    'nomeLoja'         => $loja['name'],
+                    'faturamento_bruto'=> round($faturamentoBruto ?? 0, 2),
+                    'cmv'              => round($cmv, 2),
+                    'percentual_cmv'   => round($percentualCmv ?? 0, 2),
+                    'total_compras'    => round($totalCompras, 2),
+                    'total_saidas'     => round($resFluxo['total_saidas'] ?? 0, 2),
+                    'desperdicio'      => round($resFluxo['desperdicio'] ?? 0, 2),
                 ];
-
             }
 
             return ['success' => true, 'data' => $resumo];
@@ -2151,21 +2175,39 @@ class DashboardController
             foreach ($lojas as $loja) {
                 $unitId = $loja['system_unit_id'];
 
-                // Cálculo de total compras e CMV geral
-                $stmt = $pdo->prepare("
-                SELECT 
-                    SUM(entradas * preco_custo) AS total_compras,
-                    SUM(saidas * preco_custo) AS cmv
+                // ============================
+                // ✅ NOVO: compras via estoque_nota
+                // ============================
+                $stmtCompras = $pdo->prepare("
+                SELECT SUM(eni.valor_total) as total_compras
+                FROM estoque_nota en
+                JOIN estoque_nota_item eni ON eni.nota_id=en.id AND eni.system_unit_id=en.system_unit_id
+                WHERE en.system_unit_id=:unit
+                  AND en.data_entrada BETWEEN :dt_inicio AND :dt_fim
+                  -- AND n.incluida_estoque = 1
+            ");
+                $stmtCompras->execute([
+                    ':unit'      => $unitId,
+                    ':dt_inicio' => $dt_inicio,
+                    ':dt_fim'    => $dt_fim
+                ]);
+                $resCompras = $stmtCompras->fetch(PDO::FETCH_ASSOC);
+
+                // ============================
+                // ✅ CMV continua no fluxo_estoque (saídas)
+                // ============================
+                $stmtCmv = $pdo->prepare("
+                SELECT COALESCE(SUM(saidas * preco_custo), 0) AS cmv
                 FROM fluxo_estoque
                 WHERE system_unit_id = :unit
                   AND data BETWEEN :dt_inicio AND :dt_fim
             ");
-                $stmt->execute([
-                    ':unit' => $unitId,
+                $stmtCmv->execute([
+                    ':unit'      => $unitId,
                     ':dt_inicio' => $dt_inicio,
-                    ':dt_fim' => $dt_fim
+                    ':dt_fim'    => $dt_fim
                 ]);
-                $res = $stmt->fetch(PDO::FETCH_ASSOC);
+                $resCmv = $stmtCmv->fetch(PDO::FETCH_ASSOC);
 
                 // Encontra faturamento bruto
                 $faturamentoBruto = 0;
@@ -2176,8 +2218,8 @@ class DashboardController
                     }
                 }
 
-                $totalCompras = (float)$res['total_compras'];
-                $cmv = (float)$res['cmv'];
+                $totalCompras = (float)$resCompras['total_compras'];
+                $cmv          = (float)$resCmv['cmv'];
 
                 // Indicadores adicionais
                 $margemLucro = $faturamentoBruto - $totalCompras;
@@ -2186,82 +2228,79 @@ class DashboardController
 
                 // === Ranking produtos maior e menor margem (com composição) ===
                 $stmtProd = $pdo->prepare("
+                SELECT 
+                    v.product_id,
+                    p.nome AS descricao,
+                    v.quantidade_total,
+                    v.total_receita,
+                    c.custo_unitario,
+                    (v.quantidade_total * c.custo_unitario) AS cmv,
+                    (v.total_receita - (v.quantidade_total * c.custo_unitario)) AS margem
+                FROM (
+                    SELECT
+                        b.cod_material AS product_id,
+                        SUM(b.quantidade) AS quantidade_total,
+                        SUM(b.valor_liquido) AS total_receita
+                    FROM _bi_sales b
+                    WHERE b.system_unit_id = :unit
+                      AND DATE(b.data_movimento) BETWEEN :dt_inicio AND :dt_fim
+                    GROUP BY b.cod_material
+                ) v
+                LEFT JOIN (
                     SELECT 
-                        v.product_id,
-                        p.nome AS descricao,
-                        v.quantidade_total,
-                        v.total_receita,
-                        c.custo_unitario,
-                        (v.quantidade_total * c.custo_unitario) AS cmv,
-                        (v.total_receita - (v.quantidade_total * c.custo_unitario)) AS margem
-                    FROM (
-                        SELECT
-                            b.cod_material AS product_id,
-                            SUM(b.quantidade) AS quantidade_total,
-                            SUM(b.valor_liquido) AS total_receita
-                        FROM _bi_sales b
-                        WHERE b.system_unit_id = :unit
-                          AND DATE(b.data_movimento) BETWEEN :dt_inicio AND :dt_fim
-                        GROUP BY b.cod_material
-                    ) v
-                    LEFT JOIN (
-                        SELECT 
-                            c.product_id,
-                            SUM(c.quantity * p.preco_custo) AS custo_unitario
-                        FROM compositions c
-                        LEFT JOIN products p
-                            ON p.codigo = c.insumo_id AND p.system_unit_id = c.system_unit_id
-                        WHERE c.system_unit_id = :unit
-                        GROUP BY c.product_id
-                    ) c ON c.product_id = v.product_id
-                    LEFT JOIN products p 
-                        ON p.codigo = v.product_id AND p.system_unit_id = :unit
-                    WHERE c.custo_unitario IS NOT NULL AND c.custo_unitario > 0
-                    ORDER BY margem DESC
-                ");
+                        c.product_id,
+                        SUM(c.quantity * p.preco_custo) AS custo_unitario
+                    FROM compositions c
+                    LEFT JOIN products p
+                        ON p.codigo = c.insumo_id AND p.system_unit_id = c.system_unit_id
+                    WHERE c.system_unit_id = :unit
+                    GROUP BY c.product_id
+                ) c ON c.product_id = v.product_id
+                LEFT JOIN products p 
+                    ON p.codigo = v.product_id AND p.system_unit_id = :unit
+                WHERE c.custo_unitario IS NOT NULL AND c.custo_unitario > 0
+                ORDER BY margem DESC
+            ");
                 $stmtProd->execute([
-                    ':unit' => $unitId,
+                    ':unit'      => $unitId,
                     ':dt_inicio' => $dt_inicio,
-                    ':dt_fim' => $dt_fim
+                    ':dt_fim'    => $dt_fim
                 ]);
 
                 $produtos = $stmtProd->fetchAll(PDO::FETCH_ASSOC);
-
                 $maior = $produtos[0] ?? null;
                 $menor = $produtos ? end($produtos) : null;
 
-
                 // Monta saída
                 $resumo[] = [
-                    'lojaId' => $unitId,
-                    'nomeLoja' => $loja['name'],
-                    'faturamento_bruto' => self::formatMoney($faturamentoBruto),
-                    'total_compras' => self::formatMoney($totalCompras),
+                    'lojaId'             => $unitId,
+                    'nomeLoja'           => $loja['name'],
+                    'faturamento_bruto'  => self::formatMoney($faturamentoBruto),
+                    'total_compras'      => self::formatMoney($totalCompras),
                     'percentual_compras' => self::formatNumber($percentualCompras) . '%',
-                    'margem_lucro' => self::formatMoney($margemLucro),
-                    'percentual_margem' => self::formatNumber($percentualMargem) . '%',
+                    'margem_lucro'       => self::formatMoney($margemLucro),
+                    'percentual_margem'  => self::formatNumber($percentualMargem) . '%',
 
                     'produto_maior_margem' => $maior ? [
-                        'codigo' => $maior['product_id'],
-                        'descricao' => $maior['descricao'],
+                        'codigo'           => $maior['product_id'],
+                        'descricao'        => $maior['descricao'],
                         'quantidade_total' => (int)$maior['quantidade_total'],
-                        'total_receita' => self::formatMoney($maior['total_receita']),
-                        'custo_unitario' => self::formatMoney($maior['custo_unitario']),
-                        'cmv' => self::formatMoney($maior['cmv']),
-                        'margem' => self::formatMoney($maior['margem'])
+                        'total_receita'    => self::formatMoney($maior['total_receita']),
+                        'custo_unitario'   => self::formatMoney($maior['custo_unitario']),
+                        'cmv'              => self::formatMoney($maior['cmv']),
+                        'margem'           => self::formatMoney($maior['margem'])
                     ] : null,
 
                     'produto_menor_margem' => $menor ? [
-                        'codigo' => $menor['product_id'],
-                        'descricao' => $menor['descricao'],
+                        'codigo'           => $menor['product_id'],
+                        'descricao'        => $menor['descricao'],
                         'quantidade_total' => (int)$menor['quantidade_total'],
-                        'total_receita' => self::formatMoney($menor['total_receita']),
-                        'custo_unitario' => self::formatMoney($menor['custo_unitario']),
-                        'cmv' => self::formatMoney($menor['cmv']),
-                        'margem' => self::formatMoney($menor['margem'])
+                        'total_receita'    => self::formatMoney($menor['total_receita']),
+                        'custo_unitario'   => self::formatMoney($menor['custo_unitario']),
+                        'cmv'              => self::formatMoney($menor['cmv']),
+                        'margem'           => self::formatMoney($menor['margem'])
                     ] : null
                 ];
-
             }
 
             return ['success' => true, 'data' => $resumo];
@@ -2286,7 +2325,7 @@ class DashboardController
             );
 
             foreach ($lojas as $loja) {
-                $unitId = $loja['system_unit_id'];
+                $unitId = (int)$loja['system_unit_id'];
 
                 $faturamentoArray = [];
                 $comprasArray = [];
@@ -2296,49 +2335,60 @@ class DashboardController
                     $data = $dia->format('Y-m-d');
 
                     // FATURAMENTO
-                    $stmt = $pdo->prepare("
-                    SELECT SUM(valor_liquido) 
+                    $stmtFat = $pdo->prepare("
+                    SELECT COALESCE(SUM(valor_liquido),0) 
                     FROM _bi_sales 
-                    WHERE system_unit_id = :unit AND DATE(data_movimento) = :data
+                    WHERE system_unit_id = :unit 
+                      AND DATE(data_movimento) = :data
                 ");
-                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
-                    $faturamento = (float)$stmt->fetchColumn();
+                    $stmtFat->execute([':unit' => $unitId, ':data' => $data]);
+                    $faturamento = (float)$stmtFat->fetchColumn();
 
-                    // COMPRAS
-                    $stmt = $pdo->prepare("
-                    SELECT SUM(entradas * preco_custo)
-                    FROM fluxo_estoque
-                    WHERE system_unit_id = :unit AND data = :data
+                    // ✅ COMPRAS via ESTOQUE_NOTA (entrada da nota)
+                    $stmtComp = $pdo->prepare("
+                    SELECT COALESCE(SUM(COALESCE(eni.valor_total, 0)),0)
+                    FROM estoque_nota en
+                    JOIN estoque_nota_item eni ON eni.nota_id=en.id AND eni.system_unit_id=en.system_unit_id
+                    WHERE en.system_unit_id=:unit
+                    AND DATE(data_entrada) = :data                
+                      -- AND incluida_estoque = 1
                 ");
-                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
-                    $compras = (float)$stmt->fetchColumn();
+                    $stmtComp->execute([':unit' => $unitId, ':data' => $data]);
+                    $compras = (float)$stmtComp->fetchColumn();
 
-                    // CMV
-                    $stmt = $pdo->prepare("
-                    SELECT SUM(saidas * preco_custo)
+                    // CMV (saídas)
+                    $stmtCmv = $pdo->prepare("
+                    SELECT COALESCE(SUM(saidas * preco_custo),0)
                     FROM fluxo_estoque
-                    WHERE system_unit_id = :unit AND data = :data
+                    WHERE system_unit_id = :unit 
+                      AND data = :data
                 ");
-                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
-                    $cmv = (float)$stmt->fetchColumn();
+                    $stmtCmv->execute([':unit' => $unitId, ':data' => $data]);
+                    $cmv = (float)$stmtCmv->fetchColumn();
 
                     $faturamentoArray[] = round($faturamento, 2);
-                    $comprasArray[] = round($compras, 2);
-                    $cmvArray[] = round($cmv, 2);
+                    $comprasArray[]     = round($compras, 2);
+                    $cmvArray[]         = round($cmv, 2);
                 }
 
                 $dados[] = [
-                    'nome' => $loja['name'],
+                    'nome'        => $loja['name'],
                     'faturamento' => $faturamentoArray,
-                    'compras' => $comprasArray,
-                    'cmv' => $cmvArray
+                    'compras'     => $comprasArray,
+                    'cmv'         => $cmvArray
                 ];
+            }
+
+            // recria labels bonitinho
+            $labels = [];
+            foreach ($periodo as $d) {
+                $labels[] = $d->format('d/m');
             }
 
             return [
                 'success' => true,
-                'data' => $dados,
-                'labels' => array_map(fn($d) => $d->format('d/m'), iterator_to_array($periodo))
+                'data'    => $dados,
+                'labels'  => $labels
             ];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
@@ -2360,7 +2410,7 @@ class DashboardController
             );
 
             foreach ($lojas as $loja) {
-                $unitId = $loja['system_unit_id'];
+                $unitId = (int)$loja['system_unit_id'];
 
                 $valoresFaturamento = [];
                 $valoresCompras = [];
@@ -2369,51 +2419,111 @@ class DashboardController
                 foreach ($periodo as $dia) {
                     $data = $dia->format('Y-m-d');
 
-                    // FATURAMENTO (bi_sales)
-                    $stmt = $pdo->prepare("
-                    SELECT SUM(valor_liquido) 
+                    // FATURAMENTO
+                    $stmtFat = $pdo->prepare("
+                    SELECT COALESCE(SUM(valor_liquido),0) 
                     FROM _bi_sales 
-                    WHERE system_unit_id = :unit AND DATE(data_movimento) = :data
+                    WHERE system_unit_id = :unit 
+                      AND DATE(data_movimento) = :data
                 ");
-                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
-                    $faturamento = (float) $stmt->fetchColumn();
+                    $stmtFat->execute([':unit' => $unitId, ':data' => $data]);
+                    $faturamento = (float)$stmtFat->fetchColumn();
 
-                    // COMPRAS (fluxo_estoque entradas)
-                    $stmt = $pdo->prepare("
-                    SELECT SUM(entradas * preco_custo)
-                    FROM fluxo_estoque 
-                    WHERE system_unit_id = :unit AND data = :data
+                    // ✅ COMPRAS via estoque_nota
+                    $stmtComp = $pdo->prepare("
+                    SELECT COALESCE(SUM(COALESCE(valor_total, valor_produtos, 0)),0)
+                    FROM estoque_nota
+                    WHERE system_unit_id = :unit
+                      AND DATE(data_entrada) = :data
+                      -- AND incluida_estoque = 1
                 ");
-                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
-                    $compras = (float) $stmt->fetchColumn();
+                    $stmtComp->execute([':unit' => $unitId, ':data' => $data]);
+                    $compras = (float)$stmtComp->fetchColumn();
 
-                    // CMV (fluxo_estoque saídas)
-                    $stmt = $pdo->prepare("
-                    SELECT SUM(saidas * preco_custo)
+                    // CMV
+                    $stmtCmv = $pdo->prepare("
+                    SELECT COALESCE(SUM(saidas * preco_custo),0)
                     FROM fluxo_estoque 
-                    WHERE system_unit_id = :unit AND data = :data
+                    WHERE system_unit_id = :unit 
+                      AND data = :data
                 ");
-                    $stmt->execute([':unit' => $unitId, ':data' => $data]);
-                    $cmv = (float) $stmt->fetchColumn();
+                    $stmtCmv->execute([':unit' => $unitId, ':data' => $data]);
+                    $cmv = (float)$stmtCmv->fetchColumn();
 
                     $valoresFaturamento[] = round($faturamento, 2);
-                    $valoresCompras[] = round($compras, 2);
-                    $valoresCmv[] = round($cmv, 2);
+                    $valoresCompras[]     = round($compras, 2);
+                    $valoresCmv[]         = round($cmv, 2);
                 }
 
                 $dados[] = [
-                    'nome' => $loja['name'],
+                    'nome'        => $loja['name'],
                     'faturamento' => $valoresFaturamento,
-                    'compras' => $valoresCompras,
-                    'cmv' => $valoresCmv
+                    'compras'     => $valoresCompras,
+                    'cmv'         => $valoresCmv
                 ];
+            }
+
+            $labels = [];
+            foreach ($periodo as $d) {
+                $labels[] = $d->format('d/m');
             }
 
             return [
                 'success' => true,
-                'data' => $dados,
-                'labels' => array_map(fn($d) => $d->format('d/m'), iterator_to_array($periodo))
+                'data'    => $dados,
+                'labels'  => $labels
             ];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    public static function generateTopComprasPorFornecedor($grupoId, $dt_inicio, $dt_fim): array
+    {
+        global $pdo;
+
+        try {
+            $lojas = BiController::getUnitsByGroup($grupoId);
+            $saida = [];
+
+            foreach ($lojas as $loja) {
+                $unitId = (int)$loja['system_unit_id'];
+
+                $stmt = $pdo->prepare("
+                SELECT 
+                    COALESCE(f.razao, 'Fornecedor não identificado') AS fornecedor,
+                    COUNT(DISTINCT n.chave_acesso) AS qtd_notas,
+                    ROUND(SUM(COALESCE(n.valor_total, 0)), 2) AS valor_total
+                FROM estoque_nota n
+                LEFT JOIN financeiro_fornecedor f 
+                    ON f.id = n.fornecedor_id
+                   AND f.system_unit_id = n.system_unit_id
+                WHERE n.system_unit_id = :unitId
+                  AND n.data_entrada BETWEEN :inicio AND :fim
+                  -- se tiver campo de status/cancelada, filtra aqui:
+                  -- AND (n.cancelada IS NULL OR n.cancelada = 0)
+                GROUP BY fornecedor_id
+                ORDER BY valor_total DESC
+                LIMIT 5
+            ");
+
+                $stmt->execute([
+                    ':unitId' => $unitId,
+                    ':inicio' => $dt_inicio,
+                    ':fim'    => $dt_fim
+                ]);
+
+                $topFornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $saida[] = [
+                    'lojaId'   => $unitId,
+                    'nomeLoja' => $loja['name'],
+                    'fornecedores' => $topFornecedores
+                ];
+            }
+
+            return ['success' => true, 'data' => $saida];
+
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
@@ -2431,25 +2541,48 @@ class DashboardController
                 $unitId = $loja['system_unit_id'];
 
                 $stmt = $pdo->prepare("
-                SELECT nome_produto AS name, ROUND(SUM(saidas * preco_custo), 2) AS value
-                FROM fluxo_estoque
-                WHERE system_unit_id = :unitId AND data BETWEEN :inicio AND :fim
-                GROUP BY nome_produto
+                SELECT 
+                    ifo.produto_codigo AS codigo,
+                    p.nome AS name,
+                    ROUND(SUM(COALESCE(eni.valor_total, 0)), 2) AS value
+                FROM estoque_nota en
+                INNER JOIN estoque_nota_item eni
+                    ON eni.nota_id = en.id
+                   AND eni.system_unit_id = en.system_unit_id
+
+                INNER JOIN item_fornecedor ifo
+                    ON ifo.system_unit_id = en.system_unit_id
+                   AND ifo.fornecedor_id  = en.fornecedor_id
+                   AND ifo.descricao_nota = eni.descricao
+                   AND ifo.unidade_nota   = eni.unidade
+                AND ifo.codigo_nota = eni.codigo_produto
+
+                INNER JOIN products p
+                    ON p.system_unit_id = en.system_unit_id
+                   AND p.codigo         = ifo.produto_codigo
+
+                WHERE en.system_unit_id = :unitId
+                  AND en.data_entrada BETWEEN :inicio AND :fim
+                  -- se quiser garantir só notas já lançadas:
+                  -- AND en.incluida_estoque = 1
+
+                GROUP BY ifo.produto_codigo, p.nome
                 ORDER BY value DESC
                 LIMIT 5
             ");
+
                 $stmt->execute([
                     ':unitId' => $unitId,
                     ':inicio' => $dt_inicio,
-                    ':fim' => $dt_fim
+                    ':fim'    => $dt_fim
                 ]);
 
-                $topCmv = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $topCompras = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 $saida[] = [
-                    'lojaId' => $unitId,
+                    'lojaId'   => $unitId,
                     'nomeLoja' => $loja['name'],
-                    'produtos' => $topCmv
+                    'produtos' => $topCompras
                 ];
             }
 
@@ -2553,88 +2686,6 @@ class DashboardController
         }
     }
 
-//    public static function generateComprasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
-//    {
-//        global $pdo;
-//
-//        try {
-//            $lojas = BiController::getUnitsByGroup($grupoId);
-//            $saida = [];
-//
-//            foreach ($lojas as $loja) {
-//                $unitId = $loja['system_unit_id'];
-//
-//                // Agrupa itens por produto
-//                $stmt = $pdo->prepare("
-//                SELECT
-//                    m.produto AS codigo,
-//                    SUM(m.quantidade) AS quantidade_total,
-//                    SUM(m.valor) AS valor_total
-//                FROM movimentacao m
-//                WHERE m.system_unit_id = :unitId
-//                  AND m.tipo = 'c'
-//                  AND m.tipo_mov = 'entrada'
-//                  AND m.data_emissao BETWEEN :inicio AND :fim
-//                GROUP BY m.produto
-//            ");
-//                $stmt->execute([
-//                    ':unitId' => $unitId,
-//                    ':inicio' => $dt_inicio,
-//                    ':fim' => $dt_fim
-//                ]);
-//
-//                $itens = $stmt->fetchAll(PDO::FETCH_ASSOC);
-//
-//                if (empty($itens)) continue;
-//
-//                // Mapeia produtos da loja
-//                $codigos = array_column($itens, 'codigo');
-//                $placeholders = implode(',', array_fill(0, count($codigos), '?'));
-//
-//                $stmtProd = $pdo->prepare("
-//                SELECT codigo, nome, und
-//                FROM products
-//                WHERE system_unit_id = ? AND codigo IN ($placeholders)
-//            ");
-//                $stmtProd->execute(array_merge([$unitId], $codigos));
-//
-//                $produtosInfo = [];
-//                foreach ($stmtProd->fetchAll(PDO::FETCH_ASSOC) as $p) {
-//                    $produtosInfo[$p['codigo']] = $p;
-//                }
-//
-//                // Enriquecer cada item com nome e unidade
-//                $dados = [];
-//                foreach ($itens as $item) {
-//                    $codigo = $item['codigo'];
-//                    $quantidade = (float)$item['quantidade_total'];
-//                    $valorTotal = (float)$item['valor_total'];
-//                    $custoMedio = $quantidade > 0 ? $valorTotal / $quantidade : 0;
-//
-//                    $dados[] = [
-//                        'codigo'      => $codigo,
-//                        'descricao'   => $produtosInfo[$codigo]['nome'] ?? 'N/D',
-//                        'und'         => $produtosInfo[$codigo]['und'] ?? '',
-//                        'quantidade'  => round($quantidade, 2),
-//                        'valor_total' => round($valorTotal, 2),
-//                        'custo_medio' => round($custoMedio, 4)
-//                    ];
-//                }
-//
-//                $saida[] = [
-//                    'lojaId'   => $unitId,
-//                    'nomeLoja' => $loja['name'],
-//                    'itens'    => $dados
-//                ];
-//            }
-//
-//            return ['success' => true, 'data' => $saida];
-//        } catch (Exception $e) {
-//            return ['success' => false, 'message' => $e->getMessage()];
-//        }
-//    }
-
-
     public static function generateComprasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
         global $pdo;
@@ -2720,7 +2771,6 @@ class DashboardController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-
 
 
     public static function generateSomaNotasPorGrupo($grupoId, $dt_inicio, $dt_fim): array

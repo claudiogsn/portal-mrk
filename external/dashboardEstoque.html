@@ -79,62 +79,26 @@
         </div>
     </div>
 
+    <!-- ✅ Evolução -->
     <div class="flex flex-col lg:flex-row gap-6 mb-6">
-        <div class="w-full lg:w-3/12 bg-white p-4 rounded-lg shadow flex flex-col justify-between">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-semibold">
-                    Top Produtos
-                    <span class="relative group">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 hover:text-blue-500 cursor-pointer" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0ZM9 7h2V5H9v2Zm0 2v6h2V9H9Z" />
-                        </svg>
-                        <div class="absolute z-10 hidden group-hover:block bg-white text-sm text-gray-700 border border-gray-300 p-2 rounded shadow w-64 mt-1 left-1/2 -translate-x-1/2">
-                            Você pode alternar entre:
-                            <ul class="list-disc pl-5 mt-1">
-                                <li>Top Compras</li>
-                                <li>Top CMV</li>
-                            </ul>
-                        </div>
-                    </span>
-                </h2>
-            </div>
-
-            <div class="overflow-y-auto max-h-[300px] mb-4">
-                <table class="min-w-full text-xs text-left border">
-                    <thead>
-                    <tr class="bg-gray-100 border-b">
-                        <th class="px-1 py-1">#</th>
-                        <th class="px-1 py-1">Produto</th>
-                        <th class="px-1 py-1 text-right" id="headerTipo">Valor (R$)</th>
-                    </tr>
-                    </thead>
-                    <tbody id="rankingTableBody"></tbody>
-                </table>
-            </div>
-
-            <div class="inline-flex rounded-md shadow-sm" role="group">
-                <button id="btnCompras" class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-blue-600 text-white hover:bg-blue-700 focus:z-10 rounded-l-md">Top Compras</button>
-                <button id="btnCmv" class="w-1/2 px-3 py-1 text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 focus:z-10 rounded-r-md">Top CMV</button>
-            </div>
-        </div>
-
-        <div class="w-full lg:w-9/12 bg-white p-6 rounded-lg shadow">
+        <div class="w-full bg-white p-6 rounded-lg shadow">
             <h2 class="text-lg font-semibold mb-4">Evolução do CMV Diário</h2>
             <div id="chartCmvDiario" style="width: 100%; height: 300px;"></div>
         </div>
     </div>
 
+    <!-- ✅ Top 5 Produtos + Top 5 Fornecedores lado a lado -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- CMV por Categoria -->
-        <div class="bg-white p-6 h-[350px] rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4">CMV por Categoria</h2>
-            <div id="chartCategorias" class="w-full h-full"></div>
-        </div>
-
         <!-- Top 5 Produtos -->
         <div class="bg-white p-6 h-[350px] rounded-lg shadow">
             <h2 class="text-lg font-semibold mb-4">Top 5 Produtos</h2>
             <div id="chartTopProdutos" class="w-full h-full"></div>
+        </div>
+
+        <!-- Top 5 Fornecedores -->
+        <div class="bg-white p-6 h-[350px] rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-4">Top 5 Fornecedores</h2>
+            <div id="chartTopFornecedores" class="w-full h-full"></div>
         </div>
     </div>
 </div>
@@ -151,51 +115,47 @@
 
     let grupoId = null;
 
+    // ✅ flag pra desenhar CMV no gráfico de evolução (default desativado)
+    let showCmvLine = false;
+
     let lojasGrupo = [];
     let resumoEstoqueGrupo = [];
     let evolucaoCmvGrupo = [];
-    let topComprasGrupo = [];
     let cmvProdutosGrupo = [];
-    let cmvCategoriasGrupo = [];
-    let cmvHoraGrupo = [];
-    let horasGrupo = [];
+    let topFornecedoresGrupo = [];
     let datasEvolucao = [];
-    let isTopCompras = true;
 
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
         const element = document.getElementById(id);
         if (!element) return;
+
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             const value = start + progress * (end - start);
+
             element.textContent = isCurrency
                 ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                 : isPercentage
                     ? value.toFixed(2) + '%'
                     : Math.floor(value);
+
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
     }
 
-    // ✅ helpers para novo formato "R$ 1.234,56" e "4,79%"
+    // ✅ helpers para strings "R$ 1.234,56" e "4,79%"
     function parseBRL(v) {
         if (v == null) return 0;
         if (typeof v === 'number') return v;
         return Number(
             String(v)
-                .replace(/[^\d,-]/g, '')  // tira R$, espaços, etc
-                .replace(/\./g, '')       // remove milhar
-                .replace(',', '.')        // troca vírgula decimal
+                .replace(/[^\d,-]/g, '')
+                .replace(/\./g, '')
+                .replace(',', '.')
         ) || 0;
-    }
-
-    function parsePercent(v) {
-        if (v == null) return 0;
-        if (typeof v === 'number') return v;
-        return Number(String(v).replace('%','').replace('.','').replace(',','.')) || 0;
     }
 
     function setRange(tipo) {
@@ -247,7 +207,15 @@
 
         grupoSelect.addEventListener('change', () => {
             grupoId = parseInt(grupoSelect.value);
+
+            resetarEstadoDashboard();
+            limparCharts();
+
             atualizarFiltroLoja();
+
+            const filtroLoja = document.getElementById('filtroLoja');
+            filtroLoja.value = "";
+
             fetchData();
         });
 
@@ -257,6 +225,7 @@
     function atualizarFiltroLoja() {
         const lojas = lojasPorGrupo[grupoId] || [];
         const filtro = document.getElementById('filtroLoja');
+
         filtro.innerHTML = '<option value="">Todas as lojas</option>';
         lojas.forEach(loja => {
             filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`;
@@ -274,19 +243,16 @@
             html: 'Buscando dados atualizados.',
             allowOutsideClick: false,
             allowEscapeKey: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
+            didOpen: () => Swal.showLoading()
         });
 
         try {
             await carregarLojasGrupo();
             await carregarResumoEstoquePorGrupo(dt_inicio, dt_fim);
             await carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim);
-            await carregarTopComprasPorGrupo(dt_inicio, dt_fim);
             await carregarCmvProdutosPorGrupo(dt_inicio, dt_fim);
-            await carregarCmvCategoriasPorGrupo(dt_inicio, dt_fim);
-            await carregarCmvHoraPorGrupo(dt_inicio, dt_fim);
+            await carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim);
+
             aplicarFiltroLoja();
         } catch (err) {
             Swal.fire('Erro ao carregar', err.message, 'error');
@@ -295,18 +261,35 @@
         }
     }
 
+    function resetarEstadoDashboard() {
+        resumoEstoqueGrupo = [];
+        evolucaoCmvGrupo = [];
+        cmvProdutosGrupo = [];
+        topFornecedoresGrupo = [];
+        datasEvolucao = [];
+    }
+
+    function limparCharts() {
+        const domEvol = document.getElementById('chartCmvDiario');
+        const domTop = document.getElementById('chartTopProdutos');
+        const domForn = document.getElementById('chartTopFornecedores');
+
+        const instEvol = domEvol ? echarts.getInstanceByDom(domEvol) : null;
+        const instTop  = domTop  ? echarts.getInstanceByDom(domTop)  : null;
+        const instForn = domForn ? echarts.getInstanceByDom(domForn) : null;
+
+        if (instEvol) instEvol.dispose();
+        if (instTop) instTop.dispose();
+        if (instForn) instForn.dispose();
+    }
+
     async function carregarLojasGrupo() {
         const res = await axios.post(baseUrl, {
             method: 'getUnitsByGroup',
             token,
             data: { group_id: grupoId }
         });
-        lojasGrupo = res.data;
-        const filtro = document.getElementById('filtroLoja');
-        filtro.innerHTML = '<option value="">Todas as lojas</option>';
-        lojasGrupo.forEach(loja => {
-            filtro.innerHTML += `<option value="${loja.system_unit_id}">${loja.name}</option>`;
-        });
+        lojasGrupo = res.data || [];
     }
 
     async function carregarResumoEstoquePorGrupo(dt_inicio, dt_fim) {
@@ -315,7 +298,7 @@
             token,
             data: { grupoId, dt_inicio, dt_fim }
         });
-        resumoEstoqueGrupo = resumo.data.data;
+        resumoEstoqueGrupo = resumo.data.data || [];
     }
 
     async function carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim) {
@@ -324,17 +307,9 @@
             token,
             data: { grupoId, dt_inicio, dt_fim }
         });
-        evolucaoCmvGrupo = response.data.data;
-        datasEvolucao = response.data.labels;
-    }
 
-    async function carregarTopComprasPorGrupo(dt_inicio, dt_fim) {
-        const response = await axios.post(baseUrl, {
-            method: 'generateTopComprasPorProduto',
-            token,
-            data: { grupoId, dt_inicio, dt_fim }
-        });
-        topComprasGrupo = response.data.data;
+        evolucaoCmvGrupo = response.data.data || [];
+        datasEvolucao = response.data.labels || [];
     }
 
     async function carregarCmvProdutosPorGrupo(dt_inicio, dt_fim) {
@@ -343,151 +318,87 @@
             token,
             data: { grupoId, dt_inicio, dt_fim }
         });
-        cmvProdutosGrupo = response.data.data;
+        cmvProdutosGrupo = response.data.data || [];
     }
 
-    async function carregarCmvCategoriasPorGrupo(dt_inicio, dt_fim) {
+    async function carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim) {
         const response = await axios.post(baseUrl, {
-            method: 'generateCmvPorCategoria',
+            method: 'generateTopComprasPorFornecedor',
             token,
             data: { grupoId, dt_inicio, dt_fim }
         });
-        cmvCategoriasGrupo = response.data.data;
+        topFornecedoresGrupo = response.data.data || [];
     }
 
-    async function carregarCmvHoraPorGrupo(dt_inicio, dt_fim) {
-        const response = await axios.post(baseUrl, {
-            method: 'generateHourlySalesByGrupo',
-            token,
-            data: { grupoId, dt_inicio, dt_fim }
-        });
-        cmvHoraGrupo = response.data.lojas || [];
-        horasGrupo = response.data.horas || [];
+    function getNomeLojaById(lojaId) {
+        const lojas = lojasPorGrupo[grupoId] || [];
+        const l = lojas.find(x => parseInt(x.id) === parseInt(lojaId));
+        return l ? l.name : null;
     }
 
     function aplicarFiltroLoja() {
-        const selectedLoja = parseInt(document.getElementById('filtroLoja').value) || null;
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        let selectedLoja = parseInt(filtroLojaEl.value) || null;
+
+        const lojasValidas = (lojasPorGrupo[grupoId] || []).map(l => parseInt(l.id));
+        if (selectedLoja && !lojasValidas.includes(selectedLoja)) {
+            selectedLoja = null;
+            filtroLojaEl.value = "";
+        }
 
         const filtradoResumo = resumoEstoqueGrupo.filter(l => !selectedLoja || l.lojaId === selectedLoja);
-        const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-        const filtradoCompras = topComprasGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
         const filtradoCmvProdutos = cmvProdutosGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-        const filtradoCategorias = cmvCategoriasGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-        const filtradoHora = cmvHoraGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
+        const filtradoFornecedores = topFornecedoresGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
+
+        const nomeSelecionado = selectedLoja ? getNomeLojaById(selectedLoja) : null;
+        const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
 
         renderResumo(filtradoResumo);
         renderEvolucaoCmv(filtradoEvolucao, datasEvolucao);
-        renderTopProdutos(filtradoCompras, filtradoCmvProdutos);
-        renderChartCategorias(agregarCategorias(filtradoCategorias));
         renderChartTopProdutos(agregarProdutos(filtradoCmvProdutos));
-
-        // guarda se não existir os containers
-        if (document.getElementById('chartCmvHora')) {
-            renderChartCmvHora(filtradoHora, horasGrupo);
-        }
-        if (document.getElementById('main')) {
-            renderDonutLojasComSetas(filtradoResumo);
-        }
-    }
-
-    function agregarCategorias(data) {
-        const agregados = {};
-
-        data.forEach(loja => {
-            (loja.categorias || []).forEach(cat => {
-                const nome = cat.name.trim();
-                if (!agregados[nome]) {
-                    agregados[nome] = { nome: nome, valor: 0 };
-                }
-                agregados[nome].valor += parseFloat(cat.value);
-            });
-        });
-
-        return Object.values(agregados).sort((a, b) => b.valor - a.valor);
+        renderChartTopFornecedores(agregarFornecedores(filtradoFornecedores));
     }
 
     function agregarProdutos(data) {
         const agregados = {};
-
         data.forEach(loja => {
             (loja.produtos || []).forEach(prod => {
                 const nome = prod.name.trim();
-                if (!agregados[nome]) {
-                    agregados[nome] = { nome: nome, valor: 0 };
-                }
+                if (!agregados[nome]) agregados[nome] = { nome, valor: 0 };
                 agregados[nome].valor += parseFloat(prod.value);
             });
         });
-
-        return Object.values(agregados).sort((a, b) => b.valor - a.valor).slice(0, 5);
+        return Object.values(agregados)
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 5);
     }
 
-    function renderChartCmvHora(lojas, hours) {
-        const chartDom = document.getElementById('chartCmvHora');
-        const myChart = echarts.init(chartDom);
+    function agregarFornecedores(data) {
+        const agregados = {};
 
-        const lojasOrdenadas = [...lojas]
-            .sort((a, b) => {
-                const totalA = a.valores.reduce((sum, v) => sum + v, 0);
-                const totalB = b.valores.reduce((sum, v) => sum + v, 0);
-                return totalB - totalA;
-            })
-            .reverse();
-
-        const series = lojasOrdenadas.map(loja => ({
-            name: loja.nome,
-            type: 'line',
-            stack: 'Total',
-            areaStyle: {},
-            emphasis: { focus: 'series' },
-            data: loja.valores
-        }));
-
-        const option = {
-            title: { text: ' ' },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'cross',
-                    label: { backgroundColor: '#6a7985' }
-                },
-                formatter: function (params) {
-                    const sorted = [...params].sort((a, b) => b.value - a.value);
-                    let total = 0;
-
-                    let content = `<strong>${params[0].axisValue}</strong><br>`;
-                    sorted.forEach(item => {
-                        total += item.value;
-                        content += `
-                <span style="display:inline-block;margin-right:5px;border-radius:50%;width:10px;height:10px;background:${item.color}"></span>
-                ${item.seriesName}: <b>R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b><br>
-            `;
-                    });
-
-                    content += `<hr style="margin:4px 0;"><b>Total: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`;
-                    return content;
+        data.forEach(loja => {
+            (loja.fornecedores || []).forEach(f => {
+                const nome = (f.fornecedor || '').trim();
+                if (!agregados[nome]) {
+                    agregados[nome] = { nome, valor: 0, qtd_notas: 0 };
                 }
-            },
-            legend: {
-                data: lojasOrdenadas.map(loja => loja.nome),
-                bottom: 0
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '10%',
-                containLabel: true
-            },
-            xAxis: [{ type: 'category', boundaryGap: false, data: hours }],
-            yAxis: [{ type: 'value' }],
-            series
-        };
+                agregados[nome].valor += parseFloat(f.valor_total || 0);
+                agregados[nome].qtd_notas += parseInt(f.qtd_notas || 0);
+            });
+        });
 
-        myChart.setOption(option);
+        return Object.values(agregados)
+            .sort((a, b) => b.valor - a.valor)
+            .slice(0, 5);
     }
 
     function renderChartTopProdutos(data) {
         const chartDom = document.getElementById('chartTopProdutos');
+        if (!chartDom) return;
+
+        const old = echarts.getInstanceByDom(chartDom);
+        if (old) old.dispose();
+
         const myChart = echarts.init(chartDom);
 
         const nomes = data.map(item =>
@@ -504,18 +415,13 @@
                     return `<b>${item.nome}</b><br>CMV: R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
                 }
             },
-            grid: {
-                top: 10,
-                bottom: 10,
-                left: '3%',
-                right: '4%',
-                containLabel: true
-            },
+            grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
             xAxis: { type: 'value' },
             yAxis: {
                 type: 'category',
                 data: nomes,
-                axisLabel: { fontSize: 10 }
+                axisLabel: { fontSize: 10 },
+                inverse: true   // ✅ maior fica no topo
             },
             series: [
                 {
@@ -536,36 +442,51 @@
         myChart.setOption(option);
     }
 
-    function renderChartCategorias(data) {
-        const chartDom = document.getElementById('chartCategorias');
+    function renderChartTopFornecedores(data) {
+        const chartDom = document.getElementById('chartTopFornecedores');
+        if (!chartDom) return;
+
+        const old = echarts.getInstanceByDom(chartDom);
+        if (old) old.dispose();
+
         const myChart = echarts.init(chartDom);
+
+        const nomes = data.map(item =>
+            item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome
+        );
+        const valores = data.map(item => item.valor);
 
         const option = {
             tooltip: {
-                trigger: 'item',
-                formatter: ({ name, value }) =>
-                    `${name}<br>CMV: R$ ${parseFloat(value).toLocaleString('pt-BR', {
-                        minimumFractionDigits: 2
-                    })}`
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: (params) => {
+                    const item = data[params[0].dataIndex];
+                    return `<b>${item.nome}</b><br>
+                            Total Comprado: R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>
+                            Qtd Notas: ${item.qtd_notas}`;
+                }
             },
-            legend: { top: '5%', left: 'center' },
+            grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
+            xAxis: { type: 'value' },
+            yAxis: {
+                type: 'category',
+                data: nomes,
+                axisLabel: { fontSize: 10 },
+                inverse: true   // ✅ maior fica no topo
+            },
             series: [
                 {
-                    name: 'CMV por Categoria',
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    avoidLabelOverlap: false,
-                    padAngle: 5,
-                    itemStyle: { borderRadius: 10 },
-                    label: { show: false, position: 'center' },
-                    emphasis: {
-                        label: { show: true, fontSize: 18, fontWeight: 'bold' }
-                    },
-                    labelLine: { show: false },
-                    data: data.map(item => ({
-                        name: item.nome,
-                        value: parseFloat(item.valor)
-                    }))
+                    name: 'Compras',
+                    type: 'bar',
+                    data: valores,
+                    itemStyle: {
+                        borderRadius: [4, 4, 4, 4],
+                        color: function(params) {
+                            const colorList = ['#c23531', '#2f4554', '#61a0a8', '#d48265', '#91c7ae'];
+                            return colorList[params.dataIndex];
+                        }
+                    }
                 }
             ]
         };
@@ -573,14 +494,13 @@
         myChart.setOption(option);
     }
 
-    // ✅ Ajustado para NOVO totalizado (faturamento, compras, %compras, %margem, maior/menor margem)
     function renderResumo(data) {
         let totalFaturamento = 0;
         let totalCompras = 0;
         let totalMargemLucro = 0;
 
-        let melhorProduto = null; // maior margem
-        let piorProduto = null;   // menor margem
+        let melhorProduto = null;
+        let piorProduto = null;
 
         data.forEach(loja => {
             totalFaturamento += parseBRL(loja.faturamento_bruto);
@@ -612,12 +532,10 @@
         animateValue('percentualCompras', 0, percCompras, 1000, false, true);
         animateValue('percentualMargem', 0, percMargem, 1000, false, true);
 
-        // maior margem
         const maiorDescEl = document.getElementById('produtoMaiorMargemDesc');
         if (maiorDescEl) maiorDescEl.textContent = melhorProduto ? melhorProduto.descricao : '-';
         animateValue('produtoMaiorMargemValor', 0, melhorProduto ? melhorProduto._margemNum : 0, 1000, true);
 
-        // menor margem
         const menorDescEl = document.getElementById('produtoMenorMargemDesc');
         if (menorDescEl) menorDescEl.textContent = piorProduto ? piorProduto.descricao : '-';
         animateValue('produtoMenorMargemValor', 0, piorProduto ? piorProduto._margemNum : 0, 1000, true);
@@ -625,16 +543,47 @@
 
     function renderEvolucaoCmv(lojas, labels) {
         const chartDom = document.getElementById('chartCmvDiario');
+        if (!chartDom) return;
+
+        const old = echarts.getInstanceByDom(chartDom);
+        if (old) old.dispose();
+
         const myChart = echarts.init(chartDom);
 
-        const series = lojas.map(loja => ({
-            name: loja.nome,
-            type: 'line',
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 8,
-            data: loja.valores
-        }));
+        const lojaMap = {};
+        lojas.forEach(l => lojaMap[l.nome] = l);
+
+        const seriesPercent = lojas.map(loja => {
+            const faturamentoArr = loja.faturamento || [];
+            const comprasArr = loja.compras || [];
+
+            const percentuais = faturamentoArr.map((fat, i) => {
+                const comp = comprasArr[i] ?? 0;
+                return fat > 0 ? (comp / fat) * 100 : 0;
+            });
+
+            return {
+                name: loja.nome,
+                type: 'line',
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 7,
+                data: percentuais,
+                yAxisIndex: 0
+            };
+        });
+
+        const seriesCmv = showCmvLine
+            ? lojas.map(loja => ({
+                name: `${loja.nome} (CMV)`,
+                type: 'line',
+                smooth: true,
+                symbol: 'none',
+                lineStyle: { type: 'dashed' },
+                data: loja.cmv || [],
+                yAxisIndex: 1
+            }))
+            : [];
 
         const option = {
             title: { text: ' ', left: 'center' },
@@ -642,11 +591,41 @@
                 trigger: 'axis',
                 axisPointer: { type: 'shadow' },
                 formatter: function (params) {
-                    const total = params.reduce((sum, item) => sum + item.value, 0);
-                    const detalhes = params.map(item =>
-                        `<span style="display:inline-block;width:10px;height:10px;background:${item.color};margin-right:4px;border-radius:50%"></span> ${item.seriesName}: R$ ${item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    ).join('<br>');
-                    return `${params[0].axisValue}<br>${detalhes}<br><b>Total: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>`;
+                    const idx = params[0].dataIndex;
+                    let html = `<b>${params[0].axisValue}</b><br/>`;
+
+                    const percentParams = params.filter(p => !p.seriesName.includes('(CMV)'));
+                    const cmvParams = params.filter(p => p.seriesName.includes('(CMV)'));
+
+                    percentParams.forEach(p => {
+                        const loja = lojaMap[p.seriesName];
+                        const fat = loja?.faturamento?.[idx] ?? 0;
+                        const comp = loja?.compras?.[idx] ?? 0;
+                        const perc = fat > 0 ? (comp / fat) * 100 : 0;
+
+                        html += `
+                        <span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:4px;border-radius:50%"></span>
+                        ${p.seriesName}: <b>${perc.toFixed(2)}%</b><br/>
+                        &nbsp;&nbsp;Faturamento: R$ ${fat.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br/>
+                        &nbsp;&nbsp;Compras: R$ ${comp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br/>
+                    `;
+                    });
+
+                    if (cmvParams.length) {
+                        html += `<hr style="margin:6px 0;">`;
+                        cmvParams.forEach(p => {
+                            const pureName = p.seriesName.replace(' (CMV)', '');
+                            const loja = lojaMap[pureName];
+                            const cmv = loja?.cmv?.[idx] ?? 0;
+
+                            html += `
+                            <span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:4px;border-radius:50%"></span>
+                            ${pureName} CMV: <b>R$ ${cmv.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b><br/>
+                        `;
+                        });
+                    }
+
+                    return html;
                 }
             },
             legend: { top: 30 },
@@ -656,155 +635,26 @@
                 data: labels,
                 axisLabel: { fontSize: 12 }
             },
-            yAxis: {
-                type: 'value',
-                axisLabel: {
-                    formatter: v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                }
-            },
-            series
-        };
-
-        myChart.setOption(option);
-    }
-
-    function renderDonutLojasComSetas(data) {
-        const chartDom = document.getElementById('main');
-        const myChart = echarts.init(chartDom);
-
-        const dataset = [...data]
-            .map(loja => ({
-                name: loja.nomeLoja.length > 25 ? loja.nomeLoja.slice(0, 25) + '...' : loja.nomeLoja,
-                value: parseBRL(loja.cmv)
-            }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 10);
-
-        const total = dataset.reduce((sum, l) => sum + l.value, 0);
-
-        const option = {
-            tooltip: {
-                trigger: 'item',
-                formatter: (params) => {
-                    const perc = total ? (params.value / total) * 100 : 0;
-                    return `
-                    <b>${params.name}</b><br>
-                    CMV: R$ ${params.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>
-                    Participação: ${perc.toFixed(1)}%
-                `;
-                }
-            },
-            legend: { top: 'bottom' },
-            series: [
+            yAxis: [
                 {
-                    name: 'CMV',
-                    type: 'pie',
-                    radius: ['40%', '70%'],
-                    padAngle: 3,
-                    avoidLabelOverlap: false,
-                    itemStyle: {
-                        borderRadius: 10,
-                        borderColor: '#fff',
-                        borderWidth: 2
-                    },
-                    label: {
-                        show: true,
-                        position: 'outside',
-                        formatter: (params) => {
-                            const perc = total ? (params.value / total) * 100 : 0;
-                            return `${params.name}\nR$ ${params.value.toLocaleString('pt-BR', {
-                                minimumFractionDigits: 2
-                            })} (${perc.toFixed(1)}%)`;
-                        },
-                        fontSize: 12,
-                        color: '#333'
-                    },
-                    labelLine: {
-                        show: true,
-                        length: 15,
-                        length2: 10,
-                        lineStyle: { width: 1, color: '#aaa' }
-                    },
-                    data: dataset
-                }
-            ]
+                    type: 'value',
+                    name: '% Compras/Faturamento',
+                    axisLabel: { formatter: v => `${v.toFixed(0)}%` }
+                },
+                ...(showCmvLine ? [{
+                    type: 'value',
+                    name: 'CMV (R$)',
+                    axisLabel: { formatter: v => `R$ ${v.toLocaleString('pt-BR')}` }
+                }] : [])
+            ],
+            series: [...seriesPercent, ...seriesCmv]
         };
 
         myChart.setOption(option);
-    }
-
-    function renderTopProdutos(comprasData, cmvData) {
-        const data = isTopCompras
-            ? agregarTopCompras(comprasData)
-            : agregarTopCmv(cmvData);
-
-        const tbody = document.getElementById('rankingTableBody');
-        tbody.innerHTML = data.map((item, index) => `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="px-1 py-1">${index + 1}</td>
-                <td class="px-1 py-1">${item.nome}</td>
-                <td class="px-1 py-1 text-right">
-                    R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </td>
-            </tr>
-        `).join('');
-
-        document.getElementById('headerTipo').textContent = 'Valor (R$)';
-    }
-
-    function agregarTopCompras(data) {
-        const agregados = {};
-
-        data.forEach(loja => {
-            (loja.produtos || []).forEach(prod => {
-                const nome = prod.name.trim();
-                if (!agregados[nome]) {
-                    agregados[nome] = { nome: nome, valor: 0 };
-                }
-                agregados[nome].valor += parseFloat(prod.value);
-            });
-        });
-
-        return Object.values(agregados)
-            .sort((a, b) => b.valor - a.valor)
-            .slice(0, 10);
-    }
-
-    function agregarTopCmv(data) {
-        const agregados = {};
-
-        data.forEach(loja => {
-            (loja.produtos || []).forEach(prod => {
-                const nome = prod.name.trim();
-                if (!agregados[nome]) {
-                    agregados[nome] = { nome: nome, valor: 0 };
-                }
-                agregados[nome].valor += parseFloat(prod.value);
-            });
-        });
-
-        return Object.values(agregados)
-            .sort((a, b) => b.valor - a.valor)
-            .slice(0, 10);
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('filtroLoja').addEventListener('change', aplicarFiltroLoja);
-
-        document.getElementById('btnCompras').addEventListener('click', () => {
-            isTopCompras = true;
-            document.getElementById('btnCompras').classList.add('bg-blue-600', 'text-white');
-            document.getElementById('btnCmv').classList.remove('bg-blue-600', 'text-white');
-            aplicarFiltroLoja();
-        });
-
-        document.getElementById('btnCmv').addEventListener('click', () => {
-            isTopCompras = false;
-            document.getElementById('btnCmv').classList.add('bg-blue-600', 'text-white');
-            document.getElementById('btnCompras').classList.remove('bg-blue-600', 'text-white');
-            aplicarFiltroLoja();
-        });
-
         await carregarGrupoInicial();
         setRange('7dias');
     });
