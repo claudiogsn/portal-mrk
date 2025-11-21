@@ -133,6 +133,7 @@
                                 </th>
                                 <th> </th>
                                 <th>Chave de Acesso</th>
+                                <th>Nota Fiscal</th>
                                 <th>Emitente (Razão)</th>
                                 <th>Valor Total</th>
                                 <th>Data Emissão</th>
@@ -449,11 +450,13 @@
 
             notasSefaz = (resp.data?.notas || []).map(n => ({
                 chave_acesso: n.chave_acesso,
+                numero_nf: n.numero_nf || "",
                 emitente_razao: n.emitente_razao || n.emitente_fantasia || "",
                 valor_total: Number(n.valor_total || 0),
                 data_emissao: n.data_emissao || "",
                 status: n.status || "nao_importada"
             }));
+
 
             renderTabelaSefaz();
 
@@ -492,29 +495,42 @@
             const idChk = `nfe-${n.chave_acesso}`;
 
             tbody.append(`
-        <tr data-idx="${idx}" data-chave="${n.chave_acesso}">
-          <td>
-            ${elegivel ? `
-              <input type="checkbox" id="${idChk}" class="chk-col-blue row-selector">
-              <label for="${idChk}"></label>
-            ` : `<input type="checkbox" disabled>`}
-          </td>
-           <!-- 🔍 NOVA COLUNA VISUALIZAR PDF -->
-          <td class="text-center">
-                <a href="#" class="btnViewPdf" data-chave="${n.chave_acesso}" title="Visualizar DANFE">
-                    <i class="fas fa-file-pdf" style="color:#c00;font-size:20px;"></i>
-                </a>
-          </td>
-          <td><code style="font-size:12px;">${n.chave_acesso}</code></td>
-          <td>${escapeHtml(n.emitente_razao || '')}</td>
-          <td>R$ ${n.valor_total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-          <td>${formatDateBr(n.data_emissao)}</td>
-          <td>${n.status === 'importada'
-                ? '<span class="label bg-green">importada</span>'
-                : '<span class="label bg-orange">nao_importada</span>'}
-          </td>
-        </tr>
-      `);
+                <tr data-idx="${idx}" data-chave="${n.chave_acesso}">
+                  <td>
+                    ${elegivel ? `
+                      <input type="checkbox" id="${idChk}" class="chk-col-blue row-selector">
+                      <label for="${idChk}"></label>
+                    ` : `<input type="checkbox" disabled>`}
+                  </td>
+
+                  <!-- BOTÃO VISUALIZAR DANFE -->
+                  <td class="text-center">
+                      <a href="#" class="btnViewPdf" data-chave="${n.chave_acesso}" data-numero="${n.numero_nf}" title="Visualizar DANFE">
+                          <i class="fas fa-file-pdf" style="color:#c00;font-size:20px;"></i>
+                      </a>
+                  </td>
+
+                  <!-- CHAVE DE ACESSO -->
+                  <td>
+                      <code style="font-size:12px; font-weight:bold;">${n.chave_acesso}</code>
+                  </td>
+
+                  <!-- NUMERO DA NF -->
+                  <td>
+                      <span style="font-weight:bold;">${n.numero_nf || '-'}</span>
+                  </td>
+
+                  <td>${escapeHtml(n.emitente_razao || '')}</td>
+                  <td>R$ ${n.valor_total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td>${formatDateBr(n.data_emissao)}</td>
+
+                  <td>${n.status === 'importada'
+                            ? '<span class="label bg-green">importada</span>'
+                            : '<span class="label bg-orange">nao_importada</span>'}
+                  </td>
+                </tr>
+            `);
+
         });
 
         // listeners das linhas/checkboxes

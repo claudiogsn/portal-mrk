@@ -51,40 +51,60 @@ class MdeController
                 return ['success' => false, 'message' => 'CNPJ da unidade inválido'];
             }
 
-            // 2) Monta URL da API
-            $query = http_build_query([
-                'softwarehouse_token' => self::PLUG_TOKEN,
-                'cpf_cnpj'            => $cnpjUnidade,
-                'date_ini'            => $data_inicial,
-                'date_end'            => $data_final,
-                'transaction'         => 'received', // recebido
-                'mod'                 => 'NFE',      // modelo NFe
-            ]);
+            $lastId = null;
+            $allInvoices = [];
+            $loopCount = 0;
 
-            $url = self::PLUG_BASE_URL . 'keys?' . $query;
+            do {
+                $query = [
+                    'softwarehouse_token' => self::PLUG_TOKEN,
+                    'cpf_cnpj'            => $cnpjUnidade,
+                    'date_ini'            => $data_inicial,
+                    'date_end'            => $data_final,
+                    'transaction'         => 'received',
+                    'mod'                 => 'NFE'
+                ];
 
-            // 3) Chama a API (GET)
-            [$httpCode, $body, $err] = UtilsController::httpGet($url);
-            if ($err) {
-                return ['success' => false, 'message' => "Falha na chamada à API: $err"];
-            }
-            if ($httpCode < 200 || $httpCode >= 300) {
-                return ['success' => false, 'message' => "API retornou HTTP $httpCode", 'data' => ['raw' => $body]];
-            }
+                if ($lastId) {
+                    $query['last_id'] = $lastId;
+                }
 
-            $json = json_decode($body, true);
-            if (!is_array($json)) {
-                return ['success' => false, 'message' => 'Resposta da API inválida (JSON)'];
-            }
-            if (!empty($json['error'])) {
-                $msg = $json['message'] ?? 'Erro desconhecido pela API';
-                return ['success' => false, 'message' => "API retornou erro: $msg", 'data' => $json];
-            }
+                $url = self::PLUG_BASE_URL . 'keys?' . http_build_query($query);
 
-            $invoices = $json['data']['invoices'] ?? [];
-            $notas = [];
+                // Chamada GET
+                [$httpCode, $body, $err] = UtilsController::httpGet($url);
+                if ($err) {
+                    return ['success' => false, 'message' => "Falha na chamada à API: $err"];
+                }
+                if ($httpCode < 200 || $httpCode >= 300) {
+                    return ['success' => false, 'message' => "API retornou HTTP $httpCode", 'data' => ['raw' => $body]];
+                }
 
-            if (!is_array($invoices) || empty($invoices)) {
+                $json = json_decode($body, true);
+                if (!is_array($json)) {
+                    return ['success' => false, 'message' => 'Resposta da API inválida (JSON)'];
+                }
+                if (!empty($json['error'])) {
+                    $msg = $json['message'] ?? 'Erro desconhecido pela API';
+                    return ['success' => false, 'message' => "API retornou erro: $msg", 'data' => $json];
+                }
+
+                $invoices = $json['data']['invoices'] ?? [];
+                $count    = $json['data']['count']  ?? 0;
+                $total    = $json['data']['total']  ?? 0;
+                $lastId   = $json['data']['last_id'] ?? null;
+
+                if (empty($invoices)) break;
+
+                $allInvoices = array_merge($allInvoices, $invoices);
+                $loopCount++;
+
+                // Continua somente se houver mais páginas
+                $continue = ($count == 30 && $total > count($allInvoices));
+
+            } while ($continue && $loopCount < 200);   // trava anti loop infinito
+
+            if (empty($allInvoices)) {
                 return [
                     'success' => true,
                     'message' => 'Nenhuma nota retornada no período informado.',
@@ -97,20 +117,22 @@ class MdeController
                 ];
             }
 
-            // 4) Para cada key, verifica existência em estoque_nota
+            // PREPARA SELECT PARA CHECAR IMPORTAÇÃO
             $selNota = $pdo->prepare("
-                SELECT id 
-                  FROM estoque_nota 
-                 WHERE system_unit_id = :system_unit_id 
-                   AND chave_acesso = :chave 
-                 LIMIT 1
-            ");
+            SELECT id
+              FROM estoque_nota
+             WHERE system_unit_id = :system_unit_id
+               AND chave_acesso = :chave
+             LIMIT 1
+        ");
 
-            foreach ($invoices as $inv) {
+            $notas = [];
+
+            foreach ($allInvoices as $inv) {
                 $chave   = $inv['key']            ?? '';
                 $numero  = $inv['number']         ?? '';
                 $serie   = $inv['serie']          ?? null;
-                $emissao = $inv['date_emission']  ?? null; // 'YYYY-MM-DD'
+                $emissao = $inv['date_emission']  ?? null;
                 $valor   = $inv['value']          ?? null;
                 $razao   = $inv['razao_social']   ?? null;
                 $fantasia= $inv['fantasia']       ?? null;
@@ -134,13 +156,13 @@ class MdeController
                     'chave_acesso'     => $chave,
                     'numero_nf'        => $numero,
                     'serie'            => $serie,
-                    'data_emissao'     => $emissao,           // YYYY-MM-DD (da API)
+                    'data_emissao'     => $emissao,
                     'valor_total'      => is_numeric($valor) ? (float)$valor : null,
                     'emitente_cnpj'    => $cnpjEmi,
                     'emitente_razao'   => $razao,
                     'emitente_fantasia'=> $fantasia,
                     'status'           => $importada ? 'importada' : 'nao_importada',
-                    'estoque_nota_id'  => $estoqueNotaId,     // null se não existe
+                    'estoque_nota_id'  => $estoqueNotaId,
                 ];
             }
 
@@ -152,7 +174,7 @@ class MdeController
                     'periodo'   => ['inicio' => $data_inicial, 'fim' => $data_final],
                     'total_api' => count($notas),
                     'notas'     => $notas,
-                    'last_id'   => $json['data']['last_id'] ?? null,
+                    'last_id'   => $lastId,
                 ]
             ];
 
