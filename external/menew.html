@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta ItemVenda Menew</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { background:#f1f5f9; }
+        .card-total { font-weight:bold; font-size:18px; }
+        .clickable { cursor:pointer; }
+    </style>
+</head>
+
+<body class="p-3">
+<div class="container">
+
+    <h2 class="mb-4">📦 Consulta ItemVenda Menew</h2>
+
+    <!-- FORM FILTRO -->
+    <div class="card p-3 mb-3">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label>Token</label>
+                <input id="token" class="form-control" value="77e3c2ef638c6b31874b34510b5884b5">
+            </div>
+            <div class="col-md-2">
+                <label>Loja</label>
+                <input id="loja" class="form-control" value="264595">
+            </div>
+            <div class="col-md-2">
+                <label>Data Inicial</label>
+                <input id="dtinicio" type="date" class="form-control" value="2025-11-18">
+            </div>
+            <div class="col-md-2">
+                <label>Data Final</label>
+                <input id="dtfim" type="date" class="form-control" value="2025-11-18">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button id="btnBuscar" class="btn btn-primary w-100">🔍 Buscar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTRO AVANÇADO -->
+    <div class="card p-3 mb-3">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select id="campoFiltro" class="form-select">
+                    <option value="descricao">Descrição</option>
+                    <option value="codMaterial">Código</option>
+                    <option value="__nfNumeroC">Número NF</option>
+                    <option value="valorLiquido">Valor Líquido</option>
+                    <option value="quantidade">Quantidade</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="operadorFiltro" class="form-select">
+                    <option value="=">=</option>
+                    <option value="<>"><></option>
+                    <option value=">">></option>
+                    <option value="<"><</option>
+                    <option value="like">LIKE</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input id="valorFiltro" class="form-control" placeholder="Digite para filtrar em tempo real...">
+            </div>
+        </div>
+    </div>
+
+    <!-- TOTALIZADORES -->
+    <div class="row mb-3 text-center">
+        <div class="col card-total">Qtd Itens: <span id="tQtd">0</span></div>
+        <div class="col card-total">Total Bruto: R$ <span id="tBruto">0</span></div>
+        <div class="col card-total">Total Líquido: R$ <span id="tLiquido">0</span></div>
+    </div>
+
+    <!-- TABELA -->
+    <table class="table table-striped table-hover" id="tbResultados">
+        <thead class="table-dark">
+        <tr>
+            <th>Descrição</th>
+            <th>Cód</th>
+            <th>Valor Líq</th>
+            <th>Qtd</th>
+            <th>NF</th>
+            <th>Detalhes</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
+
+<script>
+    let dadosOriginais = [];
+
+    // ======================= BUSCAR API ==========================
+    $("#btnBuscar").on("click", function () {
+        Swal.fire({title:"Buscando...",allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+
+        axios.post("https://www.portalmenew.com.br/public-api/", {
+            token: $("#token").val(),
+            requests: {
+                jsonrpc: "2.0",
+                method: "itemvenda",
+                params: {
+                    lojas: $("#loja").val(),
+                    dtinicio: $("#dtinicio").val(),
+                    dtfim: $("#dtfim").val()
+                },
+                id: "1"
+            }
+        })
+            .then(resp => {
+                dadosOriginais = resp.data.result;
+                renderTabela(dadosOriginais);
+                Swal.close();
+            })
+            .catch(err => {
+                Swal.fire("Erro", "Falha ao consultar API", "error");
+                console.error(err);
+            });
+    });
+
+    // ======================= RENDER TABELA ========================
+    function renderTabela(lista) {
+        const tbody = $("#tbResultados tbody");
+        tbody.empty();
+
+        let totalBruto = 0, totalLiq = 0, totalQtd = 0;
+
+        lista.forEach(item => {
+            totalBruto += Number(item.valorBruto || 0);
+            totalLiq   += Number(item.valorLiquido || 0);
+            totalQtd   += Number(item.quantidade || 0);
+
+            tbody.append(`
+            <tr>
+                <td>${item.descricao}</td>
+                <td>${item.codMaterial}</td>
+                <td>R$ ${item.valorLiquido.toFixed(2)}</td>
+                <td>${item.quantidade}</td>
+                <td>${item.__nfNumeroC ?? "-"}</td>
+                <td class="clickable text-primary" onclick='detalhes(${JSON.stringify(item)})'>Ver</td>
+            </tr>
+        `);
+        });
+
+        $("#tBruto").text(totalBruto.toFixed(2));
+        $("#tLiquido").text(totalLiq.toFixed(2));
+        $("#tQtd").text(totalQtd);
+    }
+
+    // ================= FILTRO DINÂMICO ============================
+    $("#valorFiltro").on("input", function () {
+        const campo = $("#campoFiltro").val();
+        const op = $("#operadorFiltro").val();
+        const val = $(this).val().toLowerCase();
+
+        let filtrado = dadosOriginais.filter(r => {
+            let campoValor = (r[campo] ?? "").toString().toLowerCase();
+
+            switch(op) {
+                case "like": return campoValor.includes(val);
+                case "=":  return campoValor == val;
+                case "<>": return campoValor != val;
+                case ">":  return Number(campoValor) > Number(val);
+                case "<":  return Number(campoValor) < Number(val);
+            }
+        });
+
+        renderTabela(filtrado);
+    });
+
+    // ================= DETALHES MODAL ============================
+    function detalhes(obj) {
+        Swal.fire({
+            title: "Detalhes do Item",
+            html: `<pre style='text-align:left;font-size:12px;'>${JSON.stringify(obj, null, 2)}</pre>`,
+            width: 800
+        });
+    }
+</script>
+
+</body>
+</html>

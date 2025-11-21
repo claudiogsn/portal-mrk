@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Raio-X do Produto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+
+        .pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            background: #eee;
+            margin-right: 6px;
+        }
+
+        .box-kpi {
+            background: #fafafa; border:1px solid #eee; border-radius:6px; padding:10px;
+        }
+        .box-kpi .kpi-title { font-size: 12px; color:#777 }
+        .box-kpi .kpi-value { font-size: 18px; font-weight: bold }
+
+        .nota-box {
+            background: #fff8e1;
+            border: 1px solid #ffe0b2;
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 6px;
+            font-size: 12px;
+        }
+
+        .accordion-toggle { cursor: pointer; }
+
+        @media (max-width: 768px) {
+            body, .form-control, table, th, td, button {
+                font-size: 12px !important;
+            }
+            h2 { font-size: 16px !important; }
+            .kpi-value { font-size: 16px !important; }
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+
+    <div class="card">
+        <div class="header">
+            <h2><i class="fa fa-search"></i> Raio-X do Produto</h2>
+        </div>
+        <div class="body">
+
+            <!-- Busca -->
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Código do produto</label>
+                    <input id="produtoCodigo" class="form-control" placeholder="Ex: 1234">
+                </div>
+                <div class="col-md-2">
+                    <label>Limite mov. por insumo</label>
+                    <input id="limiteMov" type="number" class="form-control" value="10" min="1" max="50">
+                </div>
+                <div class="col-md-6 text-right" style="padding-top:25px;">
+                    <button class="btn btn-primary" id="btnBuscar">
+                        <i class="fa fa-play"></i> Buscar
+                    </button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Resultado -->
+            <div id="resultado" style="display:none;">
+
+                <!-- Produto -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="box-kpi">
+                            <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+                                <div>
+                                    <div class="kpi-title">Produto</div>
+                                    <div class="kpi-value" id="prodNome"></div>
+                                    <div style="margin-top:5px;">
+                                        <span class="pill" id="prodCodigo"></span>
+                                        <span class="pill" id="prodUnidade"></span>
+                                        <span class="pill" id="prodFlags"></span>
+                                    </div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div class="kpi-title">Preço venda (cadastro)</div>
+                                    <div class="kpi-value" id="prodPrecoVenda"></div>
+
+                                    <div class="kpi-title" style="margin-top:8px;">Preço custo (cadastro)</div>
+                                    <div class="kpi-value" id="prodPrecoCusto"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+
+                <!-- Custo total -->
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="box-kpi">
+                            <div class="kpi-title">Custo total da ficha</div>
+                            <div class="kpi-value" id="custoTotalFicha"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="box-kpi">
+                            <div class="kpi-title">Observação</div>
+                            <div style="font-size:13px;">
+                                Custo calculado pela soma dos insumos da composição (preço_custo * quantidade_ficha).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <br>
+
+                <!-- Composição -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <h4><i class="fa fa-layer-group"></i> Composição</h4>
+                        <div class="panel-group" id="accordionComposicao"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || '';
+    const system_unit_id = urlParams.get('system_unit_id') || '';
+
+    const money = v => {
+        if (v === null || v === undefined || isNaN(Number(v))) return '-';
+        return Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    };
+
+    const fmtData = v => v ? String(v).slice(0, 16).replace('T',' ') : '-';
+
+    $('#btnBuscar').click(buscarRaioX);
+
+    async function buscarRaioX(){
+        const product_id = $('#produtoCodigo').val().trim();
+        const limite_mov = Number($('#limiteMov').val() || 10);
+
+        if(!product_id) return Swal.fire('Atenção','Informe o código do produto.','warning');
+
+        Swal.fire({title:'Carregando...', allowOutsideClick:false, didOpen:()=>Swal.showLoading()});
+
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'getRaioXProduto',
+                token,
+                data: { system_unit_id, product_id, limite_mov }
+            });
+
+            Swal.close();
+
+            if(!res.data || !res.data.success){
+                return Swal.fire('Erro', res.data?.message || 'Falha ao buscar produto', 'error');
+            }
+
+            renderRaioX(res.data.data);
+
+        }catch(err){
+            console.error(err);
+            Swal.fire('Erro','Falha na requisição','error');
+        }
+    }
+
+    function renderRaioX(data){
+        const { produto, custo_total_ficha, composicao } = data;
+
+        $('#resultado').show();
+
+        $('#prodNome').text(`${produto.nome}`);
+        $('#prodCodigo').text(`Código: ${produto.codigo}`);
+        $('#prodUnidade').text(`Unid.: ${produto.unidade || '-'}`);
+
+        const flags = [];
+        if(produto.venda == 1) flags.push('Venda');
+        if(produto.insumo == 1) flags.push('Insumo');
+        if(produto.composicao == 1) flags.push('Composição');
+        $('#prodFlags').text(flags.join(' / ') || '—');
+
+        $('#prodPrecoVenda').text(money(produto.preco_venda));
+        $('#prodPrecoCusto').text(money(produto.preco_custo));
+        $('#custoTotalFicha').text(money(custo_total_ficha));
+
+        const acc = $('#accordionComposicao');
+        acc.empty();
+
+        if(!composicao || composicao.length === 0){
+            acc.append(`<div class="alert alert-warning">Produto sem composição.</div>`);
+            return;
+        }
+
+        composicao.forEach((ins, idx)=>{
+            const panelId = `panel_${ins.insumo_id}_${idx}`;
+
+            const movsHtml = renderMovimentacoes(ins.movimentacoes);
+
+            acc.append(`
+                <div class="panel panel-default">
+                    <div class="panel-heading accordion-toggle" data-toggle="collapse" data-parent="#accordionComposicao" href="#${panelId}">
+                        <h4 class="panel-title">
+                            <i class="fa fa-cube"></i>
+                            ${ins.insumo_nome}
+                            <small style="color:#777;">(${ins.insumo_id})</small>
+                            <span class="pull-right">
+                                <small>
+                                    Qtd ficha: <b>${Number(ins.quantidade_ficha).toLocaleString('pt-BR')}</b> ${ins.insumo_unidade || ''}
+                                    &nbsp; | &nbsp;
+                                    Custo item: <b>${money(ins.custo_item_ficha)}</b>
+                                </small>
+                            </span>
+                        </h4>
+                    </div>
+
+                    <div id="${panelId}" class="panel-collapse collapse ${idx===0 ? 'in':''}">
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="box-kpi">
+                                        <div class="kpi-title">Preço custo insumo</div>
+                                        <div class="kpi-value" style="font-size:16px;">
+                                            ${money(ins.insumo_preco_custo)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="box-kpi">
+                                        <div class="kpi-title">Movimentações recentes</div>
+                                        ${movsHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        });
+    }
+
+    function renderMovimentacoes(movs){
+        if(!movs || movs.length === 0){
+            return `<div class="text-muted">Sem movimentações.</div>`;
+        }
+
+        let html = `
+            <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Doc</th>
+                        <th>Tipo</th>
+                        <th>Mov</th>
+                        <th>Qtd</th>
+                        <th>Valor</th>
+                        <th>NF</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        movs.forEach(m=>{
+            const hasNota = !!m.nota;
+            html += `
+                <tr>
+                    <td>${fmtData(m.data)}</td>
+                    <td>${m.doc || '-'}</td>
+                    <td>${m.tipo || '-'}</td>
+                    <td>${m.tipo_mov || '-'}</td>
+                    <td>${Number(m.quantidade || 0).toLocaleString('pt-BR')}</td>
+                    <td>${m.valor != null ? money(m.valor) : '-'}</td>
+                    <td>
+                        ${hasNota ? `<span class="label label-warning">NF ${m.nota.numero_nf}</span>` : '-'}
+                    </td>
+                </tr>
+            `;
+
+            if(hasNota){
+                html += `
+                    <tr>
+                        <td colspan="7">
+                            <div class="nota-box">
+                                <div><b>Nota fiscal</b></div>
+                                <div>Número: ${m.nota.numero_nf || '-'}</div>
+                                <div>Série: ${m.nota.serie || '-'}</div>
+                                <div>Fornecedor ID: ${m.nota.fornecedor_id || '-'}</div>
+                                <div>Data emissão: ${fmtData(m.nota.data_emissao)}</div>
+                                <div>Data entrada: ${fmtData(m.nota.data_entrada)}</div>
+                                <div>Natureza operação: ${m.nota.natureza_operacao || '-'}</div>
+                                <div>Valor total NF: ${m.nota.valor_total != null ? money(m.nota.valor_total) : '-'}</div>
+                                <div>Chave acesso: ${m.nota.chave_acesso || '-'}</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        html += `
+                </tbody>
+            </table>
+            </div>
+        `;
+
+        return html;
+    }
+</script>
+
+</body>
+</html>

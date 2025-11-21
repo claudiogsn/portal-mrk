@@ -131,6 +131,7 @@
                                     <input class="chk-col-blue" type="checkbox" id="selectAll" title="Selecionar Todos">
                                     <label for="selectAll"></label>
                                 </th>
+                                <th> </th>
                                 <th>Chave de Acesso</th>
                                 <th>Emitente (Razão)</th>
                                 <th>Valor Total</th>
@@ -480,7 +481,7 @@
         $("#resumoNotas").text(`Total: ${total} | Não importadas: ${naoImport}`);
 
         if (dados.length === 0) {
-            tbody.append('<tr><td colspan="6" class="text-center">Nenhuma nota encontrada para o filtro.</td></tr>');
+            tbody.append('<tr><td colspan="7" class="text-center">Nenhuma nota encontrada para o filtro.</td></tr>');
             $("#btnImportarSelecionadas").prop("disabled", true);
             $("#selectAll").prop("checked", false).prop("indeterminate", false);
             return;
@@ -489,21 +490,29 @@
         dados.forEach((n, idx) => {
             const elegivel = (n.status || '').toLowerCase() !== 'importada';
             const idChk = `nfe-${n.chave_acesso}`;
+
             tbody.append(`
         <tr data-idx="${idx}" data-chave="${n.chave_acesso}">
           <td>
             ${elegivel ? `
               <input type="checkbox" id="${idChk}" class="chk-col-blue row-selector">
-              <label for="${idChk}"> </label>
-            ` : `
-              <input type="checkbox" disabled>
-            `}
+              <label for="${idChk}"></label>
+            ` : `<input type="checkbox" disabled>`}
+          </td>
+           <!-- 🔍 NOVA COLUNA VISUALIZAR PDF -->
+          <td class="text-center">
+                <a href="#" class="btnViewPdf" data-chave="${n.chave_acesso}" title="Visualizar DANFE">
+                    <i class="fas fa-file-pdf" style="color:#c00;font-size:20px;"></i>
+                </a>
           </td>
           <td><code style="font-size:12px;">${n.chave_acesso}</code></td>
           <td>${escapeHtml(n.emitente_razao || '')}</td>
           <td>R$ ${n.valor_total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
           <td>${formatDateBr(n.data_emissao)}</td>
-          <td>${n.status === 'importada' ? '<span class="label bg-green">importada</span>' : '<span class="label bg-orange">nao_importada</span>'}</td>
+          <td>${n.status === 'importada'
+                ? '<span class="label bg-green">importada</span>'
+                : '<span class="label bg-orange">nao_importada</span>'}
+          </td>
         </tr>
       `);
         });
@@ -518,15 +527,11 @@
 
         // clique na linha para alternar seleção
         $("#tabelaSefaz tbody tr").off('click').on('click', function(e) {
-            // evita conflito quando clica no próprio checkbox/label
-            if ($(e.target).is('input[type=checkbox]') || $(e.target).is('label')) return;
+            if ($(e.target).is('input[type=checkbox]') || $(e.target).is('label') || $(e.target).hasClass('btnViewPdf') || $(e.target).closest('.btnViewPdf').length) return;
             const chk = $(this).find('.row-selector:enabled');
-            if (chk.length) {
-                chk.prop('checked', !chk.prop('checked')).trigger('change');
-            }
+            if (chk.length) chk.prop('checked', !chk.prop('checked')).trigger('change');
         });
 
-        // reset cabeçalho
         $("#selectAll").prop("checked", false).prop("indeterminate", false);
         updateImportButtonState();
     }
@@ -716,6 +721,56 @@
         if (!m) return iso;
         return `${m[3]}/${m[2]}/${m[1]}`;
     }
+
+    function abrirPdfNovaAba(b64) {
+        const byteChars = atob(b64.replace(/\s/g, ''));
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+            byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');   // 🔥 abre pdf sem baixar
+    }
+
+
+    // ======================== VISUALIZAR DANFE EM NOVA ABA ========================
+    $(document).off('click', '.btnViewPdf').on('click', '.btnViewPdf', async function (e) {
+        e.preventDefault();
+        const chave = $(this).data('chave');
+
+        if (!chave) {
+            return Swal.fire('Erro', 'Chave não encontrada.', 'error');
+        }
+
+        Swal.fire({title:'Gerando PDF...',allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+
+        try {
+            const { data: resp } = await axios.post(baseUrl, {
+                method: "baixarArquivo",
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    chave: String(chave),
+                    tipo: "pdf"
+                }
+            });
+
+            if (!resp?.success || !resp?.content) {
+                throw new Error(resp?.message || "PDF não disponível");
+            }
+
+            abrirPdfNovaAba(resp.content);
+
+            Swal.close();
+
+        } catch (err) {
+            Swal.close();
+            Swal.fire('Erro', err.message || 'Falha ao gerar PDF', 'error');
+        }
+    });
+
 
 </script>
 </body>

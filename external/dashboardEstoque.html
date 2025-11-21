@@ -82,7 +82,7 @@
     <!-- ✅ Evolução -->
     <div class="flex flex-col lg:flex-row gap-6 mb-6">
         <div class="w-full bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4">Evolução do CMV Diário</h2>
+            <h2 class="text-lg font-semibold mb-4">Evolução do Compras x Faturamento</h2>
             <div id="chartCmvDiario" style="width: 100%; height: 300px;"></div>
         </div>
     </div>
@@ -412,7 +412,7 @@
                 axisPointer: { type: 'shadow' },
                 formatter: (params) => {
                     const item = data[params[0].dataIndex];
-                    return `<b>${item.nome}</b><br>CMV: R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    return `<b>${item.nome}</b><br>Compras: R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
                 }
             },
             grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
@@ -509,7 +509,7 @@
 
             const pm = loja.produto_maior_margem;
             if (pm) {
-                const margemPm = parseBRL(pm.margem);
+                const margemPm = parseBRL(pm.margem_unitaria);
                 if (!melhorProduto || margemPm > melhorProduto._margemNum) {
                     melhorProduto = { ...pm, _margemNum: margemPm };
                 }
@@ -517,7 +517,7 @@
 
             const pn = loja.produto_menor_margem;
             if (pn) {
-                const margemPn = parseBRL(pn.margem);
+                const margemPn = parseBRL(pn.margem_unitaria);
                 if (!piorProduto || margemPn < piorProduto._margemNum) {
                     piorProduto = { ...pn, _margemNum: margemPn };
                 }

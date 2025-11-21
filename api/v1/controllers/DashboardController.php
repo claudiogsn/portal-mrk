@@ -2169,22 +2169,25 @@ class DashboardController
 
         try {
             $lojas = BiController::getUnitsByGroup($grupoId);
-            $financeiros = self::generateResumoFinanceiroPorGrupo($grupoId, $dt_inicio, $dt_fim)['data'];
+
+            // faturamento bruto já consolidado por grupo
+            $financeiros = self::generateResumoFinanceiroPorGrupo($grupoId, $dt_inicio, $dt_fim)['data'] ?? [];
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $unitId = $loja['system_unit_id'];
+                $unitId = (int)$loja['system_unit_id'];
 
                 // ============================
-                // ✅ NOVO: compras via estoque_nota
+                // ✅ Compras via estoque_nota
                 // ============================
                 $stmtCompras = $pdo->prepare("
                 SELECT SUM(eni.valor_total) as total_compras
                 FROM estoque_nota en
-                JOIN estoque_nota_item eni ON eni.nota_id=en.id AND eni.system_unit_id=en.system_unit_id
-                WHERE en.system_unit_id=:unit
+                JOIN estoque_nota_item eni 
+                  ON eni.nota_id = en.id 
+                 AND eni.system_unit_id = en.system_unit_id
+                WHERE en.system_unit_id = :unit
                   AND en.data_entrada BETWEEN :dt_inicio AND :dt_fim
-                  -- AND n.incluida_estoque = 1
             ");
                 $stmtCompras->execute([
                     ':unit'      => $unitId,
@@ -2194,7 +2197,7 @@ class DashboardController
                 $resCompras = $stmtCompras->fetch(PDO::FETCH_ASSOC);
 
                 // ============================
-                // ✅ CMV continua no fluxo_estoque (saídas)
+                // ✅ CMV (saídas) no fluxo_estoque
                 // ============================
                 $stmtCmv = $pdo->prepare("
                 SELECT COALESCE(SUM(saidas * preco_custo), 0) AS cmv
@@ -2209,58 +2212,74 @@ class DashboardController
                 ]);
                 $resCmv = $stmtCmv->fetch(PDO::FETCH_ASSOC);
 
-                // Encontra faturamento bruto
-                $faturamentoBruto = 0;
+                // ============================
+                // ✅ Encontra faturamento bruto da loja dentro do resumo financeiro do grupo
+                // ============================
+                $faturamentoBruto = 0.0;
                 foreach ($financeiros as $fin) {
-                    if ((int)$fin['systemUnitId'] === (int)$unitId) {
+                    if ((int)$fin['systemUnitId'] === $unitId) {
                         $faturamentoBruto = (float)$fin['faturamento_bruto'];
                         break;
                     }
                 }
 
-                $totalCompras = (float)$resCompras['total_compras'];
-                $cmv          = (float)$resCmv['cmv'];
+                $totalCompras = (float)($resCompras['total_compras'] ?? 0);
+                $cmv          = (float)($resCmv['cmv'] ?? 0);
 
                 // Indicadores adicionais
                 $margemLucro = $faturamentoBruto - $totalCompras;
                 $percentualCompras = $faturamentoBruto > 0 ? ($totalCompras / $faturamentoBruto) * 100 : 0;
-                $percentualMargem = $faturamentoBruto > 0 ? ($margemLucro / $faturamentoBruto) * 100 : 0;
+                $percentualMargem  = $faturamentoBruto > 0 ? ($margemLucro / $faturamentoBruto) * 100 : 0;
 
-                // === Ranking produtos maior e menor margem (com composição) ===
+                // ============================
+                // ✅ Ranking: última venda unitária x custo ficha
+                // ============================
                 $stmtProd = $pdo->prepare("
-                SELECT 
-                    v.product_id,
-                    p.nome AS descricao,
-                    v.quantidade_total,
-                    v.total_receita,
-                    c.custo_unitario,
-                    (v.quantidade_total * c.custo_unitario) AS cmv,
-                    (v.total_receita - (v.quantidade_total * c.custo_unitario)) AS margem
-                FROM (
+                WITH ultima_venda AS (
                     SELECT
                         b.cod_material AS product_id,
-                        SUM(b.quantidade) AS quantidade_total,
-                        SUM(b.valor_liquido) AS total_receita
+                        (b.valor_unitario / b.quantidade) AS venda_unitaria,
+                        b.data_movimento,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY b.cod_material
+                            ORDER BY b.data_movimento DESC
+                        ) AS rn
                     FROM _bi_sales b
                     WHERE b.system_unit_id = :unit
                       AND DATE(b.data_movimento) BETWEEN :dt_inicio AND :dt_fim
-                    GROUP BY b.cod_material
-                ) v
-                LEFT JOIN (
+                ),
+                custo_ficha AS (
                     SELECT 
                         c.product_id,
                         SUM(c.quantity * p.preco_custo) AS custo_unitario
                     FROM compositions c
-                    LEFT JOIN products p
-                        ON p.codigo = c.insumo_id AND p.system_unit_id = c.system_unit_id
+                    JOIN products p
+                      ON p.codigo = c.insumo_id
+                     AND p.system_unit_id = c.system_unit_id
                     WHERE c.system_unit_id = :unit
                     GROUP BY c.product_id
-                ) c ON c.product_id = v.product_id
-                LEFT JOIN products p 
-                    ON p.codigo = v.product_id AND p.system_unit_id = :unit
-                WHERE c.custo_unitario IS NOT NULL AND c.custo_unitario > 0
-                ORDER BY margem DESC
+                )
+                SELECT
+                    u.product_id,
+                    p.nome AS descricao,
+                    u.venda_unitaria,
+                    cf.custo_unitario,
+                    (u.venda_unitaria - cf.custo_unitario) AS margem_unitaria,
+                    u.data_movimento AS data_ultima_venda
+                FROM ultima_venda u
+                JOIN custo_ficha cf
+                  ON cf.product_id = u.product_id
+                LEFT JOIN products p
+                  ON p.codigo = u.product_id
+                 AND p.system_unit_id = :unit
+                WHERE u.rn = 1
+                  AND u.venda_unitaria IS NOT NULL
+                  AND u.venda_unitaria > 0
+                  AND cf.custo_unitario IS NOT NULL
+                  AND cf.custo_unitario > 0
+                ORDER BY margem_unitaria DESC
             ");
+
                 $stmtProd->execute([
                     ':unit'      => $unitId,
                     ':dt_inicio' => $dt_inicio,
@@ -2271,34 +2290,35 @@ class DashboardController
                 $maior = $produtos[0] ?? null;
                 $menor = $produtos ? end($produtos) : null;
 
-                // Monta saída
+                // ============================
+                // ✅ Monta saída por loja
+                // ============================
                 $resumo[] = [
                     'lojaId'             => $unitId,
-                    'nomeLoja'           => $loja['name'],
+                    'nomeLoja'           => $loja['name'] ?? '',
                     'faturamento_bruto'  => self::formatMoney($faturamentoBruto),
                     'total_compras'      => self::formatMoney($totalCompras),
                     'percentual_compras' => self::formatNumber($percentualCompras) . '%',
                     'margem_lucro'       => self::formatMoney($margemLucro),
                     'percentual_margem'  => self::formatNumber($percentualMargem) . '%',
+                    'cmv'                => self::formatMoney($cmv),
 
                     'produto_maior_margem' => $maior ? [
-                        'codigo'           => $maior['product_id'],
-                        'descricao'        => $maior['descricao'],
-                        'quantidade_total' => (int)$maior['quantidade_total'],
-                        'total_receita'    => self::formatMoney($maior['total_receita']),
-                        'custo_unitario'   => self::formatMoney($maior['custo_unitario']),
-                        'cmv'              => self::formatMoney($maior['cmv']),
-                        'margem'           => self::formatMoney($maior['margem'])
+                        'codigo'            => $maior['product_id'],
+                        'descricao'         => $maior['descricao'],
+                        'venda_unitaria'    => self::formatMoney($maior['venda_unitaria']),
+                        'custo_unitario'    => self::formatMoney($maior['custo_unitario']),
+                        'margem_unitaria'   => self::formatMoney($maior['margem_unitaria']),
+                        'data_ultima_venda' => $maior['data_ultima_venda'],
                     ] : null,
 
                     'produto_menor_margem' => $menor ? [
-                        'codigo'           => $menor['product_id'],
-                        'descricao'        => $menor['descricao'],
-                        'quantidade_total' => (int)$menor['quantidade_total'],
-                        'total_receita'    => self::formatMoney($menor['total_receita']),
-                        'custo_unitario'   => self::formatMoney($menor['custo_unitario']),
-                        'cmv'              => self::formatMoney($menor['cmv']),
-                        'margem'           => self::formatMoney($menor['margem'])
+                        'codigo'            => $menor['product_id'],
+                        'descricao'         => $menor['descricao'],
+                        'venda_unitaria'    => self::formatMoney($menor['venda_unitaria']),
+                        'custo_unitario'    => self::formatMoney($menor['custo_unitario']),
+                        'margem_unitaria'   => self::formatMoney($menor['margem_unitaria']),
+                        'data_ultima_venda' => $menor['data_ultima_venda'],
                     ] : null
                 ];
             }

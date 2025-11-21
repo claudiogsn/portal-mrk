@@ -1832,6 +1832,17 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 $response = ProductController::getUltimasMovimentacoesProduto($requestData['system_unit_id'], $requestData['codigo_produto']);
                 break;
+            case 'listProdutosPorMargem':
+                $response = ProductController::listProdutosPorMargem($requestData['system_unit_id']);
+                break;
+            case 'getRaioXProduto':
+                if (!isset($requestData['system_unit_id']) || !isset($requestData['product_id'])) {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou codigo_produto ausentes'];
+                    break;
+                }
+                $response = ProductController::getRaioXProduto($requestData['system_unit_id'], $requestData['product_id']);
+                break;
 
 
             case 'listProductsByCategory':

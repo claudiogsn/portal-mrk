@@ -1273,5 +1273,320 @@ class ProductController {
         ];
     }
 
+
+    public static function listProdutosPorMargem($system_unit_id): array
+    {
+        global $pdo;
+
+        if (!$system_unit_id) {
+            return [
+                'success' => false,
+                'message' => 'Parâmetro obrigatório: system_unit_id'
+            ];
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+            WITH produtos_venda AS (
+                SELECT 
+                    p.codigo AS product_id,
+                    p.nome   AS descricao
+                FROM products p
+                WHERE p.system_unit_id = :unit
+                  AND p.venda = 1
+            ),
+            ultima_venda AS (
+                SELECT
+                    b.cod_material AS product_id,
+                    (b.valor_unitario / NULLIF(b.quantidade, 0)) AS venda_unitaria,
+                    b.data_movimento,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY b.cod_material
+                        ORDER BY b.data_movimento DESC
+                    ) AS rn
+                FROM _bi_sales b
+                WHERE b.system_unit_id = :unit
+            ),
+            custo_ficha AS (
+                SELECT 
+                    c.product_id,
+                    SUM(c.quantity * p.preco_custo) AS custo_unitario
+                FROM compositions c
+                JOIN products p
+                  ON p.codigo = c.insumo_id
+                 AND p.system_unit_id = c.system_unit_id
+                WHERE c.system_unit_id = :unit
+                GROUP BY c.product_id
+            )
+            SELECT
+                pv.product_id,
+                pv.descricao,
+                uv.venda_unitaria,
+                cf.custo_unitario,
+                (uv.venda_unitaria - cf.custo_unitario) AS margem_unitaria,
+                uv.data_movimento AS data_ultima_venda
+            FROM produtos_venda pv
+            LEFT JOIN ultima_venda uv
+              ON uv.product_id = pv.product_id
+             AND uv.rn = 1
+            LEFT JOIN custo_ficha cf
+              ON cf.product_id = pv.product_id
+            WHERE uv.venda_unitaria IS NOT NULL
+              AND uv.venda_unitaria > 0
+              AND cf.custo_unitario IS NOT NULL
+              AND cf.custo_unitario > 0
+            ORDER BY margem_unitaria DESC
+        ");
+
+            $stmt->execute([
+                ':unit' => (int)$system_unit_id
+            ]);
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $data = array_map(function ($r) {
+                return [
+                    'codigo'            => (int)$r['product_id'],
+                    'descricao'         => $r['descricao'],
+                    'venda_unitaria'    => (float)$r['venda_unitaria'],
+                    'custo_unitario'    => (float)$r['custo_unitario'],
+                    'margem_unitaria'   => (float)$r['margem_unitaria'],
+                    'data_ultima_venda' => $r['data_ultima_venda']
+                ];
+            }, $rows);
+
+            return ['success' => true, 'data' => $data];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    public static function getRaioXProduto($system_unit_id, $product_id, $limite_mov = 10): array
+    {
+        global $pdo;
+
+        if (!$system_unit_id || !$product_id) {
+            return [
+                'success' => false,
+                'message' => 'Parâmetros obrigatórios: system_unit_id, product_id'
+            ];
+        }
+
+        try {
+            // =========================
+            // 1) Produto
+            // =========================
+            $stmtProd = $pdo->prepare("
+            SELECT 
+                codigo, nome, und, preco_custo, preco, venda, insumo, composicao
+            FROM products
+            WHERE system_unit_id = :unit
+              AND codigo = :prod
+            LIMIT 1
+        ");
+            $stmtProd->execute([
+                ':unit' => (int)$system_unit_id,
+                ':prod' => (int)$product_id,
+            ]);
+            $produto = $stmtProd->fetch(PDO::FETCH_ASSOC);
+
+            if (!$produto) {
+                return [
+                    'success' => false,
+                    'message' => 'Produto não encontrado.'
+                ];
+            }
+
+            // =========================
+            // 2) Composição + custo por item
+            // =========================
+            $stmtComp = $pdo->prepare("
+            SELECT 
+                c.id,
+                c.product_id,
+                c.insumo_id,
+                c.quantity AS quantidade_ficha,
+                p.nome AS insumo_nome,
+                p.und AS insumo_unidade,
+                p.preco_custo AS insumo_preco_custo,
+                (c.quantity * p.preco_custo) AS custo_item_ficha
+            FROM compositions c
+            LEFT JOIN products p
+              ON p.codigo = c.insumo_id
+             AND p.system_unit_id = c.system_unit_id
+            WHERE c.system_unit_id = :unit
+              AND c.product_id = :prod
+            ORDER BY p.nome
+        ");
+            $stmtComp->execute([
+                ':unit' => (int)$system_unit_id,
+                ':prod' => (int)$product_id,
+            ]);
+            $composicao = $stmtComp->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!$composicao) {
+                return [
+                    'success' => true,
+                    'data' => [
+                        'produto' => $produto,
+                        'custo_total_ficha' => 0,
+                        'composicao' => []
+                    ]
+                ];
+            }
+
+            // lista de insumos pra buscar movimentação
+            $insumosIds = array_values(array_unique(array_map(fn($i) => (int)$i['insumo_id'], $composicao)));
+
+            // =========================
+            // 3) Histórico de movimentação dos insumos
+            //    + se tipo='c', traz nota por numero_nf = doc
+            // =========================
+            $sqlMov = "
+            WITH insumos AS (
+                SELECT DISTINCT insumo_id
+                FROM compositions
+                WHERE system_unit_id = ?
+                  AND product_id = ?
+            ),
+            movs AS (
+                SELECT
+                    m.id,
+                    m.produto AS insumo_id,
+                    m.doc,
+                    m.tipo,
+                    m.tipo_mov,
+                    m.quantidade,
+                    m.valor,
+                    m.data,
+                    m.created_at,
+
+                    -- dados da nota se for compra (tipo='c')
+                    en.id AS nota_id,
+                    en.numero_nf,
+                    en.fornecedor_id AS nota_fornecedor_id,
+                    en.serie AS nota_serie,
+                    en.chave_acesso AS nota_chave_acesso,
+                    en.data_emissao AS nota_data_emissao,
+                    en.data_entrada AS nota_data_entrada,
+                    en.natureza_operacao AS nota_natureza_operacao,
+                    en.valor_total AS nota_valor_total,
+
+                    ROW_NUMBER() OVER(
+                        PARTITION BY m.produto
+                        ORDER BY m.data DESC, m.id DESC
+                    ) AS rn
+                FROM movimentacao m
+                JOIN insumos i ON i.insumo_id = m.produto
+
+                LEFT JOIN estoque_nota en
+                       ON en.system_unit_id = m.system_unit_id
+                      AND en.numero_nf = m.doc
+                      AND m.tipo = 'c'
+
+                WHERE m.system_unit_id = ?
+                  AND m.tipo_mov NOT IN ('saida','balanco')
+            )
+            SELECT *
+            FROM movs
+            WHERE rn <= ?
+            ORDER BY insumo_id, data DESC, id DESC
+        ";
+
+            $stmtMov = $pdo->prepare($sqlMov);
+
+            $paramsMov = [
+                (int)$system_unit_id,
+                (int)$product_id,
+                (int)$system_unit_id,
+                (int)$limite_mov
+            ];
+
+            $stmtMov->execute($paramsMov);
+            $movimentos = $stmtMov->fetchAll(PDO::FETCH_ASSOC);
+
+            // agrupa movimentos por insumo_id
+            $movPorInsumo = [];
+            foreach ($movimentos as $m) {
+                $iid = (int)$m['insumo_id'];
+                if (!isset($movPorInsumo[$iid])) $movPorInsumo[$iid] = [];
+
+                $movItem = [
+                    'id'         => (int)$m['id'],
+                    'doc'        => $m['doc'],
+                    'tipo'       => $m['tipo'],
+                    'tipo_mov'   => $m['tipo_mov'],
+                    'quantidade' => (float)$m['quantidade'],
+                    'valor'      => $m['valor'] !== null ? (float)$m['valor'] : null,
+                    'data'       => $m['data'],
+                    'created_at' => $m['created_at'],
+                ];
+
+                // se tiver nota ligada, anexa bloco "nota"
+                if (!empty($m['nota_id'])) {
+                    $movItem['nota'] = [
+                        'id'                => (int)$m['nota_id'],
+                        'numero_nf'         => $m['numero_nf'],
+                        'fornecedor_id'     => (int)$m['nota_fornecedor_id'],
+                        'serie'             => $m['nota_serie'],
+                        'chave_acesso'      => $m['nota_chave_acesso'],
+                        'data_emissao'      => $m['nota_data_emissao'],
+                        'data_entrada'      => $m['nota_data_entrada'],
+                        'natureza_operacao' => $m['nota_natureza_operacao'],
+                        'valor_total'       => $m['nota_valor_total'] !== null ? (float)$m['nota_valor_total'] : null,
+                    ];
+                }
+
+                $movPorInsumo[$iid][] = $movItem;
+            }
+
+            // =========================
+            // 4) Monta retorno final
+            // =========================
+            $custoTotalFicha = 0;
+
+            $composicaoFinal = array_map(function($i) use (&$custoTotalFicha, $movPorInsumo) {
+                $custoItem = (float)($i['custo_item_ficha'] ?? 0);
+                $custoTotalFicha += $custoItem;
+
+                $insumoId = (int)$i['insumo_id'];
+
+                return [
+                    'insumo_id'           => $insumoId,
+                    'insumo_nome'         => $i['insumo_nome'],
+                    'insumo_unidade'      => $i['insumo_unidade'],
+                    'quantidade_ficha'    => (float)$i['quantidade_ficha'],
+                    'insumo_preco_custo'  => (float)($i['insumo_preco_custo'] ?? 0),
+                    'custo_item_ficha'    => $custoItem,
+                    'movimentacoes'       => $movPorInsumo[$insumoId] ?? []
+                ];
+            }, $composicao);
+
+            return [
+                'success' => true,
+                'data' => [
+                    'produto' => [
+                        'codigo'      => (int)$produto['codigo'],
+                        'nome'        => $produto['nome'],
+                        'unidade'     => $produto['und'],
+                        'preco_custo' => $produto['preco_custo'] !== null ? (float)$produto['preco_custo'] : null,
+                        'preco_venda' => $produto['preco'] !== null ? (float)$produto['preco'] : null,
+                        'venda'       => (int)$produto['venda'],
+                        'insumo'      => (int)$produto['insumo'],
+                        'composicao'  => (int)$produto['composicao'],
+                    ],
+                    'custo_total_ficha' => $custoTotalFicha,
+                    'composicao' => $composicaoFinal
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
+
 }
 ?>
