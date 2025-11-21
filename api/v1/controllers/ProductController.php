@@ -304,18 +304,52 @@ class ProductController {
     public static function listProdutosDetalhado($unit_id) {
         global $pdo;
 
+        // 1. Query SQL: Garante 0 em vez de NULL para preco_custo e saldo
         $stmt = $pdo->prepare("
-        SELECT 
-            id, codigo, nome, und, preco, preco_custo, categoria,
-            venda, composicao, insumo,compravel, estoque_minimo, saldo, status,sku_zig as codigo_pdv
-        FROM products
-        WHERE system_unit_id = :unit_id
-        ORDER BY nome
-    ");
+    SELECT 
+        id, codigo, nome, und, preco,
+        IFNULL(preco_custo, 0) AS preco_custo,
+        categoria,
+        venda, composicao, insumo, compravel, estoque_minimo, 
+        IFNULL(saldo, 0.00) AS saldo,
+        status,
+        sku_zig AS codigo_pdv
+    FROM products
+    WHERE system_unit_id = :unit_id
+    ORDER BY nome
+");
         $stmt->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
         $stmt->execute();
 
-        return ['success' => true, 'produtos' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+        $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Lógica de Formatação Condicional (Ajuste do Frontend levado ao Backend)
+        $produtosFormatados = array_map(function($p) {
+            // O valor do INSUMO vem como string '1' ou '0' do banco
+            if (isset($p['insumo']) && $p['insumo'] == 1) {
+
+                // --- Lógica para preco_custo ---
+                // Converte para float para garantir precisão e usa number_format para R$
+                $preco = (float)$p['preco_custo'];
+                // number_format(valor, decimais, separador_decimal, separador_milhar)
+                $p['preco_custo'] = 'R$ ' . number_format($preco, 2, '.', '');
+
+                // --- Lógica para saldo ---
+                $saldo = (float)$p['saldo'];
+                // Se o saldo for 0, formatamos para 0.00. Se for um número, formatamos com 2 decimais.
+                $p['saldo'] = number_format($saldo, 2, '.', '');
+
+            } else {
+                // Se não for insumo, define como traço
+                $p['preco_custo'] = '-';
+                $p['saldo'] = '-';
+            }
+
+            return $p;
+        }, $produtos);
+
+        // 3. Retorna o array de produtos formatados
+        return ['success' => true, 'produtos' => $produtosFormatados];
     }
 
     public static function getProximoCodigoProduto($unit_id, $is_insumo)

@@ -325,7 +325,6 @@
         }
     }
 
-
     $(document).ready(() => {
 
         $('#filtroVenda, #filtroComposicao, #filtroInsumo, #filtroCompravel').on('change', aplicarFiltros);
@@ -562,9 +561,6 @@
         });
     }
 
-
-
-
     async function carregarProdutos() {
         const res = await axios.post(baseUrl, {
             method: 'listProdutosDetalhado',
@@ -634,16 +630,16 @@
             if (p.insumo == 1) tags += '<span class="label label-warning" style="margin-right:2px;">Insumo</span>';
             if (p.compravel == 1) tags += '<span class="label label-purple" style="margin-right:2px; background-color: #7e57c2;">Comprável</span>';
 
-            if (p.insumo == 1) {
-                const preco = parseFloat(p.preco_custo);
-                const saldo = parseFloat(p.saldo);
-
-                p.preco_custo = isNaN(preco) ? 'R$ 0.00' : `R$ ${preco.toFixed(2)}`;
-                p.saldo = isNaN(saldo) ? '-' : saldo.toFixed(2);
-            } else {
-                p.preco_custo = '-';
-                p.saldo = '-';
-            }
+            // if (p.insumo == 1) {
+            //     const preco = parseFloat(p.preco_custo);
+            //     const saldo = parseFloat(p.saldo);
+            //
+            //     p.preco_custo = isNaN(preco) ? 'R$ 0.00' : `R$ ${preco.toFixed(2)}`;
+            //     p.saldo = isNaN(saldo) ? '-' : saldo.toFixed(2);
+            // } else {
+            //     p.preco_custo = '-';
+            //     p.saldo = '-';
+            // }
 
 
             tbody.append(`
@@ -672,7 +668,6 @@
         }
     }
 
-
     async function loadCategories(selectedCategory = null) {
         const response = await axios.post(baseUrl, {
             method: 'listCategorias',
@@ -690,7 +685,6 @@
             select.val(selectedCategory);
         }
     }
-
 
     function withModalFocusDisabled(fn) {
         // guarda a função original do Bootstrap que força foco no modal

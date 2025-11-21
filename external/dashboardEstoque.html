@@ -44,30 +44,38 @@
         </div>
     </div>
 
+    <!-- ✅ Cards ajustados conforme novo totalizado -->
     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Faturamento Bruto</div>
+            <div class="text-gray-500 text-sm">Faturamento</div>
             <div class="text-2xl font-bold animate-number" id="faturamentoBruto">R$ 0,00</div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
-            <div class="text-gray-500 text-sm">CMV</div>
-            <div class="text-2xl font-bold animate-number" id="cmv">R$ 0,00</div>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
-            <div class="text-gray-500 text-sm">% CMV</div>
-            <div class="text-2xl font-bold animate-number" id="percentualCmv">0%</div>
-        </div>
+
         <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-            <div class="text-gray-500 text-sm">Total Compras</div>
+            <div class="text-gray-500 text-sm">Compras</div>
             <div class="text-2xl font-bold animate-number" id="totalCompras">R$ 0,00</div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
-            <div class="text-gray-500 text-sm">Total Saídas</div>
-            <div class="text-2xl font-bold animate-number" id="totalSaidas">R$ 0,00</div>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
+            <div class="text-gray-500 text-sm">% Compras x Faturamento</div>
+            <div class="text-2xl font-bold animate-number" id="percentualCompras">0%</div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
-            <div class="text-gray-500 text-sm">Desperdício</div>
-            <div class="text-2xl font-bold animate-number" id="desperdicio">R$ 0,00</div>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
+            <div class="text-gray-500 text-sm">% Margem de Lucro</div>
+            <div class="text-2xl font-bold animate-number" id="percentualMargem">0%</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-600">
+            <div class="text-gray-500 text-sm">Produto Maior Margem</div>
+            <div class="text-sm font-semibold truncate" id="produtoMaiorMargemDesc">-</div>
+            <div class="text-2xl font-bold animate-number" id="produtoMaiorMargemValor">R$ 0,00</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-rose-600">
+            <div class="text-gray-500 text-sm">Produto Menor Margem</div>
+            <div class="text-sm font-semibold truncate" id="produtoMenorMargemDesc">-</div>
+            <div class="text-2xl font-bold animate-number" id="produtoMenorMargemValor">R$ 0,00</div>
         </div>
     </div>
 
@@ -143,7 +151,6 @@
 
     let grupoId = null;
 
-
     let lojasGrupo = [];
     let resumoEstoqueGrupo = [];
     let evolucaoCmvGrupo = [];
@@ -151,11 +158,13 @@
     let cmvProdutosGrupo = [];
     let cmvCategoriasGrupo = [];
     let cmvHoraGrupo = [];
+    let horasGrupo = [];
     let datasEvolucao = [];
     let isTopCompras = true;
 
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
         const element = document.getElementById(id);
+        if (!element) return;
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
@@ -169,6 +178,24 @@
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
+    }
+
+    // ✅ helpers para novo formato "R$ 1.234,56" e "4,79%"
+    function parseBRL(v) {
+        if (v == null) return 0;
+        if (typeof v === 'number') return v;
+        return Number(
+            String(v)
+                .replace(/[^\d,-]/g, '')  // tira R$, espaços, etc
+                .replace(/\./g, '')       // remove milhar
+                .replace(',', '.')        // troca vírgula decimal
+        ) || 0;
+    }
+
+    function parsePercent(v) {
+        if (v == null) return 0;
+        if (typeof v === 'number') return v;
+        return Number(String(v).replace('%','').replace('.','').replace(',','.')) || 0;
     }
 
     function setRange(tipo) {
@@ -235,7 +262,6 @@
             filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`;
         });
     }
-
 
     async function fetchData() {
         const startDate = document.getElementById('startDate').value;
@@ -335,8 +361,8 @@
             token,
             data: { grupoId, dt_inicio, dt_fim }
         });
-        cmvHoraGrupo = response.data.lojas;
-        horasGrupo = response.data.horas;
+        cmvHoraGrupo = response.data.lojas || [];
+        horasGrupo = response.data.horas || [];
     }
 
     function aplicarFiltroLoja() {
@@ -354,16 +380,21 @@
         renderTopProdutos(filtradoCompras, filtradoCmvProdutos);
         renderChartCategorias(agregarCategorias(filtradoCategorias));
         renderChartTopProdutos(agregarProdutos(filtradoCmvProdutos));
-        renderChartCmvHora(filtradoHora, horasGrupo);
-        renderDonutLojasComSetas(filtradoResumo);
 
+        // guarda se não existir os containers
+        if (document.getElementById('chartCmvHora')) {
+            renderChartCmvHora(filtradoHora, horasGrupo);
+        }
+        if (document.getElementById('main')) {
+            renderDonutLojasComSetas(filtradoResumo);
+        }
     }
 
     function agregarCategorias(data) {
         const agregados = {};
 
         data.forEach(loja => {
-            loja.categorias.forEach(cat => {
+            (loja.categorias || []).forEach(cat => {
                 const nome = cat.name.trim();
                 if (!agregados[nome]) {
                     agregados[nome] = { nome: nome, valor: 0 };
@@ -372,7 +403,6 @@
             });
         });
 
-        // Convertendo para array e ordenando por valor
         return Object.values(agregados).sort((a, b) => b.valor - a.valor);
     }
 
@@ -380,7 +410,7 @@
         const agregados = {};
 
         data.forEach(loja => {
-            loja.produtos.forEach(prod => {
+            (loja.produtos || []).forEach(prod => {
                 const nome = prod.name.trim();
                 if (!agregados[nome]) {
                     agregados[nome] = { nome: nome, valor: 0 };
@@ -389,7 +419,6 @@
             });
         });
 
-        // Convertendo para array e ordenando por valor
         return Object.values(agregados).sort((a, b) => b.valor - a.valor).slice(0, 5);
     }
 
@@ -397,14 +426,13 @@
         const chartDom = document.getElementById('chartCmvHora');
         const myChart = echarts.init(chartDom);
 
-        // Ordena do maior para o menor
         const lojasOrdenadas = [...lojas]
             .sort((a, b) => {
                 const totalA = a.valores.reduce((sum, v) => sum + v, 0);
                 const totalB = b.valores.reduce((sum, v) => sum + v, 0);
                 return totalB - totalA;
             })
-            .reverse(); // ← INVERTE para que o maior fique no TOPO da pilha
+            .reverse();
 
         const series = lojasOrdenadas.map(loja => ({
             name: loja.nome,
@@ -421,9 +449,7 @@
                 trigger: 'axis',
                 axisPointer: {
                     type: 'cross',
-                    label: {
-                        backgroundColor: '#6a7985'
-                    }
+                    label: { backgroundColor: '#6a7985' }
                 },
                 formatter: function (params) {
                     const sorted = [...params].sort((a, b) => b.value - a.value);
@@ -452,18 +478,8 @@
                 bottom: '10%',
                 containLabel: true
             },
-            xAxis: [
-                {
-                    type: 'category',
-                    boundaryGap: false,
-                    data: hours
-                }
-            ],
-            yAxis: [
-                {
-                    type: 'value'
-                }
-            ],
+            xAxis: [{ type: 'category', boundaryGap: false, data: hours }],
+            yAxis: [{ type: 'value' }],
             series
         };
 
@@ -495,15 +511,11 @@
                 right: '4%',
                 containLabel: true
             },
-            xAxis: {
-                type: 'value',
-            },
+            xAxis: { type: 'value' },
             yAxis: {
                 type: 'category',
                 data: nomes,
-                axisLabel: {
-                    fontSize: 10
-                }
+                axisLabel: { fontSize: 10 }
             },
             series: [
                 {
@@ -513,7 +525,6 @@
                     itemStyle: {
                         borderRadius: [4, 4, 4, 4],
                         color: function(params) {
-                            // Cores diferentes para cada barra
                             const colorList = ['#c23531', '#2f4554', '#61a0a8', '#d48265', '#91c7ae'];
                             return colorList[params.dataIndex];
                         }
@@ -537,10 +548,7 @@
                         minimumFractionDigits: 2
                     })}`
             },
-            legend: {
-                top: '5%',
-                left: 'center'
-            },
+            legend: { top: '5%', left: 'center' },
             series: [
                 {
                     name: 'CMV por Categoria',
@@ -548,23 +556,12 @@
                     radius: ['40%', '70%'],
                     avoidLabelOverlap: false,
                     padAngle: 5,
-                    itemStyle: {
-                        borderRadius: 10
-                    },
-                    label: {
-                        show: false,
-                        position: 'center'
-                    },
+                    itemStyle: { borderRadius: 10 },
+                    label: { show: false, position: 'center' },
                     emphasis: {
-                        label: {
-                            show: true,
-                            fontSize: 18,
-                            fontWeight: 'bold'
-                        }
+                        label: { show: true, fontSize: 18, fontWeight: 'bold' }
                     },
-                    labelLine: {
-                        show: false
-                    },
+                    labelLine: { show: false },
                     data: data.map(item => ({
                         name: item.nome,
                         value: parseFloat(item.valor)
@@ -576,24 +573,54 @@
         myChart.setOption(option);
     }
 
+    // ✅ Ajustado para NOVO totalizado (faturamento, compras, %compras, %margem, maior/menor margem)
     function renderResumo(data) {
-        let totalBruto = 0, totalCmv = 0, totalCompras = 0, totalSaidas = 0, totalDesperdicio = 0;
+        let totalFaturamento = 0;
+        let totalCompras = 0;
+        let totalMargemLucro = 0;
+
+        let melhorProduto = null; // maior margem
+        let piorProduto = null;   // menor margem
+
         data.forEach(loja => {
-            totalBruto += parseFloat(loja.faturamento_bruto);
-            totalCmv += parseFloat(loja.cmv);
-            totalCompras += parseFloat(loja.total_compras);
-            totalSaidas += parseFloat(loja.total_saidas);
-            totalDesperdicio += parseFloat(loja.desperdicio);
+            totalFaturamento += parseBRL(loja.faturamento_bruto);
+            totalCompras += parseBRL(loja.total_compras);
+            totalMargemLucro += parseBRL(loja.margem_lucro);
+
+            const pm = loja.produto_maior_margem;
+            if (pm) {
+                const margemPm = parseBRL(pm.margem);
+                if (!melhorProduto || margemPm > melhorProduto._margemNum) {
+                    melhorProduto = { ...pm, _margemNum: margemPm };
+                }
+            }
+
+            const pn = loja.produto_menor_margem;
+            if (pn) {
+                const margemPn = parseBRL(pn.margem);
+                if (!piorProduto || margemPn < piorProduto._margemNum) {
+                    piorProduto = { ...pn, _margemNum: margemPn };
+                }
+            }
         });
 
-        const percentualCmv = totalBruto > 0 ? (totalCmv / totalBruto) * 100 : 0;
+        const percCompras = totalFaturamento > 0 ? (totalCompras / totalFaturamento) * 100 : 0;
+        const percMargem  = totalFaturamento > 0 ? (totalMargemLucro / totalFaturamento) * 100 : 0;
 
-        animateValue('faturamentoBruto', 0, totalBruto, 1000, true);
-        animateValue('cmv', 0, totalCmv, 1000, true);
-        animateValue('percentualCmv', 0, percentualCmv, 1000, false, true);
+        animateValue('faturamentoBruto', 0, totalFaturamento, 1000, true);
         animateValue('totalCompras', 0, totalCompras, 1000, true);
-        animateValue('totalSaidas', 0, totalSaidas, 1000, true);
-        animateValue('desperdicio', 0, totalDesperdicio, 1000, true);
+        animateValue('percentualCompras', 0, percCompras, 1000, false, true);
+        animateValue('percentualMargem', 0, percMargem, 1000, false, true);
+
+        // maior margem
+        const maiorDescEl = document.getElementById('produtoMaiorMargemDesc');
+        if (maiorDescEl) maiorDescEl.textContent = melhorProduto ? melhorProduto.descricao : '-';
+        animateValue('produtoMaiorMargemValor', 0, melhorProduto ? melhorProduto._margemNum : 0, 1000, true);
+
+        // menor margem
+        const menorDescEl = document.getElementById('produtoMenorMargemDesc');
+        if (menorDescEl) menorDescEl.textContent = piorProduto ? piorProduto.descricao : '-';
+        animateValue('produtoMenorMargemValor', 0, piorProduto ? piorProduto._margemNum : 0, 1000, true);
     }
 
     function renderEvolucaoCmv(lojas, labels) {
@@ -608,7 +635,6 @@
             symbolSize: 8,
             data: loja.valores
         }));
-
 
         const option = {
             title: { text: ' ', left: 'center' },
@@ -649,10 +675,10 @@
         const dataset = [...data]
             .map(loja => ({
                 name: loja.nomeLoja.length > 25 ? loja.nomeLoja.slice(0, 25) + '...' : loja.nomeLoja,
-                value: parseFloat(loja.cmv)
+                value: parseBRL(loja.cmv)
             }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 10); // top 10
+            .slice(0, 10);
 
         const total = dataset.reduce((sum, l) => sum + l.value, 0);
 
@@ -668,9 +694,7 @@
                 `;
                 }
             },
-            legend: {
-                top: 'bottom'
-            },
+            legend: { top: 'bottom' },
             series: [
                 {
                     name: 'CMV',
@@ -699,10 +723,7 @@
                         show: true,
                         length: 15,
                         length2: 10,
-                        lineStyle: {
-                            width: 1,
-                            color: '#aaa'
-                        }
+                        lineStyle: { width: 1, color: '#aaa' }
                     },
                     data: dataset
                 }
@@ -735,7 +756,7 @@
         const agregados = {};
 
         data.forEach(loja => {
-            loja.produtos.forEach(prod => {
+            (loja.produtos || []).forEach(prod => {
                 const nome = prod.name.trim();
                 if (!agregados[nome]) {
                     agregados[nome] = { nome: nome, valor: 0 };
@@ -753,7 +774,7 @@
         const agregados = {};
 
         data.forEach(loja => {
-            loja.produtos.forEach(prod => {
+            (loja.produtos || []).forEach(prod => {
                 const nome = prod.name.trim();
                 if (!agregados[nome]) {
                     agregados[nome] = { nome: nome, valor: 0 };
