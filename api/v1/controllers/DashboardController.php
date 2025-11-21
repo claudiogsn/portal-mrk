@@ -2371,17 +2371,25 @@ class DashboardController
                 $unitId = $loja['system_unit_id'];
 
                 $stmt = $pdo->prepare("
-                SELECT 
-                    *
-                FROM nota_fiscal_entrada
-                WHERE system_unit_id = :unitId
-                  AND data_entrada BETWEEN :inicio AND :fim
+                SELECT
+                    en.id,
+                    en.system_unit_id,
+                    f.razao AS fornecedor,
+                    en.numero_nf AS documento,
+                    DATE(en.data_entrada) AS data_entrada,
+                    DATE(en.data_emissao) AS data_emissao,
+                    en.valor_total
+                FROM estoque_nota en
+                LEFT JOIN financeiro_fornecedor f ON f.id = en.fornecedor_id
+                WHERE en.system_unit_id = :unitId
+                  AND DATE(en.data_entrada) BETWEEN :inicio AND :fim
                 ORDER BY fornecedor DESC
             ");
+
                 $stmt->execute([
                     ':unitId' => $unitId,
                     ':inicio' => $dt_inicio,
-                    ':fim' => $dt_fim
+                    ':fim'    => $dt_fim
                 ]);
 
                 $notas = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2394,6 +2402,7 @@ class DashboardController
             }
 
             return ['success' => true, 'data' => $saida];
+
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }

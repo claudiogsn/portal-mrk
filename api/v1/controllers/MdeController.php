@@ -26,7 +26,6 @@ class MdeController
         }
         return rtrim(self::PUBLIC_URL_PROD, '/') . '/';
     }
-
     public static function listarChavesNfeComStatusImportacao(int $system_unit_id, string $data_inicial, string $data_final): array
     {
         global $pdo;
@@ -161,16 +160,6 @@ class MdeController
             return ['success' => false, 'message' => 'Erro inesperado: ' . $e->getMessage()];
         }
     }
-
-    /**
-     * Baixa o arquivo (PDF ou XML) da NF-e na PlugStorage e retorna APENAS o base64.
-     *
-     * @param int    $system_unit_id
-     * @param string $chaveAcesso  44 dígitos
-     * @param string $tipo         'pdf' ou 'xml' (case-insensitive)
-     * @return array              base64 do arquivo solicitado
-     * @throws Exception           em caso de validação ou falha na API
-     */
     public static function baixarArquivo(int $system_unit_id, string $chaveAcesso, string $tipo): array
     {
         // normalizações/validações
@@ -266,8 +255,6 @@ class MdeController
             'content' => $base64
         ];
     }
-
-
     public static function importNotasPorChaves(int $system_unit_id, array $chaves): array
     {
         global $pdo;
@@ -512,10 +499,6 @@ class MdeController
             return ['success' => false, 'message' => 'Erro inesperado: ' . $e->getMessage()];
         }
     }
-
-    /**
-     * @throws Exception
-     */
     private static function mapPlugJsonToNota(array $plugJson): array
     {
         $xml = $plugJson['data']['xml'] ?? null;
@@ -621,10 +604,6 @@ class MdeController
             'duplicatas'        => $duplicatas
         ];
     }
-
-    /**
-     * @throws Exception
-     */
     public static function getCreateFornecedor($system_unit_id, $fornecedorData)
     {
         global $pdo;
@@ -664,7 +643,6 @@ class MdeController
 
         return $pdo->lastInsertId();
     }
-
     public static function importNotaFiscal($system_unit_id, $notaJson): array
     {
         global $pdo;
@@ -833,7 +811,6 @@ class MdeController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-
     public static function listarNotas($system_unit_id): array
     {
         global $pdo;
