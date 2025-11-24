@@ -1,103 +1,135 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard de Estoque</title>
+
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
     <style>
-        .animate-number {
-            transition: all 1s ease-in-out;
+        :root{
+            --mrk-blue: #0B46AC;
+            --mrk-green: #08A794;
+            --mrk-gray: #EBEBEB;
+            --mrk-black: #191F2A;
         }
 
-        .loader {
-            border-top-color: #3b82f6;
+        .animate-number { transition: all 1s ease-in-out; }
+        .loader { border-top-color: var(--mrk-blue); }
+
+        /* botões padrão */
+        .btn-mrk {
+            background: color-mix(in srgb, var(--mrk-blue) 12%, white);
+            color: var(--mrk-blue);
+            border: 1px solid color-mix(in srgb, var(--mrk-blue) 25%, white);
+        }
+        .btn-mrk:hover {
+            background: color-mix(in srgb, var(--mrk-blue) 20%, white);
         }
     </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+<body class="text-gray-800" style="background: var(--mrk-gray);">
+
 <div class="p-6">
     <div class="mb-6">
         <div class="flex items-center gap-4 flex-wrap">
-            <button onclick="setRange('hoje')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Hoje</button>
-            <button onclick="setRange('ontem')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Ontem</button>
-            <button onclick="setRange('7dias')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Últimos 7 dias</button>
-            <button onclick="setRange('mes')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded shadow">Último mês</button>
+            <button onclick="setRange('hoje')" class="btn-mrk px-3 py-1 rounded shadow">Hoje</button>
+            <button onclick="setRange('ontem')" class="btn-mrk px-3 py-1 rounded shadow">Ontem</button>
+            <button onclick="setRange('7dias')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 7 dias</button>
+            <button onclick="setRange('mes')" class="btn-mrk px-3 py-1 rounded shadow">Último mês</button>
 
-            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
-            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow" />
+            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
+            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
 
-            <select id="filtroGrupo" class="border p-2 rounded-md shadow">
+            <select id="filtroGrupo" class="border p-2 rounded-md shadow bg-white">
                 <option value="">Todos os Grupos</option>
             </select>
 
-            <select id="filtroLoja" class="border p-2 rounded-md shadow">
+            <select id="filtroLoja" class="border p-2 rounded-md shadow bg-white">
                 <option value="">Todas as lojas</option>
             </select>
         </div>
     </div>
 
-    <!-- ✅ Cards ajustados conforme novo totalizado -->
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div class="text-gray-500 text-sm">Faturamento</div>
-            <div class="text-2xl font-bold animate-number" id="faturamentoBruto">R$ 0,00</div>
+    <!-- ✅ CARDS NA PALETA -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+        <!-- Faturamento -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
+             style="border-color: var(--mrk-blue);">
+            <div class="text-4xl" style="color: var(--mrk-blue);">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div>
+                <div class="text-sm font-semibold" style="color: var(--mrk-black);">Faturamento</div>
+                <div class="text-3xl font-extrabold animate-number" id="faturamentoBruto"
+                     style="color: var(--mrk-black);">R$ 0,00</div>
+            </div>
         </div>
 
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-            <div class="text-gray-500 text-sm">Compras</div>
-            <div class="text-2xl font-bold animate-number" id="totalCompras">R$ 0,00</div>
+        <!-- Compras -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
+             style="border-color: var(--mrk-green);">
+            <div class="text-4xl" style="color: var(--mrk-green);">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div>
+                <div class="text-sm font-semibold" style="color: var(--mrk-black);">Compras</div>
+                <div class="text-3xl font-extrabold animate-number" id="totalCompras"
+                     style="color: var(--mrk-black);">R$ 0,00</div>
+            </div>
         </div>
 
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-amber-500">
-            <div class="text-gray-500 text-sm">% Compras x Faturamento</div>
-            <div class="text-2xl font-bold animate-number" id="percentualCompras">0%</div>
+        <!-- % Compras x Faturamento -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
+             style="border-color: var(--mrk-black);">
+            <div class="text-4xl" style="color: var(--mrk-black);">
+                <i class="fas fa-percent"></i>
+            </div>
+            <div>
+                <div class="text-sm font-semibold" style="color: var(--mrk-black);">% Compras x Faturamento</div>
+                <div class="text-3xl font-extrabold animate-number" id="percentualCompras"
+                     style="color: var(--mrk-black);">0%</div>
+            </div>
         </div>
 
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-purple-500">
-            <div class="text-gray-500 text-sm">% Margem de Lucro</div>
-            <div class="text-2xl font-bold animate-number" id="percentualMargem">0%</div>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-emerald-600">
-            <div class="text-gray-500 text-sm">Produto Maior Margem</div>
-            <div class="text-sm font-semibold truncate" id="produtoMaiorMargemDesc">-</div>
-            <div class="text-2xl font-bold animate-number" id="produtoMaiorMargemValor">R$ 0,00</div>
-        </div>
-
-        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-rose-600">
-            <div class="text-gray-500 text-sm">Produto Menor Margem</div>
-            <div class="text-sm font-semibold truncate" id="produtoMenorMargemDesc">-</div>
-            <div class="text-2xl font-bold animate-number" id="produtoMenorMargemValor">R$ 0,00</div>
-        </div>
     </div>
 
-    <!-- ✅ Evolução -->
-    <div class="flex flex-col lg:flex-row gap-6 mb-6">
-        <div class="w-full bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4">Evolução do Compras x Faturamento</h2>
-            <div id="chartCmvDiario" style="width: 100%; height: 300px;"></div>
-        </div>
-    </div>
-
-    <!-- ✅ Top 5 Produtos + Top 5 Fornecedores lado a lado -->
+    <!-- ✅ Evolução: 2 gráficos de barras verticais -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <!-- Top 5 Produtos -->
+        <div class="w-full bg-white p-6 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">
+                Evolução do Faturamento
+            </h2>
+            <div id="chartFaturamentoDiario" style="width:100%; height:320px;"></div>
+        </div>
+
+        <div class="w-full bg-white p-6 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">
+                Evolução das Compras
+            </h2>
+            <div id="chartComprasDiario" style="width:100%; height:320px;"></div>
+        </div>
+    </div>
+
+    <!-- ✅ Top 5 Produtos + Fornecedores -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="bg-white p-6 h-[350px] rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4">Top 5 Produtos</h2>
+            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">Top 5 Produtos</h2>
             <div id="chartTopProdutos" class="w-full h-full"></div>
         </div>
 
-        <!-- Top 5 Fornecedores -->
         <div class="bg-white p-6 h-[350px] rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4">Top 5 Fornecedores</h2>
+            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">Top 5 Fornecedores</h2>
             <div id="chartTopFornecedores" class="w-full h-full"></div>
         </div>
     </div>
@@ -113,17 +145,23 @@
     const user_id = parseInt(urlParams.get('user_id'));
     const token = urlParams.get('token');
 
-    let grupoId = null;
+    // 🎨 PALETA MRK
+    const MRK = {
+        blue:  '#0B46AC',
+        green: '#08A794',
+        gray:  '#EBEBEB',
+        black: '#191F2A',
+        series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480'] // opacidade ainda na paleta
+    };
 
-    // ✅ flag pra desenhar CMV no gráfico de evolução (default desativado)
-    let showCmvLine = false;
+    let grupoId = null;
 
     let lojasGrupo = [];
     let resumoEstoqueGrupo = [];
     let evolucaoCmvGrupo = [];
+    let datasEvolucao = [];
     let cmvProdutosGrupo = [];
     let topFornecedoresGrupo = [];
-    let datasEvolucao = [];
 
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
         const element = document.getElementById(id);
@@ -146,7 +184,6 @@
         window.requestAnimationFrame(step);
     }
 
-    // ✅ helpers para strings "R$ 1.234,56" e "4,79%"
     function parseBRL(v) {
         if (v == null) return 0;
         if (typeof v === 'number') return v;
@@ -210,12 +247,9 @@
 
             resetarEstadoDashboard();
             limparCharts();
-
             atualizarFiltroLoja();
 
-            const filtroLoja = document.getElementById('filtroLoja');
-            filtroLoja.value = "";
-
+            document.getElementById('filtroLoja').value = "";
             fetchData();
         });
 
@@ -264,23 +298,19 @@
     function resetarEstadoDashboard() {
         resumoEstoqueGrupo = [];
         evolucaoCmvGrupo = [];
+        datasEvolucao = [];
         cmvProdutosGrupo = [];
         topFornecedoresGrupo = [];
-        datasEvolucao = [];
     }
 
     function limparCharts() {
-        const domEvol = document.getElementById('chartCmvDiario');
-        const domTop = document.getElementById('chartTopProdutos');
-        const domForn = document.getElementById('chartTopFornecedores');
-
-        const instEvol = domEvol ? echarts.getInstanceByDom(domEvol) : null;
-        const instTop  = domTop  ? echarts.getInstanceByDom(domTop)  : null;
-        const instForn = domForn ? echarts.getInstanceByDom(domForn) : null;
-
-        if (instEvol) instEvol.dispose();
-        if (instTop) instTop.dispose();
-        if (instForn) instForn.dispose();
+        const ids = ['chartFaturamentoDiario','chartComprasDiario','chartTopProdutos','chartTopFornecedores'];
+        ids.forEach(id => {
+            const dom = document.getElementById(id);
+            if (!dom) return;
+            const inst = echarts.getInstanceByDom(dom);
+            if (inst) inst.dispose();
+        });
     }
 
     async function carregarLojasGrupo() {
@@ -354,9 +384,74 @@
         const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
 
         renderResumo(filtradoResumo);
-        renderEvolucaoCmv(filtradoEvolucao, datasEvolucao);
+        renderEvolucaoBarras(filtradoEvolucao, datasEvolucao);
         renderChartTopProdutos(agregarProdutos(filtradoCmvProdutos));
         renderChartTopFornecedores(agregarFornecedores(filtradoFornecedores));
+    }
+
+    function renderEvolucaoBarras(lojas, labels) {
+        const domFat = document.getElementById('chartFaturamentoDiario');
+        const domComp = document.getElementById('chartComprasDiario');
+        if (!domFat || !domComp) return;
+
+        const oldFat = echarts.getInstanceByDom(domFat);
+        const oldComp = echarts.getInstanceByDom(domComp);
+        if (oldFat) oldFat.dispose();
+        if (oldComp) oldComp.dispose();
+
+        const chartFat = echarts.init(domFat);
+        const chartComp = echarts.init(domComp);
+
+        const seriesFat = lojas.map((loja, idx) => ({
+            name: loja.nome,
+            type: 'bar',
+            stack: lojas.length > 1 ? 'total' : undefined,
+            data: loja.faturamento || [],
+            itemStyle: { color: MRK.series[idx % MRK.series.length] }
+        }));
+
+        const seriesComp = lojas.map((loja, idx) => ({
+            name: loja.nome,
+            type: 'bar',
+            stack: lojas.length > 1 ? 'total' : undefined,
+            data: loja.compras || [],
+            itemStyle: { color: MRK.series[idx % MRK.series.length] }
+        }));
+
+        const baseOption = (series) => ({
+            color: MRK.series,
+            legend: { top: 0, textStyle:{ color: MRK.black } },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: (params) => {
+                    let html = `<b>${params[0].axisValue}</b><br/>`;
+                    params.forEach(p => {
+                        html += `
+                            <span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:4px;border-radius:50%"></span>
+                            ${p.seriesName}: <b>R$ ${Number(p.value || 0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</b><br/>
+                        `;
+                    });
+                    return html;
+                }
+            },
+            grid: { left: '3%', right: '4%', bottom: '8%', top: 40, containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: labels,
+                axisLabel: { fontSize: 11, rotate: labels.length > 10 ? 35 : 0, color: MRK.black },
+                axisLine: { lineStyle: { color: MRK.black } }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { formatter: v => `R$ ${Number(v).toLocaleString('pt-BR')}`, color: MRK.black },
+                splitLine: { lineStyle: { color: MRK.gray } }
+            },
+            series
+        });
+
+        chartFat.setOption(baseOption(seriesFat));
+        chartComp.setOption(baseOption(seriesComp));
     }
 
     function agregarProdutos(data) {
@@ -375,18 +470,14 @@
 
     function agregarFornecedores(data) {
         const agregados = {};
-
         data.forEach(loja => {
             (loja.fornecedores || []).forEach(f => {
                 const nome = (f.fornecedor || '').trim();
-                if (!agregados[nome]) {
-                    agregados[nome] = { nome, valor: 0, qtd_notas: 0 };
-                }
+                if (!agregados[nome]) agregados[nome] = { nome, valor: 0, qtd_notas: 0 };
                 agregados[nome].valor += parseFloat(f.valor_total || 0);
                 agregados[nome].qtd_notas += parseInt(f.qtd_notas || 0);
             });
         });
-
         return Object.values(agregados)
             .sort((a, b) => b.valor - a.valor)
             .slice(0, 5);
@@ -401,39 +492,35 @@
 
         const myChart = echarts.init(chartDom);
 
-        const nomes = data.map(item =>
-            item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome
-        );
+        const nomes = data.map(item => item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome);
         const valores = data.map(item => item.valor);
 
         const option = {
+            color: MRK.series,
             tooltip: {
                 trigger: 'axis',
                 axisPointer: { type: 'shadow' },
                 formatter: (params) => {
                     const item = data[params[0].dataIndex];
-                    return `<b>${item.nome}</b><br>Compras: R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                    return `<b>${item.nome}</b><br>Compras: R$ ${item.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
                 }
             },
             grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
-            xAxis: { type: 'value' },
+            xAxis: { type: 'value', axisLabel:{ color: MRK.black }, axisLine:{ lineStyle:{ color: MRK.black }} },
             yAxis: {
                 type: 'category',
                 data: nomes,
-                axisLabel: { fontSize: 10 },
-                inverse: true   // ✅ maior fica no topo
+                axisLabel: { fontSize: 10, color: MRK.black },
+                inverse: true
             },
             series: [
                 {
-                    name: 'CMV',
+                    name: 'Compras',
                     type: 'bar',
                     data: valores,
                     itemStyle: {
                         borderRadius: [4, 4, 4, 4],
-                        color: function(params) {
-                            const colorList = ['#c23531', '#2f4554', '#61a0a8', '#d48265', '#91c7ae'];
-                            return colorList[params.dataIndex];
-                        }
+                        color: (params) => MRK.series[params.dataIndex % MRK.series.length]
                     }
                 }
             ]
@@ -451,29 +538,28 @@
 
         const myChart = echarts.init(chartDom);
 
-        const nomes = data.map(item =>
-            item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome
-        );
+        const nomes = data.map(item => item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome);
         const valores = data.map(item => item.valor);
 
         const option = {
+            color: MRK.series,
             tooltip: {
                 trigger: 'axis',
                 axisPointer: { type: 'shadow' },
                 formatter: (params) => {
                     const item = data[params[0].dataIndex];
                     return `<b>${item.nome}</b><br>
-                            Total Comprado: R$ ${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>
+                            Total Comprado: R$ ${item.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}<br>
                             Qtd Notas: ${item.qtd_notas}`;
                 }
             },
             grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
-            xAxis: { type: 'value' },
+            xAxis: { type: 'value', axisLabel:{ color: MRK.black }, axisLine:{ lineStyle:{ color: MRK.black }} },
             yAxis: {
                 type: 'category',
                 data: nomes,
-                axisLabel: { fontSize: 10 },
-                inverse: true   // ✅ maior fica no topo
+                axisLabel: { fontSize: 10, color: MRK.black },
+                inverse: true
             },
             series: [
                 {
@@ -482,10 +568,7 @@
                     data: valores,
                     itemStyle: {
                         borderRadius: [4, 4, 4, 4],
-                        color: function(params) {
-                            const colorList = ['#c23531', '#2f4554', '#61a0a8', '#d48265', '#91c7ae'];
-                            return colorList[params.dataIndex];
-                        }
+                        color: (params) => MRK.series[params.dataIndex % MRK.series.length]
                     }
                 }
             ]
@@ -497,160 +580,17 @@
     function renderResumo(data) {
         let totalFaturamento = 0;
         let totalCompras = 0;
-        let totalMargemLucro = 0;
-
-        let melhorProduto = null;
-        let piorProduto = null;
 
         data.forEach(loja => {
             totalFaturamento += parseBRL(loja.faturamento_bruto);
             totalCompras += parseBRL(loja.total_compras);
-            totalMargemLucro += parseBRL(loja.margem_lucro);
-
-            const pm = loja.produto_maior_margem;
-            if (pm) {
-                const margemPm = parseBRL(pm.margem_unitaria);
-                if (!melhorProduto || margemPm > melhorProduto._margemNum) {
-                    melhorProduto = { ...pm, _margemNum: margemPm };
-                }
-            }
-
-            const pn = loja.produto_menor_margem;
-            if (pn) {
-                const margemPn = parseBRL(pn.margem_unitaria);
-                if (!piorProduto || margemPn < piorProduto._margemNum) {
-                    piorProduto = { ...pn, _margemNum: margemPn };
-                }
-            }
         });
 
         const percCompras = totalFaturamento > 0 ? (totalCompras / totalFaturamento) * 100 : 0;
-        const percMargem  = totalFaturamento > 0 ? (totalMargemLucro / totalFaturamento) * 100 : 0;
 
         animateValue('faturamentoBruto', 0, totalFaturamento, 1000, true);
         animateValue('totalCompras', 0, totalCompras, 1000, true);
         animateValue('percentualCompras', 0, percCompras, 1000, false, true);
-        animateValue('percentualMargem', 0, percMargem, 1000, false, true);
-
-        const maiorDescEl = document.getElementById('produtoMaiorMargemDesc');
-        if (maiorDescEl) maiorDescEl.textContent = melhorProduto ? melhorProduto.descricao : '-';
-        animateValue('produtoMaiorMargemValor', 0, melhorProduto ? melhorProduto._margemNum : 0, 1000, true);
-
-        const menorDescEl = document.getElementById('produtoMenorMargemDesc');
-        if (menorDescEl) menorDescEl.textContent = piorProduto ? piorProduto.descricao : '-';
-        animateValue('produtoMenorMargemValor', 0, piorProduto ? piorProduto._margemNum : 0, 1000, true);
-    }
-
-    function renderEvolucaoCmv(lojas, labels) {
-        const chartDom = document.getElementById('chartCmvDiario');
-        if (!chartDom) return;
-
-        const old = echarts.getInstanceByDom(chartDom);
-        if (old) old.dispose();
-
-        const myChart = echarts.init(chartDom);
-
-        const lojaMap = {};
-        lojas.forEach(l => lojaMap[l.nome] = l);
-
-        const seriesPercent = lojas.map(loja => {
-            const faturamentoArr = loja.faturamento || [];
-            const comprasArr = loja.compras || [];
-
-            const percentuais = faturamentoArr.map((fat, i) => {
-                const comp = comprasArr[i] ?? 0;
-                return fat > 0 ? (comp / fat) * 100 : 0;
-            });
-
-            return {
-                name: loja.nome,
-                type: 'line',
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 7,
-                data: percentuais,
-                yAxisIndex: 0
-            };
-        });
-
-        const seriesCmv = showCmvLine
-            ? lojas.map(loja => ({
-                name: `${loja.nome} (CMV)`,
-                type: 'line',
-                smooth: true,
-                symbol: 'none',
-                lineStyle: { type: 'dashed' },
-                data: loja.cmv || [],
-                yAxisIndex: 1
-            }))
-            : [];
-
-        const option = {
-            title: { text: ' ', left: 'center' },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                formatter: function (params) {
-                    const idx = params[0].dataIndex;
-                    let html = `<b>${params[0].axisValue}</b><br/>`;
-
-                    const percentParams = params.filter(p => !p.seriesName.includes('(CMV)'));
-                    const cmvParams = params.filter(p => p.seriesName.includes('(CMV)'));
-
-                    percentParams.forEach(p => {
-                        const loja = lojaMap[p.seriesName];
-                        const fat = loja?.faturamento?.[idx] ?? 0;
-                        const comp = loja?.compras?.[idx] ?? 0;
-                        const perc = fat > 0 ? (comp / fat) * 100 : 0;
-
-                        html += `
-                        <span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:4px;border-radius:50%"></span>
-                        ${p.seriesName}: <b>${perc.toFixed(2)}%</b><br/>
-                        &nbsp;&nbsp;Faturamento: R$ ${fat.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br/>
-                        &nbsp;&nbsp;Compras: R$ ${comp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br/>
-                    `;
-                    });
-
-                    if (cmvParams.length) {
-                        html += `<hr style="margin:6px 0;">`;
-                        cmvParams.forEach(p => {
-                            const pureName = p.seriesName.replace(' (CMV)', '');
-                            const loja = lojaMap[pureName];
-                            const cmv = loja?.cmv?.[idx] ?? 0;
-
-                            html += `
-                            <span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:4px;border-radius:50%"></span>
-                            ${pureName} CMV: <b>R$ ${cmv.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b><br/>
-                        `;
-                        });
-                    }
-
-                    return html;
-                }
-            },
-            legend: { top: 30 },
-            grid: { left: '3%', right: '4%', bottom: '5%', containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: labels,
-                axisLabel: { fontSize: 12 }
-            },
-            yAxis: [
-                {
-                    type: 'value',
-                    name: '% Compras/Faturamento',
-                    axisLabel: { formatter: v => `${v.toFixed(0)}%` }
-                },
-                ...(showCmvLine ? [{
-                    type: 'value',
-                    name: 'CMV (R$)',
-                    axisLabel: { formatter: v => `R$ ${v.toLocaleString('pt-BR')}` }
-                }] : [])
-            ],
-            series: [...seriesPercent, ...seriesCmv]
-        };
-
-        myChart.setOption(option);
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -658,7 +598,7 @@
         await carregarGrupoInicial();
         setRange('7dias');
     });
-
 </script>
+
 </body>
 </html>
