@@ -247,9 +247,13 @@
 
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
         const element = document.getElementById(id);
+        if (!element) return; // ✅ evita erro se o ID não existir
+
         let startTimestamp = null;
+
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
+
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             const value = start + progress * (end - start);
 
@@ -262,8 +266,10 @@
 
             if (progress < 1) window.requestAnimationFrame(step);
         };
+
         window.requestAnimationFrame(step);
     }
+
 
 
     function setRange(tipo) {
@@ -617,45 +623,28 @@
     }
 
     function renderResumo(data) {
-        let totalBruto = 0, totalCmv = 0, totalCompras = 0, totalSaidas = 0, totalDesperdicio = 0;
-
-        let produtoMaior = null;
-        let produtoMenor = null;
+        let totalBruto = 0;
+        let totalDescontos = 0;
+        let totalTaxa = 0;
+        let totalLiquido = 0;
+        let totalClientes = 0;
 
         data.forEach(loja => {
-            totalBruto += parseFloat(loja.faturamento_bruto);
-            totalCmv += parseFloat(loja.cmv);
-            totalCompras += parseFloat(loja.total_compras);
-            totalSaidas += parseFloat(loja.total_saidas);
-            totalDesperdicio += parseFloat(loja.desperdicio);
-
-            // Define maior e menor margem baseado no retorno do backend
-            if (loja.produto_maior_margem && !produtoMaior) produtoMaior = loja.produto_maior_margem;
-            if (loja.produto_menor_margem && !produtoMenor) produtoMenor = loja.produto_menor_margem;
+            totalBruto     += parseFloat(loja.faturamento_bruto || 0);
+            totalDescontos += parseFloat(loja.descontos || 0);
+            totalTaxa      += parseFloat(loja.taxa_servico || 0);
+            totalLiquido   += parseFloat(loja.faturamento_liquido || 0);
+            totalClientes  += parseInt(loja.numero_clientes || 0);
         });
 
-        const totalMargem = totalBruto - totalCompras;
-        const percentualCompras = totalBruto > 0 ? (totalCompras / totalBruto) * 100 : 0;
-        const percentualMargem = totalBruto > 0 ? (totalMargem / totalBruto) * 100 : 0;
+        const ticketMedio = totalClientes > 0 ? totalBruto / totalClientes : 0;
 
-        // Atualiza os valores nos cards
-        animateValue('faturamentoBruto', 0, totalBruto, 1000, true);
-        animateValue('totalCompras', 0, totalCompras, 1000, true);
-        animateValue('percentualCompras', 0, percentualCompras, 1000, false, true);
-        animateValue('margemLucro', 0, totalMargem, 1000, true);
-        animateValue('percentualMargem', 0, percentualMargem, 1000, false, true);
-        animateValue('desperdicio', 0, totalDesperdicio, 1000, true);
-
-        // Exibe produtos com maior / menor margem
-        document.getElementById('produtoMaiorMargemNome').textContent =
-            produtoMaior ? produtoMaior.descricao : '--';
-        document.getElementById('produtoMaiorMargemValor').textContent =
-            produtoMaior ? produtoMaior.margem : 'R$ 0,00';
-
-        document.getElementById('produtoMenorMargemNome').textContent =
-            produtoMenor ? produtoMenor.descricao : '--';
-        document.getElementById('produtoMenorMargemValor').textContent =
-            produtoMenor ? produtoMenor.margem : 'R$ 0,00';
+        animateValue('faturamentoTotal',   0, totalBruto,     1000, true);
+        animateValue('descontos',         0, totalDescontos, 1000, true);
+        animateValue('taxaServico',       0, totalTaxa,      1000, true);
+        animateValue('faturamentoLiquido',0, totalLiquido,   1000, true);
+        animateValue('numClientes',       0, totalClientes,  1000);
+        animateValue('ticketMedio',       0, ticketMedio,    1000, true);
     }
 
     function renderResumoDiario(lojas) {
