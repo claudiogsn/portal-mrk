@@ -15,6 +15,22 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
+
+        /* Deixar o modal de Importação mais largo no desktop */
+        #modalImportacao .modal-dialog {
+            width: 95% !important;     /* ocupa 95% da largura da tela */
+            max-width: 1400px;         /* limite opcional */
+            margin: 30px auto;         /* centralizado */
+        }
+
+        /* Em telas menores continua ocupando praticamente tudo */
+        @media (max-width: 768px) {
+            #modalImportacao .modal-dialog {
+                width: 100% !important;
+                margin: 10px;
+            }
+        }
+
         /* fullscreen já existe, complemento para garantir 100vh do iframe */
         .modal-iframe-full { width:100%; height:calc(100vh - 56px); border:0; }
         /* (fallback para headers maiores/menores) */
