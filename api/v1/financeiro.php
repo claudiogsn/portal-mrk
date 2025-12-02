@@ -56,47 +56,113 @@ if (isset($data['method']) && isset($data['data'])) {
 
     try {
         switch ($method) {
+
+            case 'listPlanos':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroPlanoController::listPlanos($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'ID do estabelecimento (system_unit_id) não informado'];
+                }
+                break;
+            // CRIAR PLANO
+            case 'createPlano':
+                if (
+                    isset($requestData['system_unit_id']) &&
+                    isset($requestData['codigo']) &&
+                    isset($requestData['descricao'])
+                ) {
+                    $data = [
+                        'system_unit_id' => $requestData['system_unit_id'],
+                        'codigo'         => $requestData['codigo'],
+                        'descricao'      => $requestData['descricao'],
+                    ];
+                    $response = FinanceiroPlanoController::createPlano($data);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id, codigo, descricao'
+                    ];
+                }
+                break;
+            // ATUALIZAR PLANO (só descricao, via ID)
+            case 'updatePlano':
+                if (isset($requestData['id']) && isset($requestData['descricao'])) {
+                    $data = [
+                        'descricao' => $requestData['descricao']
+                    ];
+                    $response = FinanceiroPlanoController::updatePlano($requestData['id'], $data);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: id e descricao'
+                    ];
+                }
+                break;
+            // EXCLUIR PLANO (recebe system_unit_id + codigo)
+            case 'deletePlano':
+                if (isset($requestData['system_unit_id']) && isset($requestData['codigo'])) {
+                    $response = FinanceiroPlanoController::deletePlano(
+                        $requestData['system_unit_id'],
+                        $requestData['codigo']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id e codigo'
+                    ];
+                }
+                break;
+            // INATIVAR PLANO (recebe system_unit_id + codigo)
+            case 'inativarPlano':
+                if (isset($requestData['system_unit_id']) && isset($requestData['codigo'])) {
+                    $response = FinanceiroPlanoController::inativarPlano(
+                        $requestData['system_unit_id'],
+                        $requestData['codigo']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id e codigo'
+                    ];
+                }
+                break;
+            // BUSCAR PLANO POR CODIGO + UNIDADE
+            case 'getPlanoByCodigo':
+                if (isset($requestData['system_unit_id']) && isset($requestData['codigo'])) {
+                    $response = FinanceiroPlanoController::getPlanoByCodigo(
+                        $requestData['system_unit_id'],
+                        $requestData['codigo']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id e codigo'
+                    ];
+                }
+                break;
+            // IMPORTAR PLANOS DA API (Menew)
+            case 'importarPlanosApi':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'ID do estabelecimento (system_unit_id) não informado'
+                    ];
+                }
+                break;
+
             case 'ApiMenewAuthenticate':
                 $response = FinanceiroApiMenewController::authenticate();
                 break;
-            case 'fetchFinanceiroConta':
-                $response = FinanceiroApiMenewController::fetchFinanceiroConta($requestData['estabelecimento'], $requestData['tipo']);
-                break;
-            case 'fetchFinanceiroFornecedor':
-                $response = FinanceiroApiMenewController::fetchFinanceiroFornecedor($requestData['estabelecimento']);
-                break;
-            case 'fetchFinanceiroCliente':
-                $response = FinanceiroApiMenewController::fetchFinanceiroCliente($requestData['estabelecimento']);
-                break;
-            case 'fetchFinanceiroPlano':
-                $response = FinanceiroApiMenewController::fetchFinanceiroPlano($requestData['estabelecimento']);
-                break;
-            case 'fetchFinanceiroRateio':
-                $response = FinanceiroApiMenewController::fetchFinanceiroRateio($requestData['estabelecimento']);
-                break;
-            case 'importarContaApiDesativado':
-                $response = FinanceiroContaController::importarContaApi($requestData['system_unit_id']);
-                break;
-            case 'importarRateiosApiDesativado':
-                $response = FinanceiroRateioController::importarRateiosApi($requestData['system_unit_id']);
-                break;
-            case 'importarFornecedoresApiDesativado':
-                $response = FinanceiroFornecedorController::importarFornecedoresApi($requestData['system_unit_id']);
-                break;
-            case 'importarClientesApiDesativado':
-                $response = FinanceiroClienteController::importarClientesApi($requestData['system_unit_id']);
-                break;
-            case 'importarPlanosApiDesativado':
-                $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
-                break;
-            case 'listPlanos':
-                    if (isset($requestData['system_unit_id'])) {
-                        $response = FinanceiroPlanoController::listPlanos($requestData['system_unit_id']);
-                    } else {
-                        http_response_code(400);
-                        $response = ['error' => 'ID do estabelecimento não informado'];
-                    }
-                break;
+
             case 'getDreGerencial':
                if(isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])){
                    $response = FinanceiroContaController::getDreGerencial($requestData['system_unit_id'], $requestData['data_inicial'], $requestData['data_final']);
@@ -105,6 +171,7 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros inválidos'];
                 }
                break;
+
             case 'listContas':
                 if (
                     isset($requestData['system_unit_id']) &&
@@ -132,26 +199,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros inválidos'];
                 }
                 break;
-            case 'lancarNotaNoFinanceiroConta':
-                $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
-                break;
-            case 'lancarNotaNoFinanceiroContaLote':
-                $response = FinanceiroContaController::lancarNotaNoFinanceiroContaLote($requestData);
-                break;
-            case 'exportContasF360':
-                $response = FinanceiroContaController::exportContasF360($requestData);
-                break;
-            case 'marcarExportadoF360':
-                $response = FinanceiroContaController::marcarExportadoF360($requestData);
-                break;
-            case 'hasF360Integration':
-                if (isset($requestData['system_unit_id'])) {
-                    $response = FinanceiroContaController::hasF360Integration($requestData['system_unit_id']);
-                } else {
-                    http_response_code(400);
-                    $response = ['error' => 'ID do estabelecimento não informado'];
-                }
-                break;
             case 'createConta':
                 $response = FinanceiroContaController::createConta($requestData);
                 break;
@@ -167,10 +214,33 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getContaById':
                 $response = FinanceiroContaController::getContaById($requestData['id']);
                 break;
+
+            case 'lancarNotaNoFinanceiroConta':
+                $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
+                break;
+            case 'lancarNotaNoFinanceiroContaLote':
+                $response = FinanceiroContaController::lancarNotaNoFinanceiroContaLote($requestData);
+                break;
+
+            case 'exportContasF360':
+                $response = FinanceiroContaController::exportContasF360($requestData);
+                break;
+            case 'marcarExportadoF360':
+                $response = FinanceiroContaController::marcarExportadoF360($requestData);
+                break;
+            case 'hasF360Integration':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroContaController::hasF360Integration($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'ID do estabelecimento não informado'];
+                }
+                break;
+
+
             case 'listFornecedores':
                 $response = FinanceiroFornecedorController::listFornecedores($requestData['system_unit_id']);
                 break;
-
             case 'getFornecedorById':
                 $response = FinanceiroFornecedorController::getFornecedorById($requestData['id'], $requestData['system_unit_id']);
                 break;

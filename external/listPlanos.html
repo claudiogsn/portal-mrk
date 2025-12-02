@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Planos de Contas</title>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        th, td { vertical-align: middle !important; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+            h2, .modal-title { font-size: 16px !important; }
+            .btn { padding: 6px 10px !important; font-size: 12px !important; }
+            .table-responsive { overflow-x: auto; }
+            .modal-dialog { margin: 10px; }
+            .row > div[class*="col-"] { margin-bottom: 10px; }
+            .form-control { height: 30px; padding: 4px 8px; }
+
+            #tabela-planos td,
+            #tabela-planos th { white-space: nowrap; }
+        }
+
+        i.blue { color: #2196F3; cursor: pointer; }
+        i.orange { color: #FF9800; cursor: pointer; }
+        i.red { color: #F44336; cursor: pointer; }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Planos de Contas</h2>
+        </div>
+        <div class="body">
+
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" id="filtroDescricao" class="form-control" placeholder="Filtrar por descrição">
+                </div>
+                <div class="col-md-4 text-right">
+                    <button class="btn btn-success" id="btnNovoPlano">
+                        <i class="fa fa-plus"></i> Novo Plano
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabela-planos">
+                    <thead>
+                    <tr>
+                        <th style="width:110px;">Ações</th>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo Plano -->
+<div class="modal fade" id="modalPlano" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h4 class="modal-title">Cadastrar Plano de Contas</h4>
+            </div>
+
+            <div class="modal-body">
+                <form id="formPlano">
+                    <div class="form-group">
+                        <label for="codigo">Código *</label>
+                        <input type="text" class="form-control" id="codigo" placeholder="Ex: 0101" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descricao">Descrição *</label>
+                        <input type="text" class="form-control" id="descricao" placeholder="Ex: Vendas de Produtos" required>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarPlano">Salvar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Plano -->
+<div class="modal fade" id="modalEditarPlano" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h4 class="modal-title">Editar Plano de Contas</h4>
+            </div>
+
+            <div class="modal-body">
+                <form id="formEditarPlano">
+                    <input type="hidden" id="editarPlanoId">
+
+                    <div class="form-group">
+                        <label for="editarCodigo">Código</label>
+                        <input type="text" class="form-control" id="editarCodigo" disabled>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarDescricao">Descrição *</label>
+                        <input type="text" class="form-control" id="editarDescricao" required>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarEdicaoPlano">Salvar Alterações</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('system_unit_id');
+
+    let planosCache = [];
+
+    $(document).ready(() => {
+        if (!token || !system_unit_id) {
+            Swal.fire('Erro', 'Token ou system_unit_id não informado na URL.', 'error');
+            return;
+        }
+
+        listarPlanos();
+
+        $('#filtroCodigo, #filtroDescricao').on('input', filtrarTabela);
+        $('#btnNovoPlano').click(() => {
+            $('#formPlano')[0].reset();
+            $('#modalPlano').modal('show');
+        });
+
+        $('#salvarPlano').click(salvarPlano);
+        $('#salvarEdicaoPlano').click(salvarEdicaoPlano);
+    });
+
+    async function listarPlanos() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listPlanos',
+                token,
+                data: { system_unit_id }
+            });
+
+            const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            planosCache = dados;
+
+            const tbody = $('#tabela-planos tbody');
+            tbody.empty();
+
+            if (!dados.length) {
+                tbody.append('<tr><td colspan="3" class="text-center">Nenhum plano cadastrado.</td></tr>');
+                return;
+            }
+
+            dados.forEach(p => {
+                const codigo = (p.codigo || '').trim();
+                const descricao = (p.descricao || '').trim();
+
+                tbody.append(`
+                    <tr data-id="${p.id}" data-codigo="${codigo}">
+                        <td>
+                            <a href="#" class="editar-plano" title="Editar">
+                                <i class="fa fa-edit blue"></i>
+                            </a>
+                            &nbsp;
+                            <a href="#" class="inativar-plano" title="Inativar">
+                                <i class="fa fa-power-off orange"></i>
+                            </a>
+                            &nbsp;
+                            <a href="#" class="excluir-plano" title="Excluir">
+                                <i class="fa fa-trash red"></i>
+                            </a>
+                        </td>
+                        <td>${codigo}</td>
+                        <td>${descricao}</td>
+                    </tr>
+                `);
+            });
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao listar planos de contas.', 'error');
+        }
+    }
+
+    function filtrarTabela() {
+        const codigo = $('#filtroCodigo').val().toLowerCase();
+        const descricao = $('#filtroDescricao').val().toLowerCase();
+
+        $('#tabela-planos tbody tr').each(function () {
+            const textoCodigo = $(this).find('td:nth-child(2)').text().toLowerCase(); // Código
+            const textoDescricao = $(this).find('td:nth-child(3)').text().toLowerCase(); // Descrição
+
+            const matchCodigo = codigo === '' || textoCodigo.startsWith(codigo);
+            const matchDescricao = textoDescricao.includes(descricao);
+
+            $(this).toggle(matchCodigo && matchDescricao);
+        });
+    }
+
+    async function salvarPlano() {
+        const codigo = $('#codigo').val().trim();
+        const descricao = $('#descricao').val().trim();
+
+        if (!codigo || !descricao) {
+            return Swal.fire('Atenção', 'Preencha Código e Descrição.', 'warning');
+        }
+
+        Swal.fire({
+            title: 'Salvando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'createPlano',
+                token,
+                data: {
+                    system_unit_id,
+                    codigo,
+                    descricao
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Atenção', res.data.message || 'Não foi possível criar o plano.', 'warning');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Plano criado com sucesso.', 'success');
+            $('#modalPlano').modal('hide');
+            $('#formPlano')[0].reset();
+            listarPlanos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao criar plano.', 'error');
+        }
+    }
+
+    // Abrir modal editar
+    $(document).on('click', '.editar-plano', function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const id = $tr.data('id');
+        const codigo = $tr.data('codigo');
+        const plano = planosCache.find(p => String(p.id) === String(id));
+
+        $('#editarPlanoId').val(id);
+        $('#editarCodigo').val(codigo);
+        $('#editarDescricao').val(plano ? (plano.descricao || '') : '');
+
+        $('#modalEditarPlano').modal('show');
+    });
+
+    async function salvarEdicaoPlano() {
+        const id = $('#editarPlanoId').val();
+        const descricao = $('#editarDescricao').val().trim();
+
+        if (!descricao) {
+            return Swal.fire('Atenção', 'Descrição é obrigatória.', 'warning');
+        }
+
+        const confirmacao = await Swal.fire({
+            title: 'Confirmar alteração?',
+            text: 'Deseja salvar as alterações deste plano?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, salvar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Salvando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'updatePlano',
+                token,
+                data: {
+                    id,
+                    descricao
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar plano.', 'error');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Plano atualizado com sucesso.', 'success');
+            $('#modalEditarPlano').modal('hide');
+            listarPlanos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao atualizar plano.', 'error');
+        }
+    }
+
+    // Inativar plano
+    $(document).on('click', '.inativar-plano', async function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const codigo = $tr.data('codigo');
+
+        const confirmacao = await Swal.fire({
+            title: 'Inativar plano?',
+            text: `Deseja inativar o plano ${codigo}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, inativar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Inativando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'inativarPlano',
+                token,
+                data: {
+                    system_unit_id,
+                    codigo
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Erro', res.data.message || 'Erro ao inativar plano.', 'error');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Plano inativado com sucesso.', 'success');
+            listarPlanos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao inativar plano.', 'error');
+        }
+    });
+
+    // Excluir plano
+    $(document).on('click', '.excluir-plano', async function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const codigo = $tr.data('codigo');
+
+        const confirmacao = await Swal.fire({
+            title: 'Excluir plano?',
+            text: `Deseja excluir definitivamente o plano ${codigo}? Esta ação não poderá ser desfeita.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Excluindo...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'deletePlano',
+                token,
+                data: {
+                    system_unit_id,
+                    codigo
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Atenção', res.data.message || 'Não foi possível excluir o plano.', 'warning');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Plano excluído com sucesso.', 'success');
+            listarPlanos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao excluir plano.', 'error');
+        }
+    });
+</script>
+
+</body>
+</html>
