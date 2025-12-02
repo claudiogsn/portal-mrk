@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lançamento de Perdas</title>
+
+    <!-- Favicon-->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+
+    <!-- Bootstrap Core Css -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Waves Effect Css -->
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+
+    <!-- Animation Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+
+    <!-- SweetAlert Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <!-- Custom Css -->
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <!-- FontAwesome (mesmo padrão de outras telas) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .form-control {
+            margin-bottom: 10px;
+        }
+        table {
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+            vertical-align: middle !important;
+        }
+        .modal-body {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .form-control {
+            display: block;
+            width: 100%;
+            height: 34px;
+            padding: 6px 12px;
+            font-size: 14px;
+            line-height: 1.42857143;
+            color: #555;
+            background-color: #fff;
+            background-image: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+            -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
+            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+        }
+        .form-control:focus {
+            border-color: #66afe9;
+            outline: 0;
+            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+        }
+
+        /* Cores de ícone no padrão que você usa */
+        i.red { color: #F44336; cursor: pointer; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+            h2, .modal-title { font-size: 16px !important; }
+            .btn { padding: 6px 10px !important; font-size: 12px !important; }
+            .table-responsive { overflow-x: auto; }
+            .modal-dialog { margin: 10px; }
+            .row > div[class*="col-"] { margin-bottom: 10px; }
+            .form-control { height: 30px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <!-- Card de Lançamento de Perdas -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header">
+                    <h2>Lançamento de Perdas</h2>
+                </div>
+                <div class="body">
+                    <form id="perdaForm">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <label for="perda-date">Data</label>
+                                <input type="date" id="perda-date" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-5">
+                                <label for="item-description">Produto</label>
+                                <input type="hidden" id="item-code">
+                                <input type="text"
+                                       id="item-description"
+                                       class="form-control"
+                                       readonly
+                                       placeholder="Clique para selecionar um produto"
+                                       data-toggle="modal"
+                                       data-target="#itemModal">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="perda-quantidade">Quantidade</label>
+                                <input type="number"
+                                       id="perda-quantidade"
+                                       class="form-control"
+                                       placeholder="Ex: 1.000"
+                                       step="0.001"
+                                       min="0.001">
+                            </div>
+                            <div class="col-md-5">
+                                <label for="perda-motivo">Motivo *</label>
+                                <input type="text"
+                                       id="perda-motivo"
+                                       class="form-control"
+                                       placeholder="Descreva o motivo da perda (obrigatório)">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-2 col-md-offset-10">
+                                <label>&nbsp;</label>
+                                <button type="button" id="add-perda-item" class="btn btn-primary btn-block">
+                                    Adicionar Item
+                                </button>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Itens de Perda -->
+    <div class="card">
+        <div class="row">
+            <div class="col-md-12 table-responsive">
+                <table id="perda-table" class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th style="width: 70px;">Ações</th>
+                        <th>Cod.</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                        <th>Motivo</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <center>
+        <button type="button" id="submit-perda" class="btn btn-success">
+            Confirmar Lançamento de Perdas
+        </button>
+    </center>
+</div>
+
+<!-- Modal de Seleção de Produto -->
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Selecionar Produto</h4>
+            </div>
+            <div class="modal-body">
+                <input type="text"
+                       id="item-search"
+                       class="form-control"
+                       placeholder="Buscar por código ou descrição">
+
+                <table id="item-table" class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>Cod.</th>
+                        <th>Descrição</th>
+                        <th>Saldo Atual</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JS -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    $(document).ready(function () {
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const token     = urlParams.get('token');
+        const unit_id   = urlParams.get('unit_id');   // -> system_unit_id
+        const username  = urlParams.get('username');  // -> user
+
+        // Data padrão = hoje
+        const today = new Date().toISOString().split('T')[0];
+        $('#perda-date').val(today);
+
+        /** Carregar lista de insumos/produtos no modal */
+        async function loadItems() {
+            Swal.fire({
+                title: 'Carregando itens...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'listInsumos',
+                    token: token,
+                    data: { unit_id: unit_id }
+                });
+
+                Swal.close();
+
+                if (response.data.success) {
+                    const items = response.data.insumos;
+                    const tbody = $('#item-table tbody');
+                    tbody.empty();
+
+                    items.forEach(item => {
+                        const row = `
+                            <tr>
+                                <td>${item.codigo}</td>
+                                <td>${item.nome}</td>
+                                <td>${item.saldo ?? '-'}</td>
+                                <td>
+                                    <button
+                                        class="btn btn-primary select-item"
+                                        data-codigo="${item.codigo}"
+                                        data-nome="${item.nome}"
+                                        data-saldo="${item.saldo ?? ''}">
+                                        Inserir
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.append(row);
+                    });
+
+                    // Filtro do modal
+                    $('#item-search').off('input').on('input', function () {
+                        const searchValue = $(this).val().toLowerCase();
+                        $('#item-table tbody tr').each(function () {
+                            const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
+                            const nome   = $(this).find('td:nth-child(2)').text().toLowerCase();
+
+                            if (codigo.includes(searchValue) || nome.includes(searchValue)) {
+                                $(this).show();
+                            } else {
+                                $(this).hide();
+                            }
+                        });
+                    });
+
+                    // Clique em Inserir
+                    $('.select-item').off('click').on('click', function () {
+                        const codigo = $(this).data('codigo');
+                        const nome   = $(this).data('nome');
+
+                        $('#item-code').val(codigo);
+                        $('#item-description').val(nome);
+                        $('#itemModal').modal('hide');
+                    });
+                } else {
+                    Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
+            }
+        }
+
+        // Abrir modal de produtos
+        $('#item-description').click(function () {
+            loadItems().then(() => {
+                $('#itemModal').modal('show');
+            });
+        });
+
+        // Adicionar item à tabela
+        $('#add-perda-item').click(function () {
+            const codigo     = $('#item-code').val();
+            const descricao  = $('#item-description').val();
+            const quantidade = $('#perda-quantidade').val();
+            const motivo     = $('#perda-motivo').val();
+
+            if (!codigo || !descricao) {
+                Swal.fire('Erro', 'Selecione um produto.', 'error');
+                return;
+            }
+            if (!quantidade || parseFloat(quantidade) <= 0) {
+                Swal.fire('Erro', 'Informe uma quantidade válida.', 'error');
+                return;
+            }
+            if (!motivo || !motivo.trim()) {
+                Swal.fire('Erro', 'Informe o motivo da perda (campo obrigatório).', 'error');
+                return;
+            }
+
+            // Evita duplicar o mesmo código (opcional)
+            const isDuplicate = $('#perda-table tbody tr').toArray().some(row => {
+                // agora o código está na 2ª coluna (índice 1)
+                return $(row).find('td:nth-child(2)').text() === codigo;
+            });
+            if (isDuplicate) {
+                Swal.fire('Erro', 'Este produto já foi adicionado!', 'error');
+                return;
+            }
+
+            const qtdFormat = parseFloat(quantidade).toFixed(3);
+
+            $('#perda-table tbody').append(`
+                <tr>
+                    <td>
+                        <a href="#" class="remove-item" title="Remover item">
+                            <i class="fa fa-trash red"></i>
+                        </a>
+                    </td>
+                    <td>${codigo}</td>
+                    <td>${descricao}</td>
+                    <td>${qtdFormat}</td>
+                    <td>${motivo}</td>
+                </tr>
+            `);
+
+            // Limpa campos do formulário (menos a data)
+            $('#item-code').val('');
+            $('#item-description').val('');
+            $('#perda-quantidade').val('');
+            $('#perda-motivo').val('');
+        });
+
+        // Remover item da tabela (clique no ícone)
+        $('#perda-table').on('click', '.remove-item', function (e) {
+            e.preventDefault();
+            $(this).closest('tr').remove();
+        });
+
+        // Enviar perdas para o backend
+        $('#submit-perda').click(async function () {
+            const perdaDate = $('#perda-date').val();
+            if (!perdaDate || isNaN(new Date(perdaDate).getTime())) {
+                Swal.fire('Erro', 'Selecione uma data válida.', 'error');
+                return;
+            }
+
+            const itens = [];
+            $('#perda-table tbody tr').each(function (index) {
+                const cols   = $(this).find('td');
+                // colunas: 0 = ações, 1 = código, 2 = descrição, 3 = quantidade, 4 = motivo
+                const codigo = $(cols[1]).text();
+                const qtdStr = $(cols[3]).text();
+                const motivo = $(cols[4]).text();
+
+                if (!motivo || !motivo.trim()) {
+                    return; // segurança extra
+                }
+
+                itens.push({
+                    codigo: codigo,
+                    seq: index + 1,
+                    quantidade: parseFloat(qtdStr.replace(',', '.')) || 0,
+                    motivo: motivo
+                });
+            });
+
+            if (itens.length === 0) {
+                Swal.fire('Erro', 'Nenhum item adicionado!', 'error');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Confirmar Lançamento?',
+                text: 'Deseja realmente lançar estas perdas?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sim',
+                cancelButtonText: 'Não'
+            }).then(async (result) => {
+                if (!result.isConfirmed) return;
+
+                try {
+                    Swal.fire({
+                        title: 'Enviando...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    const response = await axios.post(baseUrl, {
+                        method: 'savePerdaItems',
+                        token: token,
+                        data: {
+                            system_unit_id: unit_id,
+                            user: username,
+                            date_perda: perdaDate,
+                            itens: itens
+                        }
+                    });
+
+                    Swal.close();
+
+                    if (response.data.success) {
+                        const doc = response.data.doc || '';
+                        let msg = response.data.message || 'Perdas lançadas com sucesso.';
+                        if (doc) msg += ' Documento: ' + doc;
+
+                        Swal.fire({
+                            title: 'Sucesso',
+                            text: msg,
+                            icon: 'success',
+                            showCancelButton: true,
+                            confirmButtonText: 'Imprimir documento',
+                            cancelButtonText: 'Fechar'
+                        }).then(resultSwal => {
+                            // Limpa a tabela sempre
+                            $('#perda-table tbody').empty();
+
+                            if (resultSwal.isConfirmed) {
+                                // Monta o pacote para o PDF
+                                const pacotePerda = {
+                                    doc: response.data.doc,
+                                    unit_name: response.data.unit_name,
+                                    user_name: response.data.user_name,
+                                    datetime: response.data.datetime,
+                                    itens: response.data.itens || []
+                                };
+
+                                // Salva no localStorage e abre a tela de impressão
+                                localStorage.setItem('perdaPdfData', JSON.stringify(pacotePerda));
+
+                                const baseUrlredirect = window.location.hostname !== 'localhost'
+                                    ? 'https://portal.mrksolucoes.com.br/external'
+                                    : 'http://localhost/portal-mrk/external';
+
+                                window.open(`${baseUrlredirect}/reports/perda.html`, '_blank');
+                            }
+                        });
+                    } else {
+                        Swal.fire('Erro', response.data.message || 'Erro ao lançar perdas!', 'error');
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    Swal.fire('Erro', 'Ocorreu um erro de comunicação com o servidor.', 'error');
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

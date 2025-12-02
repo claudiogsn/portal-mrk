@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Documento de Perda de Estoque</title>
+
+    <!-- html2pdf e SweetAlert -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px 15px;
+        }
+        #conteudo-pdf {
+            padding: 0 5px;
+        }
+        h1, h2, h3 {
+            margin: 0;
+            padding: 0;
+        }
+        h1 { font-size: 22px; font-weight: bold; }
+        h2 { font-size: 16px; margin-top: 4px; color: #555; }
+        h3 { font-size: 14px; margin-top: 8px; color: #333; }
+
+        hr {
+            border: 1px solid #000;
+            margin: 10px 0 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 6px 6px;
+        }
+        th {
+            text-align: center;
+        }
+        td {
+            text-align: left;
+        }
+        .tright {
+            text-align: right;
+        }
+        .muted {
+            color: #666;
+            font-size: 12px;
+        }
+        .totais {
+            margin-top: 10px;
+            text-align: right;
+            font-size: 12px;
+        }
+        .header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-left {
+            display: flex;
+            flex-direction: column;
+        }
+        .header-right img {
+            max-height: 50px;
+        }
+
+        .assinaturas {
+            margin-top: 40px;
+            font-size: 12px;
+        }
+        .assinaturas .linha {
+            margin-top: 45px;
+            border-top: 1px solid #000;
+            width: 220px;
+            text-align: center;
+            padding-top: 4px;
+        }
+        .assinaturas .col {
+            display: inline-block;
+            margin-right: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="conteudo-pdf"></div>
+
+<script>
+    // Lê o pacote de dados do documento de perda
+    const pacote = JSON.parse(localStorage.getItem('perdaPdfData'));
+
+    if (!pacote || !Array.isArray(pacote.itens)) {
+        document.body.innerHTML = "<p>Erro: Nenhum dado de perda encontrado.</p>";
+        throw new Error('Dados do documento de perda não encontrados');
+    }
+
+    function brQty(v) {
+        if (v === null || v === undefined) return '-';
+        // pode vir como número ou string "1,234"
+        const str = String(v).replace(/\./g, '').replace(',', '.');
+        const num = parseFloat(str);
+        if (isNaN(num)) return '-';
+        return num.toLocaleString('pt-BR', {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3
+        });
+    }
+
+    // Somatório de quantidade
+    let totalQtde = 0;
+
+    const linhas = pacote.itens.map(item => {
+        const codigo = item.codigo || '-';
+        const nome   = item.nome || '-';
+        const und    = item.unidade || '-';
+        const qtBr   = item.quantidade ?? '-';
+
+        // tenta somar a quantidade
+        const numQt = parseFloat(String(qtBr).replace(/\./g, '').replace(',', '.'));
+        if (!isNaN(numQt)) {
+            totalQtde += numQt;
+        }
+
+        return `
+            <tr>
+                <td>${codigo}</td>
+                <td>${nome}</td>
+                <td class="tright">${brQty(qtBr)}</td>
+                <td>${und}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const html = `
+        <div class="header-flex">
+            <div class="header-left">
+                <h1>Portal MRK</h1>
+                <h2>Documento de Perda de Estoque</h2>
+                ${pacote.unit_name ? `<h3>Estabelecimento: ${pacote.unit_name}</h3>` : ''}
+                ${pacote.doc ? `<div class="muted" style="margin-top:4px;">Documento: <b>${pacote.doc}</b></div>` : ''}
+                ${pacote.datetime ? `<div class="muted">Data/Hora: ${pacote.datetime}</div>` : ''}
+                ${pacote.user_name ? `<div class="muted">Responsável: ${pacote.user_name}</div>` : ''}
+            </div>
+            <div class="header-right">
+                <img id="logo" alt="Logo">
+            </div>
+        </div>
+
+        <hr>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Código</th>
+                    <th>Descrição</th>
+                    <th style="width: 100px;">Quantidade</th>
+                    <th style="width: 70px;">Unid.</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${linhas}
+            </tbody>
+        </table>
+
+        <div class="totais">
+            Total de itens: <b>${pacote.itens.length}</b>
+            &nbsp;·&nbsp;
+            Quantidade total: <b>${brQty(totalQtde)}</b>
+        </div>
+
+        <div class="assinaturas">
+            <div class="col">
+                <div class="linha">Responsável</div>
+            </div>
+            <div class="col">
+                <div class="linha">Conferente</div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('conteudo-pdf').innerHTML = html;
+
+    // Tenta carregar um logo opcional (logo.png na mesma pasta)
+    (async () => {
+        try {
+            const resp = await fetch('logo.png', { cache: 'no-store' });
+            if (resp.ok) {
+                const blob = await resp.blob();
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    document.getElementById('logo').src = reader.result;
+                    await gerarPdf();
+                };
+                reader.readAsDataURL(blob);
+            } else {
+                await gerarPdf();
+            }
+        } catch {
+            await gerarPdf();
+        }
+    })();
+
+    async function gerarPdf() {
+        const opt = {
+            margin: [10, 10, 10, 10],
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        const docNumber = pacote.doc ? String(pacote.doc).replace(/[^\w\-]/g, '') : 'perda';
+        const fileName = `Documento_Perda_${docNumber}.pdf`;
+
+        const result = await Swal.fire({
+            title: 'O que deseja fazer?',
+            text: 'Escolha uma ação para o PDF gerado:',
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: '📥 Baixar PDF',
+            denyButtonText: '🔗 Compartilhar PDF'
+        });
+
+        const arrayBuffer = await html2pdf()
+            .from(document.getElementById('conteudo-pdf'))
+            .set(opt)
+            .toPdf()
+            .output('arraybuffer');
+
+        const file = new File([arrayBuffer], fileName, { type: 'application/pdf' });
+
+        if (result.isConfirmed) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } else if (result.isDenied) {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: fileName,
+                    text: 'Segue documento de perda gerado.',
+                    files: [file]
+                });
+            } else {
+                Swal.fire('Aviso', 'Seu navegador não suporta compartilhamento de arquivos.', 'info');
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
