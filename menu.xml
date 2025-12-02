@@ -29,6 +29,10 @@
         <action>RelacaoDeContas</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>
+        <menuitem label="Planos de Contas">
+            <action>ListarPlanos</action>
+            <icon>fas:circle fa-fw</icon>
+        </menuitem>
       <menuitem label="Fornecedores">
         <icon>fas:industry fa-fw</icon>
         <menu>
