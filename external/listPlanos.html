@@ -44,6 +44,38 @@
         i.blue { color: #2196F3; cursor: pointer; }
         i.orange { color: #FF9800; cursor: pointer; }
         i.red { color: #F44336; cursor: pointer; }
+
+        /* Hierarquia do plano de contas */
+        .hierarchy-cell {
+            white-space: nowrap;
+        }
+        .toggle-child {
+            cursor: pointer;
+            font-weight: bold; /* caret em negrito */
+            margin-right: 6px;
+        }
+        .plano-checkbox {
+            margin: 0 6px 0 0;
+        }
+
+        .codigo-cell {
+            white-space: nowrap;
+        }
+
+        /* indentação por nível */
+        .hierarchy-level-0  { padding-left: 4px !important; }
+        .hierarchy-level-1 { padding-left: 20px !important; }
+        .hierarchy-level-2 { padding-left: 36px !important; }
+        .hierarchy-level-3 { padding-left: 52px !important; }
+        .hierarchy-level-4 { padding-left: 74px !important; }
+        .hierarchy-level-5 { padding-left: 80px !important; }
+        .hierarchy-level-6 { padding-left: 84px !important; }
+
+        /* Pais (quem tem filhos) em negrito */
+        tr.has-children td.codigo-cell,
+        tr.has-children td.descricao-cell {
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -74,9 +106,10 @@
                 <table class="table table-striped table-hover" id="tabela-planos">
                     <thead>
                     <tr>
-                        <th style="width:110px;">Ações</th>
-                        <th>Código</th>
+                        <th style="width:60px;"></th> <!-- caret + checkbox -->
+                        <th style="width:150px;">Código</th>
                         <th>Descrição</th>
+                        <th style="width:110px;">Ações</th> <!-- ações no final -->
                     </tr>
                     </thead>
                     <tbody></tbody>
@@ -164,6 +197,55 @@
 
     let planosCache = [];
 
+    // ===== Helpers de hierarquia =====
+    function getNivel(codigo) {
+        const len = (codigo || '').length;
+
+        if (len <= 1)  return 0;  // Ex: "1"
+        if (len <= 3)  return 1;  // Ex: "101"
+        if (len <= 5)  return 2;  // Ex: "10101"
+        if (len <= 7)  return 3;  // Ex: "1010101"
+        if (len <= 9)  return 4;  // Ex: "101010101"
+        if (len <= 11) return 5;  // Ex: "10101010101"
+        return 6;                 // níveis ainda mais profundos
+    }
+
+
+    function buildHierarchyMaps(codigos) {
+        const parentByCodigo = {};
+        const childrenByCodigo = {};
+
+        codigos.forEach(c => {
+            const cod = (c || '').trim();
+            if (!cod) return;
+            childrenByCodigo[cod] = [];
+        });
+
+        codigos.forEach(codigo => {
+            codigo = (codigo || '').trim();
+            if (!codigo) return;
+
+            let parent = null;
+            codigos.forEach(cand => {
+                cand = (cand || '').trim();
+                if (!cand || cand === codigo) return;
+
+                if (codigo.startsWith(cand)) {
+                    if (!parent || cand.length > parent.length) {
+                        parent = cand;
+                    }
+                }
+            });
+
+            if (parent) {
+                parentByCodigo[codigo] = parent;
+                childrenByCodigo[parent].push(codigo);
+            }
+        });
+
+        return { parentByCodigo, childrenByCodigo };
+    }
+
     $(document).ready(() => {
         if (!token || !system_unit_id) {
             Swal.fire('Erro', 'Token ou system_unit_id não informado na URL.', 'error');
@@ -191,22 +273,69 @@
             });
 
             const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
-            planosCache = dados;
+            planosCache = dados.slice(); // copia
+
+            // Ordena pelo código para manter a hierarquia visualmente organizada
+            planosCache.sort((a, b) => {
+                const ca = (a.codigo || '').trim();
+                const cb = (b.codigo || '').trim();
+                return ca.localeCompare(cb);
+            });
+
+            const codigos = planosCache
+                .map(p => (p.codigo || '').trim())
+                .filter(c => c);
+
+            const hierarchy = buildHierarchyMaps(codigos);
 
             const tbody = $('#tabela-planos tbody');
             tbody.empty();
 
-            if (!dados.length) {
-                tbody.append('<tr><td colspan="3" class="text-center">Nenhum plano cadastrado.</td></tr>');
+            if (!planosCache.length) {
+                tbody.append('<tr><td colspan="4" class="text-center">Nenhum plano cadastrado.</td></tr>');
                 return;
             }
 
-            dados.forEach(p => {
+            planosCache.forEach(p => {
                 const codigo = (p.codigo || '').trim();
                 const descricao = (p.descricao || '').trim();
 
+                const parentCodigo = hierarchy.parentByCodigo[codigo] || '';
+                const children = hierarchy.childrenByCodigo[codigo] || [];
+                const hasChildren = children.length > 0;
+                const nivel = getNivel(codigo);
+                const indentClass = 'hierarchy-level-' + nivel;
+
+                let toggleIconHtml = '';
+                if (hasChildren) {
+                    // começa recolhido
+                    toggleIconHtml = `
+                        <i class="fa fa-chevron-right toggle-child"
+                           data-codigo="${codigo}"
+                           data-expanded="0"></i>
+                    `;
+                } else {
+                    toggleIconHtml = `
+                        <i class="fa fa-circle"
+                           style="opacity:0; font-size:6px;"></i>
+                    `;
+                }
+
                 tbody.append(`
-                    <tr data-id="${p.id}" data-codigo="${codigo}">
+                    <tr data-id="${p.id}"
+                        data-codigo="${codigo}"
+                        data-parent="${parentCodigo}"
+                        class="${hasChildren ? 'has-children' : ''}">
+                        <td class="hierarchy-cell ${indentClass}">
+                            ${toggleIconHtml}
+                            <input type="checkbox" class="plano-checkbox">
+                        </td>
+                        <td class="codigo-cell ${indentClass}">
+                            ${codigo}
+                        </td>
+                        <td class="descricao-cell">
+                            ${descricao}
+                        </td>
                         <td>
                             <a href="#" class="editar-plano" title="Editar">
                                 <i class="fa fa-edit blue"></i>
@@ -220,11 +349,20 @@
                                 <i class="fa fa-trash red"></i>
                             </a>
                         </td>
-                        <td>${codigo}</td>
-                        <td>${descricao}</td>
                     </tr>
                 `);
             });
+
+            // Tudo começa recolhido: esconde quem tem parent
+            $('#tabela-planos tbody tr').each(function () {
+                const $tr = $(this);
+                const parent = $tr.data('parent');
+                if (parent) {
+                    $tr.attr('data-hidden-by-parent', '1');
+                }
+            });
+
+            filtrarTabela();
 
         } catch (err) {
             console.error(err);
@@ -237,15 +375,61 @@
         const descricao = $('#filtroDescricao').val().toLowerCase();
 
         $('#tabela-planos tbody tr').each(function () {
-            const textoCodigo = $(this).find('td:nth-child(2)').text().toLowerCase(); // Código
-            const textoDescricao = $(this).find('td:nth-child(3)').text().toLowerCase(); // Descrição
+            const $tr = $(this);
+            const textoCodigo = $tr.find('td:nth-child(2)').text().toLowerCase(); // Código
+            const textoDescricao = $tr.find('td:nth-child(3)').text().toLowerCase(); // Descrição
+            const hiddenByParent = $tr.attr('data-hidden-by-parent') === '1';
 
             const matchCodigo = codigo === '' || textoCodigo.startsWith(codigo);
-            const matchDescricao = textoDescricao.includes(descricao);
+            const matchDescricao = descricao === '' || textoDescricao.includes(descricao);
 
-            $(this).toggle(matchCodigo && matchDescricao);
+            $tr.toggle(matchCodigo && matchDescricao && !hiddenByParent);
         });
     }
+
+    // Toggle hierarquia (expandir/recolher filhos)
+    $(document).on('click', '.toggle-child', function (e) {
+        e.stopPropagation();
+        const icon = $(this);
+        const codigo = String(icon.data('codigo') || '');
+        const expanded = String(icon.data('expanded')) === '1';
+
+        if (!codigo) return;
+
+        if (expanded) {
+            // Recolher: esconde todos os descendentes e reseta ícones deles
+            icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+            icon.data('expanded', '0');
+
+            $('#tabela-planos tbody tr').each(function () {
+                const $tr = $(this);
+                const rowCodigo = String($tr.data('codigo') || '');
+                if (rowCodigo !== codigo && rowCodigo.startsWith(codigo)) {
+                    $tr.attr('data-hidden-by-parent', '1');
+                    $tr.find('.toggle-child').each(function () {
+                        $(this)
+                            .removeClass('fa-chevron-down')
+                            .addClass('fa-chevron-right')
+                            .data('expanded', '0');
+                    });
+                }
+            });
+        } else {
+            // Expandir: mostra apenas os filhos diretos
+            icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+            icon.data('expanded', '1');
+
+            $('#tabela-planos tbody tr').each(function () {
+                const $tr = $(this);
+                const parent = String($tr.data('parent') || '');
+                if (parent && parent === codigo) {
+                    $tr.removeAttr('data-hidden-by-parent');
+                }
+            });
+        }
+
+        filtrarTabela();
+    });
 
     async function salvarPlano() {
         const codigo = $('#codigo').val().trim();
