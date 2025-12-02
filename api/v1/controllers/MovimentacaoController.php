@@ -1125,7 +1125,7 @@ class MovimentacaoController
             $pdo->beginTransaction();
 
             // Passo 1: Obtem dados de consumo por insumo via método já existente
-            $consumos = BiController::getSalesByInsumos($systemUnitId, $data);
+            $consumos = BiController::getSalesByInsumos($systemUnitId, $data, $data);
 
             if (isset($consumos['error'])) {
                 $pdo->rollBack();

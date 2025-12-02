@@ -1039,83 +1039,142 @@ class BiController {
             ];
         }
     }
-
-
     public static function normalizeNumber($value) {
         return $value;
     }
-
-    public static function getSalesByInsumos ($systemUnitId, $data)
+    public static function getSalesByInsumos($systemUnitId, $dataInicio, $dataFim)
     {
         global $pdo;
 
         try {
-            // Consulta os produtos vendidos
-            $stmt = $pdo->prepare("SELECT system_unit_id, cod_material AS produto, quantidade AS qtde, data_movimento AS data
-                                FROM _bi_sales
-                                WHERE system_unit_id = :systemUnitId AND data_movimento = :data");
+            // 1) Consulta os produtos vendidos no período
+            $stmt = $pdo->prepare("
+            SELECT 
+                system_unit_id, 
+                cod_material AS produto, 
+                quantidade AS qtde, 
+                data_movimento AS data
+            FROM _bi_sales
+            WHERE system_unit_id = :systemUnitId
+              AND data_movimento BETWEEN :dataInicio AND :dataFim
+        ");
             $stmt->execute([
                 ':systemUnitId' => $systemUnitId,
-                ':data' => $data
+                ':dataInicio'   => $dataInicio,
+                ':dataFim'      => $dataFim,
             ]);
 
             $produtosVendas = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (empty($produtosVendas)) {
-                return ["error" => "Nenhuma movimentação encontrada para a unidade e data informadas."];
+                return [
+                    "error" => "Nenhuma movimentação encontrada para a unidade e período informados."
+                ];
             }
 
-            // Obter IDs dos produtos vendidos
+            // 2) Obter IDs dos produtos vendidos
             $produtosVendidosIds = array_map(function ($produto) {
                 return $produto['produto'];
             }, $produtosVendas);
 
-            // Consulta insumos relacionados aos produtos vendidos
+            if (empty($produtosVendidosIds)) {
+                return [
+                    "error" => "Nenhum produto vendido encontrado para o período informado."
+                ];
+            }
+
+            // 3) Monta placeholders para o IN
             $placeholders = implode(',', array_fill(0, count($produtosVendidosIds), '?'));
 
-            $stmtInsumos = $pdo->prepare("SELECT DISTINCT insumo_id, p.nome AS nome_insumo
-                                      FROM compositions c
-                                      JOIN products p ON p.codigo = c.insumo_id AND p.system_unit_id = c.system_unit_id
-                                      WHERE c.system_unit_id = ? AND c.product_id IN ($placeholders)");
-            $stmtInsumos->execute(array_merge([$systemUnitId], $produtosVendidosIds));
+            // 4) Consulta insumos relacionados aos produtos vendidos
+            $stmtInsumos = $pdo->prepare("
+            SELECT DISTINCT 
+                c.insumo_id, 
+                p.nome AS nome_insumo
+            FROM compositions c
+            JOIN products p 
+                ON p.codigo = c.insumo_id 
+               AND p.system_unit_id = c.system_unit_id
+            WHERE c.system_unit_id = ?
+              AND c.product_id IN ($placeholders)
+        ");
+
+            $paramsInsumos = array_merge([$systemUnitId], $produtosVendidosIds);
+            $stmtInsumos->execute($paramsInsumos);
             $insumos = $stmtInsumos->fetchAll(PDO::FETCH_ASSOC);
 
             if (empty($insumos)) {
-                return ["error" => "Nenhum insumo relacionado encontrado para os produtos vendidos."];
+                return [
+                    "error" => "Nenhum insumo relacionado encontrado para os produtos vendidos no período."
+                ];
             }
 
             $result = [];
 
+            // 5) Para cada insumo, buscar os produtos vendidos que o utilizam no período
             foreach ($insumos as $insumo) {
-                // Obter detalhes dos produtos vendidos que utilizam o insumo
-                $stmtProdutos = $pdo->prepare("SELECT c.product_id AS codigo_produto, p.nome AS nome_produto, c.quantity AS quantidade_insumo, 
-                                                  s.quantidade AS quantidade_venda_produto, (c.quantity * s.quantidade) AS uso_insumo
-                                           FROM compositions c
-                                           JOIN _bi_sales s ON c.product_id = s.cod_material AND c.system_unit_id = s.system_unit_id
-                                           JOIN products p ON p.codigo = s.cod_material AND p.system_unit_id = s.system_unit_id
-                                           WHERE c.system_unit_id = :systemUnitId AND c.insumo_id = :insumoId AND s.data_movimento = :data");
+                $stmtProdutos = $pdo->prepare("
+                SELECT 
+                    c.product_id AS codigo_produto,
+                    p.nome       AS nome_produto,
+                    c.quantity   AS quantidade_insumo,
+                    s.quantidade AS quantidade_venda_produto,
+                    (c.quantity * s.quantidade) AS uso_insumo,
+                    s.data_movimento AS data_movimento
+                FROM compositions c
+                JOIN _bi_sales s 
+                    ON c.product_id     = s.cod_material
+                   AND c.system_unit_id = s.system_unit_id
+                JOIN products p 
+                    ON p.codigo         = s.cod_material
+                   AND p.system_unit_id = s.system_unit_id
+                WHERE c.system_unit_id = :systemUnitId
+                  AND c.insumo_id      = :insumoId
+                  AND s.data_movimento BETWEEN :dataInicio AND :dataFim
+            ");
+
                 $stmtProdutos->execute([
                     ':systemUnitId' => $systemUnitId,
-                    ':insumoId' => $insumo['insumo_id'],
-                    ':data' => $data
+                    ':insumoId'     => $insumo['insumo_id'],
+                    ':dataInicio'   => $dataInicio,
+                    ':dataFim'      => $dataFim,
                 ]);
 
                 $produtosVendidos = $stmtProdutos->fetchAll(PDO::FETCH_ASSOC);
 
+                // === FORMATAÇÃO DA DATA NO BACKEND ===
+                foreach ($produtosVendidos as &$prod) {
+                    if (!empty($prod['data_movimento'])) {
+                        try {
+                            $dt = new DateTime($prod['data_movimento']);
+                            // só data
+                            $prod['data_movimento'] = $dt->format('d/m/Y');
+                            // se quiser data + hora, use:
+                            // $prod['data_movimento'] = $dt->format('d/m/Y H:i');
+                        } catch (Exception $e) {
+                            // se der erro na data, deixa como veio do banco
+                        }
+                    }
+                }
+                unset($prod); // boa prática para referência
+
+                // Soma total de uso do insumo no período
                 $totalUsoInsumo = array_reduce($produtosVendidos, function ($carry, $produto) {
-                    return $carry + $produto['uso_insumo'];
+                    return $carry + (float)$produto['uso_insumo'];
                 }, 0);
 
                 $result[] = [
-                    "codigo_insumo" => $insumo['insumo_id'],
-                    "nome_insumo" => $insumo['nome_insumo'],
-                    "sale_insumos" => number_format($totalUsoInsumo, 2, '.', ''),
-                    "produtos_vendidos" => $produtosVendidos
+                    "codigo_insumo"      => $insumo['insumo_id'],
+                    "nome_insumo"        => $insumo['nome_insumo'],
+                    "sale_insumos"       => number_format($totalUsoInsumo, 2, '.', ''),
+                    "produtos_vendidos"  => $produtosVendidos,
                 ];
             }
 
             return $result;
         } catch (Exception $e) {
-            return ["error" => "Erro ao processar os dados: " . $e->getMessage()];
+            return [
+                "error" => "Erro ao processar os dados: " . $e->getMessage()
+            ];
         }
     }
     public static function generateDashboardData($system_unit_id, $start_date, $end_date) {

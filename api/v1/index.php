@@ -352,11 +352,11 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'getSalesByInsumos':
-                if (isset($requestData['system_unit_id'], $requestData['data'])) {
-                    $response = BiController::getSalesByInsumos($requestData['system_unit_id'], $requestData['data']);
+                if (isset($requestData['system_unit_id'], $requestData['data_inicio'], $requestData['data_fim'])) {
+                    $response = BiController::getSalesByInsumos($requestData['system_unit_id'], $requestData['data_inicio'], $requestData['data_fim']);
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetros system_unit_id ou data ausentes'];
+                    $response = ['error' => 'Parâmetros system_unit_id ou datas ausentes'];
                 }
                 break;
             case 'getMovsByProd':
