@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Nota de Entrada Avulsa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap / Tema -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+
+    <!-- FontAwesome -->
+    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
+
+    <!-- jQuery / Bootstrap / SweetAlert2 / Axios -->
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- Select2 (opcional, se carregar ok) -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .card { border-radius: 8px; }
+        .card .header { padding: 15px 20px; border-bottom: 1px solid #eee; }
+        .card .body { padding: 20px; }
+
+        .badge-pill {
+            border-radius: 50px;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .badge-status-pendente {
+            background: #ff9800;
+            color: #fff;
+        }
+
+        .badge-status-ok {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        .readonly-field {
+            background: #fafafa;
+            border: 1px solid #eee;
+            padding: 8px;
+            border-radius: 6px;
+            min-height: 34px;
+        }
+
+        .select2-container { width: 100% !important; }
+        .select2-dropdown { z-index: 9999; }
+
+        .table thead th { white-space: nowrap; }
+
+        .table-items tbody tr:hover {
+            background-color: #f5f5f5;
+            cursor: pointer;
+        }
+
+        .kpi-box {
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border: 1px solid #eee;
+        }
+
+        .kpi-box h4 {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .kpi-box span {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .mb-10 { margin-bottom: 10px; }
+        .mb-15 { margin-bottom: 15px; }
+        .mt-10 { margin-top: 10px; }
+
+        .btn-xs {
+            padding: 2px 6px;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br/>
+    <div class="card">
+
+        <div class="body">
+            <!-- Campos escondidos -->
+            <input type="hidden" id="fornecedor_id">
+            <input type="hidden" id="nota_id_hidden">
+
+            <!-- Cabeçalho da Nota -->
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Dados da Nota</h4>
+                    <div class="row">
+                        <div class="col-md-12 mb-10">
+                            <label>Fornecedor</label>
+                            <select id="selFornecedor" class="form-control"></select>
+                        </div>
+
+                        <div class="col-md-4 mb-10">
+                            <label>Nº Nota Fiscal</label>
+                            <input type="text" id="numero_nf" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-10">
+                            <label>Série</label>
+                            <input type="text" id="serie" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-10">
+                            <label>Natureza da Operação</label>
+                            <input type="text" id="natureza_operacao" class="form-control" placeholder="NOTA AVULSA" />
+                        </div>
+
+                        <div class="col-md-4 mb-10">
+                            <label>Data Emissão</label>
+                            <input type="date" id="data_emissao" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-10">
+                            <label>Data Entrada</label>
+                            <input type="date" id="data_entrada" class="form-control" />
+                        </div>
+                        <div class="col-md-4 mb-10">
+                            <label>Valor Frete</label>
+                            <input type="text" id="valor_frete" class="form-control" placeholder="0,00" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Totais -->
+                <div class="col-md-6">
+                    <h4>Totais</h4>
+                    <div class="row">
+                        <div class="col-md-6 mb-10">
+                            <div class="kpi-box">
+                                <h4>Valor Produtos</h4>
+                                <span id="valor_produtos">R$ 0,00</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-10">
+                            <div class="kpi-box">
+                                <h4>Valor Total</h4>
+                                <span id="valor_total_nota">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <small class="text-muted">
+                        Os valores são calculados automaticamente com base nos itens da nota e no frete.
+                    </small>
+                </div>
+            </div>
+
+            <hr/>
+
+            <!-- Itens da Nota -->
+            <h4>Itens da Nota</h4>
+
+            <!-- Linha de inclusão/edição de item -->
+            <div class="row">
+                <div class="col-md-4 mb-10">
+                    <label>Produto (Estoque)</label>
+                    <select id="selProduto" class="form-control"></select>
+                </div>
+                <div class="col-md-2 mb-10">
+                    <label>Unidade</label>
+                    <div id="item_unidade" class="readonly-field">-</div>
+                </div>
+                <div class="col-md-2 mb-10">
+                    <label>Quantidade</label>
+                    <input type="number" id="item_quantidade" class="form-control" step="0.001" min="0.001" />
+                </div>
+                <div class="col-md-2 mb-10">
+                    <label>Valor Total</label>
+                    <input type="text" id="item_valor_total" class="form-control" placeholder="0,00" />
+                </div>
+                <div class="col-md-2 mb-10">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" id="btnAddItem" type="button">
+                        <i class="fa fa-plus"></i> Adicionar Item
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mt-10">
+                <div class="col-md-12">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-items" id="tabelaItens">
+                            <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cód. Produto</th>
+                                <th>Descrição</th>
+                                <th>Unidade</th>
+                                <th>Quantidade</th>
+                                <th>Vlr. Unitário</th>
+                                <th>Vlr. Total</th>
+                                <th style="width:80px;">Ações</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr><td colspan="8" class="text-center">Nenhum item adicionado.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <br/>
+
+            <!-- Botões de ação -->
+            <div class="text-center">
+                <button class="btn btn-danger" id="btnFecharTela" type="button">
+                    <i class="fa fa-times"></i> Fechar
+                </button>
+
+                <button class="btn btn-success" id="btnSalvarNota" type="button">
+                    <i class="fa fa-save"></i> Salvar Nota
+                </button>
+            </div>
+
+        </div><!-- /body -->
+    </div><!-- /card -->
+</div>
+
+<script>
+    'use strict';
+    console.log('SCRIPT LOADED');
+
+    (function () {
+        if (window.jQuery) {
+            console.log('jQuery carregado. Versão:', $.fn.jquery);
+        } else {
+            console.warn('jQuery NÃO carregou!');
+        }
+    })();
+
+    // ===== Configs base =====
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    // financeiro.php para fornecedores
+    const financeiroUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    // URL params
+    const params = new URLSearchParams(window.location.search);
+    const system_unit_id = params.get('system_unit_id');
+    const token          = params.get('token');
+    const usuario_id     = params.get('usuario_id') || 1;
+    let   nota_id        = params.get('nota_id'); // pode ser null
+
+    console.log('INIT NOTA AVULSA', { system_unit_id, token, usuario_id, nota_id });
+
+    // Estado
+    let fornecedores = [];
+    let insumos      = [];
+    let itens        = [];
+    let editIndex    = null; // índice do item sendo editado
+    let nota         = null;
+
+    // ===== Helpers =====
+    function parseValorBR(str) {
+        if (str === null || str === undefined) return 0;
+        let s = String(str).trim();
+        if (s === '') return 0;
+        s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function formatValorBR(num) {
+        const n = Number(num);
+        if (!isFinite(n)) return '0,00';
+        return n.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function fmtDateInput(s) {
+        if (!s) return '';
+        const t = String(s).trim();
+        const m1 = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+        const m2 = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+        const d = new Date(t);
+        if (!isNaN(d)) {
+            const yy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yy}-${mm}-${dd}`;
+        }
+        return '';
+    }
+
+    // Fecha modal no parent (ajuste o ID do modal se for outro)
+    function closeParentModal() {
+        let closed = false;
+        try {
+            if (window.parent && window.parent.$) {
+                const $p = window.parent.$;
+                if ($p('#modalNotaAvulsa').length) {
+                    $p('#modalNotaAvulsa').modal('hide');
+                    closed = true;
+                }
+            }
+        } catch (e) {
+            console.warn('Erro ao tentar fechar modal via jQuery do parent:', e);
+        }
+
+        try {
+            if (window.parent && window.parent.document && window.parent.bootstrap) {
+                const modalEl = window.parent.document.getElementById('modalNotaAvulsa');
+                if (modalEl) {
+                    const inst = window.parent.bootstrap.Modal.getInstance(modalEl)
+                        || new window.parent.bootstrap.Modal(modalEl);
+                    inst.hide();
+                    closed = true;
+                }
+            }
+        } catch (e) {
+            console.warn('Erro ao tentar fechar modal via bootstrap do parent:', e);
+        }
+
+        return closed;
+    }
+
+    function fecharTela() {
+        try {
+            if (window.parent && window.parent.$) {
+                window.parent.$('#modalEntradaEstoque').modal('hide');
+                return;
+            }
+        } catch (e) {}
+        try {
+            const modalEl = window.parent.document.getElementById('modalEntradaEstoque');
+            if (modalEl && window.parent.bootstrap) {
+                const inst = window.parent.bootstrap.Modal.getInstance(modalEl)
+                    || new window.parent.bootstrap.Modal(modalEl);
+                inst.hide();
+            }
+        } catch (e) {}
+    }
+
+    // ===== Carregar Fornecedores (financeiro.php / listFornecedores) =====
+    async function carregarFornecedores() {
+        if (!system_unit_id || !token) {
+            console.warn('system_unit_id ou token ausentes na URL');
+            return;
+        }
+
+        const $sel = $('#selFornecedor');
+
+        try {
+            console.log('Carregando fornecedores...');
+            const res = await axios.post(financeiroUrl, {
+                method: 'listFornecedores',
+                token: token,
+                data: {
+                    system_unit_id: Number(system_unit_id)
+                }
+            });
+
+            console.log('Resposta listFornecedores:', res.data);
+
+            let lista = [];
+            if (Array.isArray(res.data)) {
+                lista = res.data;
+            } else if (res.data?.success && Array.isArray(res.data.fornecedores)) {
+                lista = res.data.fornecedores;
+            } else {
+                throw new Error('Resposta inesperada ao listar fornecedores');
+            }
+
+            fornecedores = lista.map(f => ({
+                id: f.id,
+                nome: f.nome || f.razao || '',
+                razao: f.razao || '',
+                cnpj_cpf: f.cnpj_cpf || ''
+            })).sort((a, b) =>
+                String(a.nome).localeCompare(String(b.nome), 'pt-BR')
+            );
+
+            if ($.fn.select2 && $sel.hasClass('select2-hidden-accessible')) {
+                $sel.select2('destroy');
+            }
+
+            $sel.empty();
+            $sel.append('<option value=""></option>');
+            fornecedores.forEach(f => {
+                let label = f.nome;
+                if (f.cnpj_cpf) {
+                    label += ' (' + f.cnpj_cpf + ')';
+                }
+                $sel.append(new Option(label, String(f.id), false, false));
+            });
+
+            if ($.fn.select2) {
+                $sel.select2({
+                    placeholder: 'Selecione um fornecedor...',
+                    allowClear: true,
+                    width: 'resolve'
+                });
+            } else {
+                console.warn('Select2 não carregado, usando <select> normal para fornecedores');
+            }
+
+            $sel.val(null).trigger('change');
+        } catch (e) {
+            console.error('Erro ao carregar fornecedores:', e);
+            Swal.fire('Erro', e.message || 'Erro ao carregar fornecedores', 'error');
+        }
+    }
+
+    function onChangeFornecedor() {
+        const idSelecionado = $('#selFornecedor').val();
+        const fornecedor = fornecedores.find(f => String(f.id) === String(idSelecionado));
+
+        if (!fornecedor) {
+            $('#fornecedor_id').val('');
+            return;
+        }
+        $('#fornecedor_id').val(fornecedor.id);
+    }
+
+    // ===== Carregar Insumos (produtos de estoque) =====
+    async function carregarInsumos(selectCodigo = null) {
+        if (!system_unit_id || !token) return;
+
+        try {
+            console.log('Carregando insumos...');
+            const res = await axios.post(baseUrl, {
+                method: 'listInsumos',
+                token: token,
+                data: {
+                    unit_id: String(system_unit_id)
+                }
+            });
+
+            console.log('Resposta listInsumos:', res.data);
+
+            if (!res.data?.success) {
+                throw new Error(res.data?.message || 'Falha ao carregar insumos');
+            }
+
+            insumos = res.data.insumos || [];
+
+            const $sel = $('#selProduto');
+
+            if ($.fn.select2 && $sel.hasClass('select2-hidden-accessible')) {
+                $sel.select2('destroy');
+            }
+
+            $sel.empty();
+            $sel.append('<option value=""></option>');
+
+            insumos.forEach(i => {
+                const text = `${i.codigo} - ${i.nome}`;
+                $sel.append(new Option(text, String(i.codigo), false, false));
+            });
+
+            if ($.fn.select2) {
+                $sel.select2({
+                    placeholder: 'Selecione um produto...',
+                    allowClear: true,
+                    width: 'resolve'
+                });
+            } else {
+                console.warn('Select2 não carregado, usando <select> normal para produtos');
+            }
+
+            if (selectCodigo) {
+                const exists = insumos.some(i => String(i.codigo) === String(selectCodigo));
+                if (!exists) {
+                    $sel.append(new Option(String(selectCodigo), String(selectCodigo), false, false));
+                }
+                $sel.val(String(selectCodigo)).trigger('change');
+            } else {
+                $sel.val(null).trigger('change');
+            }
+
+            $('#item_unidade').text('-');
+        } catch (e) {
+            console.error('Erro ao carregar insumos:', e);
+            Swal.fire('Erro', e.message || 'Erro ao carregar produtos/insumos', 'error');
+        }
+    }
+
+    function onChangeProduto() {
+        const codigo = $('#selProduto').val();
+        if (!codigo) {
+            $('#item_unidade').text('-');
+            return;
+        }
+
+        const ins = insumos.find(x => String(x.codigo) === String(codigo));
+        if (!ins) {
+            $('#item_unidade').text('-');
+            return;
+        }
+        $('#item_unidade').text(ins.und || '-');
+    }
+
+    // ===== Renderizar Itens =====
+    function renderTabelaItens() {
+        const tbody = $('#tabelaItens tbody');
+        tbody.empty();
+
+        if (!itens.length) {
+            tbody.append('<tr><td colspan="8" class="text-center">Nenhum item adicionado.</td></tr>');
+            return;
+        }
+
+        itens.forEach((it, idx) => {
+            const qtd = Number(it.quantidade || 0);
+            const vTot = Number(it.valor_total || 0);
+            const vUnit = qtd > 0 ? (vTot / qtd) : 0;
+
+            const tr = $(`
+                <tr data-idx="${idx}">
+                    <td>${idx + 1}</td>
+                    <td>${it.codigo_produto}</td>
+                    <td>${it.descricao}</td>
+                    <td>${it.unidade}</td>
+                    <td>${qtd.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+                    <td>R$ ${formatValorBR(vUnit)}</td>
+                    <td>R$ ${formatValorBR(vTot)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-warning btn-xs btn-edit-item">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-xs btn-del-item">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+
+            tbody.append(tr);
+        });
+
+        tbody.find('.btn-edit-item').off('click').on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const idx = Number($(this).closest('tr').data('idx'));
+            editarItem(idx);
+        });
+
+        tbody.find('.btn-del-item').off('click').on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const idx = Number($(this).closest('tr').data('idx'));
+            removerItem(idx);
+        });
+    }
+
+    function limparCamposItem() {
+        $('#selProduto').val(null).trigger('change');
+        $('#item_unidade').text('-');
+        $('#item_quantidade').val('');
+        $('#item_valor_total').val('');
+        editIndex = null;
+        $('#btnAddItem').html('<i class="fa fa-plus"></i> Adicionar Item');
+    }
+
+    function editarItem(idx) {
+        const it = itens[idx];
+        editIndex = idx;
+
+        $('#selProduto').val(String(it.codigo_produto)).trigger('change');
+        $('#item_unidade').text(it.unidade || '-');
+        $('#item_quantidade').val(it.quantidade);
+        $('#item_valor_total').val(formatValorBR(it.valor_total));
+
+        $('#btnAddItem').html('<i class="fa fa-check"></i> Atualizar Item');
+    }
+
+    function removerItem(idx) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Remover item?',
+            text: 'Tem certeza que deseja remover este item da nota?',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, remover',
+            cancelButtonText: 'Cancelar'
+        }).then(res => {
+            if (!res.isConfirmed) return;
+            itens.splice(idx, 1);
+            itens = itens.map((it, i) => ({
+                ...it,
+                numero_item: i + 1
+            }));
+            renderTabelaItens();
+            recalcularTotais();
+            limparCamposItem();
+        });
+    }
+
+    function adicionarOuAtualizarItem() {
+        const codigo = $('#selProduto').val();
+        const ins = insumos.find(x => String(x.codigo) === String(codigo));
+        const qtd = parseFloat($('#item_quantidade').val());
+        const vTot = parseValorBR($('#item_valor_total').val());
+
+        if (!codigo || !ins) {
+            Swal.fire('Atenção', 'Selecione um produto.', 'warning');
+            return;
+        }
+        if (!(qtd > 0)) {
+            Swal.fire('Atenção', 'Informe uma quantidade maior que zero.', 'warning');
+            return;
+        }
+        if (!(vTot >= 0)) {
+            Swal.fire('Atenção', 'Informe um valor total válido.', 'warning');
+            return;
+        }
+
+        const itemData = {
+            numero_item: 0,
+            codigo_produto: Number(ins.codigo),
+            descricao: ins.nome,
+            unidade: ins.und || 'UND',
+            quantidade: qtd,
+            valor_total: vTot
+        };
+
+        if (editIndex !== null) {
+            itens[editIndex] = {
+                ...itens[editIndex],
+                ...itemData,
+                numero_item: editIndex + 1
+            };
+        } else {
+            itemData.numero_item = itens.length + 1;
+            itens.push(itemData);
+        }
+
+        renderTabelaItens();
+        recalcularTotais();
+        limparCamposItem();
+    }
+
+    function recalcularTotais() {
+        let somaProdutos = 0;
+        itens.forEach(it => {
+            somaProdutos += Number(it.valor_total || 0);
+        });
+
+        const frete = parseValorBR($('#valor_frete').val() || '0');
+        const total = somaProdutos + frete;
+
+        $('#valor_produtos').text('R$ ' + formatValorBR(somaProdutos));
+        $('#valor_total_nota').text('R$ ' + formatValorBR(total));
+    }
+
+    // ===== limpar tudo para nova nota =====
+    function resetFormNotaAvulsa() {
+        nota_id = null;
+        $('#nota_id_hidden').val('');
+
+        $('#selFornecedor').val(null).trigger('change');
+        $('#fornecedor_id').val('');
+
+        $('#numero_nf').val('');
+        $('#serie').val('');
+        $('#natureza_operacao').val('NOTA AVULSA');
+
+        const hoje = new Date();
+        const yy = hoje.getFullYear();
+        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoje.getDate()).padStart(2, '0');
+        const hojeStr = `${yy}-${mm}-${dd}`;
+        $('#data_emissao').val(hojeStr);
+        $('#data_entrada').val(hojeStr);
+
+        $('#valor_frete').val('');
+
+        itens = [];
+        renderTabelaItens();
+        recalcularTotais();
+        limparCamposItem();
+    }
+
+    // ===== Carregar Nota Avulsa (edição) =====
+    async function carregarNotaAvulsa() {
+        if (!nota_id) return;
+        try {
+            Swal.fire({ title: 'Carregando nota...', didOpen: () => Swal.showLoading() });
+
+            const res = await axios.post(baseUrl, {
+                method: 'getNotaAvulsa',
+                token: token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    nota_id: Number(nota_id)
+                }
+            });
+
+            console.log('Resposta getNotaAvulsa:', res.data);
+
+            if (!res.data?.success) {
+                throw new Error(res.data?.message || 'Falha ao carregar nota');
+            }
+
+            const dataNota = res.data.data || res.data;
+            nota = dataNota.nota || dataNota.nota_avulsa || dataNota;
+
+            const itensNota = dataNota.itens || [];
+
+            $('#nota_id_hidden').val(nota.id || nota_id);
+
+            $('#numero_nf').val(nota.numero_nf || '');
+            $('#serie').val(nota.serie || '');
+            $('#natureza_operacao').val(nota.natureza_operacao || 'NOTA AVULSA');
+
+            $('#data_emissao').val(fmtDateInput(nota.data_emissao));
+            $('#data_entrada').val(fmtDateInput(nota.data_entrada));
+
+            const frete = Number(nota.valor_frete || 0);
+            $('#valor_frete').val(formatValorBR(frete));
+
+            const fornId = nota.fornecedor_id || null;
+            if (fornId) {
+                $('#fornecedor_id').val(fornId);
+                const exists = fornecedores.some(f => String(f.id) === String(fornId));
+                if (!exists) {
+                    $('#selFornecedor').append(new Option(`Fornecedor ${fornId}`, String(fornId), false, false));
+                }
+                $('#selFornecedor').val(String(fornId)).trigger('change');
+            }
+
+            itens = itensNota.map((it, idx) => ({
+                numero_item: it.numero_item || (idx + 1),
+                codigo_produto: it.codigo_produto,
+                descricao: it.descricao,
+                unidade: it.unidade,
+                quantidade: Number(it.quantidade || 0),
+                valor_total: Number(it.valor_total || 0)
+            }));
+
+            renderTabelaItens();
+            recalcularTotais();
+
+            Swal.close();
+        } catch (e) {
+            console.error('Erro getNotaAvulsa:', e);
+            Swal.fire('Erro', e.message || 'Erro ao carregar nota avulsa', 'error');
+        }
+    }
+
+    // ===== Salvar Nota (nova ou update) =====
+    async function salvarNotaAvulsa() {
+        const fornId      = $('#fornecedor_id').val();
+        const numeroNF    = $('#numero_nf').val();
+        const dataEmissao = $('#data_emissao').val();
+        const dataEntrada = $('#data_entrada').val();
+
+        const isNewNota = !nota_id; // se não tinha nota_id na URL, é criação
+
+        if (!fornId) {
+            Swal.fire('Atenção', 'Selecione um fornecedor.', 'warning');
+            return;
+        }
+        if (!numeroNF) {
+            Swal.fire('Atenção', 'Informe o número da nota.', 'warning');
+            return;
+        }
+        if (!dataEmissao) {
+            Swal.fire('Atenção', 'Informe a data de emissão.', 'warning');
+            return;
+        }
+        if (!dataEntrada) {
+            Swal.fire('Atenção', 'Informe a data de entrada.', 'warning');
+            return;
+        }
+        if (!itens.length) {
+            Swal.fire('Atenção', 'Adicione ao menos um item na nota.', 'warning');
+            return;
+        }
+
+        const frete = parseValorBR($('#valor_frete').val() || '0');
+
+        const dataPayload = {
+            system_unit_id: Number(system_unit_id),
+            fornecedor_id: Number(fornId),
+            numero_nf: String(numeroNF),
+            serie: $('#serie').val() || null,
+            data_emissao: String(dataEmissao),
+            data_entrada: String(dataEntrada),
+            natureza_operacao: $('#natureza_operacao').val() || 'NOTA AVULSA',
+            valor_frete: frete,
+            usuario_id: Number(usuario_id),
+            itens: itens.map((it, idx) => ({
+                numero_item: it.numero_item || (idx + 1),
+                codigo_produto: it.codigo_produto,
+                descricao: it.descricao,
+                unidade: it.unidade,
+                quantidade: it.quantidade,
+                valor_total: it.valor_total,
+                // backend atual usa valor_unitario; podemos enviar derivado aqui
+                valor_unitario: it.quantidade > 0
+                    ? (Number(it.valor_total) / Number(it.quantidade))
+                    : 0
+            }))
+        };
+
+        if (nota_id) {
+            dataPayload.nota_id = Number(nota_id);
+        }
+
+        const method = nota_id ? 'updateNotaAvulsa' : 'lancarNotaAvulsa';
+
+        try {
+            Swal.fire({ title: 'Salvando nota...', didOpen: () => Swal.showLoading() });
+
+            const res = await axios.post(baseUrl, {
+                method,
+                token,
+                data: dataPayload
+            });
+
+            console.log('Resposta salvar nota:', res.data);
+
+            if (!res.data?.success) {
+                throw new Error(res.data?.message || 'Falha ao salvar nota avulsa');
+            }
+
+            // se for criação, atualiza nota_id local (caso queira usar depois)
+            if (isNewNota && res.data.nota_id) {
+                nota_id = res.data.nota_id;
+                $('#nota_id_hidden').val(nota_id);
+            }
+
+            await Swal.fire('Sucesso', 'Nota avulsa salva com sucesso.', 'success');
+
+            // se foi criação (sem nota_id na URL), limpa tudo e fecha o modal pai
+            if (isNewNota) {
+                resetFormNotaAvulsa();
+                const closed = closeParentModal();
+                if (!closed) {
+                    // se não estiver dentro de modal, simplesmente deixa o form limpo
+                    console.log('Nenhum modal pai encontrado; form resetado para nova nota.');
+                }
+            }
+
+        } catch (e) {
+            console.error('Erro ao salvar nota:', e);
+            Swal.fire('Erro', e.message || 'Erro ao salvar nota avulsa', 'error');
+        }
+    }
+
+    // ===== Função principal de inicialização =====
+    async function initPage() {
+        console.log('INIT PAGE START');
+
+        if (!system_unit_id || !token) {
+            Swal.fire('Erro', 'Parâmetros ausentes na URL: system_unit_id e token.', 'error');
+            return;
+        }
+
+        // Configura selects (se select2 estiver disponível)
+        if ($.fn.select2) {
+            $('#selFornecedor').select2({
+                placeholder: 'Carregando fornecedores...',
+                width: 'resolve'
+            });
+            $('#selProduto').select2({
+                placeholder: 'Carregando produtos...',
+                width: 'resolve'
+            });
+        } else {
+            console.warn('Select2 não disponível, usando selects normais');
+        }
+
+        // Eventos
+        $('#selFornecedor').on('change', onChangeFornecedor);
+        $('#selProduto').on('change', onChangeProduto);
+        $('#btnAddItem').on('click', adicionarOuAtualizarItem);
+        $('#btnFecharTela').on('click', fecharTela);
+        $('#btnSalvarNota').on('click', salvarNotaAvulsa);
+        $('#valor_frete').on('input', recalcularTotais);
+
+        // Datas padrão
+        const hoje = new Date();
+        const yy = hoje.getFullYear();
+        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoje.getDate()).padStart(2, '0');
+        const hojeStr = `${yy}-${mm}-${dd}`;
+
+        $('#data_emissao').val(hojeStr);
+        $('#data_entrada').val(hojeStr);
+
+        try {
+            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+
+            await carregarInsumos();
+            await carregarFornecedores();
+
+            if (nota_id) {
+                await carregarNotaAvulsa();
+            }
+
+            Swal.close();
+            console.log('INIT PAGE END');
+        } catch (e) {
+            console.error('Erro na carga inicial:', e);
+            Swal.fire('Erro', e.message || 'Falha na carga inicial', 'error');
+        }
+    }
+
+    // ===== Dispara initPage no load da janela =====
+    window.addEventListener('load', function () {
+        console.log('WINDOW LOAD DISPATCHED');
+        initPage().catch(e => {
+            console.error('Erro initPage', e);
+            Swal.fire('Erro', e.message || 'Falha ao iniciar a tela', 'error');
+        });
+    });
+</script>
+</body>
+</html>

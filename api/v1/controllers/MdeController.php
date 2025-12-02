@@ -848,6 +848,7 @@ class MdeController
                     en.valor_total,
                     en.incluida_estoque,
                     en.incluida_financeiro,
+                    en.tipo,
                     ff.razao AS fornecedor_razao,
                     ff.cnpj_cpf AS fornecedor_cnpj,
                     ff.id as fornecedor_id
@@ -946,5 +947,654 @@ class MdeController
             ];
         }
     }
+
+    public static function lancarNotaAvulsa(int $system_unit_id, array $data): array
+    {
+        global $pdo;
+
+        try {
+            $pdo->beginTransaction();
+
+            // ===== validações básicas =====
+            $requiredTopo = ['fornecedor_id', 'numero_nf', 'data_entrada', 'data_emissao', 'itens'];
+            foreach ($requiredTopo as $campo) {
+                if (!isset($data[$campo]) || $data[$campo] === '' || $data[$campo] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$campo}");
+                }
+            }
+
+            if (!is_array($data['itens']) || count($data['itens']) === 0) {
+                throw new Exception("É necessário informar ao menos um item.");
+            }
+
+            $fornecedor_id = (int)$data['fornecedor_id'];
+            $numeroNF      = trim((string)$data['numero_nf']);
+            $serie         = isset($data['serie']) ? trim((string)$data['serie']) : null;
+
+            // helper data -> datetime
+            $parseDateTime = static function (?string $s): ?string {
+                if (!$s) return null;
+                $s = trim($s);
+
+                // YYYY-MM-DD
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+                    return $s . ' 00:00:00';
+                }
+
+                // DD/MM/YYYY
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {
+                    [$d, $m, $y] = explode('/', $s);
+                    return sprintf('%04d-%02d-%02d 00:00:00', (int)$y, (int)$m, (int)$d);
+                }
+
+                // qualquer coisa que strtotime aceite
+                $t = strtotime($s);
+                if ($t !== false) {
+                    return date('Y-m-d 00:00:00', $t);
+                }
+
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            $dataEntrada  = $parseDateTime((string)$data['data_entrada']);
+            $dataEmissao  = $parseDateTime((string)$data['data_emissao']);
+
+            // ===== calcula totais a partir dos itens (qtd × valor_unitario) =====
+            $valorProdutos = 0.0;
+
+            foreach ($data['itens'] as $idx => $item) {
+                foreach (['codigo_produto','descricao','unidade','quantidade','valor_unitario'] as $campo) {
+                    if (!isset($item[$campo]) || $item[$campo] === '' || $item[$campo] === null) {
+                        throw new Exception("Item {$idx}: campo obrigatório ausente: {$campo}");
+                    }
+                }
+
+                $qtd  = (float)$item['quantidade'];
+                $unit = (float)$item['valor_unitario'];
+
+                if ($qtd <= 0) {
+                    throw new Exception("Item {$idx}: quantidade deve ser maior que zero.");
+                }
+
+                $valorItem = $qtd * $unit;
+                $valorProdutos += $valorItem;
+            }
+
+            $valorTotal   = $valorProdutos;
+            $valorFrete   = isset($data['valor_frete']) ? (float)$data['valor_frete'] : 0.0;
+
+            // ===== chave_acesso (para avulsa) =====
+            $chaveAcesso = isset($data['chave_acesso']) && trim($data['chave_acesso']) !== ''
+                ? trim((string)$data['chave_acesso'])
+                : ('AVULSA-' . $system_unit_id . '-' . $numeroNF . '-' . ($serie ?: 'S0'));
+
+            if (strlen($chaveAcesso) > 50) {
+                $chaveAcesso = substr($chaveAcesso, 0, 50);
+            }
+
+            // ===== checa duplicidade =====
+            $stDup = $pdo->prepare("
+            SELECT id 
+            FROM estoque_nota
+            WHERE system_unit_id = ? 
+              AND fornecedor_id  = ? 
+              AND numero_nf      = ? 
+              AND serie          = ?
+            LIMIT 1
+        ");
+            $stDup->execute([$system_unit_id, $fornecedor_id, $numeroNF, $serie]);
+            if ($stDup->fetch(PDO::FETCH_ASSOC)) {
+                throw new Exception("Nota já existe para este fornecedor, série e unidade.");
+            }
+
+            // ===== insere cabeçalho (tipo = 'a' avulsa) =====
+            $stNota = $pdo->prepare("
+            INSERT INTO estoque_nota (
+                system_unit_id,
+                fornecedor_id,
+                chave_acesso,
+                numero_nf,
+                serie,
+                data_emissao,
+                data_entrada,
+                natureza_operacao,
+                valor_total,
+                valor_produtos,
+                valor_frete,
+                tipo
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'a'
+            )
+        ");
+            $stNota->execute([
+                $system_unit_id,
+                $fornecedor_id,
+                $chaveAcesso,
+                $numeroNF,
+                $serie,
+                $dataEmissao,
+                $dataEntrada,
+                $data['natureza_operacao'] ?? 'NOTA AVULSA',
+                $valorTotal,
+                $valorProdutos,
+                $valorFrete
+            ]);
+
+            $nota_id = (int)$pdo->lastInsertId();
+
+            // ===== insere itens =====
+            $stItem = $pdo->prepare("
+            INSERT INTO estoque_nota_item (
+                system_unit_id,
+                nota_id,
+                numero_item,
+                codigo_produto,
+                descricao,
+                ncm,
+                cfop,
+                unidade,
+                quantidade,
+                valor_unitario,
+                valor_total,
+                valor_frete
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+        ");
+
+            foreach ($data['itens'] as $idx => $item) {
+                $numeroItem = isset($item['numero_item']) ? (int)$item['numero_item'] : ($idx + 1);
+                $codigoProd = $item['codigo_produto'];
+                $descricao  = $item['descricao'];
+                $unidade    = $item['unidade'];
+                $qtd        = (float)$item['quantidade'];
+                $vUnit      = (float)$item['valor_unitario'];
+                $vTotal     = $qtd * $vUnit;
+
+                $stItem->execute([
+                    $system_unit_id,
+                    $nota_id,
+                    $numeroItem,
+                    $codigoProd,
+                    $descricao,
+                    $item['ncm']  ?? null,
+                    $item['cfop'] ?? null,
+                    $unidade,
+                    $qtd,
+                    $vUnit,
+                    $vTotal,
+                    0.0
+                ]);
+            }
+
+            // === LANÇA ITENS NO ESTOQUE ===
+            $estoqueResp = NotaFiscalEntradaController::lancarItensNotaAvulsaNoEstoque([
+                'system_unit_id' => $system_unit_id,
+                'usuario_id'     => isset($data['usuario_id']) ? (int)$data['usuario_id'] : 1,
+                'nota_id'        => $nota_id,
+                'data_entrada'   => $data['data_entrada'],
+                'data_emissao'   => $data['data_emissao'],
+                'itens'          => $data['itens']
+            ]);
+
+            if (!$estoqueResp['success']) {
+                throw new Exception(
+                    "Nota criada, mas houve erro ao lançar os itens no estoque: " .
+                    $estoqueResp['message']
+                );
+            }
+
+            $pdo->commit();
+
+            return [
+                'success'        => true,
+                'message'        => 'Nota avulsa lançada com sucesso.',
+                'nota_id'        => $nota_id,
+                'chave_acesso'   => $chaveAcesso,
+                'numero_nf'      => $numeroNF,
+                'serie'          => $serie,
+                'valor_total'    => $valorTotal,
+                'valor_produtos' => $valorProdutos,
+                'estoque'        => $estoqueResp
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    public static function getNotaAvulsa(int $system_unit_id, int $nota_id): array
+    {
+        global $pdo;
+
+        try {
+            // Cabeçalho da nota avulsa
+            $stCab = $pdo->prepare("
+            SELECT 
+                id,
+                system_unit_id,
+                fornecedor_id,
+                chave_acesso,
+                numero_nf,
+                serie,
+                data_emissao,
+                data_entrada,
+                natureza_operacao,
+                valor_total,
+                valor_produtos,
+                valor_frete,
+                tipo
+            FROM estoque_nota
+            WHERE id = :id
+              AND system_unit_id = :unit
+              AND tipo = 'a'
+            LIMIT 1
+        ");
+            $stCab->execute([
+                ':id'   => $nota_id,
+                ':unit' => $system_unit_id,
+            ]);
+
+            $cab = $stCab->fetch(PDO::FETCH_ASSOC);
+
+            if (!$cab) {
+                return [
+                    'success' => false,
+                    'message' => 'Nota avulsa não encontrada para esta unidade.',
+                ];
+            }
+
+            // Itens da nota
+            $stItens = $pdo->prepare("
+            SELECT 
+                id,
+                numero_item,
+                codigo_produto,
+                descricao,
+                ncm,
+                cfop,
+                unidade,
+                quantidade,
+                valor_unitario,
+                valor_total,
+                valor_frete
+            FROM estoque_nota_item
+            WHERE system_unit_id = :unit
+              AND nota_id       = :nota
+            ORDER BY numero_item ASC, id ASC
+        ");
+            $stItens->execute([
+                ':unit' => $system_unit_id,
+                ':nota' => $nota_id,
+            ]);
+
+            $itens = $stItens->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'nota'    => $cab,
+                'itens'   => $itens,
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+    public static function updateNotaAvulsa(int $system_unit_id, int $nota_id, array $data): array
+    {
+        global $pdo;
+
+        try {
+            // =======================
+            // 1) Carrega nota atual
+            // =======================
+            $stOld = $pdo->prepare("
+            SELECT 
+                id,
+                numero_nf,
+                chave_acesso,
+                tipo
+            FROM estoque_nota
+            WHERE id = :id
+              AND system_unit_id = :unit
+            LIMIT 1
+        ");
+            $stOld->execute([
+                ':id'   => $nota_id,
+                ':unit' => $system_unit_id,
+            ]);
+
+            $notaOld = $stOld->fetch(PDO::FETCH_ASSOC);
+
+            if (!$notaOld) {
+                return [
+                    'success' => false,
+                    'message' => 'Nota não encontrada para esta unidade.',
+                ];
+            }
+
+            if (($notaOld['tipo'] ?? null) !== 'a') {
+                return [
+                    'success' => false,
+                    'message' => 'Apenas notas avulsas podem ser editadas por este método.',
+                ];
+            }
+
+            $oldNumeroNF   = (string)$notaOld['numero_nf'];
+            $oldChaveAcess = (string)$notaOld['chave_acesso'];
+
+            // =======================
+            // 2) Valida payload
+            // =======================
+            $requiredTopo = ['fornecedor_id', 'numero_nf', 'data_entrada', 'data_emissao', 'itens', 'usuario_id'];
+            foreach ($requiredTopo as $campo) {
+                if (!isset($data[$campo]) || $data[$campo] === '' || $data[$campo] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$campo}");
+                }
+            }
+
+            if (!is_array($data['itens']) || count($data['itens']) === 0) {
+                throw new Exception("É necessário informar ao menos um item.");
+            }
+
+            $fornecedor_id = (int)$data['fornecedor_id'];
+            $numeroNF      = trim((string)$data['numero_nf']);
+            $serie         = isset($data['serie']) ? trim((string)$data['serie']) : null;
+            $usuarioId     = (int)$data['usuario_id'];
+
+            // helper data -> datetime
+            $parseDateTime = static function (?string $s): ?string {
+                if (!$s) return null;
+                $s = trim($s);
+
+                // YYYY-MM-DD
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+                    return $s . ' 00:00:00';
+                }
+
+                // DD/MM/YYYY
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {
+                    [$d, $m, $y] = explode('/', $s);
+                    return sprintf('%04d-%02d-%02d 00:00:00', (int)$y, (int)$m, (int)$d);
+                }
+
+                // qualquer coisa que strtotime aceite
+                $t = strtotime($s);
+                if ($t !== false) {
+                    return date('Y-m-d 00:00:00', $t);
+                }
+
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            $dataEntrada = $parseDateTime((string)$data['data_entrada']);
+            $dataEmissao = $parseDateTime((string)$data['data_emissao']);
+
+            // =======================
+            // 3) Calcula totais
+            // =======================
+            $valorProdutos = 0.0;
+
+            foreach ($data['itens'] as $idx => $item) {
+                foreach (['codigo_produto','descricao','unidade','quantidade','valor_total'] as $campo) {
+                    if (!isset($item[$campo]) || $item[$campo] === '' || $item[$campo] === null) {
+                        throw new Exception("Item {$idx}: campo obrigatório ausente: {$campo}");
+                    }
+                }
+
+                $qtd  = (float)$item['quantidade'];
+                $vTot = (float)$item['valor_total'];
+
+                if ($qtd <= 0) {
+                    throw new Exception("Item {$idx}: quantidade deve ser maior que zero.");
+                }
+
+                $valorProdutos += $vTot;
+            }
+
+            $valorTotal = $valorProdutos;
+            $valorFrete = isset($data['valor_frete']) ? (float)$data['valor_frete'] : 0.0;
+
+            // =======================
+            // 4) Chave de acesso
+            // =======================
+            $chaveAcesso = isset($data['chave_acesso']) && trim($data['chave_acesso']) !== ''
+                ? trim((string)$data['chave_acesso'])
+                : $oldChaveAcess; // mantém a anterior se não vier nada
+
+            if (!$chaveAcesso) {
+                // se por algum motivo não tinha, gera um padrão
+                $chaveAcesso = 'AVULSA-' . $system_unit_id . '-' . $numeroNF . '-' . ($serie ?: 'S0');
+            }
+
+            // limite coluna
+            if (strlen($chaveAcesso) > 50) {
+                $chaveAcesso = substr($chaveAcesso, 0, 50);
+            }
+
+            // =======================
+            // 5) Atualiza nota + itens
+            // =======================
+            $pdo->beginTransaction();
+
+            // opcional: checar duplicidade MESMO fornecedor/numero/serie em outra nota
+            $stDup = $pdo->prepare("
+            SELECT id
+            FROM estoque_nota
+            WHERE system_unit_id = ?
+              AND fornecedor_id  = ?
+              AND numero_nf      = ?
+              AND serie          = ?
+              AND id            <> ?
+            LIMIT 1
+        ");
+            $stDup->execute([
+                $system_unit_id,
+                $fornecedor_id,
+                $numeroNF,
+                $serie,
+                $nota_id
+            ]);
+            if ($stDup->fetch(PDO::FETCH_ASSOC)) {
+                throw new Exception("Já existe outra nota avulsa com este fornecedor, série e número para esta unidade.");
+            }
+
+            // atualiza cabeçalho
+            $stUpdNota = $pdo->prepare("
+            UPDATE estoque_nota
+            SET 
+                fornecedor_id     = ?,
+                chave_acesso      = ?,
+                numero_nf         = ?,
+                serie             = ?,
+                data_emissao      = ?,
+                data_entrada      = ?,
+                natureza_operacao = ?,
+                valor_total       = ?,
+                valor_produtos    = ?,
+                valor_frete       = ?,
+                updated_at        = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND system_unit_id = ?
+              AND tipo = 'a'
+            LIMIT 1
+        ");
+            $stUpdNota->execute([
+                $fornecedor_id,
+                $chaveAcesso,
+                $numeroNF,
+                $serie,
+                $dataEmissao,
+                $dataEntrada,
+                $data['natureza_operacao'] ?? 'NOTA AVULSA',
+                $valorTotal,
+                $valorProdutos,
+                $valorFrete,
+                $nota_id,
+                $system_unit_id
+            ]);
+
+            if ($stUpdNota->rowCount() === 0) {
+                throw new Exception('Falha ao atualizar cabeçalho da nota avulsa.');
+            }
+
+            // remove itens antigos
+            $stDelItens = $pdo->prepare("
+            DELETE FROM estoque_nota_item
+            WHERE system_unit_id = :unit
+              AND nota_id        = :nota
+        ");
+            $stDelItens->execute([
+                ':unit' => $system_unit_id,
+                ':nota' => $nota_id,
+            ]);
+
+            // insere itens novos
+            $stItem = $pdo->prepare("
+            INSERT INTO estoque_nota_item (
+                system_unit_id,
+                nota_id,
+                numero_item,
+                codigo_produto,
+                descricao,
+                ncm,
+                cfop,
+                unidade,
+                quantidade,
+                valor_unitario,
+                valor_total,
+                valor_frete
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+        ");
+
+            foreach ($data['itens'] as $idx => $item) {
+                $numeroItem    = isset($item['numero_item']) ? (int)$item['numero_item'] : ($idx + 1);
+                $codigoProd    = $item['codigo_produto'];
+                $descricao     = $item['descricao'];
+                $unidade       = $item['unidade'];
+                $qtd           = (float)$item['quantidade'];
+                $vTotalItem    = (float)$item['valor_total'];
+                $vUnitarioItem = $qtd > 0 ? ($vTotalItem / $qtd) : 0.0;
+
+                $stItem->execute([
+                    $system_unit_id,
+                    $nota_id,
+                    $numeroItem,
+                    $codigoProd,
+                    $descricao,
+                    $item['ncm']  ?? null,
+                    $item['cfop'] ?? null,
+                    $unidade,
+                    $qtd,
+                    $vUnitarioItem,
+                    $vTotalItem,
+                    0.0 // valor_frete por item (se quiser tratar)
+                ]);
+            }
+
+            $pdo->commit();
+
+            // =======================
+            // 6) Atualiza movimentação de estoque
+            // =======================
+
+            // apaga movimentações antigas dessa nota (doc antigo e doc novo, por segurança)
+            try {
+                $stDelMov = $pdo->prepare("
+                DELETE FROM movimentacao
+                WHERE system_unit_id = :unit
+                  AND tipo           = 'c'
+                  AND tipo_mov       = 'entrada'
+                  AND doc            IN (:docOld, :docNew)
+            ");
+                $stDelMov->execute([
+                    ':unit'   => $system_unit_id,
+                    ':docOld' => $oldNumeroNF,
+                    ':docNew' => $numeroNF,
+                ]);
+            } catch (\Throwable $e) {
+                // se der erro aqui, só loga/ignora; não quebra a edição da nota
+            }
+
+            // normaliza datas para YYYY-MM-DD
+            $dataEntradaSimples = $dataEntrada ? substr($dataEntrada, 0, 10) : null;
+            $dataEmissaoSimples = $dataEmissao ? substr($dataEmissao, 0, 10) : null;
+
+            // monta payload pro método de estoque
+            $payloadEstoque = [
+                'nota_id'        => $nota_id,
+                'system_unit_id' => $system_unit_id,
+                'usuario_id'     => $usuarioId,
+                'chave_acesso'   => $chaveAcesso,
+                'data_entrada'   => $dataEntradaSimples,
+                'data_emissao'   => $dataEmissaoSimples,
+                'itens'          => []
+            ];
+
+            foreach ($data['itens'] as $idx => $item) {
+                $numeroItem = isset($item['numero_item']) ? (int)$item['numero_item'] : ($idx + 1);
+
+                $payloadEstoque['itens'][] = [
+                    'numero_item'    => $numeroItem,
+                    'codigo_produto' => (int)$item['codigo_produto'],
+                    'unidade'        => $item['unidade'],
+                    'quantidade'     => (float)$item['quantidade'],
+                    'valor_total'    => (float)$item['valor_total'],
+                    'valor_unitario' => $item['valor_unitario']
+                ];
+            }
+
+            // lança de novo as movimentações
+            $resultadoEstoque = NotaFiscalEntradaController::lancarItensNotaAvulsaNoEstoque($payloadEstoque);
+            // se estiver no mesmo controller, pode usar: self::lancarItensNotaAvulsaNoEstoque($payloadEstoque);
+
+            if (!$resultadoEstoque['success']) {
+                return [
+                    'success'        => false,
+                    'message'        => 'Nota atualizada, porém houve erro ao atualizar a movimentação de estoque: ' . ($resultadoEstoque['message'] ?? 'Erro desconhecido.'),
+                    'nota_id'        => $nota_id,
+                    'chave_acesso'   => $chaveAcesso,
+                    'numero_nf'      => $numeroNF,
+                    'serie'          => $serie,
+                    'valor_total'    => $valorTotal,
+                    'valor_produtos' => $valorProdutos,
+                    'estoque'        => $resultadoEstoque,
+                ];
+            }
+
+            return [
+                'success'        => true,
+                'message'        => 'Nota avulsa atualizada e movimentação de estoque refeita com sucesso.',
+                'nota_id'        => $nota_id,
+                'chave_acesso'   => $chaveAcesso,
+                'numero_nf'      => $numeroNF,
+                'serie'          => $serie,
+                'valor_total'    => $valorTotal,
+                'valor_produtos' => $valorProdutos,
+                'estoque'        => $resultadoEstoque,
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
 
 }

@@ -1211,6 +1211,216 @@ class NotaFiscalEntradaController {
         }
     }
 
+    public static function lancarItensNotaAvulsaNoEstoque(array $data): array
+    {
+        global $pdo;
+
+        try {
+            // ===== helpers =====
+            $parseDate = function (?string $s) {
+                if (!$s) {
+                    throw new Exception("Data inválida.");
+                }
+                $s = trim($s);
+
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+                    return $s;
+                }
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {
+                    [$d, $m, $y] = explode('/', $s);
+                    return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
+                }
+
+                $t = strtotime($s);
+                if ($t !== false) {
+                    return date('Y-m-d', $t);
+                }
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            // ===== validações topo =====
+            foreach (['system_unit_id','usuario_id','nota_id','data_entrada','itens'] as $k) {
+                if (!isset($data[$k]) || $data[$k] === '' || $data[$k] === null) {
+                    throw new Exception("Campo obrigatório ausente: {$k}");
+                }
+            }
+
+            if (!is_array($data['itens']) || count($data['itens']) === 0) {
+                throw new Exception("Lista de itens está vazia.");
+            }
+
+            $unitId        = (int)$data['system_unit_id'];
+            $usuarioId     = (int)$data['usuario_id'];
+            $notaId        = (int)$data['nota_id'];
+            $dataEntrada   = $parseDate((string)$data['data_entrada']);
+            $dataEmissaoOv = isset($data['data_emissao']) && $data['data_emissao'] !== ''
+                ? $parseDate((string)$data['data_emissao'])
+                : null;
+
+            // ===== busca cabeçalho da nota =====
+            $stNota = $pdo->prepare("
+            SELECT id, numero_nf, data_emissao
+            FROM estoque_nota
+            WHERE id = :id AND system_unit_id = :unit
+            LIMIT 1
+        ");
+            $stNota->execute([
+                ':id'   => $notaId,
+                ':unit' => $unitId
+            ]);
+            $nota = $stNota->fetch(PDO::FETCH_ASSOC);
+            if (!$nota) {
+                throw new Exception("Nota avulsa não encontrada para o ID informado.");
+            }
+
+            $docNumero       = (string)$nota['numero_nf'];
+            $dataEmissaoNota = $nota['data_emissao'] ? date('Y-m-d', strtotime($nota['data_emissao'])) : null;
+
+            $dataEmissao = $dataEmissaoOv ?? ($dataEmissaoNota ?? $dataEntrada);
+
+            // ===== prepareds auxiliares =====
+            $stCheckProd = $pdo->prepare("
+            SELECT id 
+            FROM products
+            WHERE system_unit_id = :unit 
+              AND codigo = :cod
+            LIMIT 1
+        ");
+
+            $insertQuery = "
+            INSERT INTO movimentacao (
+                system_unit_id, status, doc, tipo, tipo_mov, produto, seq,
+                data, data_emissao, data_original, quantidade, valor, usuario_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                status       = VALUES(status),
+                data         = VALUES(data),
+                data_emissao = VALUES(data_emissao),
+                data_original= VALUES(data_original),
+                quantidade   = VALUES(quantidade),
+                valor        = VALUES(valor),
+                usuario_id   = VALUES(usuario_id)
+        ";
+            $stInsert = $pdo->prepare($insertQuery);
+
+            // <<< AQUI: só abre transaction se ainda não tiver uma ativa
+            $startedTx = false;
+            if (!$pdo->inTransaction()) {
+                $pdo->beginTransaction();
+                $startedTx = true;
+            }
+
+            $countIns = 0;
+            $detalhes = [];
+
+            foreach ($data['itens'] as $idx => $item) {
+                foreach (['numero_item','codigo_produto','unidade','quantidade','valor_unitario'] as $campo) {
+                    if (!isset($item[$campo]) || $item[$campo] === '' || $item[$campo] === null) {
+                        throw new Exception("Item {$idx}: campo obrigatório ausente: {$campo}");
+                    }
+                }
+
+                $seq        = (int)$item['numero_item'];
+                $prodCodigo = (int)$item['codigo_produto'];
+                $unidade    = strtoupper(trim((string)$item['unidade']));
+                $qtd        = (float)$item['quantidade'];
+                $vUnit      = (float)$item['valor_unitario'];
+
+                if ($qtd <= 0) {
+                    throw new Exception("Item {$idx}: quantidade deve ser > 0.");
+                }
+
+                // valida produto
+                $stCheckProd->execute([
+                    ':unit' => $unitId,
+                    ':cod'  => $prodCodigo
+                ]);
+                if (!$stCheckProd->fetchColumn()) {
+                    throw new Exception("Item {$idx}: produto {$prodCodigo} não encontrado nesta unidade.");
+                }
+
+                // protege contra estouro do tipo (float(7,2) ~ 99999.99)
+                $vSafe = round($vUnit, 4);
+                if ($vSafe > 99999.99)  $vSafe = 99999.99;
+                if ($vSafe < -99999.99) $vSafe = -99999.99;
+
+                $row = [
+                    $unitId,
+                    1,
+                    $docNumero,
+                    'c',
+                    'entrada',
+                    $prodCodigo,
+                    $seq,
+                    $dataEntrada,
+                    $dataEmissao,
+                    $dataEntrada,
+                    $qtd,
+                    $vSafe,
+                    $usuarioId
+                ];
+
+                $stInsert->execute($row);
+                $countIns++;
+
+                $detalhes[] = [
+                    'seq'         => $seq,
+                    'produto'     => $prodCodigo,
+                    'unidade'     => $unidade,
+                    'qtd'         => $qtd,
+                    'valor_unit'  => round($vSafe, 4),
+                    'valor_total' => round($qtd * $vSafe, 2)
+                ];
+            }
+
+            // marca nota como incluída no estoque
+            try {
+                $stU = $pdo->prepare("
+                UPDATE estoque_nota
+                SET incluida_estoque = 1,
+                    data_entrada     = :data_entrada,
+                    updated_at       = CURRENT_TIMESTAMP
+                WHERE id = :id
+                  AND system_unit_id = :unit
+                LIMIT 1
+            ");
+                $stU->execute([
+                    ':data_entrada' => $dataEntrada,
+                    ':id'           => $notaId,
+                    ':unit'         => $unitId
+                ]);
+            } catch (\Throwable $e) {
+                // se faltar coluna, ignora
+            }
+
+            if ($startedTx && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+
+            return [
+                'success'   => true,
+                'message'   => 'Itens da nota avulsa lançados no estoque com sucesso.',
+                'inseridos' => $countIns,
+                'doc'       => $docNumero,
+                'data'      => [
+                    'data_entrada' => $dataEntrada,
+                    'data_emissao' => $dataEmissao
+                ],
+                'detalhes'  => $detalhes
+            ];
+
+        } catch (Exception $e) {
+            if (isset($startedTx) && $startedTx && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 

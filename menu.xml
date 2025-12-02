@@ -198,7 +198,7 @@
             <action>AjustePrecoCusto</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-            <menuitem label="Lançaar Perdas">
+            <menuitem label="Lançar Perdas">
                 <action>PerdasEstoque</action>
                 <icon>fas:circle fa-fw</icon>
             </menuitem>

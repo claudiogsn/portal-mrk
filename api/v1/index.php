@@ -119,6 +119,31 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'lancarNotaAvulsa':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = MdeController::lancarNotaAvulsa($requestData['system_unit_id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou notaJson ausentes'];
+                }
+                break;
+            case 'getNotaAvulsa':
+                if (isset($requestData['system_unit_id']) && isset($requestData['nota_id'])) {
+                    $response = MdeController::getNotaAvulsa($requestData['system_unit_id'], $requestData['nota_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou chave ausentes'];
+                }
+                break;
+            case 'updateNotaAvulsa':
+                if (isset($requestData['system_unit_id']) && isset($requestData['nota_id'])) {
+                    $response = MdeController::updateNotaAvulsa($requestData['system_unit_id'], $requestData['nota_id'], $requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou nota_id ausentes'];
+                }
+                break;
+
             case 'listarNotas':
                 if (isset($requestData['system_unit_id'])) {
                     $response = MdeController::listarNotas($requestData['system_unit_id']);
@@ -1776,6 +1801,18 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getItensCompradosPorPeriodo':
                 if ($requestData['system_unit_id'] && $requestData['data_inicio'] && $requestData['data_fim']) {
                     $response = NotaFiscalEntradaController::getItensCompradosPorPeriodo($requestData);
+                    http_response_code(200);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'status' => 'error',
+                        'message' => 'Missing required fields.'
+                    ];
+                }
+                break;
+            case 'lancarItensNotaAvulsaNoEstoque':
+                if ($requestData['system_unit_id'] && $requestData['itens'] && $requestData['usuario_id']) {
+                    $response = NotaFiscalEntradaController::lancarItensNotaAvulsaNoEstoque($requestData);
                     http_response_code(200);
                 } else {
                     http_response_code(400);
