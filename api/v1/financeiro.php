@@ -57,6 +57,37 @@ if (isset($data['method']) && isset($data['data'])) {
     try {
         switch ($method) {
 
+            case 'fetchFinanceiroConta':
+                $response = FinanceiroApiMenewController::fetchFinanceiroConta($requestData['estabelecimento'], $requestData['tipo']);
+                break;
+            case 'fetchFinanceiroFornecedor':
+                $response = FinanceiroApiMenewController::fetchFinanceiroFornecedor($requestData['estabelecimento']);
+                break;
+            case 'fetchFinanceiroCliente':
+                $response = FinanceiroApiMenewController::fetchFinanceiroCliente($requestData['estabelecimento']);
+                break;
+            case 'fetchFinanceiroPlano':
+                $response = FinanceiroApiMenewController::fetchFinanceiroPlano($requestData['estabelecimento']);
+                break;
+            case 'fetchFinanceiroRateio':
+                $response = FinanceiroApiMenewController::fetchFinanceiroRateio($requestData['estabelecimento']);
+                break;
+            case 'importarContaApiDesativado':
+                $response = FinanceiroContaController::importarContaApi($requestData['system_unit_id']);
+                break;
+            case 'importarRateiosApiDesativado':
+                $response = FinanceiroRateioController::importarRateiosApi($requestData['system_unit_id']);
+                break;
+            case 'importarFornecedoresApi':
+                $response = FinanceiroFornecedorController::importarFornecedoresApi($requestData['system_unit_id']);
+                break;
+            case 'importarClientesApiDesativado':
+                $response = FinanceiroClienteController::importarClientesApi($requestData['system_unit_id']);
+                break;
+            case 'importarPlanosApiDesativado':
+                $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
+                break;
+
             case 'listPlanos':
                 if (isset($requestData['system_unit_id'])) {
                     $response = FinanceiroPlanoController::listPlanos($requestData['system_unit_id']);

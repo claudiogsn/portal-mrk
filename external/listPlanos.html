@@ -371,21 +371,88 @@
     }
 
     function filtrarTabela() {
-        const codigo = $('#filtroCodigo').val().toLowerCase();
-        const descricao = $('#filtroDescricao').val().toLowerCase();
+        const codigoFiltro = $('#filtroCodigo').val().toLowerCase();
+        const descricaoFiltro = $('#filtroDescricao').val().toLowerCase();
+        const hasFilter = codigoFiltro !== '' || descricaoFiltro !== '';
 
-        $('#tabela-planos tbody tr').each(function () {
+        const rows = $('#tabela-planos tbody tr');
+
+        // Mapeia código -> parent
+        const parentMap = {};
+        rows.each(function () {
             const $tr = $(this);
-            const textoCodigo = $tr.find('td:nth-child(2)').text().toLowerCase(); // Código
-            const textoDescricao = $tr.find('td:nth-child(3)').text().toLowerCase(); // Descrição
-            const hiddenByParent = $tr.attr('data-hidden-by-parent') === '1';
-
-            const matchCodigo = codigo === '' || textoCodigo.startsWith(codigo);
-            const matchDescricao = descricao === '' || textoDescricao.includes(descricao);
-
-            $tr.toggle(matchCodigo && matchDescricao && !hiddenByParent);
+            const codigo = String($tr.data('codigo') || '');
+            const parent = String($tr.data('parent') || '');
+            if (codigo) {
+                parentMap[codigo] = parent;
+            }
         });
+
+        if (hasFilter) {
+            const matchCodigos = new Set();
+            const parentsToShow = new Set();
+
+            // 1) Descobre quais linhas casam com o filtro
+            rows.each(function () {
+                const $tr = $(this);
+                const textoCodigo = $tr.find('td:nth-child(2)').text().toLowerCase(); // Código
+                const textoDescricao = $tr.find('td:nth-child(3)').text().toLowerCase(); // Descrição
+
+                const matchCodigo = codigoFiltro === '' || textoCodigo.startsWith(codigoFiltro);
+                const matchDescricao = descricaoFiltro === '' || textoDescricao.includes(descricaoFiltro);
+
+                if (matchCodigo && matchDescricao) {
+                    const codigo = String($tr.data('codigo') || '');
+                    if (codigo) {
+                        matchCodigos.add(codigo);
+                    }
+                }
+            });
+
+            // 2) Sobe na árvore e marca todos os ancestrais
+            matchCodigos.forEach(codigo => {
+                let p = parentMap[codigo];
+                while (p) {
+                    parentsToShow.add(p);
+                    p = parentMap[p];
+                }
+            });
+
+            // 3) Ajusta ícones dos pais para "expandido"
+            $('.toggle-child').each(function () {
+                const $icon = $(this);
+                const codIcon = String($icon.data('codigo') || '');
+                if (parentsToShow.has(codIcon)) {
+                    $icon.removeClass('fa-chevron-right')
+                        .addClass('fa-chevron-down')
+                        .data('expanded', '1');
+                }
+            });
+
+            // 4) Mostra apenas matches + pais
+            rows.each(function () {
+                const $tr = $(this);
+                const codigo = String($tr.data('codigo') || '');
+                const show = matchCodigos.has(codigo) || parentsToShow.has(codigo);
+                $tr.toggle(show);
+            });
+
+        } else {
+            // Sem filtro: volta a respeitar hierarquia (data-hidden-by-parent)
+            rows.each(function () {
+                const $tr = $(this);
+                const textoCodigo = $tr.find('td:nth-child(2)').text().toLowerCase(); // Código
+                const textoDescricao = $tr.find('td:nth-child(3)').text().toLowerCase(); // Descrição
+                const hiddenByParent = $tr.attr('data-hidden-by-parent') === '1';
+
+                const matchCodigo = codigoFiltro === '' || textoCodigo.startsWith(codigoFiltro);
+                const matchDescricao = descricaoFiltro === '' || textoDescricao.includes(descricaoFiltro);
+
+                $tr.toggle(matchCodigo && matchDescricao && !hiddenByParent);
+            });
+        }
     }
+
 
     // Toggle hierarquia (expandir/recolher filhos)
     $(document).on('click', '.toggle-child', function (e) {

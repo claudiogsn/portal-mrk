@@ -58,11 +58,11 @@
         const unitId = new URLSearchParams(window.location.search).get('unit_id');
 
         const requests = [
-            { method: "importarRateiosApi", data: { system_unit_id: unitId } },
-            { method: "importarContaApi", data: { system_unit_id: unitId } },
-            { method: "importarPlanosApi", data: { system_unit_id: unitId } },
-            { method: "importarFornecedoresApi", data: { system_unit_id: unitId } },
-            { method: "importarClientesApi", data: { system_unit_id: unitId } }
+            // { method: "importarRateiosApi", data: { system_unit_id: unitId } },
+            // { method: "importarContaApi", data: { system_unit_id: unitId } },
+            // { method: "importarPlanosApi", data: { system_unit_id: unitId } },
+            { method: "importarFornecedoresApi", data: { system_unit_id: unitId } }
+            // { method: "importarClientesApi", data: { system_unit_id: unitId } }
         ];
 
         document.getElementById('importForm').addEventListener('submit', function (event) {
