@@ -10,19 +10,37 @@ class NecessidadesController
      */
     public static function getConsumptionBuy($matriz_id, $insumoIds, $dias): array
     {
-        $DatasSemana = self::ultimasQuatroDatasPorDiaSemana(); // últimas 4 datas de cada dia da semana
-        $QuantidadeDiasSemana = self::contarDiasSemana($dias); // quantas vezes cada dia aparece no período
+        global $pdo;
+
+        // últimas 4 datas de cada dia da semana
+        $DatasSemana = self::ultimasQuatroDatasPorDiaSemana();
+
+        // quantas vezes cada dia aparece no período
+        $QuantidadeDiasSemana = self::contarDiasSemana($dias);
 
         $resultadoFinal = [];
 
+        // Descobre se esse ID é uma MATRIZ (tem filiais cadastradas)
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM system_unit_rel WHERE unit_matriz = ?");
+        $stmt->execute([$matriz_id]);
+        $isMatriz = $stmt->fetchColumn() > 0;
+
         foreach ($DatasSemana as $dia => $datas) {
 
-            // Busca consumo do insumo nas 4 últimas datas desse dia
-            $consumo = self::getInsumoConsumptionMatriz($matriz_id, $datas, $insumoIds);
+            if ($isMatriz) {
+                // MATRIZ → usa método que já soma todas as filiais
+                $consumo = self::getInsumoConsumptionMatriz($matriz_id, $datas, $insumoIds, 'media');
+            } else {
+                // UNIDADE SIMPLES → chama direto o getInsumoConsumption
+                // $user_id aqui não é relevante, então mando null
+                $dadosUnidade = self::getInsumoConsumption($matriz_id, $datas, $insumoIds, null, 'media');
+                $consumo      = $dadosUnidade['consumos'] ?? [];
+            }
 
             // Multiplica média de consumo por quantidade de vezes que o dia aparece no período
             $consumo = array_map(function ($item) use ($QuantidadeDiasSemana, $dia) {
-                $item['compras'] = $item['sales'] * $QuantidadeDiasSemana[$dia];
+                // sales vem como string formatada "0.00", mas o PHP converte pra número na multiplicação
+                $item['compras'] = (float)$item['sales'] * $QuantidadeDiasSemana[$dia];
                 return $item;
             }, $consumo);
 
@@ -31,13 +49,19 @@ class NecessidadesController
 
             // Agrupa por insumo_id somando
             foreach ($consumo as $item) {
+                if (!isset($item['codigo'])) {
+                    continue;
+                }
+
                 $id = $item['codigo'];
+
                 if (!isset($resultadoFinal[$id])) {
                     $resultadoFinal[$id] = [
                         'insumo_id' => $id,
-                        'compras' => 0
+                        'compras'   => 0
                     ];
                 }
+
                 $resultadoFinal[$id]['compras'] += $item['compras'];
             }
         }
@@ -45,7 +69,6 @@ class NecessidadesController
         // Reorganiza o array para ter índice numérico
         return array_values($resultadoFinal);
     }
-
     public static function getInsumoConsumptionMatriz($matriz_id, $dates, $insumoIds, $type = 'media'): array
     {
         global $pdo;
@@ -168,93 +191,6 @@ class NecessidadesController
 
         return array_values($insumoConsumption);
     }
-    public static function getInsumoConsumptionTop3($system_unit_id, $dates, $insumoIds, $user_id): array
-    {
-        global $pdo;
-
-        // Nome da unidade
-        $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
-        $stmt->execute([$system_unit_id]);
-        $unitName = $stmt->fetchColumn() ?: '';
-
-        // Nome do usuário
-        $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
-        $stmt->execute([$user_id]);
-        $userName = $stmt->fetchColumn() ?: '';
-
-        $dates = array_unique($dates);
-
-        // Busca nomes e categorias dos insumos
-        $stmt = $pdo->prepare("
-        SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria, und as unidade
-        FROM products p
-        INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
-        WHERE p.codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
-        AND p.system_unit_id = ?
-    ");
-        $params = array_merge($insumoIds, [$system_unit_id]);
-        $stmt->execute($params);
-
-        // Inicializa consumo com estrutura
-        $insumoConsumption = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $id = $row['insumo_id'];
-            $insumoConsumption[$id] = [
-                'codigo' => $id,
-                'sales' => 0,
-                'margem' => 0,
-                'saldo' => 0,
-                'necessidade' => 0,
-                'unidade' => $row['unidade'],
-                'nome' => $row['nome'],
-                'categoria' => $row['categoria'],
-                '__consumos' => [] // ← array para armazenar consumo por data
-            ];
-        }
-
-        // Itera pelas datas e armazena os consumos individuais
-        foreach ($dates as $date) {
-            $consumoData = self::fetchTotalConsumption($system_unit_id, $insumoIds, $date);
-
-            foreach ($consumoData as $row) {
-                $id = $row['insumo_id'];
-                if (isset($insumoConsumption[$id])) {
-                    $insumoConsumption[$id]['__consumos'][] = floatval($row['total_consumo']);
-                }
-            }
-        }
-
-        // Processa saldo e média por insumo (média das 3 maiores)
-        foreach ($insumoIds as $id) {
-            $consumos = $insumoConsumption[$id]['__consumos'];
-            sort($consumos); // ordena do menor para maior
-            $top3 = array_slice(array_reverse($consumos), 0, 3); // pega as 3 maiores
-            $mediaTop3 = count($top3) > 0 ? array_sum($top3) / count($top3) : 0;
-            $insumoConsumption[$id]['sales'] = number_format($mediaTop3, 2, '.', '');
-
-            // Saldo atual
-            $stockData = self::getProductStock($system_unit_id, $id);
-            $insumoConsumption[$id]['saldo'] = number_format($stockData['saldo'] ?? 0, 2, '.', '');
-
-            // Recomendado
-            if ($insumoConsumption[$id]['unidade'] === 'UND') {
-                $insumoConsumption[$id]['recomendado'] = max(0, ceil($mediaTop3 - $insumoConsumption[$id]['saldo']));
-            } else {
-                $insumoConsumption[$id]['recomendado'] = max(0, round($mediaTop3 - $insumoConsumption[$id]['saldo'], 2));
-            }
-
-            // Remove campo temporário
-            unset($insumoConsumption[$id]['__consumos']);
-        }
-
-        return [
-            'unidade' => $unitName,
-            'usuario' => $userName,
-            'consumos' => array_values($insumoConsumption)
-        ];
-    }
-
-
     public static function getInsumoConsumption($system_unit_id, $dates, $insumoIds, $user_id, $type = 'media'): array
     {
         global $pdo;
@@ -346,6 +282,91 @@ class NecessidadesController
             'consumos' => array_values($insumoConsumption) // Retorna um array indexado
         ]; // Retorna um array indexado
     }
+    public static function getInsumoConsumptionTop3($system_unit_id, $dates, $insumoIds, $user_id): array
+    {
+        global $pdo;
+
+        // Nome da unidade
+        $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+        $stmt->execute([$system_unit_id]);
+        $unitName = $stmt->fetchColumn() ?: '';
+
+        // Nome do usuário
+        $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $userName = $stmt->fetchColumn() ?: '';
+
+        $dates = array_unique($dates);
+
+        // Busca nomes e categorias dos insumos
+        $stmt = $pdo->prepare("
+        SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria, und as unidade
+        FROM products p
+        INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
+        WHERE p.codigo IN (" . implode(',', array_fill(0, count($insumoIds), '?')) . ") 
+        AND p.system_unit_id = ?
+    ");
+        $params = array_merge($insumoIds, [$system_unit_id]);
+        $stmt->execute($params);
+
+        // Inicializa consumo com estrutura
+        $insumoConsumption = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $id = $row['insumo_id'];
+            $insumoConsumption[$id] = [
+                'codigo' => $id,
+                'sales' => 0,
+                'margem' => 0,
+                'saldo' => 0,
+                'necessidade' => 0,
+                'unidade' => $row['unidade'],
+                'nome' => $row['nome'],
+                'categoria' => $row['categoria'],
+                '__consumos' => [] // ← array para armazenar consumo por data
+            ];
+        }
+
+        // Itera pelas datas e armazena os consumos individuais
+        foreach ($dates as $date) {
+            $consumoData = self::fetchTotalConsumption($system_unit_id, $insumoIds, $date);
+
+            foreach ($consumoData as $row) {
+                $id = $row['insumo_id'];
+                if (isset($insumoConsumption[$id])) {
+                    $insumoConsumption[$id]['__consumos'][] = floatval($row['total_consumo']);
+                }
+            }
+        }
+
+        // Processa saldo e média por insumo (média das 3 maiores)
+        foreach ($insumoIds as $id) {
+            $consumos = $insumoConsumption[$id]['__consumos'];
+            sort($consumos); // ordena do menor para maior
+            $top3 = array_slice(array_reverse($consumos), 0, 3); // pega as 3 maiores
+            $mediaTop3 = count($top3) > 0 ? array_sum($top3) / count($top3) : 0;
+            $insumoConsumption[$id]['sales'] = number_format($mediaTop3, 2, '.', '');
+
+            // Saldo atual
+            $stockData = self::getProductStock($system_unit_id, $id);
+            $insumoConsumption[$id]['saldo'] = number_format($stockData['saldo'] ?? 0, 2, '.', '');
+
+            // Recomendado
+            if ($insumoConsumption[$id]['unidade'] === 'UND') {
+                $insumoConsumption[$id]['recomendado'] = max(0, ceil($mediaTop3 - $insumoConsumption[$id]['saldo']));
+            } else {
+                $insumoConsumption[$id]['recomendado'] = max(0, round($mediaTop3 - $insumoConsumption[$id]['saldo'], 2));
+            }
+
+            // Remove campo temporário
+            unset($insumoConsumption[$id]['__consumos']);
+        }
+
+        return [
+            'unidade' => $unitName,
+            'usuario' => $userName,
+            'consumos' => array_values($insumoConsumption)
+        ];
+    }
 
     private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date): array
     {
@@ -404,8 +425,6 @@ class NecessidadesController
                 system_unit su ON sur.system_unit_id = su.id
             WHERE
                 sur.system_user_id = ?
-            AND
-                su.name like '%Produção%';
         ";
 
         $stmt = $pdo->prepare($sql);
@@ -463,43 +482,71 @@ class NecessidadesController
     {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
+        // Descobre se esse ID é uma MATRIZ (tem filiais cadastradas)
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM system_unit_rel WHERE unit_matriz = ?");
         $stmt->execute([$matriz_id]);
-        $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        if (empty($filiais)) return [];
+        $isMatriz = $stmt->fetchColumn() > 0;
 
+        // Monta um mapa insumo_id => quantidade a comprar (vendas previstas)
         $quantidadesPorProduto = [];
         foreach ($vendas as $item) {
-            $quantidadesPorProduto[$item['insumo_id']] = floatval($item['compras']);
+            if (!isset($item['insumo_id'], $item['compras'])) {
+                continue;
+            }
+            $quantidadesPorProduto[$item['insumo_id']] = (float)$item['compras'];
+        }
+
+        if (empty($quantidadesPorProduto)) {
+            return [];
         }
 
         $produtosIds = array_keys($quantidadesPorProduto);
 
+        // Busca produtos que são "producao" (código >= 10000) nessa unidade/matriz
         $placeholders = implode(',', array_fill(0, count($produtosIds), '?'));
         $stmt = $pdo->prepare("
         SELECT codigo, producao 
         FROM products 
-        WHERE codigo IN ($placeholders) AND system_unit_id = ? AND codigo >= 10000
+        WHERE codigo IN ($placeholders) 
+          AND system_unit_id = ? 
+          AND codigo >= 10000
     ");
         $stmt->execute([...$produtosIds, $matriz_id]);
         $producoes = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        $compras = [];
+        $compras   = [];
         $insumoIds = [];
 
+        // Primeira rodada: explode produtos de venda em insumos
         foreach ($quantidadesPorProduto as $produto => $qtdVenda) {
-            $producao = isset($producoes[$produto]) ? intval($producoes[$produto]) : 0;
+            $producao = isset($producoes[$produto]) ? (int)$producoes[$produto] : 0;
+
+            // Se não tem ficha de produção, compra o próprio produto
             if ($producao === 0) {
-                $compras[$produto] = $qtdVenda;
+                if (!isset($compras[$produto])) {
+                    $compras[$produto] = 0.0;
+                }
+                $compras[$produto]   += $qtdVenda;
                 $insumoIds[$produto] = $produto;
                 continue;
             }
 
-            $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
-            $saldoAtual = floatval($saldoData['quantidade'] ?? 0);
-            $necessario = $qtdVenda - $saldoAtual;
-            if ($necessario <= 0) continue;
+            // Escolhe o método de saldo conforme for matriz ou unidade
+            if ($isMatriz) {
+                $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
+            } else {
+                $saldoData = MovimentacaoController::getLastBalance($matriz_id, $produto);
+            }
 
+            $saldoAtual = (float)($saldoData['quantidade'] ?? 0);
+            $necessario = $qtdVenda - $saldoAtual;
+
+            // Se o saldo já cobre, não precisa comprar/produzir nada
+            if ($necessario <= 0) {
+                continue;
+            }
+
+            // Busca ficha de produção desse produto
             $stmtFicha = $pdo->prepare("
             SELECT insumo_id, quantity, rendimento 
             FROM productions 
@@ -509,77 +556,100 @@ class NecessidadesController
             $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($fichas as $ficha) {
-                $insumo_id = $ficha['insumo_id'];
-                $qtd_ficha = floatval($ficha['quantity']);
-                $rendimento = floatval($ficha['rendimento']) ?: 1;
+                $insumo_id  = $ficha['insumo_id'];
+                $qtd_ficha  = (float)$ficha['quantity'];
+                $rendimento = (float)$ficha['rendimento'] ?: 1.0;
                 $qtd_compra = ($qtd_ficha * $necessario) / $rendimento;
 
-                if (!isset($compras[$insumo_id])) $compras[$insumo_id] = 0;
-                $compras[$insumo_id] += $qtd_compra;
+                if (!isset($compras[$insumo_id])) {
+                    $compras[$insumo_id] = 0.0;
+                }
+                $compras[$insumo_id]   += $qtd_compra;
                 $insumoIds[$insumo_id] = $insumo_id;
             }
         }
 
-        if (empty($insumoIds)) return [];
+        if (empty($insumoIds)) {
+            return [];
+        }
 
-        $resultado = [];
+        $resultado    = [];
         $debugRodadas = [];
-        $maxRodadas = 10;
-        $rodada = 0;
+        $maxRodadas   = 10;
+        $rodada       = 0;
 
         do {
             $rodada++;
             if ($rodada > $maxRodadas) {
-                // Junta todas as rodadas em um único array e conta as ocorrências
+                // Proteção contra loop circular de fichas
                 $todos = [];
                 foreach ($debugRodadas as $listaRodada) {
                     foreach ($listaRodada as $insumoId) {
-                        if (!isset($todos[$insumoId])) $todos[$insumoId] = 0;
+                        if (!isset($todos[$insumoId])) {
+                            $todos[$insumoId] = 0;
+                        }
                         $todos[$insumoId]++;
                     }
                 }
 
                 arsort($todos);
-
                 $suspeitos = array_filter($todos, fn($v) => $v > 1);
-                $detalhes = [];
+                $detalhes  = [];
 
-                // Coleta informações detalhadas sobre os suspeitos
                 if (!empty($suspeitos)) {
                     $placeholders = implode(',', array_fill(0, count($suspeitos), '?'));
                     $stmtDebug = $pdo->prepare("
-            SELECT p.codigo, p.nome, p.compravel, COUNT(f.insumo_id) AS tem_ficha
-            FROM products p
-            LEFT JOIN productions f ON f.product_id = p.codigo AND f.system_unit_id = p.system_unit_id
-            WHERE p.codigo IN ($placeholders) AND p.system_unit_id = ?
-            GROUP BY p.codigo, p.nome, p.compravel
-        ");
+                    SELECT 
+                        p.codigo, 
+                        p.nome, 
+                        p.compravel, 
+                        COUNT(f.insumo_id) AS tem_ficha
+                    FROM products p
+                    LEFT JOIN productions f 
+                        ON f.product_id     = p.codigo 
+                       AND f.system_unit_id = p.system_unit_id
+                    WHERE p.codigo IN ($placeholders) 
+                      AND p.system_unit_id = ?
+                    GROUP BY p.codigo, p.nome, p.compravel
+                ");
                     $stmtDebug->execute([...array_keys($suspeitos), $matriz_id]);
                     $detalhes = $stmtDebug->fetchAll(PDO::FETCH_ASSOC);
                 }
 
+                // Se quiser logar, usa $debugFormatado aqui
                 $debugFormatado = [
-                    'rodadas_executadas' => $rodada - 1,
-                    'itens_por_rodada' => $debugRodadas,
-                    'repeticoes_detectadas' => $todos,
+                    'rodadas_executadas'                 => $rodada - 1,
+                    'itens_por_rodada'                   => $debugRodadas,
+                    'repeticoes_detectadas'              => $todos,
                     'suspeitos_com_mais_de_1_ocorrencia' => $suspeitos,
-                    'detalhes_suspeitos' => $detalhes,
+                    'detalhes_suspeitos'                 => $detalhes,
                 ];
 
-                //echo "🚨 Loop detectado após {$maxRodadas} rodadas! Análise de insumos:\n";
-                //echo json_encode($debugFormatado, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
                 return array_values($resultado);
             }
 
-
             $debugRodadas[] = array_keys($insumoIds);
+
+            // ⚠️ se por algum motivo esvaziou, evita montar IN ()
+            if (empty($insumoIds)) {
+                break;
+            }
 
             $placeholders = implode(',', array_fill(0, count($insumoIds), '?'));
             $stmt = $pdo->prepare("
-            SELECT p.codigo AS insumo_id, p.nome, p.system_unit_id, cc.nome AS categoria, p.compravel
+            SELECT 
+                p.codigo AS insumo_id, 
+                p.nome, 
+                p.system_unit_id, 
+                cc.nome AS categoria, 
+                p.compravel
             FROM products p
-            INNER JOIN categorias cc ON p.categoria = cc.codigo AND cc.system_unit_id = p.system_unit_id
-            WHERE p.codigo IN ($placeholders) AND p.system_unit_id = ? AND p.codigo >= 10000
+            INNER JOIN categorias cc 
+                ON p.categoria      = cc.codigo 
+               AND cc.system_unit_id = p.system_unit_id
+            WHERE p.codigo IN ($placeholders) 
+              AND p.system_unit_id = ? 
+              AND p.codigo >= 10000
         ");
             $stmt->execute([...array_values($insumoIds), $matriz_id]);
             $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -588,21 +658,27 @@ class NecessidadesController
 
             foreach ($produtosInfo as $produto) {
                 $id = $produto['insumo_id'];
-                $quantidade = round($compras[$id], 2);
+
+                // Garante que o índice existe
+                $quantidadeBase = isset($compras[$id]) ? $compras[$id] : 0.0;
+                $quantidade     = round($quantidadeBase, 2);
 
                 if ((int)$produto['compravel'] === 1) {
+                    // Já é item de compra final
                     $resultado[$id] = [
                         'insumo_id' => $id,
-                        'nome' => $produto['nome'],
+                        'nome'      => $produto['nome'],
                         'categoria' => $produto['categoria'],
-                        'compras' => $quantidade
+                        'compras'   => $quantidade
                     ];
                 } else {
+                    // Ainda é item de produção, explode mais uma vez na ficha
                     $naoCompraveis[$id] = $quantidade;
                     unset($resultado[$id], $compras[$id], $insumoIds[$id]);
                 }
             }
 
+            // Explode os não compráveis em mais insumos, pela ficha
             foreach ($naoCompraveis as $produto => $quantidadeNecessaria) {
                 $stmtFicha = $pdo->prepare("
                 SELECT insumo_id, quantity, rendimento 
@@ -613,14 +689,16 @@ class NecessidadesController
                 $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($fichas as $ficha) {
-                    $insumo_id = $ficha['insumo_id'];
-                    $qtd_ficha = floatval($ficha['quantity']);
-                    $rendimento = floatval($ficha['rendimento']) ?: 1;
+                    $insumo_id  = $ficha['insumo_id'];
+                    $qtd_ficha  = (float)$ficha['quantity'];
+                    $rendimento = (float)$ficha['rendimento'] ?: 1.0;
 
                     $qtd_compra = ($qtd_ficha * $quantidadeNecessaria) / $rendimento;
 
-                    if (!isset($compras[$insumo_id])) $compras[$insumo_id] = 0;
-                    $compras[$insumo_id] += $qtd_compra;
+                    if (!isset($compras[$insumo_id])) {
+                        $compras[$insumo_id] = 0.0;
+                    }
+                    $compras[$insumo_id]   += $qtd_compra;
                     $insumoIds[$insumo_id] = $insumo_id;
                 }
             }
