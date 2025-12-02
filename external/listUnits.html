@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br" xmlns="http://www.w3.org/1999/html">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
     <title>Gestão de Unidades</title>
@@ -10,38 +10,33 @@
     <link href="bsb/css/materialize.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- jQuery Mask para CNPJ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+
     <style>
-        .copy-icon-wrapper {
-            position: relative;
-        }
-
-        .copy-icon-wrapper input.form-control {
-            padding-right: 32px;
-        }
-
-        .copy-icon-wrapper .fa-clone {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #2196F3;
-            cursor: pointer;
-            font-size: 16px;
-            opacity: 0.6;
-            transition: 0.2s ease;
-        }
-
-        .copy-icon-wrapper .fa-clone:hover {
-            opacity: 1;
-            color: #0d47a1; /* azul mais forte ao passar o mouse */
-        }
         .form-control { margin-bottom: 10px; }
+
+        .section-title {
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .switch-group small {
+            display: block;
+            font-size: 11px;
+            color: #777;
+            margin-top: 3px;
+        }
+
         @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button {
+            body, .form-control, .modal-content, table, th, td, button, .section-title {
                 font-size: 12px !important;
             }
         }
@@ -54,8 +49,12 @@
         <div class="header"><h2>Estabelecimentos</h2></div>
         <div class="body">
             <div class="row">
-                <div class="col-md-6"><input type="text" id="filtroUnidade" class="form-control" placeholder="Filtrar por nome" /></div>
-                <div class="col-md-6 text-right"><button class="btn btn-success" id="btnNovaUnidade">Nova Unidade</button></div>
+                <div class="col-md-6">
+                    <input type="text" id="filtroUnidade" class="form-control" placeholder="Filtrar por nome" />
+                </div>
+                <div class="col-md-6 text-right">
+                    <button class="btn btn-success" id="btnNovaUnidade">Nova Unidade</button>
+                </div>
             </div>
             <div class="table-responsive">
                 <!-- TABELA DE UNIDADES -->
@@ -63,10 +62,11 @@
                     <thead>
                     <tr>
                         <th style="width: 28px; padding: 0;" class="text-center"></th> <!-- Editar -->
-                        <th style="width: 28px; padding: 0;" class="text-center"></th> <!-- Editar -->
+                        <th style="width: 28px; padding: 0;" class="text-center"></th> <!-- Ativar/Desativar -->
                         <th>ID</th>
                         <th>Nome</th>
                         <th>Custom Code</th>
+                        <th>Consol. Auto.</th>
                         <th>Status</th>
                     </tr>
                     </thead>
@@ -77,15 +77,21 @@
     </div>
 </div>
 
-<!-- Modal Edição/Cadastro -->
+<!-- Modal Edição/Cadastro - NOVA UNIDADE -->
 <div class="modal fade" id="modalCriarUnidade" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header"><h4 class="modal-title">Nova Unidade</h4></div>
             <div class="modal-body">
                 <form id="formCriarUnidade">
-                    <input type="text" class="form-control" id="novoNome" placeholder="Nome *" required>
-                    <input type="text" class="form-control" id="novoCustomCode" placeholder="Custom Code">
+                    <label>Nome *</label>
+                    <input type="text" class="form-control" id="novoNome" placeholder="Nome da unidade" required>
+
+                    <label>CNPJ</label>
+                    <input type="text" class="form-control" id="novoCnpj" placeholder="00.000.000/0000-00">
+
+                    <label>Custom Code</label>
+                    <input type="text" class="form-control" id="novoCustomCode" placeholder="Código customizado (opcional)">
                 </form>
             </div>
             <div class="modal-footer">
@@ -96,91 +102,149 @@
     </div>
 </div>
 
+<!-- Modal Edição -->
 <div class="modal fade" id="modalEditarUnidade" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">Editar Unidade</h3></div>
             <div class="modal-body">
                 <form id="formEditarUnidade">
+                    <!-- DADOS PRINCIPAIS -->
+                    <div class="section-title">Dados da Unidade</div>
                     <div class="row">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label>ID:</label>
-                            <div class="copy-icon-wrapper">
-                                <input type="text" id="editId" class="form-control" readonly>
-                                <i class="fas fa-clone" title="Clique para copiar" onclick="copiarValor('editId')"></i>
-                            </div>
+                            <input type="text" id="editId" class="form-control" readonly>
                         </div>
 
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label>Nome:</label>
                             <input type="text" class="form-control" id="editNome" required>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label>CNPJ:</label>
+                            <input type="text" class="form-control" id="editCnpj" placeholder="00.000.000/0000-00">
+                        </div>
+
+                        <div class="col-md-3">
                             <label>Custom Code:</label>
-                            <div class="copy-icon-wrapper">
-                                <input type="text" class="form-control" id="editCustomCode">
-                                <i class="fas fa-clone" title="Clique para copiar" onclick="copiarValor('editCustomCode')"></i>
-                            </div>
+                            <input type="text" class="form-control" id="editCustomCode">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label>Status:</label>
+                            <select id="editStatus" class="form-control">
+                                <option value="1">Ativo</option>
+                                <option value="0">Inativo</option>
+                            </select>
                         </div>
                     </div>
 
                     <hr>
-                    <h4>Integração Menew</h4>
-                    <div class="row">
+
+                    <!-- MENew -->
+                    <div class="section-title">Integração Menew</div>
+                    <div class="row switch-group">
                         <div class="col-sm-4">
                             <div class="demo-switch-title">Faturamento</div>
                             <div class="switch">
-                                <label><input type="checkbox" id="editMenewFaturamento"><span class="lever switch-col-blue"></span></label>
+                                <label>
+                                    <input type="checkbox" id="editMenewFaturamento">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
                             </div>
+                            <small>Importar vendas/faturamento da Menew.</small>
                         </div>
                         <div class="col-sm-4">
                             <div class="demo-switch-title">Estoque</div>
                             <div class="switch">
-                                <label><input type="checkbox" id="editMenewEstoque"><span class="lever switch-col-blue"></span></label>
+                                <label>
+                                    <input type="checkbox" id="editMenewEstoque">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
                             </div>
+                            <small>Sincronizar movimentações de estoque.</small>
                         </div>
                         <div class="col-sm-4">
                             <div class="demo-switch-title">Financeiro</div>
                             <div class="switch">
-                                <label><input type="checkbox" id="editFinanceiro"><span class="lever switch-col-blue"></span></label>
+                                <label>
+                                    <input type="checkbox" id="editFinanceiro">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
                             </div>
+                            <small>Habilita integração com módulo financeiro.</small>
                         </div>
                     </div>
 
                     <hr>
-                    <h4>Integração Zig Pay</h4>
-                    <div class="row">
+
+                    <!-- ZIG -->
+                    <div class="section-title">Integração Zig Pay</div>
+                    <div class="row switch-group">
                         <div class="col-sm-4">
                             <div class="demo-switch-title">Faturamento</div>
                             <div class="switch">
-                                <label><input type="checkbox" id="editZigFaturamento"><span class="lever switch-col-blue"></span></label>
+                                <label>
+                                    <input type="checkbox" id="editZigFaturamento">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
                             </div>
+                            <small>Busca vendas direto da Zig.</small>
                         </div>
                         <div class="col-sm-4">
                             <div class="demo-switch-title">Estoque</div>
                             <div class="switch">
-                                <label><input type="checkbox" id="editZigEstoque"><span class="lever switch-col-blue"></span></label>
+                                <label>
+                                    <input type="checkbox" id="editZigEstoque">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
                             </div>
+                            <small>Atualiza estoque com base nos dados da Zig.</small>
                         </div>
                     </div>
 
-                    <div class="row" id="zigCampos" style="margin-top: 15px; display: none;">
+                    <div class="row" id="zigCampos" style="margin-top: 10px; display: none;">
                         <div class="col-md-6">
                             <label>Token Zig:</label>
-                            <div class="copy-icon-wrapper">
-                                <input type="text" class="form-control" id="editTokenZig">
-                                <i class="fas fa-clone" title="Clique para copiar" onclick="copiarValor('editTokenZig')"></i>
-                            </div>
+                            <input type="text" class="form-control" id="editTokenZig">
                         </div>
                         <div class="col-md-6">
                             <label>Rede Zig:</label>
-                            <div class="copy-icon-wrapper">
-                                <input type="text" class="form-control" id="editRedeZig">
-                                <i class="fas fa-clone" title="Clique para copiar" onclick="copiarValor('editRedeZig')"></i>
-                            </div>
+                            <input type="text" class="form-control" id="editRedeZig">
                         </div>
                     </div>
+
+                    <hr>
+
+                    <!-- CONSOLIDAÇÃO E F360 -->
+                    <div class="section-title">Automação & Consolidação</div>
+                    <div class="row switch-group">
+                        <div class="col-sm-6">
+                            <div class="demo-switch-title">Consolidação Automática</div>
+                            <div class="switch">
+                                <label>
+                                    <input type="checkbox" id="editConsolidacaoAutomatica">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
+                            </div>
+                            <small>Se ativo, executa a consolidação de dados de forma automática.</small>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="demo-switch-title">Integração F360</div>
+                            <div class="switch">
+                                <label>
+                                    <input type="checkbox" id="editF360Integration">
+                                    <span class="lever switch-col-blue"></span>
+                                </label>
+                            </div>
+                            <small>Envia dados financeiros para o F360.</small>
+                        </div>
+                    </div>
+
                 </form>
             </div>
 
@@ -200,7 +264,17 @@
 
     const token = new URLSearchParams(window.location.search).get('token');
 
+    // helper para limpar CNPJ (só dígitos)
+    function limparCnpj(valor) {
+        if (!valor) return '';
+        return valor.replace(/\D/g, '');
+    }
+
     $(document).ready(() => {
+        // máscaras
+        $('#novoCnpj').mask('00.000.000/0000-00');
+        $('#editCnpj').mask('00.000.000/0000-00');
+
         listarUnidades();
 
         $('#btnNovaUnidade').click(() => {
@@ -210,6 +284,7 @@
 
         $('#btnSalvarNovaUnidade').click(async () => {
             const nome = $('#novoNome').val();
+            const cnpj = limparCnpj($('#novoCnpj').val());
             const custom_code = $('#novoCustomCode').val();
 
             if (!nome) {
@@ -224,6 +299,7 @@
                     token,
                     data: {
                         name: nome,
+                        cnpj: cnpj || null,
                         custom_code: custom_code
                     }
                 });
@@ -231,15 +307,19 @@
                 Swal.close();
                 $('#modalCriarUnidade').modal('hide');
                 listarUnidades();
-            } catch {
+            } catch (e) {
+                console.error(e);
                 Swal.fire('Erro', 'Erro ao salvar a unidade.', 'error');
             }
         });
 
         $('#btnSalvarEdicao').click(async () => {
+            const cnpjLimpo = limparCnpj($('#editCnpj').val());
+
             const data = {
                 id: $('#editId').val(),
                 name: $('#editNome').val(),
+                cnpj: cnpjLimpo || null,
                 custom_code: $('#editCustomCode').val(),
                 intg_financeiro: $('#editFinanceiro').is(':checked') ? '1' : '0',
                 zig_integration_faturamento: $('#editZigFaturamento').is(':checked') ? '1' : '0',
@@ -248,6 +328,8 @@
                 menew_integration_estoque: $('#editMenewEstoque').is(':checked') ? '1' : '0',
                 token_zig: $('#editTokenZig').val(),
                 rede_zig: $('#editRedeZig').val(),
+                f360_integration: $('#editF360Integration').is(':checked') ? '1' : '0',
+                consolidacao_automatica: $('#editConsolidacaoAutomatica').is(':checked') ? 1 : 0,
                 status: $('#editStatus').val()
             };
 
@@ -267,7 +349,8 @@
                 Swal.close();
                 $('#modalEditarUnidade').modal('hide');
                 listarUnidades();
-            } catch {
+            } catch (e) {
+                console.error(e);
                 Swal.fire('Erro', 'Erro ao salvar a edição.', 'error');
             }
         });
@@ -289,10 +372,14 @@
             const tbody = $('#tabela-unidades tbody');
             tbody.empty();
 
-            res.data.unidades.forEach(unidade => {
+            (res.data.unidades || []).forEach(unidade => {
                 const ativo = unidade.status == 1
                     ? '<span class="label label-success">Sim</span>'
                     : '<span class="label label-danger">Não</span>';
+
+                const consolAuto = parseInt(unidade.consolidacao_automatica || 0) === 1
+                    ? '<span class="label label-info">Sim</span>'
+                    : '<span class="label label-default">Não</span>';
 
                 const row = `
                 <tr>
@@ -307,11 +394,13 @@
                     <td>${unidade.id}</td>
                     <td>${unidade.name}</td>
                     <td>${unidade.custom_code || '-'}</td>
+                    <td class="text-center">${consolAuto}</td>
                     <td class="text-center">${ativo}</td>
                 </tr>`;
                 tbody.append(row);
             });
-        } catch {
+        } catch (e) {
+            console.error(e);
             Swal.fire('Erro', 'Erro ao carregar unidades.', 'error');
         }
     }
@@ -325,22 +414,31 @@
             });
 
             const u = res.data;
+
             $('#editId').val(u.id);
-            $('#editNome').val(u.name);
-            $('#editCustomCode').val(u.custom_code);
+            $('#editNome').val(u.name || '');
+            $('#editCnpj').val(u.cnpj || '').trigger('input'); // máscara aplica
+            $('#editCustomCode').val(u.custom_code || '');
+
             $('#editFinanceiro').prop('checked', u.intg_financeiro === '1');
             $('#editZigFaturamento').prop('checked', u.zig_integration_faturamento === '1');
             $('#editZigEstoque').prop('checked', u.zig_integration_estoque === '1');
             $('#editMenewFaturamento').prop('checked', u.menew_integration_faturamento === '1');
             $('#editMenewEstoque').prop('checked', u.menew_integration_estoque === '1');
-            $('#editTokenZig').val(u.token_zig);
-            $('#editRedeZig').val(u.rede_zig);
-            $('#editStatus').val(u.status);
+
+            $('#editTokenZig').val(u.token_zig || '');
+            $('#editRedeZig').val(u.rede_zig || '');
+
+            $('#editF360Integration').prop('checked', (u.f360_integration === '1'));
+            $('#editConsolidacaoAutomatica').prop('checked', parseInt(u.consolidacao_automatica || 0) === 1);
+
+            $('#editStatus').val(u.status != null ? u.status : 1);
 
             toggleCamposZig();
 
             $('#modalEditarUnidade').modal('show');
-        } catch {
+        } catch (e) {
+            console.error(e);
             Swal.fire('Erro', 'Erro ao carregar unidade.', 'error');
         }
     }
@@ -366,33 +464,16 @@
             });
             Swal.close();
             listarUnidades();
-        } catch {
+        } catch (e) {
+            console.error(e);
             Swal.fire('Erro', 'Erro ao alterar status.', 'error');
         }
-    }
-
-    function copiarValor(id) {
-        const input = document.getElementById(id);
-        input.select();
-        input.setSelectionRange(0, 99999); // compatível com mobile
-        document.execCommand('copy');
-
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'Copiado!',
-            showConfirmButton: false,
-            timer: 1000
-        });
     }
 
     function toggleCamposZig() {
         const mostrar = $('#editZigFaturamento').is(':checked') || $('#editZigEstoque').is(':checked');
         $('#zigCampos').toggle(mostrar);
     }
-
-    $('#editZigFaturamento, #editZigEstoque').on('change', toggleCamposZig);
 </script>
 </body>
 </html>

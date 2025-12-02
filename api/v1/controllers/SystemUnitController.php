@@ -8,76 +8,94 @@ class SystemUnitController
     {
         global $pdo;
 
-        $campos = [
-            'id', 'name', 'custom_code', 'intg_financeiro',
-            'token_zig', 'rede_zig',
-            'zig_integration_faturamento', 'zig_integration_estoque',
-            'menew_integration_estoque', 'menew_integration_faturamento',
-            'status'
-        ];
-
-        $params = [];
-        foreach ($campos as $campo) {
-            $params[$campo] = $data[$campo] ?? null;
-        }
-
-        if (empty($params['name'])) {
+        // Regra de negócio: name é obrigatório
+        if (empty($data['name'])) {
             return ['success' => false, 'message' => 'O campo "name" é obrigatório'];
         }
 
-        if (!empty($params['id'])) {
-            // UPDATE
-            $sql = "
-            UPDATE system_unit SET
-                name = :name,
-                custom_code = :custom_code,
-                intg_financeiro = :intg_financeiro,
-                token_zig = :token_zig,
-                rede_zig = :rede_zig,
-                zig_integration_faturamento = :zig_integration_faturamento,
-                zig_integration_estoque = :zig_integration_estoque,
-                menew_integration_estoque = :menew_integration_estoque,
-                menew_integration_faturamento = :menew_integration_faturamento,
-                status = :status
-            WHERE id = :id
-        ";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':id' => $params['id'],
-                ':name' => $params['name'],
-                ':custom_code' => $params['custom_code'],
-                ':intg_financeiro' => $params['intg_financeiro'],
-                ':token_zig' => $params['token_zig'],
-                ':rede_zig' => $params['rede_zig'],
-                ':zig_integration_faturamento' => $params['zig_integration_faturamento'],
-                ':zig_integration_estoque' => $params['zig_integration_estoque'],
-                ':menew_integration_estoque' => $params['menew_integration_estoque'],
-                ':menew_integration_faturamento' => $params['menew_integration_faturamento'],
-                ':status' => $params['status'] ?? 1,
-            ]);
-        } else {
-            // SELECT MAX(id) + 1
-            $stmt = $pdo->query("SELECT MAX(id) AS max_id FROM system_unit");
-            $maxId = (int)$stmt->fetchColumn();
-            $newId = $maxId + 1;
-
-            $sql = "INSERT INTO system_unit (
-                    id, name, custom_code, status
-                ) VALUES (
-                    :id, :name, :custom_code, :status
-                )";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':id' => $newId,
-                ':name' => $params['name'],
-                ':custom_code' => $params['custom_code'],
-                ':status' => $params['status'] ?? 1,
-            ]);
-
-            $params['id'] = $newId;
+        // Descobre os campos reais da tabela system_unit
+        // (cache simples em memória para não ficar dando SHOW COLUMNS toda hora)
+        static $systemUnitColumns = null;
+        if ($systemUnitColumns === null) {
+            $stmt = $pdo->query("SHOW COLUMNS FROM system_unit");
+            $systemUnitColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
         }
 
-        return ['success' => true, 'message' => 'Unidade salva com sucesso', 'id' => $params['id']];
+        // Garante que status tenha um default em INSERT, se não vier nada
+        if (!isset($data['status'])) {
+            $data['status'] = 1;
+        }
+
+        // Filtra apenas campos que existem na tabela
+        $payloadFields = array_intersect(array_keys($data), $systemUnitColumns);
+
+        // Nenhum campo além de name/status veio? Ainda assim deixamos seguir,
+        // mas em prática sempre terá pelo menos name.
+        if (empty($payloadFields)) {
+            return ['success' => false, 'message' => 'Nenhum campo válido para salvar.'];
+        }
+
+        // UPDATE (se veio id)
+        if (!empty($data['id'])) {
+            $id = (int)$data['id'];
+
+            $setParts = [];
+            $params   = [':id' => $id];
+
+            foreach ($payloadFields as $field) {
+                if ($field === 'id') {
+                    continue; // não atualiza o PK
+                }
+                $setParts[]          = "$field = :$field";
+                $params[":$field"]   = $data[$field];
+            }
+
+            if (empty($setParts)) {
+                return ['success' => false, 'message' => 'Nenhum campo para atualizar.'];
+            }
+
+            $sql  = "UPDATE system_unit SET " . implode(', ', $setParts) . " WHERE id = :id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
+            return [
+                'success' => true,
+                'message' => 'Unidade atualizada com sucesso',
+                'id'      => $id,
+            ];
+        }
+
+        // INSERT (não veio id)
+        // Continua usando MAX(id)+1 como você já faz
+        $stmt  = $pdo->query("SELECT MAX(id) AS max_id FROM system_unit");
+        $maxId = (int)$stmt->fetchColumn();
+        $newId = $maxId + 1;
+
+        $data['id'] = $newId;
+
+        // Recalcula campos, agora incluindo id
+        $payloadFields = array_intersect(array_keys($data), $systemUnitColumns);
+
+        $columns      = [];
+        $placeholders = [];
+        $params       = [];
+
+        foreach ($payloadFields as $field) {
+            $columns[]            = $field;
+            $placeholders[]       = ":$field";
+            $params[":$field"]    = $data[$field];
+        }
+
+        $sql  = "INSERT INTO system_unit (" . implode(', ', $columns) . ")
+             VALUES (" . implode(', ', $placeholders) . ")";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return [
+            'success' => true,
+            'message' => 'Unidade criada com sucesso',
+            'id'      => $newId,
+        ];
     }
 
 
