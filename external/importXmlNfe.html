@@ -110,6 +110,17 @@
                         </div>
                     </div>
 
+                    <!-- NOVA LINHA: FILTRO POR NÚMERO DA NOTA -->
+                    <div class="row" style="margin-top:10px;">
+                        <div class="col-sm-4">
+                            <label for="filtroNumeroNf">Número da Nota</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="filtroNumeroNf"
+                                   placeholder="Filtrar por número da nota">
+                        </div>
+                    </div>
+
                     <hr>
 
                     <div class="row">
@@ -403,10 +414,15 @@
     // ==============================
     let notasSefaz = []; // último resultado da busca
 
-    $("#btnBuscar").on('click', buscarSefaz);
-    $("#ckMostrarImportadas").on('change', renderTabelaSefaz);
-    $("#selectAll").on('change', toggleSelectAll);
-    $("#btnImportarSelecionadas").on('click', importarSelecionadasSequencial);
+    $(document).ready(function () {
+        $("#btnBuscar").on('click', buscarSefaz);
+        $("#ckMostrarImportadas").on('change', renderTabelaSefaz);
+        $("#selectAll").on('change', toggleSelectAll);
+        $("#btnImportarSelecionadas").on('click', importarSelecionadasSequencial);
+
+        // NOVO: filtro por número da nota
+        $('#filtroNumeroNf').on('input', renderTabelaSefaz);
+    });
 
     function validarPeriodo() {
         const di = $("#dataIni").val();
@@ -457,7 +473,6 @@
                 status: n.status || "nao_importada"
             }));
 
-
             renderTabelaSefaz();
 
         } catch (e) {
@@ -478,13 +493,23 @@
             dados = dados.filter(x => (x.status || '').toLowerCase() !== 'importada');
         }
 
-        // resumo
+        // NOVO: aplica filtro por número da nota (parcial)
+        const filtroNumero = ($("#filtroNumeroNf").val() || '').trim().toLowerCase();
+        if (filtroNumero) {
+            dados = dados.filter(x =>
+                String(x.numero_nf || '')
+                    .toLowerCase()
+                    .indexOf(filtroNumero) !== -1
+            );
+        }
+
+        // resumo (sempre baseado na lista completa, sem filtro por número)
         const total = notasSefaz.length;
         const naoImport = notasSefaz.filter(n => (n.status||'').toLowerCase() !== 'importada').length;
         $("#resumoNotas").text(`Total: ${total} | Não importadas: ${naoImport}`);
 
         if (dados.length === 0) {
-            tbody.append('<tr><td colspan="7" class="text-center">Nenhuma nota encontrada para o filtro.</td></tr>');
+            tbody.append('<tr><td colspan="8" class="text-center">Nenhuma nota encontrada para o filtro.</td></tr>');
             $("#btnImportarSelecionadas").prop("disabled", true);
             $("#selectAll").prop("checked", false).prop("indeterminate", false);
             return;
@@ -525,8 +550,8 @@
                   <td>${formatDateBr(n.data_emissao)}</td>
 
                   <td>${n.status === 'importada'
-                            ? '<span class="label bg-green">importada</span>'
-                            : '<span class="label bg-orange">nao_importada</span>'}
+                ? '<span class="label bg-green">importada</span>'
+                : '<span class="label bg-orange">nao_importada</span>'}
                   </td>
                 </tr>
             `);
@@ -644,7 +669,6 @@
         await Swal.fire({ title, icon, html });
 
         // Rebusca para atualizar status
-        // (reaproveita os filtros usados)
         if (di && df) {
             await buscarSefaz();
         }
@@ -732,7 +756,6 @@
     }
     function formatDateBr(iso) {
         if (!iso) return '';
-        // aceita YYYY-MM-DD
         const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
         if (!m) return iso;
         return `${m[3]}/${m[2]}/${m[1]}`;
@@ -747,9 +770,8 @@
 
         const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');   // 🔥 abre pdf sem baixar
+        window.open(url, '_blank');
     }
-
 
     // ======================== VISUALIZAR DANFE EM NOVA ABA ========================
     $(document).off('click', '.btnViewPdf').on('click', '.btnViewPdf', async function (e) {
@@ -786,8 +808,6 @@
             Swal.fire('Erro', err.message || 'Falha ao gerar PDF', 'error');
         }
     });
-
-
 </script>
 </body>
 </html>

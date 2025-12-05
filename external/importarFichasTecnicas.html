@@ -114,12 +114,15 @@
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i].map(col => col?.toString().trim());
 
+                // Linha de cabeçalho de insumos da ficha
                 if (!row[0] && row[1] === "Código" && row[2] === "Descrição") {
                     mode = 'insumo';
                     continue;
                 }
 
-                if (row[0] && /^\d{4,}$/.test(row[0]) && row[2].includes('R$')) {
+                // Linha de cabeçalho da FICHA TÉCNICA (produto principal)
+                // Código numérico (1, 10, 12...) + coluna 2 com "R$"
+                if (row[0] && /^\d+$/.test(row[0]) && row[2] && row[2].includes('R$')) {
                     if (current) dados.push(current);
                     current = {
                         codigo: row[0],
@@ -130,6 +133,7 @@
                     continue;
                 }
 
+                // Linhas de INSUMOS (código na coluna 1 com 4+ dígitos, ex: 10012)
                 if (mode === 'insumo' && current && row[1] && /^\d{4,}$/.test(row[1])) {
                     current.insumos.push({
                         codigo: row[1],
@@ -138,6 +142,7 @@
                     });
                 }
             }
+
 
             if (current) dados.push(current);
 
@@ -148,6 +153,9 @@
             });
 
             try {
+                console.log('Total de fichas:', dados.length);
+                console.log('Primeira ficha:', dados[0]);
+                //return;
                 const response = await axios.post(baseUrl, {
                     method: 'importCompositions',
                     token: token,

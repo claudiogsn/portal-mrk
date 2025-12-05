@@ -16,6 +16,44 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
 
+        /* Botões do header (Importar / Entrada Avulsa) maiores e centralizados */
+        .btn-header-right .btn-header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 18px;       /* aumenta altura */
+            font-size: 14px;          /* texto um pouco maior */
+            line-height: 1.2;
+        }
+
+        /* Ícone um tiquinho maior */
+        .btn-header-right .btn-header-icon i {
+            font-size: 15px;
+        }
+
+
+
+        /* Wrapper para campo Chave + botão Listar, com espaçamento entre eles */
+        .chave-wrapper {
+            display: flex;
+            align-items: flex-end; /* alinha pela base do input */
+            gap: 10px;             /* espaço entre input e botão */
+        }
+
+        /* No mobile, empilha um embaixo do outro */
+        @media (max-width: 768px) {
+            .chave-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-header-right .btn-header-icon {
+                width: 100%;       /* botões do header ocupam a largura toda se quiser */
+            }
+        }
+
+
         /* Deixar o modal de Importação mais largo no desktop */
         #modalImportacao .modal-dialog {
             width: 95% !important;     /* ocupa 95% da largura da tela */
@@ -202,64 +240,44 @@
             justify-content: space-between;
         }
 
-        /* Wrapper dos botões no header */
-        .btn-header-right {
-            display: inline-flex;
-            align-items: center;
-            margin-left: auto;
-        }
-
-        /* Button group estilo Tailwind-like usando Bootstrap */
-        .btn-group-header {
-            display: inline-flex;
-            border-radius: 999px; /* pill */
-            overflow: hidden;
-            border: 1px solid rgba(0,0,0,0.2);
-            background-color: #fff;
-        }
-
-        .btn-group-header .btn {
-            border-radius: 0;
-            margin: 0;
-            border: 0;
-            border-left: 1px solid rgba(0,0,0,0.12);
-            padding: 6px 14px;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .btn-group-header .btn:first-child {
-            border-left: none;
-        }
-
-        .btn-group-header .btn:focus,
-        .btn-group-header .btn:active {
-            outline: none;
-            box-shadow: none;
-        }
-
-        /* Deixa tudo com mesma cor e hover */
-        .btn-group-header .btn.btn-primary {
-            background-color: #1565c0;
-            border-color: #1565c0;
-            color: #fff;
-        }
-        .btn-group-header .btn.btn-primary:hover {
-            background-color: #0d47a1;
-            border-color: #0d47a1;
-            color: #fff;
-        }
-
         @media (max-width: 768px) {
             .header-flex {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            .btn-header-right {
-                margin-left: 0;
-                margin-top: 10px;
-            }
         }
+        /* Faz as colunas da linha de filtros terem a mesma altura
+   e alinha o conteúdo na base */
+        #rowFiltros2 .col-md-4,
+        #rowFiltros2 .col-md-5,
+        #rowFiltros2 .col-md-3 {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* A coluna do botão empurra o botão pra baixo */
+        #rowFiltros2 .col-md-3 {
+            justify-content: flex-end;
+        }
+
+        /* Botão Listar Notas: altura/centralização e ajuste fino vertical */
+        .btn-listar-notas {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 18px;
+            font-size: 14px;
+            line-height: 1.2;
+
+            margin-top: 12px; /* <- ajusta a “descida” do botão */
+        }
+
+        .btn-listar-notas i {
+            font-size: 15px;
+        }
+
+
     </style>
 </head>
 <body class="theme-blue">
@@ -272,19 +290,14 @@
                 Notas de Entrada
             </h2>
 
-            <!-- Direita: button group -->
+            <!-- Direita: botões separados -->
             <div class="btn-header-right">
-                <div class="btn-group-header" role="group">
-                    <button type="button" class="btn btn-primary" id="btnListarNotas">
-                        Listar Notas
-                    </button>
-                    <button type="button" class="btn btn-primary" id="btnAbrirImportacao">
-                        Importar Notas
-                    </button>
-                    <button type="button" class="btn btn-primary" id="btnEntradaAvulsa">
-                        Entrada Avulsa
-                    </button>
-                </div>
+                <button type="button" class="btn btn-primary btn-header-icon" id="btnAbrirImportacao">
+                    <i class="fa fa-file-import"></i> Importar Notas
+                </button>
+                <button type="button" class="btn btn-primary btn-header-icon" id="btnEntradaAvulsa">
+                    <i class="fa fa-plus-circle"></i> Entrada Avulsa
+                </button>
             </div>
         </div>
 
@@ -328,11 +341,22 @@
                     <label>Número da Nota</label>
                     <input type="text" id="filtroNumeroNF" class="form-control" placeholder="Ex.: 12345">
                 </div>
+
                 <div class="col-md-5">
                     <label>Chave de Acesso</label>
-                    <input type="text" id="filtroChave" class="form-control" placeholder="Digite parte ou a chave completa">
+                    <div class="chave-wrapper">
+                        <input type="text" id="filtroChave" class="form-control" placeholder="Digite parte ou a chave completa">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label></label>
+                    <button type="button" class="btn btn-success btn-listar-notas" id="btnListarNotas">
+                        <i class="fa fa-search"></i> Listar Notas
+                    </button>
                 </div>
             </div>
+
+
 
             <div class="row" id="rowKpis" style="margin-top:10px;">
                 <div class="col-md-4">

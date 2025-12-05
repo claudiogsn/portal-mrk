@@ -86,6 +86,10 @@
             <action>VendasDetalhado</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+            <menuitem label="Relatório de Perdas">
+                <action>ListarPerdas</action>
+                <icon>fas:circle fa-fw</icon>
+            </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Produtos">

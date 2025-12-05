@@ -1922,6 +1922,89 @@ class MovimentacaoController
         }
     }
 
+    public static function getRelatorioPerdas(array $data)
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = isset($data['system_unit_id']) ? (int)$data['system_unit_id'] : 0;
+            $data_inicial   = $data['data_inicial'] ?? null;
+            $data_final     = $data['data_final']   ?? null;
+
+            if (!$system_unit_id || !$data_inicial || !$data_final) {
+                return [
+                    'success' => false,
+                    'message' => 'Parâmetros obrigatórios: system_unit_id, data_inicial, data_final'
+                ];
+            }
+
+            // filtros opcionais
+            $produto  = $data['produto']  ?? null; // código do produto (insumo)
+            $doc      = $data['doc']      ?? null; // documento específico
+
+            $sql = "
+            SELECT
+                m.id,
+                m.system_unit_id,
+                m.doc,
+                m.tipo,
+                m.tipo_mov,
+                m.produto              AS codigo_produto,
+                m.seq,
+                m.data,
+                m.data_emissao,
+                m.data_original,
+                m.quantidade,
+                m.valor,
+                m.usuario_id,
+                p.nome                 AS nome_produto,
+                p.und                  AS unidade,
+                p.preco_custo
+            FROM movimentacao m
+            LEFT JOIN products p
+                   ON p.system_unit_id = m.system_unit_id
+                  AND p.codigo         = m.produto
+            WHERE m.tipo           = 'p'
+              AND m.system_unit_id = :unit_id
+              AND m.status         = 1
+              AND m.data BETWEEN :data_inicial AND :data_final
+        ";
+
+            $params = [
+                ':unit_id'      => $system_unit_id,
+                ':data_inicial' => $data_inicial,
+                ':data_final'   => $data_final,
+            ];
+
+            if (!empty($produto)) {
+                $sql .= " AND m.produto = :produto";
+                $params[':produto'] = $produto;
+            }
+
+            if (!empty($doc)) {
+                $sql .= " AND m.doc = :doc";
+                $params[':doc'] = $doc;
+            }
+
+            $sql .= " ORDER BY m.data, m.doc, m.seq";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'data'    => $rows,
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar relatório de perdas: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+
 
     public static function extratoCopEntreBalancos(int $systemUnitId, string $dtInicio, string $dtFim): array
     {

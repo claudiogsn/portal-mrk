@@ -844,6 +844,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
                 }
                 break;
+            case 'getRelatorioPerdas':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = MovimentacaoController::getRelatorioPerdas($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ausente'];
+                }
+                break;
             case 'listBalance':
                 if (isset($requestData['system_unit_id'])) {
                     // Verifica se as datas estão presentes e as atribui, caso contrário passa null
