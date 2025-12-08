@@ -1272,61 +1272,42 @@ class FinanceiroContaController {
             };
 
             $sql = "
-            SELECT
-                fc.id,
-                fc.doc,
-                fc.codigo,
-                fc.obs,
-                fc.emissao,
-                fc.vencimento,
-                fc.valor,
+        SELECT
+            fc.id,
+            fc.doc,
+            fc.codigo,
+            fc.obs,
+            fc.emissao,
+            fc.vencimento,
+            fc.valor,
 
-                -- Fornecedor/cliente
-                COALESCE(NULLIF(fc.cgc,''), NULLIF(ff.cnpj_cpf,''))                           AS cli_doc,
-                COALESCE(NULLIF(fc.nome,''), NULLIF(ff.nome,''), NULLIF(ff.razao,''))          AS cli_nome,
+            -- Fornecedor/cliente
+            COALESCE(NULLIF(fc.cgc,''), NULLIF(ff.cnpj_cpf,''))                           AS cli_doc,
+            COALESCE(NULLIF(fc.nome,''), NULLIF(ff.nome,''), NULLIF(ff.razao,''))          AS cli_nome,
 
-                -- Plano de contas (por código)
-                fp.descricao AS plano_codigo,
+            -- Plano de contas (por código)
+            fp.descricao AS plano_codigo,
 
-                -- Forma de pagamento: mapeia fc.banco (1..9) -> descrição e código
-                COALESCE(fc.banco, 0) AS forma_pg_id,
-                CASE COALESCE(fc.banco,0)
-                    WHEN 1 THEN 'Dinheiro'
-                    WHEN 2 THEN 'DDA'
-                    WHEN 3 THEN 'PIX'
-                    WHEN 4 THEN 'Cartão de Débito'
-                    WHEN 5 THEN 'Cartão de Crédito'
-                    WHEN 6 THEN 'Boleto'
-                    WHEN 7 THEN 'Transferência'
-                    WHEN 8 THEN 'Cheque'
-                    WHEN 9 THEN 'Depósito'
-                    ELSE ''
-                END AS forma_pg_desc,
-                CASE COALESCE(fc.banco,0)
-                    WHEN 1 THEN 'dinheiro'
-                    WHEN 2 THEN 'dda'
-                    WHEN 3 THEN 'pix'
-                    WHEN 4 THEN 'debito'
-                    WHEN 5 THEN 'credito'
-                    WHEN 6 THEN 'boleto'
-                    WHEN 7 THEN 'transferencia'
-                    WHEN 8 THEN 'cheque'
-                    WHEN 9 THEN 'deposito'
-                    ELSE ''
-                END AS forma_pg_cod
+            -- Forma de pagamento via financeiro_banco
+            COALESCE(fb.codigo, fc.banco, 0) AS forma_pg_id,
+            COALESCE(fb.nome, '')            AS forma_pg_desc,
+            COALESCE(fb.descricao, '')       AS forma_pg_cod
 
-            FROM financeiro_conta fc
-            LEFT JOIN financeiro_plano fp
-                   ON fp.system_unit_id = fc.system_unit_id
-                  AND fp.codigo = fc.plano_contas
-            LEFT JOIN financeiro_fornecedor ff
-                   ON ff.id = fc.entidade
-                  AND ff.system_unit_id = fc.system_unit_id
-            WHERE fc.system_unit_id = :unit
-              AND fc.tipo = 'd'
-              AND (fc.baixa_dt IS NULL OR fc.baixa_dt = '0000-00-00')
-              AND fc.exportado_f360 = 0
-            ORDER BY fc.vencimento ASC, fc.id ASC
+        FROM financeiro_conta fc
+        LEFT JOIN financeiro_plano fp
+               ON fp.system_unit_id = fc.system_unit_id
+              AND fp.codigo = fc.plano_contas
+        LEFT JOIN financeiro_fornecedor ff
+               ON ff.id = fc.entidade
+              AND ff.system_unit_id = fc.system_unit_id
+        LEFT JOIN financeiro_banco fb
+               ON fb.system_unit_id = fc.system_unit_id
+              AND fb.codigo = fc.banco
+        WHERE fc.system_unit_id = :unit
+          AND fc.tipo = 'd'
+          AND (fc.baixa_dt IS NULL OR fc.baixa_dt = '0000-00-00')
+          AND fc.exportado_f360 = 0
+        ORDER BY fc.vencimento ASC, fc.id ASC
         ";
 
             $st = $pdo->prepare($sql);
@@ -1336,7 +1317,9 @@ class FinanceiroContaController {
             $out = [];
             foreach ($rows as $r) {
                 $numero = trim((string)($r['doc'] ?? ''));
-                if ($numero === '') $numero = (string)($r['codigo'] ?? '');
+                if ($numero === '') {
+                    $numero = (string)($r['codigo'] ?? '');
+                }
 
                 $out[] = [
                     'id'                       => (int)$r['id'],                     // para marcar depois
@@ -1348,18 +1331,26 @@ class FinanceiroContaController {
                     'valor'                    => (float)$r['valor'],                 // número
                     'plano_de_conta'           => (string)($r['plano_codigo'] ?? ''),
 
-                    // NOVOS CAMPOS (mapeados de fc.banco)
-                    'forma_pagamento_id'       => (int)$r['forma_pg_id'],            // 0..9
-                    'forma_pagamento'          => (string)$r['forma_pg_desc'],       // 'Dinheiro', 'PIX', ...
-                    'forma_pagamento_codigo'   => (string)$r['forma_pg_cod'],        // 'dinheiro', 'pix', ...
+                    // Campos de forma de pagamento vindo de financeiro_banco
+                    'forma_pagamento_id'       => (int)$r['forma_pg_id'],
+                    'forma_pagamento'          => (string)$r['forma_pg_desc'],
+                    'forma_pagamento_codigo'   => (string)$r['forma_pg_cod'],
                 ];
             }
 
             return [
                 'success'         => true,
                 'system_unit_id'  => $unitId,
-                // acrescentei 'forma_pagamento' nas colunas para deixar explícito
-                'columns'         => ['numero','observacao','cliente_fornecedor','emissao','vencimento','valor','plano_de_conta','forma_pagamento'],
+                'columns'         => [
+                    'numero',
+                    'observacao',
+                    'cliente_fornecedor',
+                    'emissao',
+                    'vencimento',
+                    'valor',
+                    'plano_de_conta',
+                    'forma_pagamento'
+                ],
                 'rows'            => $out,
                 'count'           => count($out)
             ];

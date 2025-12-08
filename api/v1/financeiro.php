@@ -24,6 +24,7 @@ require_once 'controllers/FinanceiroApiMenewController.php';
 require_once 'controllers/FinanceiroContaController.php';
 require_once 'controllers/FinanceiroFornecedorController.php';
 require_once 'controllers/FinanceiroClienteController.php';
+require_once 'controllers/FinanceiroBancoController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -57,6 +58,95 @@ if (isset($data['method']) && isset($data['data'])) {
     try {
         switch ($method) {
 
+            case 'listBancos':
+                if (isset($requestData['system_unit_id'])) {
+                    $apenasAtivos = isset($requestData['apenas_ativos']) ? (bool)$requestData['apenas_ativos'] : false;
+
+                    $response = FinanceiroBancoController::listBancos(
+                        $requestData['system_unit_id'],
+                        $apenasAtivos
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'ID do estabelecimento (system_unit_id) não informado'
+                    ];
+                }
+                break;
+
+            case 'createBanco':
+                if (
+                    isset($requestData['system_unit_id']) &&
+                    isset($requestData['codigo']) &&
+                    isset($requestData['nome'])
+                ) {
+                    // Passa o payload inteiro, o controller se vira com os campos
+                    $response = FinanceiroBancoController::createBanco($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id, codigo, nome'
+                    ];
+                }
+                break;
+
+            case 'updateBanco':
+                if (isset($requestData['id'])) {
+                    // Passa o payload inteiro, o controller filtra os campos permitidos
+                    $response = FinanceiroBancoController::updateBanco($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'deleteBanco':
+                if (isset($requestData['id'])) {
+                    $response = FinanceiroBancoController::deleteBanco($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'getBancoById':
+                if (isset($requestData['system_unit_id']) && isset($requestData['id'])) {
+                    $response = FinanceiroBancoController::getBancoById(
+                        $requestData['id'],
+                        $requestData['system_unit_id']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id e id'
+                    ];
+                }
+                break;
+
+            case 'importarBancosPadrao':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroBancoController::importarBancosPadrao(
+                        $requestData['system_unit_id']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: system_unit_id'
+                    ];
+                }
+                break;
+
+
             case 'fetchFinanceiroConta':
                 $response = FinanceiroApiMenewController::fetchFinanceiroConta($requestData['estabelecimento'], $requestData['tipo']);
                 break;
@@ -87,6 +177,8 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'importarPlanosApiDesativado':
                 $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
                 break;
+
+
 
             case 'listPlanos':
                 if (isset($requestData['system_unit_id'])) {

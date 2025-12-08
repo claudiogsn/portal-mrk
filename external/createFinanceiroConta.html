@@ -26,16 +26,15 @@
         .select2-selection__rendered { line-height: 34px !important; }
         .select2-selection__arrow { height: 34px !important; }
         .text-right { text-align:right; }
+
         /* força fundo branco em tudo dentro do iframe */
         html, body, .container-fluid, .card, .card .body {
             background: #fff !important;
         }
 
-        /* remove qualquer cinza do tema na área principal (AdminBSB costuma pintar .content) */
         .content, .content .container-fluid {
             background: #fff !important;
         }
-
     </style>
 </head>
 <body class="theme-blue">
@@ -113,7 +112,6 @@
                         </div>
                     </div>
 
-
                     <!-- Área de parcelamento (esconde/mostra) -->
                     <div id="areaParcelas" style="display:none;">
                         <div class="row">
@@ -186,6 +184,9 @@
         ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
         : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
+    // cache de bancos / formas de pagamento
+    let BANCOS_CACHE = [];
+
     // ======= Helpers =======
     function toBRL(v){ const n = Number(v)||0; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
     function pad2(n){ return String(n).padStart(2,'0'); }
@@ -196,18 +197,6 @@
         return tz.toISOString().slice(0,10);
     }
 
-    const FORMAS_FIXAS = [
-        { id: 1, codigo: 'dinheiro',      descricao: 'Dinheiro' },
-        { id: 2, codigo: 'dda',           descricao: 'DDA' },
-        { id: 3, codigo: 'pix',           descricao: 'PIX' },
-        { id: 4, codigo: 'debito',        descricao: 'Cartão de Débito' },
-        { id: 5, codigo: 'credito',       descricao: 'Cartão de Crédito' },
-        { id: 6, codigo: 'boleto',        descricao: 'Boleto' },
-        { id: 7, codigo: 'transferencia', descricao: 'Transferência' },
-        { id: 8, codigo: 'cheque',        descricao: 'Cheque' },
-        { id: 9, codigo: 'deposito',      descricao: 'Depósito' },
-    ];
-
     // ======= Init =======
     $(document).ready(() => {
         // Select2 com pesquisa e placeholder
@@ -217,7 +206,7 @@
 
         carregarFornecedores();
         carregarPlanos();
-        carregarFormasFixas();
+        carregarBancos(); // agora busca do endpoint listBancos
 
         // Toggle de parcelamento
         $('#chkParcelar').on('change', function(){
@@ -292,13 +281,39 @@
         }
     }
 
+    // >>> NOVO: carregar formas de pagamento a partir de financeiro_banco
+    async function carregarBancos(){
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listBancos',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    apenas_ativos: true
+                }
+            });
 
-    function carregarFormasFixas(){
-        const sel = $('#forma_pagamento_id');
-        FORMAS_FIXAS.forEach(fp => {
-            sel.append(new Option(fp.descricao, fp.id, false, false));
-        });
-        sel.trigger('change.select2');
+            const lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+            BANCOS_CACHE = lista || [];
+
+            const sel = $('#forma_pagamento_id');
+            sel.empty();
+            sel.append(new Option('Selecione...', '', false, false));
+
+            BANCOS_CACHE.forEach(b => {
+                const codigo = b.codigo ?? '';
+                const nome   = (b.nome || b.descricao || '').trim();
+                const label  = codigo ? `${codigo} - ${nome}` : nome;
+                // Usamos o CODIGO como value (1..9), para manter a referência nas contas
+                sel.append(new Option(label, codigo, false, false));
+            });
+
+            sel.trigger('change.select2');
+
+        } catch(e){
+            console.error(e);
+            Swal.fire('Erro','Falha ao carregar formas de pagamento (bancos).','error');
+        }
     }
 
     // ======= Parcelas =======
@@ -414,9 +429,11 @@
                         adicional: 0,             // zera p/ não duplicar
                         desconto: 0,              // zera p/ não duplicar
                         plano_contas: plano_contas || null,
-                        forma_pagamento: formaSel ? formaSel.id : null,
-                        banco:           formaSel ? formaSel.id : null,
-                        forma_pagamento_id: formaSel ? formaSel.id : null,                        obs_extra
+                        // usamos o CODIGO do banco/forma (1..9) como referência
+                        forma_pagamento:    formaSel ? formaSel.codigo : null,
+                        banco:              formaSel ? formaSel.codigo : null,
+                        forma_pagamento_id: formaSel ? formaSel.codigo : null,
+                        obs_extra
                     });
                 }
             });
@@ -441,9 +458,9 @@
                 adicional: acrescimo,              // aplica no item único
                 desconto: desconto,                // aplica no item único
                 plano_contas: plano_contas || null,
-                forma_pagamento: formaSel ? formaSel.id : null,
-                banco:           formaSel ? formaSel.id : null,
-                forma_pagamento_id: formaSel ? formaSel.id : null,
+                forma_pagamento:    formaSel ? formaSel.codigo : null,
+                banco:              formaSel ? formaSel.codigo : null,
+                forma_pagamento_id: formaSel ? formaSel.codigo : null,
                 obs_extra
             });
         }
@@ -521,37 +538,46 @@
         if (form) form.reset();
 
         // Campos simples (garante que fiquem vazios, mesmo sem <form>)
-        $('#doc, #valor_total, #emissao, #vencimento, #desconto, #acrescimo, #obs').val('');
+        $('#doc, #valor_total, #emissao, #vencimento, #desconto, #acrescimo, #obs_extra').val('');
 
         // Select2 (fornecedor, plano de contas, forma de pagamento)
-        if ($('#fornecedor').length)     $('#fornecedor').val(null).trigger('change');
-        if ($('#plano_contas')?.length)  $('#plano_contas').val(null).trigger('change');
-        if ($('#forma_pagamento')?.length) $('#forma_pagamento').val(null).trigger('change');
+        if ($('#fornecedor').length)           $('#fornecedor').val(null).trigger('change');
+        if ($('#plano_contas')?.length)        $('#plano_contas').val(null).trigger('change');
+        if ($('#forma_pagamento_id')?.length)  $('#forma_pagamento_id').val(null).trigger('change');
 
-        // Checkbox “Deseja parcelar?” (cobrimos os dois IDs usados nas versões anteriores)
+        // Checkbox “Deseja parcelar?”
         const $chk = $('#chkParcelar').length ? $('#chkParcelar') : $('#chkProgramar');
         if ($chk.length) {
             $chk.prop('checked', false);
-            // esconde a área de parcelas, conforme tua lógica
-            $('#divParcelas, #divProgramar').hide();
+            $('#areaParcelas, #divParcelas, #divProgramar').hide();
         }
 
         // Limpa grid de parcelas e totalizador/aviso
         $('#tblParcelas tbody').empty();
         $('#avisoParcelas').hide();
-        $('#finTotalParcelas, #lblTotalParcelas').text('R$ 0,00');
+        $('#totalParcelas, #finTotalParcelas, #lblTotalParcelas').text('R$ 0,00');
 
-        // (opcional) foca no primeiro campo
         $('#doc').focus();
     }
 
-
+    // Agora a forma de pagamento vem de BANCOS_CACHE / listBancos
     function getFormaSelecionada(){
-        const id = Number($('#forma_pagamento_id').val());
-        return FORMAS_FIXAS.find(f => f.id === id) || null;
+        const codigoSel = $('#forma_pagamento_id').val();
+        if (!codigoSel) return null;
+        if (!Array.isArray(BANCOS_CACHE)) return null;
+
+        const banco = BANCOS_CACHE.find(
+            b => String(b.codigo) === String(codigoSel)
+        );
+        if (!banco) return null;
+
+        return {
+            id: banco.id,
+            codigo: banco.codigo,
+            nome: banco.nome,
+            descricao: banco.descricao
+        };
     }
-
-
 </script>
 </body>
 </html>

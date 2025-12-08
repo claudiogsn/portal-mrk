@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Bancos / Formas de Pagamento</title>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        th, td { vertical-align: middle !important; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+            h2, .modal-title { font-size: 16px !important; }
+            .btn { padding: 6px 10px !important; font-size: 12px !important; }
+            .table-responsive { overflow-x: auto; }
+            .modal-dialog { margin: 10px; }
+            .row > div[class*="col-"] { margin-bottom: 10px; }
+            .form-control { height: 30px; padding: 4px 8px; }
+
+            #tabela-bancos td,
+            #tabela-bancos th { white-space: nowrap; }
+        }
+
+        i.blue { color: #2196F3; cursor: pointer; }
+        i.orange { color: #FF9800; cursor: pointer; }
+        i.red { color: #F44336; cursor: pointer; }
+
+        .status-label {
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #fff;
+        }
+        .status-ativo {
+            background-color: #4CAF50;
+        }
+        .status-inativo {
+            background-color: #F44336;
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Bancos / Formas de Pagamento</h2>
+        </div>
+        <div class="body">
+
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="filtroNomeDescricao" class="form-control" placeholder="Filtrar por nome ou descrição">
+                </div>
+                <div class="col-md-4 text-right">
+                    <button class="btn btn-info" id="btnImportarPadrao">
+                        <i class="fa fa-download"></i> Importar Bancos Padrão
+                    </button>
+                    <button class="btn btn-success" id="btnNovoBanco">
+                        <i class="fa fa-plus"></i> Novo Banco
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabela-bancos">
+                    <thead>
+                    <tr>
+                        <th style="width:90px;">Código</th>
+                        <th>Nome</th>
+                        <th>Descrição</th>
+                        <th style="width:100px;">Status</th>
+                        <th style="width:120px;">Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo Banco -->
+<div class="modal fade" id="modalBanco" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h4 class="modal-title">Cadastrar Banco / Forma de Pagamento</h4>
+            </div>
+
+            <div class="modal-body">
+                <form id="formBanco">
+                    <div class="form-group">
+                        <label for="codigo">Código *</label>
+                        <input type="number" class="form-control" id="codigo" placeholder="Ex: 1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nome">Nome *</label>
+                        <input type="text" class="form-control" id="nome" placeholder="Ex: Dinheiro" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="descricao">Descrição</label>
+                        <input type="text" class="form-control" id="descricao" placeholder="Ex: Pagamentos em espécie">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ativos">Status</label>
+                        <select id="ativos" class="form-control">
+                            <option value="1">Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarBanco">Salvar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Banco -->
+<div class="modal fade" id="modalEditarBanco" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h4 class="modal-title">Editar Banco / Forma de Pagamento</h4>
+            </div>
+
+            <div class="modal-body">
+                <form id="formEditarBanco">
+                    <input type="hidden" id="editarBancoId">
+
+                    <div class="form-group">
+                        <label for="editarCodigo">Código *</label>
+                        <input type="number" class="form-control" id="editarCodigo" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarNome">Nome *</label>
+                        <input type="text" class="form-control" id="editarNome" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarDescricao">Descrição</label>
+                        <input type="text" class="form-control" id="editarDescricao">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarAtivos">Status</label>
+                        <select id="editarAtivos" class="form-control">
+                            <option value="1">Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarEdicaoBanco">Salvar Alterações</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('system_unit_id');
+
+    let bancosCache = [];
+
+    $(document).ready(() => {
+        if (!token || !system_unit_id) {
+            Swal.fire('Erro', 'Token ou system_unit_id não informado na URL.', 'error');
+            return;
+        }
+
+        listarBancos();
+
+        $('#filtroCodigo, #filtroNomeDescricao').on('input', filtrarTabela);
+
+        $('#btnNovoBanco').click(() => {
+            $('#formBanco')[0].reset();
+            $('#ativos').val('1');
+            $('#modalBanco').modal('show');
+        });
+
+        $('#salvarBanco').click(salvarBanco);
+        $('#salvarEdicaoBanco').click(salvarEdicaoBanco);
+        $('#btnImportarPadrao').click(importarBancosPadrao);
+    });
+
+    async function listarBancos() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listBancos',
+                token,
+                data: {
+                    system_unit_id,
+                    apenas_ativos: false
+                }
+            });
+
+            const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            bancosCache = dados.slice();
+
+            const tbody = $('#tabela-bancos tbody');
+            tbody.empty();
+
+            if (!bancosCache.length) {
+                // Nenhum banco -> mostra mensagem + botão para importar
+                tbody.append(`
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            Nenhum banco/forma de pagamento cadastrado.<br>
+                            <button class="btn btn-info btn-sm" id="btnImportarPadraoInline" style="margin-top:8px;">
+                                <i class="fa fa-download"></i> Importar Bancos Padrão
+                            </button>
+                        </td>
+                    </tr>
+                `);
+
+                $('#btnImportarPadraoInline').off('click').on('click', importarBancosPadrao);
+                return;
+            }
+
+            // Ordena por código
+            bancosCache.sort((a, b) => {
+                const ca = String(a.codigo || '');
+                const cb = String(b.codigo || '');
+                return ca.localeCompare(cb, 'pt-BR', {numeric: true});
+            });
+
+            bancosCache.forEach(b => {
+                const codigo    = b.codigo ?? '';
+                const nome      = (b.nome || '').trim();
+                const descricao = (b.descricao || '').trim();
+                const ativos    = Number(b.ativos ?? 1);
+
+                const statusClass = ativos ? 'status-ativo' : 'status-inativo';
+                const statusText  = ativos ? 'Ativo' : 'Inativo';
+
+                tbody.append(`
+                    <tr data-id="${b.id}">
+                        <td>${codigo}</td>
+                        <td>${nome}</td>
+                        <td>${descricao}</td>
+                        <td>
+                            <span class="status-label ${statusClass}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="#" class="editar-banco" title="Editar">
+                                <i class="fa fa-edit blue"></i>
+                            </a>
+                            &nbsp;
+                            <a href="#" class="toggle-ativo-banco" title="${ativos ? 'Inativar' : 'Ativar'}">
+                                <i class="fa fa-power-off orange"></i>
+                            </a>
+                            &nbsp;
+                            <a href="#" class="excluir-banco" title="Excluir">
+                                <i class="fa fa-trash red"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+
+            filtrarTabela();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao listar bancos.', 'error');
+        }
+    }
+
+    function filtrarTabela() {
+        const codigoFiltro = $('#filtroCodigo').val().toLowerCase();
+        const textoFiltro  = $('#filtroNomeDescricao').val().toLowerCase();
+
+        $('#tabela-bancos tbody tr').each(function () {
+            const $tr = $(this);
+
+            // linha especial de "Nenhum banco" não deve ser filtrada
+            if ($tr.find('#btnImportarPadraoInline').length) {
+                return;
+            }
+
+            const textoCodigo = $tr.find('td:nth-child(1)').text().toLowerCase();
+            const textoNome   = $tr.find('td:nth-child(2)').text().toLowerCase();
+            const textoDesc   = $tr.find('td:nth-child(3)').text().toLowerCase();
+
+            const matchCodigo = !codigoFiltro || textoCodigo.startsWith(codigoFiltro);
+            const matchTexto  = !textoFiltro || (textoNome.includes(textoFiltro) || textoDesc.includes(textoFiltro));
+
+            $tr.toggle(matchCodigo && matchTexto);
+        });
+    }
+
+    async function salvarBanco() {
+        const codigo    = $('#codigo').val().trim();
+        const nome      = $('#nome').val().trim();
+        const descricao = $('#descricao').val().trim();
+        const ativos    = $('#ativos').val();
+
+        if (!codigo || !nome) {
+            return Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
+        }
+
+        Swal.fire({
+            title: 'Salvando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'createBanco',
+                token,
+                data: {
+                    system_unit_id,
+                    codigo,
+                    nome,
+                    descricao,
+                    ativos
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Atenção', res.data.message || 'Não foi possível criar o banco.', 'warning');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Banco criado com sucesso.', 'success');
+            $('#modalBanco').modal('hide');
+            $('#formBanco')[0].reset();
+            listarBancos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao criar banco.', 'error');
+        }
+    }
+
+    // Abrir modal editar banco
+    $(document).on('click', '.editar-banco', function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const id  = $tr.data('id');
+        const banco = bancosCache.find(b => String(b.id) === String(id));
+
+        if (!banco) {
+            return Swal.fire('Erro', 'Banco não encontrado no cache.', 'error');
+        }
+
+        $('#editarBancoId').val(banco.id);
+        $('#editarCodigo').val(banco.codigo);
+        $('#editarNome').val(banco.nome || '');
+        $('#editarDescricao').val(banco.descricao || '');
+        $('#editarAtivos').val(banco.ativos ?? 1);
+
+        $('#modalEditarBanco').modal('show');
+    });
+
+    async function salvarEdicaoBanco() {
+        const id        = $('#editarBancoId').val();
+        const codigo    = $('#editarCodigo').val().trim();
+        const nome      = $('#editarNome').val().trim();
+        const descricao = $('#editarDescricao').val().trim();
+        const ativos    = $('#editarAtivos').val();
+
+        if (!codigo || !nome) {
+            return Swal.fire('Atenção', 'Código e Nome são obrigatórios.', 'warning');
+        }
+
+        const confirmacao = await Swal.fire({
+            title: 'Confirmar alteração?',
+            text: 'Deseja salvar as alterações deste banco?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, salvar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Salvando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'updateBanco',
+                token,
+                data: {
+                    id,
+                    codigo,
+                    nome,
+                    descricao,
+                    ativos
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar banco.', 'error');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Banco atualizado com sucesso.', 'success');
+            $('#modalEditarBanco').modal('hide');
+            listarBancos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao atualizar banco.', 'error');
+        }
+    }
+
+    // Ativar / Inativar banco (toggle)
+    $(document).on('click', '.toggle-ativo-banco', async function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const id  = $tr.data('id');
+        const banco = bancosCache.find(b => String(b.id) === String(id));
+
+        if (!banco) {
+            return Swal.fire('Erro', 'Banco não encontrado.', 'error');
+        }
+
+        const novoStatus = banco.ativos ? 0 : 1;
+        const acaoTexto = novoStatus ? 'ativar' : 'inativar';
+
+        const confirmacao = await Swal.fire({
+            title: `Confirmar ${acaoTexto}?`,
+            text: `Deseja ${acaoTexto} o banco "${banco.nome}"?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: `Sim, ${acaoTexto}`,
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Atualizando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'updateBanco',
+                token,
+                data: {
+                    id,
+                    ativos: novoStatus
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar status.', 'error');
+            }
+
+            Swal.fire('Sucesso', 'Status atualizado com sucesso.', 'success');
+            listarBancos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao atualizar status do banco.', 'error');
+        }
+    });
+
+    // Excluir banco
+    $(document).on('click', '.excluir-banco', async function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const id  = $tr.data('id');
+        const banco = bancosCache.find(b => String(b.id) === String(id));
+
+        const nomeBanco = banco ? banco.nome : id;
+
+        const confirmacao = await Swal.fire({
+            title: 'Excluir banco?',
+            text: `Deseja excluir definitivamente o banco "${nomeBanco}"? Esta ação não poderá ser desfeita.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Excluindo...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'deleteBanco',
+                token,
+                data: { id }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Atenção', res.data.message || 'Não foi possível excluir o banco.', 'warning');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Banco excluído com sucesso.', 'success');
+            listarBancos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao excluir banco.', 'error');
+        }
+    });
+
+    // Importar bancos padrão
+    async function importarBancosPadrao() {
+        const confirmacao = await Swal.fire({
+            title: 'Importar bancos padrão?',
+            text: 'Isso irá criar (ou atualizar) as formas de pagamento padrão para esta unidade.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, importar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacao.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Importando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'importarBancosPadrao',
+                token,
+                data: { system_unit_id }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Erro', res.data.message || 'Erro ao importar bancos padrão.', 'error');
+            }
+
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Bancos padrão importados com sucesso.', 'success');
+            listarBancos();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao importar bancos padrão.', 'error');
+        }
+    }
+</script>
+
+</body>
+</html>

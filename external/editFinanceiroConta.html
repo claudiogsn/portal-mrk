@@ -196,18 +196,6 @@
         return tz.toISOString().slice(0,10);
     }
 
-    const FORMAS_FIXAS = [
-        { id: 1, codigo: 'dinheiro',      descricao: 'Dinheiro' },
-        { id: 2, codigo: 'dda',           descricao: 'DDA' },
-        { id: 3, codigo: 'pix',           descricao: 'PIX' },
-        { id: 4, codigo: 'debito',        descricao: 'Cartão de Débito' },
-        { id: 5, codigo: 'credito',       descricao: 'Cartão de Crédito' },
-        { id: 6, codigo: 'boleto',        descricao: 'Boleto' },
-        { id: 7, codigo: 'transferencia', descricao: 'Transferência' },
-        { id: 8, codigo: 'cheque',        descricao: 'Cheque' },
-        { id: 9, codigo: 'deposito',      descricao: 'Depósito' },
-    ];
-
     let contaLoaded = null;
 
     // ======= Init =======
@@ -222,8 +210,11 @@
         $('#plano_contas').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
         $('#forma_pagamento_id').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
 
-        carregarFormasFixas();
-        carregarFornecedores().then(()=> carregarPlanos().then(()=> carregarConta()));
+        // Carrega dados necessários e depois carrega a conta
+        carregarFornecedores()
+            .then(() => carregarPlanos())
+            .then(() => carregarFormasPagamento())
+            .then(() => carregarConta());
 
         // Toggle de parcelamento
         $('#chkParcelar').on('change', function(){
@@ -295,6 +286,7 @@
                 $('#plano_contas').val(String(contaLoaded.plano_contas)).trigger('change');
             }
 
+            // forma de pagamento / banco (código do banco)
             if (typeof contaLoaded.forma_pagamento !== 'undefined' && contaLoaded.forma_pagamento !== null) {
                 $('#forma_pagamento_id').val(String(contaLoaded.forma_pagamento)).trigger('change');
             } else if (typeof contaLoaded.banco !== 'undefined' && contaLoaded.banco !== null) {
@@ -359,14 +351,37 @@
         }
     }
 
+    async function carregarFormasPagamento(){
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'listBancos',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    apenasAtivos: true
+                }
+            });
 
+            const lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+            const sel = $('#forma_pagamento_id');
 
-    function carregarFormasFixas(){
-        const sel = $('#forma_pagamento_id');
-        FORMAS_FIXAS.forEach(fp => {
-            sel.append(new Option(fp.descricao, fp.id, false, false));
-        });
-        sel.trigger('change.select2');
+            // se o backend já ordenar por codigo, beleza; se não, garante aqui
+            lista.sort((a,b) => {
+                const ca = String(a.codigo || '');
+                const cb = String(b.codigo || '');
+                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
+            });
+
+            lista.forEach(b => {
+                sel.append(new Option(`${b.codigo} - ${b.nome}`, b.codigo, false, false));
+            });
+
+            sel.trigger('change.select2');
+
+        } catch (e){
+            console.error(e);
+            Swal.fire('Erro','Falha ao carregar formas de pagamento (bancos).','error');
+        }
     }
 
     // ======= Parcelas =======
@@ -463,7 +478,6 @@
             const forma_pagamento_id = $('#forma_pagamento_id').val();
             if (!forma_pagamento_id) return Swal.fire('Atenção','Selecione a forma de pagamento.','warning');
 
-
             // === Edita a conta (única) ===
             Swal.fire({ title:'Salvando...', didOpen:()=>Swal.showLoading() });
             try{
@@ -485,10 +499,10 @@
                 };
 
                 if (forma_pagamento_id) {
+                    // usamos o código do banco como forma_pagamento e banco
                     payload.data.forma_pagamento = Number(forma_pagamento_id);
                     payload.data.banco = Number(forma_pagamento_id);
                 }
-
 
                 const res = await axios.post(baseUrl, payload);
                 Swal.close();
@@ -590,7 +604,7 @@
                         adicional: 0,
                         desconto: 0,
                         plano_contas: plano_contas || null,
-                        // enviamos ambos; o backend usa a sua regra (prioriza banco se vier)
+                        // enviamos o código do banco para ambos
                         forma_pagamento: Number(forma_pagamento_id),
                         banco: Number(forma_pagamento_id),
                         obs_extra
@@ -656,7 +670,6 @@
             }
         });
     })();
-
 </script>
 </body>
 </html>

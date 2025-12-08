@@ -156,7 +156,6 @@ class NotaFiscalEntradaController {
                 : '0.00';
 
             // === Duplicatas da nota ===
-            // requer a tabela: estoque_nota_duplicata (nota_id, system_unit_id, numero_duplicata, data_vencimento, valor_parcela, ...)
             $sqlDup = "
             SELECT id, numero_duplicata, data_vencimento, valor_parcela
             FROM estoque_nota_duplicata
@@ -191,42 +190,50 @@ class NotaFiscalEntradaController {
                     $duplicatas[] = [
                         'id'         => (int)$r['id'],
                         'numero'     => (string)$r['numero_duplicata'],
-                        'vencimento' => $venc,                                        // "YYYY-MM-DD" ou null
-                        'valor'      => number_format($valor, 2, '.', ''),           // "1237.05"
+                        'vencimento' => $venc,
+                        'valor'      => number_format($valor, 2, '.', ''),
                     ];
                 }
             }
 
             // === Planos de contas (da unidade) ===
-
             $planosDeConta = FinanceiroPlanoController::listPlanos($system_unit_id);
             error_log("DEBUG payload planos: " . json_encode($planosDeConta));
 
+            // === Formas de pagamento (bancos) da unidade ===
+            $sqlBancos = "
+            SELECT id, codigo, nome, descricao, ativos
+            FROM financeiro_banco
+            WHERE system_unit_id = :unit
+              AND ativos = 1
+            ORDER BY codigo, nome
+        ";
+            $stBancos = $pdo->prepare($sqlBancos);
+            $stBancos->execute([':unit' => $system_unit_id]);
+            $rowsBancos = $stBancos->fetchAll(PDO::FETCH_ASSOC);
 
-
-            // === Formas de pagamento padrão (ajuste IDs/códigos se necessário) ===
-            $formasPagamento = [
-                ['id' => 1, 'codigo' => 'dinheiro',      'descricao' => 'Dinheiro'],
-                ['id' => 2, 'codigo' => 'dda',           'descricao' => 'DDA'],
-                ['id' => 3, 'codigo' => 'pix',           'descricao' => 'PIX'],
-                ['id' => 4, 'codigo' => 'debito',        'descricao' => 'Cartão de Débito'],
-                ['id' => 5, 'codigo' => 'credito',       'descricao' => 'Cartão de Crédito'],
-                ['id' => 6, 'codigo' => 'boleto',        'descricao' => 'Boleto'],
-                ['id' => 7, 'codigo' => 'transferencia', 'descricao' => 'Transferência'],
-                ['id' => 8, 'codigo' => 'cheque',        'descricao' => 'Cheque'],
-                ['id' => 9, 'codigo' => 'deposito',      'descricao' => 'Depósito']
-            ];
+            $formasPagamento = [];
+            if ($rowsBancos) {
+                foreach ($rowsBancos as $b) {
+                    $formasPagamento[] = [
+                        'id'        => (int)$b['id'],
+                        'codigo'    => (string)$b['codigo'],                  // aqui você usa o código numérico (1..9 etc.)
+                        'descricao' => $b['nome'] ?? $b['descricao'] ?? '',   // label pra exibir
+                    ];
+                }
+            }
+            error_log("DEBUG payload bancos: " . json_encode($formasPagamento));
 
             // === Monta payload ===
             $payload = [
                 'fornecedor_id'            => (int)$nota['fornecedor_id'],
                 'documento'                => (string)$nota['numero_nf'],
-                'emissao'                  => $emissao,                        // "YYYY-MM-DD" ou null
-                'valor_total'              => $valorTotal,                     // "1290.50" (da NF)
-                'valor_total_duplicatas'   => number_format($somaDup, 2, '.', ''), // "soma" das duplicatas
-                'duplicatas'               => $duplicatas,                     // <<< AQUI: lista das duplicatas
+                'emissao'                  => $emissao,
+                'valor_total'              => $valorTotal,
+                'valor_total_duplicatas'   => number_format($somaDup, 2, '.', ''),
+                'duplicatas'               => $duplicatas,
                 'planos_de_conta'          => $planosDeConta,
-                'formas_pagamento'         => $formasPagamento
+                'formas_pagamento'         => $formasPagamento,
             ];
 
             return ['success' => true, 'data' => $payload];
