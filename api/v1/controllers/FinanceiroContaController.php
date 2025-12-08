@@ -1568,5 +1568,134 @@ class FinanceiroContaController {
         }
     }
 
+    public static function getExtratoBancario(array $data): array
+    {
+        global $pdo;
+
+        try {
+            // ===== Validações básicas =====
+            if (empty($data['system_unit_id'])) {
+                throw new Exception("Campo obrigatório ausente: system_unit_id");
+            }
+            if (empty($data['banco'])) {
+                throw new Exception("Campo obrigatório ausente: banco");
+            }
+            if (empty($data['data_inicial']) || empty($data['data_final'])) {
+                throw new Exception("Campos obrigatórios ausentes: data_inicial e data_final");
+            }
+
+            $unitId = (int)$data['system_unit_id'];
+            $banco  = (string)$data['banco'];
+
+            // ===== Helper para datas (aceita dd/mm/yyyy ou yyyy-mm-dd) =====
+            $parseDate = function (string $s): string {
+                $s = trim($s);
+                if ($s === '') {
+                    throw new Exception("Data inválida (vazia).");
+                }
+
+                // yyyy-mm-dd
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+                    return $s;
+                }
+
+                // dd/mm/yyyy
+                if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $s, $m)) {
+                    return "{$m[3]}-{$m[2]}-{$m[1]}";
+                }
+
+                throw new Exception("Data inválida: {$s}");
+            };
+
+            $dtIni = $parseDate($data['data_inicial']);
+            $dtFim = $parseDate($data['data_final']);
+
+            if ($dtFim < $dtIni) {
+                throw new Exception("Data final não pode ser menor que a data inicial.");
+            }
+
+            // ===== Consulta principal =====
+            $sql = "
+            SELECT
+                fc.id,
+                fc.baixa_dt,
+                fc.doc,
+                fc.nome,
+                fc.tipo,
+                fc.valor,
+                fc.plano_contas,
+                fc.obs,
+                fc.banco,
+
+                fp.descricao AS plano_descricao,
+                fb.nome      AS banco_nome
+
+            FROM financeiro_conta fc
+            LEFT JOIN financeiro_plano fp
+                   ON fp.system_unit_id = fc.system_unit_id
+                  AND fp.codigo = fc.plano_contas
+            LEFT JOIN financeiro_banco fb
+                   ON fb.system_unit_id = fc.system_unit_id
+                  AND fb.codigo = fc.banco
+            WHERE fc.system_unit_id = :unit
+              AND fc.banco = :banco
+              AND fc.baixa_dt IS NOT NULL
+              AND fc.baixa_dt <> '0000-00-00'
+              AND fc.baixa_dt BETWEEN :dtIni AND :dtFim
+            ORDER BY fc.baixa_dt ASC, fc.id ASC
+        ";
+
+            $st = $pdo->prepare($sql);
+            $st->execute([
+                ':unit' => $unitId,
+                ':banco' => $banco,
+                ':dtIni' => $dtIni,
+                ':dtFim' => $dtFim,
+            ]);
+
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+            // ===== Totais (débito x crédito) =====
+            $totalDebitos  = 0.0;
+            $totalCreditos = 0.0;
+
+            foreach ($rows as $r) {
+                $valor = (float)($r['valor'] ?? 0);
+
+                if ($r['tipo'] === 'd') {
+                    $totalDebitos += $valor;
+                } elseif ($r['tipo'] === 'c') {
+                    $totalCreditos += $valor;
+                }
+            }
+
+            $saldo = $totalCreditos - $totalDebitos;
+
+            return [
+                'success' => true,
+                'filters' => [
+                    'system_unit_id' => $unitId,
+                    'banco'          => $banco,
+                    'data_inicial'   => $dtIni,
+                    'data_final'     => $dtFim,
+                ],
+                'totals'  => [
+                    'total_debitos'  => $totalDebitos,
+                    'total_creditos' => $totalCreditos,
+                    'saldo'          => $saldo,
+                ],
+                'rows'    => $rows,
+                'count'   => count($rows),
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error'   => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 }

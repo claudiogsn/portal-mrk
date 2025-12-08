@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Extrato Bancário</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <!-- AdminBSB / Bootstrap -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <!-- SweetAlert -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .header-flex { display:flex; align-items:center; }
+        .btn-header-right { margin-left:auto; display:inline-flex; align-items:center; }
+        .btn-header-right img { height:18px; margin-left:8px; vertical-align:middle; }
+
+        /* Modal Fullscreen (se quiser usar depois) */
+        .modal-fullscreen { max-width:100%!important; width:100%!important; height:100%!important; margin:0!important; }
+        .modal-fullscreen .modal-content { height:100%; border:0; border-radius:0; }
+        .modal-fullscreen .modal-body { overflow-y:auto; }
+
+        .form-control { margin-bottom:10px; }
+        .label-success { background-color:#4caf50; }
+        .label-danger  { background-color:#f44336; }
+        .modal-iframe { width:100%; height:80vh; border:none; }
+
+        /* Cards KPI */
+        .kpi { text-align:center; padding:12px; border-radius:6px; border:1px solid #eee; }
+        .kpi h4 { margin:4px 0 0 0; font-weight:700; }
+        .kpi small { color:#333; opacity:.9; display:block; }
+        .kpi.green { background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
+        .kpi.red   { background:#ffebee; border-color:#ffcdd2; color:#c62828; }
+        .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
+
+        .table thead th { white-space:nowrap; }
+        .text-right { text-align:right; }
+
+        /* Círculo de contorno para ícones do FA */
+        .icon-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            line-height: 1;
+            font-size: 10px;
+        }
+        .icon-circle.green { color: #4caf50; }
+        .icon-circle.red   { color: #f44336; }
+
+        th, td { vertical-align: middle !important; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+            h2, .modal-title { font-size: 16px !important; }
+            .btn { padding: 6px 10px !important; font-size: 12px !important; }
+            .table-responsive { overflow-x: auto; }
+            .modal-dialog { margin: 10px; }
+            .row > div[class*="col-"] { margin-bottom: 10px; }
+            .form-control { height: 30px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header header-flex">
+            <h2>Extrato Bancário</h2>
+            <!-- Se quiser colocar algo no header direito, tipo Exportar, usa esse botão:
+            <button class="btn btn-primary btn-header-right" id="btnExportarExtrato">
+                Exportar
+                <i class="fa fa-file-excel" style="margin-left:8px;"></i>
+            </button>
+            -->
+        </div>
+        <div class="body">
+
+            <!-- Filtros -->
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Banco</label>
+                    <select id="banco" class="form-control">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Data Baixa Inicial</label>
+                    <input type="date" id="data_inicial" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label>Data Baixa Final</label>
+                    <input type="date" id="data_final" class="form-control">
+                </div>
+                <div class="col-md-3 text-right">
+                    <label>&nbsp;</label><br>
+                    <button class="btn btn-primary" id="btnBuscar">
+                        <i class="fa fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <small class="text-muted">
+                        * Banco e datas de baixa são obrigatórios para gerar o extrato.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Totalizadores -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="kpi green">
+                        <small>Total de Créditos</small>
+                        <h4 id="kpiCreditos">R$ 0,00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi red">
+                        <small>Total de Débitos</small>
+                        <h4 id="kpiDebitos">R$ 0,00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi blue">
+                        <small>Saldo (Créditos − Débitos)</small>
+                        <h4 id="kpiDiferenca">R$ 0,00</h4>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Banco / Período -->
+            <div class="row">
+                <div class="col-md-8">
+                    <small class="text-muted" id="infoBancoPeriodo"></small>
+                </div>
+            </div>
+
+            <!-- BUSCA (entre KPIs e Grid) -->
+            <div class="row">
+                <div class="col-md-6">
+                    <label>Buscar</label>
+                    <input type="text" id="filtroBusca" class="form-control"
+                           placeholder="Digite para buscar em Nome e Documento">
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabelaExtrato">
+                    <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th style="width:80px;">Data Baixa</th>
+                        <th style="width:100px;">Tipo</th>
+                        <th>Documento</th>
+                        <th>Nome</th>
+                        <th>Plano de Contas</th>
+                        <th class="text-right" style="width:120px;">Valor</th>
+                        <th>Observação</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tbodyExtrato">
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            Use os filtros acima para buscar o extrato.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <small id="infoQtd" class="text-muted"></small>
+
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token     = urlParams.get('token');
+    const unit_id   = urlParams.get('system_unit_id') || urlParams.get('unit_id');
+    const user_id   = urlParams.get('user_id') || urlParams.get('username');
+
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    function toBRL(v){
+        const n = Number(v) || 0;
+        return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    }
+
+    function formatDateBR(ymd) {
+        if (!ymd) return '';
+        if (/^\d{4}-\d{2}-\d{2}/.test(ymd)) {
+            const [y,m,d] = ymd.substring(0,10).split('-');
+            return `${d}/${m}/${y}`;
+        }
+        return ymd;
+    }
+
+    $(document).ready(function(){
+        if (!token || !unit_id) {
+            Swal.fire('Atenção','Parâmetros ausentes na URL (token/system_unit_id).','warning');
+            return;
+        }
+
+        carregarBancos();
+
+        $('#btnBuscar').on('click', buscarExtrato);
+        $('#filtroBusca').on('input', filtrarTabela);
+    });
+
+    async function carregarBancos(){
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'listBancos',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    // mantém padrão do módulo de bancos
+                    apenas_ativos: true
+                }
+            });
+
+            const lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
+            const sel = document.getElementById('banco');
+
+            lista.sort((a,b) => {
+                const ca = String(a.codigo || '');
+                const cb = String(b.codigo || '');
+                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
+            });
+
+            lista.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.codigo;
+                opt.textContent = `${b.codigo} - ${b.nome}`;
+                sel.appendChild(opt);
+            });
+        } catch(e){
+            console.error(e);
+            Swal.fire('Erro','Falha ao carregar bancos.','error');
+        }
+    }
+
+    async function buscarExtrato(){
+        const banco       = document.getElementById('banco').value;
+        const dataInicial = document.getElementById('data_inicial').value;
+        const dataFinal   = document.getElementById('data_final').value;
+
+        if (!banco || !dataInicial || !dataFinal) {
+            return Swal.fire('Atenção','Banco, Data Baixa inicial e final são obrigatórios.','warning');
+        }
+
+        Swal.fire({
+            title:'Buscando extrato...',
+            allowOutsideClick:false,
+            didOpen:()=>Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getExtratoBancario',
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    banco,
+                    data_inicial: dataInicial,
+                    data_final: dataFinal
+                }
+            });
+
+            Swal.close();
+
+            if (!res.data || !res.data.success) {
+                return Swal.fire('Erro', res.data?.error || 'Falha ao buscar extrato.','error');
+            }
+
+            renderExtrato(res.data, banco, dataInicial, dataFinal);
+
+        } catch (e){
+            console.error(e);
+            Swal.close();
+            Swal.fire('Erro','Falha na comunicação com o servidor.','error');
+        }
+    }
+
+    function renderExtrato(dados, bancoCodigo, dtIni, dtFim){
+        const tbody = $('#tbodyExtrato').empty();
+        const rows  = dados.rows || [];
+        const totals = dados.totals || {};
+
+        if (!rows.length) {
+            tbody.append(`
+                <tr>
+                    <td colspan="8" class="text-center text-muted">
+                        Nenhuma movimentação encontrada para os filtros informados.
+                    </td>
+                </tr>
+            `);
+            $('#infoQtd').text('');
+            atualizarKPIs(0,0,0);
+            $('#infoBancoPeriodo').text('');
+            return;
+        }
+
+        rows.forEach((r, idx) => {
+            const baixaRaw = r.baixa_dt || '';
+            const baixa    = baixaRaw ? baixaRaw.substring(0,10) : '';
+            const dtBR     = formatDateBR(baixa);
+
+            const tipoChar = (r.tipo === 'c') ? 'Crédito' : (r.tipo === 'd' ? 'Débito' : (r.tipo || ''));
+            let tipoIcon = '';
+            if (r.tipo === 'c') {
+                tipoIcon = `<span class="icon-circle green"><i class="fa fa-arrow-up"></i></span>`;
+            } else if (r.tipo === 'd') {
+                tipoIcon = `<span class="icon-circle red"><i class="fa fa-arrow-down"></i></span>`;
+            }
+
+            const plano = (r.plano_contas ? r.plano_contas : '') +
+                (r.plano_descricao ? ' - ' + r.plano_descricao : '');
+            const valorNum = Number(r.valor || 0);
+            const signed   = (r.tipo === 'd') ? -valorNum : valorNum;
+            const clsVal   = signed < 0 ? 'text-right text-danger' : 'text-right text-success';
+
+            tbody.append(`
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${dtBR}</td>
+                    <td>${tipoIcon} ${tipoChar}</td>
+                    <td>${r.doc || ''}</td>
+                    <td>${r.nome || ''}</td>
+                    <td>${plano}</td>
+                    <td class="${clsVal}">${toBRL(signed)}</td>
+                    <td>${r.obs ? r.obs : ''}</td>
+                </tr>
+            `);
+        });
+
+        $('#infoQtd').text(`Total de lançamentos encontrados: ${rows.length}`);
+
+        // Totais
+        const totDeb = Number(totals.total_debitos || 0);
+        const totCre = Number(totals.total_creditos || 0);
+        const saldo  = Number(totals.saldo || 0);
+
+        atualizarKPIs(totCre, totDeb, saldo);
+
+        const bancoTexto = $('#banco option:selected').text() || bancoCodigo;
+        $('#infoBancoPeriodo').text(
+            `Banco: ${bancoTexto} | Período: ${formatDateBR(dtIni)} até ${formatDateBR(dtFim)}`
+        );
+
+        // aplica filtro de busca atual (se tiver algo digitado)
+        filtrarTabela();
+    }
+
+    function atualizarKPIs(creditos, debitos, diferenca){
+        $('#kpiCreditos').text(toBRL(creditos));
+        $('#kpiDebitos').text(toBRL(debitos));
+        $('#kpiDiferenca').text(toBRL(diferenca));
+    }
+
+    function filtrarTabela(){
+        const termo = ($('#filtroBusca').val() || '').toLowerCase();
+
+        $('#tabelaExtrato tbody tr').each(function(){
+            const $tr = $(this);
+
+            // linha de "nenhuma movimentação" não entra no filtro
+            if ($tr.find('td').length === 1) return;
+
+            const documento = ($tr.find('td:nth-child(4)').text() || '').toLowerCase();
+            const nome      = ($tr.find('td:nth-child(5)').text() || '').toLowerCase();
+
+            const match = !termo || documento.includes(termo) || nome.includes(termo);
+            $tr.toggle(match);
+        });
+    }
+</script>
+</body>
+</html>

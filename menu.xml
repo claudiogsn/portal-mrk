@@ -19,16 +19,20 @@
       <menuitem label="Relatórios Financeiro">
             <icon>fas:circle fa-fw</icon>
           <menu>
+              <menuitem label="Relação de Contas">
+                  <action>RelacaoDeContas</action>
+                  <icon>fas:circle fa-fw</icon>
+              </menuitem>
             <menuitem label="DRE Gerencial">
               <action>Dre</action>
               <icon>fas:circle fa-fw</icon>
             </menuitem>
+              <menuitem label="Extrato Bancário">
+                  <action>ExtratoBancario</action>
+                  <icon>fas:circle fa-fw</icon>
+              </menuitem>
           </menu>
         </menuitem>
-      <menuitem label="Relação de Contas">
-        <action>RelacaoDeContas</action>
-        <icon>fas:circle fa-fw</icon>
-      </menuitem>
         <menuitem label="Bancos">
             <action>ListarBancos</action>
             <icon>fas:circle fa-fw</icon>

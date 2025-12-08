@@ -382,6 +382,12 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
 
 
+            case 'getExtratoBancario':
+                $response = FinanceiroContaController::getExtratoBancario($requestData);
+                break;
+
+
+
             default:
                 http_response_code(405);
                 $response = ['error' => 'Método não suportado'];
