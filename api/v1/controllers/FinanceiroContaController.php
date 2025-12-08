@@ -497,15 +497,25 @@ class FinanceiroContaController {
         // Coluna de filtro de data
         $colunaData = ($tipoData === 'vencimento') ? 'vencimento' : 'emissao';
 
-        $sql = "SELECT *
-            FROM financeiro_conta
-            WHERE system_unit_id = :system_unit_id
-              AND {$colunaData} BETWEEN :data_inicial AND :data_final ORDER BY {$colunaData} ASC";
+        $sql = "
+        SELECT 
+            fc.*,
+            fb.nome AS banco_nome
+        FROM financeiro_conta fc
+        LEFT JOIN financeiro_banco fb
+            ON fb.system_unit_id = fc.system_unit_id
+           AND fb.codigo = fc.banco  -- se você estiver gravando o ID do banco aqui
+        WHERE fc.system_unit_id = :system_unit_id
+          AND fc.{$colunaData} BETWEEN :data_inicial AND :data_final
+    ";
 
         // Se o tipo for informado, aplica no WHERE
         if (!empty($tipo)) {
-            $sql .= " AND tipo = :tipo";
+            $sql .= " AND fc.tipo = :tipo";
         }
+
+        // ORDER BY vem por último
+        $sql .= " ORDER BY fc.{$colunaData} ASC";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
@@ -521,7 +531,8 @@ class FinanceiroContaController {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-     public static function importarContaApi($system_unit_id) {
+
+    public static function importarContaApi($system_unit_id) {
         global $pdo;
 
         try {
@@ -1445,5 +1456,117 @@ class FinanceiroContaController {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
+    public static function baixarConta(array $data): array
+    {
+        global $pdo;
+
+        try {
+            if (empty($data['id'])) {
+                throw new Exception('Campo obrigatório ausente: id da conta.');
+            }
+
+            $id         = (int)$data['id'];
+            $usuario_id = $data['usuario_id'] ?? null;
+
+            // Compat: se vier forma_pagamento_id, usa como forma_pagamento
+            if (!isset($data['forma_pagamento']) && isset($data['forma_pagamento_id'])) {
+                $data['forma_pagamento'] = $data['forma_pagamento_id'];
+            }
+
+            // 1) Busca conta atual (para validar e para auditoria)
+            $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+            $stConta->execute([':id' => $id]);
+            $contaAtual = $stConta->fetch(PDO::FETCH_ASSOC);
+
+            if (!$contaAtual) {
+                throw new Exception('Conta não encontrada para o ID informado.');
+            }
+
+            $system_unit_id = (int)$contaAtual['system_unit_id'];
+
+            // Se já estiver baixada, você pode travar aqui se quiser:
+            if (!empty($contaAtual['baixa_dt']) && $contaAtual['baixa_dt'] !== '0000-00-00') {
+                // Se quiser permitir rebaixa, só comenta esse trecho.
+                throw new Exception('Conta já está baixada (quitada).');
+            }
+
+            // 2) Monta campos que serão atualizados
+            $baixa_dt = !empty($data['baixa_dt'])
+                ? $data['baixa_dt']
+                : date('Y-m-d');
+
+            $camposUpdate = [
+                'baixa_dt' => $baixa_dt,
+            ];
+
+            // Se quiser atualizar o banco na baixa
+            if (array_key_exists('banco', $data)) {
+                $camposUpdate['banco'] = $data['banco'];
+            }
+
+            // Se quiser atualizar a forma de pagamento na baixa
+            if (array_key_exists('forma_pagamento', $data)) {
+                $camposUpdate['forma_pagamento'] = $data['forma_pagamento'];
+            }
+
+            if (empty($camposUpdate)) {
+                throw new Exception('Nenhum campo informado para baixa.');
+            }
+
+            $setParts    = [];
+            $params      = [':id' => $id];
+            $dadosDepois = $contaAtual;
+
+            foreach ($camposUpdate as $campo => $valor) {
+                $setParts[]         = "{$campo} = :{$campo}";
+                $params[":{$campo}"] = $valor;
+                $dadosDepois[$campo] = $valor;
+            }
+
+            $sql = "UPDATE financeiro_conta 
+                SET " . implode(', ', $setParts) . ", updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id";
+
+            $stmtUpd = $pdo->prepare($sql);
+            $stmtUpd->execute($params);
+
+            if ($stmtUpd->rowCount() === 0) {
+                return [
+                    'success' => false,
+                    'message' => 'Nenhuma alteração realizada (dados já estavam iguais).'
+                ];
+            }
+
+            // 3) Busca registro atualizado
+            $stReload = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+            $stReload->execute([':id' => $id]);
+            $contaAtualizada = $stReload->fetch(PDO::FETCH_ASSOC);
+
+            // 4) Auditoria da BAIXA
+            self::logAuditoria(
+                'BAIXA',                 // ação
+                'financeiro_conta',      // tabela
+                $id,                     // registro_id
+                $contaAtual,             // dados_antes
+                $dadosDepois,            // dados_depois
+                $system_unit_id,         // system_unit_id
+                $usuario_id              // usuario_id
+            );
+
+            return [
+                'success' => true,
+                'message' => 'Conta baixada (quitada) com sucesso.',
+                'data'    => $contaAtualizada
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao baixar conta: ' . $e->getMessage()
+            ];
+        }
+    }
+
 
 }

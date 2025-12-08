@@ -97,8 +97,8 @@
                     <label>Status</label>
                     <select id="filtroStatus" class="form-control">
                         <option value="">Todos</option>
-                        <option value="aberto">Em aberto</option>
-                        <option value="pago">Pago</option>
+                        <option value="aberto">Não Quitado</option>
+                        <option value="pago">Quitado</option>
                     </select>
                 </div>
                 <div class="col-md-1 text-right">
@@ -154,13 +154,15 @@
                         <th>Emissão</th>
                         <th>Data Vencimento</th>
                         <th>Observação</th>
+                        <th>Banco</th>          <!-- NOVO -->
                         <th>Status</th>
-                        <th>Data Pagamento</th>
+                        <th>Data Baixa</th>
                         <th class="text-right">Valor</th>
                     </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
+
             </div>
 
         </div>
@@ -413,7 +415,7 @@
         tbody.empty();
 
         if (!lista || !lista.length){
-            tbody.append('<tr><td colspan="11" class="text-center">Nenhum registro encontrado.</td></tr>');
+            tbody.append('<tr><td colspan="12" class="text-center">Nenhum registro encontrado.</td></tr>');
             return;
         }
 
@@ -422,15 +424,27 @@
             const vencimento = fmtDate(n.vencimento);
             const pagamento  = fmtDate(n.baixa_dt);
 
-            const isPago = !!n.baixa_dt;
-            const statusBadge = isPago
-                ? '<span class="label label-success">Pago</span>'
-                : '<span class="label label-warning">Em aberto</span>';
+            // Status: Quitado / Não Quitado
+            const isQuitado = !!n.baixa_dt;
+            const statusBadge = isQuitado
+                ? '<span class="label label-success">Quitado</span>'
+                : '<span class="label label-danger">Não Quitado</span>';
 
+            // Ícone de tipo (Crédito / Débito)
             const t = (n.tipo || '').toString().trim().toLowerCase();
             let tipoIcon = '<span class="icon-circle" style="color:#9e9e9e;"><i class="fa fa-question"></i></span>';
             if (t === 'c') tipoIcon = '<span class="icon-circle green" title="Crédito"><i class="fa fa-plus"></i></span>';
             if (t === 'd') tipoIcon = '<span class="icon-circle red" title="Débito"><i class="fa fa-minus"></i></span>';
+
+            // Texto do banco: "codigo - nome"
+            let bancoTexto = '';
+            if (n.banco_codigo && n.banco_nome) {
+                bancoTexto = `${n.banco_codigo} - ${n.banco_nome}`;
+            } else if (n.banco_nome) {
+                bancoTexto = n.banco_nome;
+            } else if (n.banco_codigo) {
+                bancoTexto = n.banco_codigo;
+            }
 
             tbody.append(`
       <tr>
@@ -457,6 +471,7 @@
         <td>${emissao}</td>
         <td>${vencimento}</td>
         <td title="${n.obs ?? ''}">${n.obs ? String(n.obs).slice(0, 80) : ''}</td>
+        <td>${bancoTexto}</td>          <!-- NOVO -->
         <td>${statusBadge}</td>
         <td>${pagamento}</td>
         <td class="text-right">${toBRL(n.valor)}</td>

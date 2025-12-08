@@ -337,6 +337,10 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getContaById':
                 $response = FinanceiroContaController::getContaById($requestData['id']);
                 break;
+            case 'baixarConta':
+                $response = FinanceiroContaController::baixarConta($requestData);
+                break;
+
 
             case 'lancarNotaNoFinanceiroConta':
                 $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);

@@ -153,6 +153,11 @@
                     </div>
 
                     <div class="text-right" style="margin-top:18px;">
+                        <!-- BOTÃO NOVO: BAIXAR CONTA -->
+                        <button type="button" class="btn btn-warning" id="btnBaixar" style="margin-right:8px;">
+                            <i class="fa fa-check"></i> Baixar Conta
+                        </button>
+
                         <button type="button" class="btn btn-success" id="btnSalvar">
                             <i class="fa fa-save"></i> Salvar
                         </button>
@@ -235,6 +240,9 @@
         $(document).on('input change', '.valorParcela, .emissaoParcela, .vencParcela', atualizarTotalParcelas);
 
         $('#btnSalvar').on('click', salvar);
+
+        // NOVO: handler do botão de BAIXA
+        $('#btnBaixar').on('click', baixarContaHandler);
 
         // ESC fecha modal pai
         (function enableEscClose(){
@@ -644,6 +652,109 @@
                 Swal.close();
                 Swal.fire('Erro','Falha na comunicação com o servidor.','error');
             }
+        }
+    }
+
+    // ======= BAIXAR CONTA =======
+    async function baixarContaHandler(){
+        if (!contaLoaded) {
+            return Swal.fire('Atenção','Conta não carregada.','warning');
+        }
+
+        // Não faz sentido baixar conta parcelada aqui (usa só edição simples)
+        if ($('#chkParcelar').is(':checked')) {
+            return Swal.fire('Atenção','Desmarque o parcelamento para realizar a baixa desta conta.','warning');
+        }
+
+        const forma_pagamento_id = $('#forma_pagamento_id').val();
+        if (!forma_pagamento_id) {
+            return Swal.fire('Atenção','Selecione a forma de pagamento para baixar a conta.','warning');
+        }
+
+        const fornecedorText = $('#fornecedor option:selected').text() || '(não informado)';
+        const planoText      = $('#plano_contas option:selected').text() || '(não informado)';
+        const formaText      = $('#forma_pagamento_id option:selected').text() || '(não informado)';
+
+        const documento      = ($('#doc').val() || contaLoaded.doc || '').trim();
+        const emissao        = $('#emissao').val()    || contaLoaded.emissao    || '';
+        const vencimento     = $('#vencimento').val() || contaLoaded.vencimento || '';
+
+        const valor_total    = parseFloat($('#valor_total').val() || contaLoaded.valor || 0);
+        const desconto       = parseFloat($('#desconto').val()    || 0);
+        const acrescimo      = parseFloat($('#acrescimo').val()   || contaLoaded.adic || 0);
+        const valorBaixa     = valor_total - desconto + acrescimo;
+
+        // Data da baixa (só mostra; no payload podemos deixar nulo pra usar hoje no backend)
+        const hoje = new Date();
+        const baixaDtBr = hoje.toLocaleDateString('pt-BR');
+
+        const htmlConfirm = `
+            <p><strong>Fornecedor:</strong> ${fornecedorText}</p>
+            <p><strong>Documento:</strong> ${documento}</p>
+            <p><strong>Emissão:</strong> ${emissao ? emissao.split('-').reverse().join('/') : '-'}</p>
+            <p><strong>Vencimento:</strong> ${vencimento ? vencimento.split('-').reverse().join('/') : '-'}</p>
+            <p><strong>Plano de Contas:</strong> ${planoText}</p>
+            <p><strong>Forma de Pagamento:</strong> ${formaText}</p>
+            <p><strong>Data da Baixa:</strong> ${baixaDtBr} (hoje)</p>
+            <hr>
+            <p><strong>Valor da Baixa:</strong> ${toBRL(valorBaixa)}</p>
+        `;
+
+        const result = await Swal.fire({
+            title: 'Confirmar baixa da conta?',
+            html: htmlConfirm,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, baixar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            Swal.fire({ title:'Baixando conta...', didOpen:()=>Swal.showLoading() });
+
+            const payloadData = {
+                id: Number(contaLoaded.id),
+                usuario_id: user_id || null,
+                // se quiser deixar o backend usar data de hoje, pode mandar null.
+                // Se quiser forçar hoje, descomente a linha abaixo:
+                // baixa_dt: hoje.toISOString().slice(0,10),
+                banco: Number(forma_pagamento_id),
+                forma_pagamento: Number(forma_pagamento_id)
+            };
+
+            const res = await axios.post(baseUrl, {
+                method: 'baixarConta',
+                token,
+                data: payloadData
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso',
+                    text: 'Conta baixada (quitada) com sucesso.'
+                }).then(() => {
+                    fecharModalParent();
+                    if (window.parent) {
+                        if (typeof window.parent.buscar === 'function') window.parent.buscar();
+                        if (typeof window.parent.recarregarContas === 'function') window.parent.recarregarContas();
+                    }
+                });
+
+                // fallback
+                setTimeout(() => fecharModalParent(), 1200);
+            } else {
+                Swal.fire('Erro', res.data?.message || 'Falha ao baixar a conta.','error');
+            }
+
+        } catch (e) {
+            console.error(e);
+            Swal.close();
+            Swal.fire('Erro','Falha na comunicação com o servidor ao baixar a conta.','error');
         }
     }
 
