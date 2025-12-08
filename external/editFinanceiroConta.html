@@ -101,6 +101,14 @@
                         </div>
                     </div>
 
+                    <!-- NOVO: linha com Data da Baixa -->
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label>Data da Baixa</label>
+                            <input type="date" id="baixa_dt" class="form-control">
+                        </div>
+                    </div>
+
                     <hr>
 
                     <!-- Toggle parcelamento -->
@@ -299,6 +307,13 @@
                 $('#forma_pagamento_id').val(String(contaLoaded.forma_pagamento)).trigger('change');
             } else if (typeof contaLoaded.banco !== 'undefined' && contaLoaded.banco !== null) {
                 $('#forma_pagamento_id').val(String(contaLoaded.banco)).trigger('change');
+            }
+
+            // NOVO: data da baixa (se já tiver)
+            if (contaLoaded.baixa_dt || contaLoaded.dt_baixa) {
+                const baixaRaw = (contaLoaded.baixa_dt || contaLoaded.dt_baixa || '').toString();
+                const baixaIso = baixaRaw.length >= 10 ? baixaRaw.substring(0,10) : '';
+                $('#baixa_dt').val(baixaIso);
             }
 
         } catch(e){
@@ -684,9 +699,13 @@
         const acrescimo      = parseFloat($('#acrescimo').val()   || contaLoaded.adic || 0);
         const valorBaixa     = valor_total - desconto + acrescimo;
 
-        // Data da baixa (só mostra; no payload podemos deixar nulo pra usar hoje no backend)
-        const hoje = new Date();
-        const baixaDtBr = hoje.toLocaleDateString('pt-BR');
+        // Data padrão da baixa: se tiver no campo, usa; senão hoje
+        let baixaDateDefault = $('#baixa_dt').val();
+        if (!baixaDateDefault) {
+            const now = new Date();
+            const tz  = new Date(now.getTime() - now.getTimezoneOffset()*60000);
+            baixaDateDefault = tz.toISOString().slice(0,10);
+        }
 
         const htmlConfirm = `
             <p><strong>Fornecedor:</strong> ${fornecedorText}</p>
@@ -695,7 +714,12 @@
             <p><strong>Vencimento:</strong> ${vencimento ? vencimento.split('-').reverse().join('/') : '-'}</p>
             <p><strong>Plano de Contas:</strong> ${planoText}</p>
             <p><strong>Forma de Pagamento:</strong> ${formaText}</p>
-            <p><strong>Data da Baixa:</strong> ${baixaDtBr} (hoje)</p>
+            <p><strong>Data da Baixa:</strong><br>
+                <input type="date" id="swalBaixaData"
+                       class="swal2-input"
+                       style="width:auto;max-width:180px;margin-top:4px;"
+                       value="${baixaDateDefault}">
+            </p>
             <hr>
             <p><strong>Valor da Baixa:</strong> ${toBRL(valorBaixa)}</p>
         `;
@@ -706,10 +730,23 @@
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sim, baixar',
-            cancelButtonText: 'Cancelar'
+            cancelButtonText: 'Cancelar',
+            focusConfirm: false,
+            preConfirm: () => {
+                const dt = document.getElementById('swalBaixaData').value;
+                if (!dt) {
+                    Swal.showValidationMessage('Informe a data da baixa.');
+                    return false;
+                }
+                return { baixa_dt: dt };
+            }
         });
 
-        if (!result.isConfirmed) return;
+        if (!result.isConfirmed || !result.value) return;
+
+        const baixa_dt = result.value.baixa_dt;
+        // Atualiza o campo do formulário com a data escolhida
+        $('#baixa_dt').val(baixa_dt);
 
         try {
             Swal.fire({ title:'Baixando conta...', didOpen:()=>Swal.showLoading() });
@@ -717,9 +754,7 @@
             const payloadData = {
                 id: Number(contaLoaded.id),
                 usuario_id: user_id || null,
-                // se quiser deixar o backend usar data de hoje, pode mandar null.
-                // Se quiser forçar hoje, descomente a linha abaixo:
-                // baixa_dt: hoje.toISOString().slice(0,10),
+                baixa_dt: baixa_dt,
                 banco: Number(forma_pagamento_id),
                 forma_pagamento: Number(forma_pagamento_id)
             };
