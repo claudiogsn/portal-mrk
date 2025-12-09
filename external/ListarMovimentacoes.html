@@ -1,413 +1,436 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-    <meta charset="UTF-8" />
-    <title>Conferência COP entre Balanços</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- CSS base do seu projeto -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Lista de Movimentações por Data</title>
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <!-- Fonts e Ícones -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- CSS -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/materialize.css" rel="stylesheet">
-
-    <!-- Ícones / Fonts -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
-    <!-- JS base -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
-        .table thead th { white-space: nowrap; }
-        .nowrap { white-space: nowrap; }
-        .muted { color: #777; }
-        .text-small { font-size: 12px; }
-        .badge-green { background: #2e7d32; }
-        .badge-red { background: #c62828; }
-        .badge-gray { background: #757575; }
-        .pointer { cursor: pointer; }
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button {
-                font-size: 12px !important;
-            }
+        .header-card {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        .filter-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
     </style>
-</head>
-<body class="theme-blue">
-<div class="container-fluid">
-    <br/>
 
-    <!-- CARD: Filtros -->
-    <div class="card">
-        <div class="header">
-            <h2>Conferência COP entre Balanços</h2>
-        </div>
-        <div class="body">
-            <div class="row">
-                <div class="col-sm-3">
-                    <label class="muted">Unidade</label>
-                    <select id="selectUnidade" class="form-control"></select>
+
+
+
+
+
+</head>
+
+<body class="theme-blue">
+
+<!-- Carregador -->
+<div class="page-loader-wrapper">
+    <div class="loader">
+        <div class="preloader">
+            <div class="spinner-layer pl-blue">
+                <div class="circle-clipper left">
+                    <div class="circle"></div>
                 </div>
-                <div class="col-sm-3">
-                    <label class="muted">Data inicial</label>
-                    <input type="date" id="dtInicio" class="form-control">
-                </div>
-                <div class="col-sm-3">
-                    <label class="muted">Data final</label>
-                    <input type="date" id="dtFim" class="form-control">
-                </div>
-                <div class="col-sm-3">
-                    <label class="muted">Ações</label><br>
-                    <button id="btnConsultar" class="btn btn-primary">
-                        <i class="fa fa-search"></i> Consultar
-                    </button>
-                    <button id="btnExport" class="btn btn-default">
-                        <i class="fa fa-file-export"></i> Exportar CSV
-                    </button>
+                <div class="circle-clipper right">
+                    <div class="circle"></div>
                 </div>
             </div>
+        </div>
+        <p>Aguarde...</p>
+    </div>
 
-            <div class="row" style="margin-top:10px">
 
+</div>
+
+<!-- Conteúdo -->
+<div class="container-fluid">
+    <div class="header-card">
+        <div class="row">
+            <div class="col-md-2">
+                <label for="dataInicial">Data Inicial</label>
+                <input type="date" id="dataInicial" class="form-control" placeholder="Data Inicial">
+            </div>
+            <div class="col-md-2">
+                <label for="dataFinal">Data Final</label>
+                <input type="date" id="dataFinal" class="form-control" placeholder="Data Final">
+            </div>
+            <div class="col-md-2">
+                <label for="filterOrigem">Origem</label>
+                <select id="filterOrigem" class="form-control">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="filterDestino">Destino</label>
+                <select id="filterDestino" class="form-control">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="filterTipo">Tipo</label>
+                <select id="filterTipo" class="form-control">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus" class="form-control">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-md-1 text-right">
+                <button id="btnFiltrar" class="btn btn-primary">Buscar</button>
             </div>
         </div>
     </div>
 
-    <!-- CARD: Resultado -->
+    <!-- Tabela -->
     <div class="card">
         <div class="header">
-            <h2>Resultado</h2>
+            <h2>Movimentações por Data</h2>
         </div>
-        <div class="body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="tabela-resultado">
+        <div class="body table-responsive">
+            <div class="table-container position-relative">
+                <div class="spinner">
+                    <div class="preloader pl-size-xs">
+                        <div class="spinner-layer pl-blue">
+                            <div class="circle-clipper left">
+                                <div class="circle"></div>
+                            </div>
+                            <div class="circle-clipper right">
+                                <div class="circle"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <table id="movimentacoesTable" class="table  table-striped">
                     <thead>
                     <tr>
-                        <th class="nowrap">Produto</th>
-                        <th>Nome</th>
-                        <th class="nowrap">Categoria</th>
-                        <th class="text-right nowrap">Saldo Inicial</th>
-                        <th class="text-right nowrap">Entradas</th>
-                        <th class="text-right nowrap">Saídas</th>
-                        <th class="text-right nowrap">Saldo Esperado</th>
-                        <th class="text-right nowrap">Saldo Balanço Final</th>
-                        <th class="text-right nowrap">Divergência</th>
+                        <th>Doc</th>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Origem</th>
+                        <th>Destino</th>
+                        <th>Usuário</th>
+                        <th>Status</th>
+                        <th>Ações</th>
                     </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                    <!-- Conteúdo Dinâmico -->
+                    </tbody>
                 </table>
             </div>
-            <div id="resumoTotais" class="text-right muted text-small" style="margin-top:5px;"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Detalhes -->
+<div id="movimentacaoModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da Movimentação</h5>
+                <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table class="table  table-striped">
+                    <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                    </tr>
+                    </thead>
+                    <tbody id="detalhesMovimentacao">
+                    <!-- Conteúdo Dinâmico -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
+<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+
 <script>
-    // ====== CONFIG ======
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
+    $(document).ready(function () {
+        const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const token  = urlParams.get('token');
-    const unitId = urlParams.get('unit_id'); // só pra pré-selecionar, se vier
 
-    // ====== STATE ======
-    let ultimoPayload = null;
-    let itensFiltrados = [];
 
-    // ====== HELPER DATA ======
-    function formatISODate(date) {
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return year + '-' + month + '-' + day;
-    }
 
-    // ====== INIT (SEM async) ======
-    $(function () {
-        console.log('Document ready. baseUrl:', baseUrl, 'token:', token);
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const unitId = urlParams.get('unit_id');
 
-        // 1) Carrega unidades sempre
-        carregarUnidades();
 
-        // 2) Datas padrão
-        const hoje = new Date();
-        const menos7 = new Date(hoje);
-        menos7.setDate(hoje.getDate() - 7);
-        $('#dtFim').val(formatISODate(hoje));
-        $('#dtInicio').val(formatISODate(menos7));
+        const baseUrlRedirect = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/index.php' :
+            'http://localhost/portal-mrk/index.php';
 
-        // 3) Se vier unitId na URL, só pré-seleciona
-        if (unitId) {
-            $('#selectUnidade').val(unitId);
+        function showLoader() {
+            $('.page-loader-wrapper').fadeIn();
         }
 
-        // 4) Eventos
-        $('#btnConsultar').on('click', onConsultar);
-        $('#btnExport').on('click', onExportCSV);
-        $('#chkSomenteDivergentes').on('change', renderTabelaComFiltro); // se tiver o checkbox
+        function hideLoader() {
+            $('.page-loader-wrapper').fadeOut();
+        }
 
-        console.log('Bind de eventos concluído.');
-    });
+        // Carregar movimentações
+        async function loadMovements(dataInicial, dataFinal) {
+            showLoader();
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'listarMovimentacoesPorData',
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        data_inicial: dataInicial,
+                        data_final: dataFinal
+                    }
+                });
 
-    // ====== CARREGA UNIDADES ======
-    function carregarUnidades() {
-        console.log('carregarUnidades() chamado');
-
-        axios.post(baseUrl, {
-            method: 'listSystemUnits',
-            token: token,
-            data: {}
-        })
-            .then(function (res) {
-                console.log('Resposta listSystemUnits:', res.data);
-
-                const $sel = $('#selectUnidade');
-                $sel.empty();
-
-                if (Array.isArray(res.data.unidades)) {
-                    res.data.unidades.forEach(function (u) {
-                        $sel.append(
-                            '<option value="' + u.id + '">' +
-                            u.name + (u.custom_code ? ' (' + u.custom_code + ')' : '') +
-                            '</option>'
-                        );
-                    });
-
-                    console.log('Unidades carregadas. Total:', res.data.unidades.length);
+                if (response.data) {
+                    renderMovements(response.data);
+                    populateFilters(response.data); // Preencher filtros
                 } else {
-                    console.warn('Resposta não contém array "unidades":', res.data);
-                    Swal.fire('Atenção', 'Resposta do servidor não contém lista de unidades.', 'warning');
+                    Swal.fire("Erro", "Erro ao carregar movimentações.", "error");
                 }
-            })
-            .catch(function (error) {
-                console.error('Erro ao carregar unidades:', error);
-                Swal.fire('Erro', 'Erro ao carregar unidades.', 'error');
-            });
-    }
-
-    // ====== CONSULTAR ======
-    function onConsultar() {
-        const system_unit_id = $('#selectUnidade').val();
-        const data_inicial  = $('#dtInicio').val();
-        const data_final    = $('#dtFim').val();
-
-        console.log('onConsultar() ->', { system_unit_id, data_inicial, data_final });
-
-        if (!system_unit_id || !data_inicial || !data_final) {
-            Swal.fire('Atenção', 'Selecione/informe unidade, data inicial e data final.', 'warning');
-            return;
-        }
-
-        Swal.fire({
-            title: 'Consultando...',
-            allowOutsideClick: false,
-            didOpen: function () { Swal.showLoading(); }
-        });
-
-        axios.post(baseUrl, {
-            method: 'extratoCopEntreBalancos',
-            token: token,
-            data: {
-                system_unit_id: Number(system_unit_id),
-                dt_inicio: data_inicial,
-                dt_fim: data_final
+            } catch (error) {
+                console.error('Erro ao carregar movimentações:', error);
+            } finally {
+                hideLoader();
             }
-        })
-            .then(function (res) {
-                Swal.close();
-                console.log('Resposta extratoCopEntreBalancos:', res.data);
+        }
 
-                if (res.data.error) {
-                    renderTabela([]); // limpa tabela
-                    Swal.fire('Atenção', res.data.error, 'warning');
-                    return;
+
+        $('#filterTipo, #filterOrigem, #filterDestino, #filterStatus').on('change', applyFilters);
+
+
+        // Renderizar movimentações
+        function renderMovements(movements) {
+            const tbody = $('#movimentacoesTable tbody');
+            tbody.empty();
+
+            movements.forEach(movement => {
+                const formatarData = (data) => {
+                    if (!data) return 'N/A';
+                    const [ano, mes, dia] = data.split("-");
+                    return `${dia}/${mes}/${ano}`;
+                };
+                const row = $(`
+            <tr>
+                <td>${movement.doc}</td>
+                <td>${formatarData(movement.data)}</td>
+                <td>${movement.tipo_movimentacao}</td>
+                <td>${movement.nome_unidade_origem || 'N/A'}</td>
+                <td>${movement.nome_unidade_destino || 'N/A'}</td>
+                <td>${movement.username || 'N/A'}</td>
+                <td>${movement.status}</td>
+                <td>
+                    <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
+                </td>
+            </tr>
+        `);
+
+                tbody.append(row);
+
+                row.find('.btnDetalhes').on('click', function () {
+                    const doc = $(this).data('doc');
+                    loadMovementDetails(doc);
+                });
+            });
+
+            applyFilters(); // Aplicar filtros após renderizar
+        }
+
+
+        // Carregar detalhes
+        async function loadMovementDetails(doc) {
+            showLoader();
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'getMovimentacao',
+                    token: token,
+                    data: {
+                        system_unit_id: unitId,
+                        doc: doc
+                    }
+                });
+
+                if (response.data) {
+                    renderDetailsModal(response.data);
+                    $('#movimentacaoModal').modal('show');
+                } else {
+                    Swal.fire("Erro", "Erro ao carregar detalhes da movimentação.", "error");
                 }
-
-                ultimoPayload = res.data;
-                renderTabelaComFiltro();
-            })
-            .catch(function (error) {
-                Swal.close();
-                console.error('Erro ao consultar extratoCopEntreBalancos:', error);
-                Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
-            });
-    }
-
-    // ====== RENDER COM FILTRO ======
-    function renderTabelaComFiltro() {
-        if (!ultimoPayload || !Array.isArray(ultimoPayload.itens)) {
-            renderTabela([]);
-            return;
+            } catch (error) {
+                console.error('Erro ao carregar detalhes:', error);
+            } finally {
+                hideLoader();
+            }
         }
 
-        var somenteDiverg = $('#chkSomenteDivergentes').is(':checked');
-        var arr = ultimoPayload.itens.slice();
+        function renderDetailsModal(details) {
+            const tbody = $('#detalhesMovimentacao');
+            tbody.empty();
 
-        if (somenteDiverg) {
-            arr = arr.filter(function (i) {
-                return i.divergencia !== null && Math.abs(i.divergencia) > 1e-9;
+            details.forEach(item => {
+                const row = $(`
+                        <tr>
+                            <td>${item.produto} - ${item.product_name}</td>
+                            <td>${item.quantidade}</td>
+                        </tr>
+                    `);
+                tbody.append(row);
             });
         }
 
-        itensFiltrados = arr;
-        renderTabela(arr);
-    }
+        // Data padrão de hoje
+        const today = new Date().toISOString().split('T')[0];
+        $('#dataInicial').val(today);
+        $('#dataFinal').val(today);
+        loadMovements(today, today);
 
-    // ====== RENDER TABELA ======
-    function renderTabela(itens) {
-        var $tbody = $('#tabela-resultado tbody');
-        $tbody.empty();
-
-        var totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDiv = 0;
-
-        itens.forEach(function (item) {
-            totalIni += (item.saldo_inicial || 0);
-            totalEnt += (item.entradas || 0);
-            totalSai += (item.saidas || 0);
-            totalEsp += (item.saldo_esperado || 0);
-            totalFin += (item.saldo_final_balanco || 0);
-            totalDiv += (item.divergencia || 0);
-
-            var cat = (item.categoria_id != null)
-                ? (item.categoria_id + ' - ' + (item.nome_categoria || ''))
-                : (item.nome_categoria || '-');
-
-            var divBadge = badgeDivergencia(item.divergencia);
-
-            var tr =
-                '<tr>' +
-                '<td class="nowrap">' + (item.produto != null ? item.produto : '-') + '</td>' +
-                '<td>' + (escapeHtml(item.nome_produto) || '-') + '</td>' +
-                '<td>' + escapeHtml(cat) + '</td>' +
-                '<td class="text-right">' + brNumber(item.saldo_inicial) + '</td>' +
-                '<td class="text-right">' + brNumber(item.entradas) + '</td>' +
-                '<td class="text-right">' + brNumber(item.saidas) + '</td>' +
-                '<td class="text-right">' + brNumber(item.saldo_esperado) + '</td>' +
-                '<td class="text-right">' + (item.saldo_final_balanco != null ? brNumber(item.saldo_final_balanco) : '-') + '</td>' +
-                '<td class="text-right">' + divBadge + '</td>' +
-                '</tr>';
-
-            $tbody.append(tr);
+        // Filtrar por data
+        $('#btnFiltrar').on('click', function () {
+            const dataInicial = $('#dataInicial').val();
+            const dataFinal = $('#dataFinal').val();
+            loadMovements(dataInicial, dataFinal);
         });
 
-        $('#resumoTotais').html(
-            'Totais &nbsp;|&nbsp; ' +
-            'Inicial: <b>' + brNumber(totalIni) + '</b> &nbsp;·&nbsp; ' +
-            'Entradas: <b>' + brNumber(totalEnt) + '</b> &nbsp;·&nbsp; ' +
-            'Saídas: <b>' + brNumber(totalSai) + '</b> &nbsp;·&nbsp; ' +
-            'Esperado: <b>' + brNumber(totalEsp) + '</b> &nbsp;·&nbsp; ' +
-            'Balanço Final: <b>' + brNumber(totalFin) + '</b> &nbsp;·&nbsp; ' +
-            'Divergência: <b>' + brNumber(totalDiv) + '</b>'
-        );
-    }
+        function populateFilters(movements) {
+            const tipos = new Set();
+            const origens = new Set();
+            const destinos = new Set();
+            const status = new Set();
 
-    // ====== HELPERS VISUAIS ======
-    function escapeHtml(s) {
-        if (s == null) return s;
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
+            movements.forEach(movement => {
+                tipos.add(movement.tipo_movimentacao);
+                origens.add(movement.nome_unidade_origem || 'N/A');
+                destinos.add(movement.nome_unidade_destino || 'N/A');
+                status.add(movement.status);
+            });
 
-    function brNumber(v) {
-        if (v === null || v === undefined) return '-';
-        return Number(v).toLocaleString('pt-BR', {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3
-        });
-    }
+            const populateSelect = (selectId, items) => {
+                const select = $(`#${selectId}`);
+                select.empty();
+                select.append('<option value="">Todos</option>');
+                items.forEach(item => {
+                    select.append(`<option value="${item}">${item}</option>`);
+                });
+            };
 
-    function badgeDivergencia(val) {
-        if (val === null || val === undefined) {
-            return '<span class="label label-xs badge-gray">n/a</span>';
-        }
-        if (Math.abs(val) < 1e-9) {
-            return '<span class="label label-xs label-success">0,000</span>';
-        }
-        var cls = val > 0 ? 'badge-green' : 'badge-red';
-        return '<span class="label label-xs ' + cls + '">' + brNumber(val) + '</span>';
-    }
-
-    // ====== EXPORT CSV ======
-    function onExportCSV() {
-        console.log('onExportCSV() chamado. itensFiltrados:', itensFiltrados.length);
-
-        if (!itensFiltrados || !itensFiltrados.length) {
-            Swal.fire('Atenção', 'Não há dados para exportar.', 'info');
-            return;
+            populateSelect('filterTipo', tipos);
+            populateSelect('filterOrigem', origens);
+            populateSelect('filterDestino', destinos);
+            populateSelect('filterStatus', status);
         }
 
-        var header = [
-            'produto',
-            'nome_produto',
-            'categoria_id',
-            'nome_categoria',
-            'saldo_inicial',
-            'entradas',
-            'saidas',
-            'saldo_esperado',
-            'saldo_final_balanco',
-            'divergencia'
-        ];
+        function applyFilters() {
+            const tipo = $('#filterTipo').val();
+            const origem = $('#filterOrigem').val();
+            const destino = $('#filterDestino').val();
+            const status = $('#filterStatus').val();
 
-        var linhas = [header.join(';')];
+            $('#movimentacoesTable tbody tr').each(function () {
+                const row = $(this);
+                const matchesTipo = !tipo || row.find('td:nth-child(3)').text() === tipo;
+                const matchesOrigem = !origem || row.find('td:nth-child(4)').text() === origem;
+                const matchesDestino = !destino || row.find('td:nth-child(5)').text() === destino;
+                const matchesStatus = !status || row.find('td:nth-child(6)').text() === status;
 
-        itensFiltrados.forEach(function (i) {
-            var row = [
-                i.produto != null ? i.produto : '',
-                csvSafe(i.nome_produto),
-                i.categoria_id != null ? i.categoria_id : '',
-                csvSafe(i.nome_categoria),
-                num(i.saldo_inicial),
-                num(i.entradas),
-                num(i.saidas),
-                num(i.saldo_esperado),
-                i.saldo_final_balanco != null ? num(i.saldo_final_balanco) : '',
-                i.divergencia != null ? num(i.divergencia) : ''
-            ];
-            linhas.push(row.join(';'));
-        });
+                if (matchesTipo && matchesOrigem && matchesDestino && matchesStatus) {
+                    row.show();
+                } else {
+                    row.hide();
+                }
+            });
+        }
 
-        var csvContent = '\uFEFF' + linhas.join('\n'); // BOM pra Excel
-        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-
-        var unidadeTexto = $('#selectUnidade option:selected').text().trim().replace(/\s+/g, '_');
-        var di = $('#dtInicio').val();
-        var df = $('#dtFim').val();
-
-        a.download = 'conferencia_cop_' + unidadeTexto + '_' + di + '_a_' + df + '.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    function csvSafe(v) {
-        if (v == null) return '';
-        var s = String(v).replace(/"/g, '""');
-        return '"' + s + '"';
-    }
-
-    function num(v) {
-        if (v == null) return '';
-        return Number(v).toFixed(3);
-    }
+    });
 </script>
 </body>
+
 </html>
