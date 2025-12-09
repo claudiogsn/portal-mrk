@@ -83,7 +83,7 @@
 
     <div class="card">
         <div class="header">
-            <h2>Relatório de Itens Comprados</h2>
+            <h2>Relatório de Produtos Comprados</h2>
         </div>
 
         <!-- FILTROS PRINCIPAIS -->
@@ -125,10 +125,6 @@
                 <label class="muted">Busca texto (nome, código, descrição nota)</label>
                 <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar...">
             </div>
-            <div class="col-md-2 text-right">
-                <label class="muted">Info</label>
-                <div id="msgJanela" class="text-small muted" style="margin-top:5px;"></div>
-            </div>
         </div>
 
         <!-- TOTALIZADORES ESTILO KPI -->
@@ -141,13 +137,14 @@
             </div>
             <div class="col-md-4">
                 <div class="kpi green">
-                    <small>Valor interno total</small>
-                    <h4 id="kpiVlrInt">R$ 0,00</h4>
+                    <small>Quantidade total da NF</small>
+                    <h4 id="kpiQtdNF">0,0000</h4>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="kpi red">
-                    <small>Valor NF total</small>
+                    <small>Valor Total</small>
                     <h4 id="kpiVlrNota">R$ 0,00</h4>
                 </div>
             </div>
@@ -316,7 +313,6 @@
 
             const api = res.data;
             if (!api || api.success === false) {
-                $('#msgJanela').text('');
                 dadosBrutos = [];
                 renderTabela([]);
                 renderTotais([]);
@@ -325,8 +321,6 @@
 
             const payload = api.data || {};
             dadosBrutos = Array.isArray(payload.itens) ? payload.itens : [];
-
-            $('#msgJanela').text(`Registros retornados: ${dadosBrutos.length}`);
 
             // monta opções do filtro de produto a partir dos itens retornados
             buildFiltroProduto();
@@ -521,37 +515,34 @@
 
         if (!Array.isArray(itens) || itens.length === 0) {
             $('#kpiRegistros').text('0');
-            $('#kpiQtd').text('0,0000');
-            $('#kpiVlrInt').text('R$ 0,00');
-            $('#kpiVlrNota').text('R$ 0,00');
+            $('#kpiQtd').text('0,0000');      // Quantidade interna total
+            $('#kpiQtdNF').text('0,0000');    // Quantidade total da NF
+            $('#kpiVlrNota').text('R$ 0,00'); // Valor total NF
             return;
         }
 
-        let totalQtd = 0;
-        let totalVlrInt = 0;
-        let totalVlrNota = 0;
+        let totalQtdInterna = 0; // mv_quantidade_interna
+        let totalQtdNF      = 0; // in_quantidade_nota
+        let totalVlrNota    = 0; // valor total da NF
 
         itens.forEach(it => {
-            const qtdInt    = Number(it.mv_quantidade_interna || 0);
-            const vlrTotInt = it.mv_valor_total_interno != null
-                ? Number(it.mv_valor_total_interno)
-                : (qtdInt * Number(it.mv_valor_unitario_interno || 0));
-
-            const qtdNota   = Number(it.in_quantidade_nota || 0);
-            const vlrTotNt  = it.in_valor_total_nota != null
+            const qtdInt   = Number(it.mv_quantidade_interna || 0);
+            const qtdNota  = Number(it.in_quantidade_nota || 0);
+            const vlrTotNt = it.in_valor_total_nota != null
                 ? Number(it.in_valor_total_nota)
                 : (qtdNota * Number(it.in_valor_unitario_nota || 0));
 
-            totalQtd    += qtdInt;
-            totalVlrInt += vlrTotInt;
-            totalVlrNota+= vlrTotNt;
+            totalQtdInterna += qtdInt;
+            totalQtdNF      += qtdNota;
+            totalVlrNota    += vlrTotNt;
         });
 
         $('#kpiRegistros').text(totalRegistros);
-        $('#kpiQtd').text(brNumber(totalQtd, 4));
-        $('#kpiVlrInt').text(brMoney(totalVlrInt));
-        $('#kpiVlrNota').text(brMoney(totalVlrNota));
+        $('#kpiQtd').text(brNumber(totalQtdInterna, 4)); // já existia
+        $('#kpiQtdNF').text(brNumber(totalQtdNF, 4));    // novo KPI
+        $('#kpiVlrNota').text(brMoney(totalVlrNota));    // já existia
     }
+
 </script>
 </body>
 </html>

@@ -287,7 +287,7 @@
                     <td class="text-right">${brNumber(qtd)}</td>
                     <td class="text-right">${custoUnit != null ? brMoney(custoUnit) : '-'}</td>
                     <td class="text-right">${valPerda != null ? brMoney(valPerda) : '-'}</td>
-                    <td>${escapeHtml(row.usuario_id || '')}</td>
+                    <td>${escapeHtml(row.usuario_nome || '')}</td>
                 </tr>
             `;
             $tbody.append(tr);

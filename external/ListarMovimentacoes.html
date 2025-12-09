@@ -114,140 +114,162 @@
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    // Recebendo token e unit_id pela URL
     const urlParams = new URLSearchParams(window.location.search);
     const token  = urlParams.get('token');
-    const unitId = urlParams.get('unit_id'); // <- obrigatório quando quiser travar unidade
+    const unitId = urlParams.get('unit_id'); // só pra pré-selecionar, se vier
 
     // ====== STATE ======
     let ultimoPayload = null;
     let itensFiltrados = [];
 
-    // ====== INIT ======
-    $(document).ready(async () => {
-        await prepararUnidade();
+    // ====== HELPER DATA ======
+    function formatISODate(date) {
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
 
-        // Datas padrão: hoje e -7 dias
+    // ====== INIT (SEM async) ======
+    $(function () {
+        console.log('Document ready. baseUrl:', baseUrl, 'token:', token);
+
+        // 1) Carrega unidades sempre
+        carregarUnidades();
+
+        // 2) Datas padrão
         const hoje = new Date();
-        const menos7 = new Date(hoje); menos7.setDate(hoje.getDate() - 7);
+        const menos7 = new Date(hoje);
+        menos7.setDate(hoje.getDate() - 7);
         $('#dtFim').val(formatISODate(hoje));
         $('#dtInicio').val(formatISODate(menos7));
 
+        // 3) Se vier unitId na URL, só pré-seleciona
+        if (unitId) {
+            $('#selectUnidade').val(unitId);
+        }
+
+        // 4) Eventos
         $('#btnConsultar').on('click', onConsultar);
-        $('#chkSomenteDivergentes').on('change', renderTabelaComFiltro);
         $('#btnExport').on('click', onExportCSV);
+        $('#chkSomenteDivergentes').on('change', renderTabelaComFiltro); // se tiver o checkbox
+
+        console.log('Bind de eventos concluído.');
     });
 
-    // ====== PREPARO DO SELECT DE UNIDADE ======
-    async function prepararUnidade() {
-        const $sel = $('#selectUnidade');
+    // ====== CARREGA UNIDADES ======
+    function carregarUnidades() {
+        console.log('carregarUnidades() chamado');
 
-        // Se veio unit_id na URL, busca apenas essa unidade e trava o select
-        if (unitId) {
-            try {
-                const res = await axios.post(baseUrl, {
-                    method: 'getSystemUnitById',
-                    token,
-                    data: { id: Number(unitId) }
-                });
-                const u = res.data;
-                $sel.empty().append(`<option value="${u.id}">${u.name} ${u.custom_code ? '('+u.custom_code+')' : ''}</option>`);
-                $sel.prop('disabled', true);
-            } catch (e) {
-                // fallback: se não conseguir carregar a unidade específica, carrega todas
-                await carregarUnidades();
-                $sel.val(unitId).prop('disabled', true);
-            }
-            return;
-        }
+        axios.post(baseUrl, {
+            method: 'listSystemUnits',
+            token: token,
+            data: {}
+        })
+            .then(function (res) {
+                console.log('Resposta listSystemUnits:', res.data);
 
-        // Caso contrário, carrega todas as unidades (comportamento antigo)
-        await carregarUnidades();
-    }
+                const $sel = $('#selectUnidade');
+                $sel.empty();
 
-    async function carregarUnidades() {
-        try {
-            const res = await axios.post(baseUrl, {
-                method: 'listSystemUnits',
-                token,
-                data: {}
+                if (Array.isArray(res.data.unidades)) {
+                    res.data.unidades.forEach(function (u) {
+                        $sel.append(
+                            '<option value="' + u.id + '">' +
+                            u.name + (u.custom_code ? ' (' + u.custom_code + ')' : '') +
+                            '</option>'
+                        );
+                    });
+
+                    console.log('Unidades carregadas. Total:', res.data.unidades.length);
+                } else {
+                    console.warn('Resposta não contém array "unidades":', res.data);
+                    Swal.fire('Atenção', 'Resposta do servidor não contém lista de unidades.', 'warning');
+                }
+            })
+            .catch(function (error) {
+                console.error('Erro ao carregar unidades:', error);
+                Swal.fire('Erro', 'Erro ao carregar unidades.', 'error');
             });
-            const $sel = $('#selectUnidade');
-            $sel.empty();
-            res.data.unidades.forEach(u => {
-                $sel.append(`<option value="${u.id}">${u.name} ${u.custom_code ? '('+u.custom_code+')' : ''}</option>`);
-            });
-        } catch (e) {
-            Swal.fire('Erro', 'Erro ao carregar unidades.', 'error');
-        }
     }
 
     // ====== CONSULTAR ======
-    async function onConsultar() {
-        const system_unit_id = unitId || $('#selectUnidade').val(); // <- usa unit_id da URL se existir
-        const data_inicial = $('#dtInicio').val();
-        const data_final   = $('#dtFim').val();
+    function onConsultar() {
+        const system_unit_id = $('#selectUnidade').val();
+        const data_inicial  = $('#dtInicio').val();
+        const data_final    = $('#dtFim').val();
+
+        console.log('onConsultar() ->', { system_unit_id, data_inicial, data_final });
 
         if (!system_unit_id || !data_inicial || !data_final) {
-            return Swal.fire('Atenção', 'Selecione/informe unidade, data inicial e data final.', 'warning');
+            Swal.fire('Atenção', 'Selecione/informe unidade, data inicial e data final.', 'warning');
+            return;
         }
 
-        Swal.fire({ title: 'Consultando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Swal.fire({
+            title: 'Consultando...',
+            allowOutsideClick: false,
+            didOpen: function () { Swal.showLoading(); }
+        });
 
-        try {
-            const res = await axios.post(baseUrl, {
-                method: 'extratoCopEntreBalancos', // ajuste se o nome no backend for outro
-                token,
-                data: {
-                    system_unit_id: Number(system_unit_id),
-                    data_inicial,
-                    data_final
-                }
-            });
-
-            Swal.close();
-
-            if (res.data.error) {
-                $('#msgJanela').text('');
-                renderTabela([]); // limpa
-                return Swal.fire('Atenção', res.data.error, 'warning');
+        axios.post(baseUrl, {
+            method: 'extratoCopEntreBalancos',
+            token: token,
+            data: {
+                system_unit_id: Number(system_unit_id),
+                dt_inicio: data_inicial,
+                dt_fim: data_final
             }
+        })
+            .then(function (res) {
+                Swal.close();
+                console.log('Resposta extratoCopEntreBalancos:', res.data);
 
-            ultimoPayload = res.data;
-            $('#msgJanela').text(res.data.mensagem || '');
-            renderTabelaComFiltro();
+                if (res.data.error) {
+                    renderTabela([]); // limpa tabela
+                    Swal.fire('Atenção', res.data.error, 'warning');
+                    return;
+                }
 
-        } catch (e) {
-            Swal.close();
-            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
-        }
+                ultimoPayload = res.data;
+                renderTabelaComFiltro();
+            })
+            .catch(function (error) {
+                Swal.close();
+                console.error('Erro ao consultar extratoCopEntreBalancos:', error);
+                Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+            });
     }
 
-    // ====== RENDER ======
+    // ====== RENDER COM FILTRO ======
     function renderTabelaComFiltro() {
         if (!ultimoPayload || !Array.isArray(ultimoPayload.itens)) {
             renderTabela([]);
             return;
         }
 
-        const somenteDiverg = $('#chkSomenteDivergentes').is(':checked');
-        let arr = ultimoPayload.itens.slice();
+        var somenteDiverg = $('#chkSomenteDivergentes').is(':checked');
+        var arr = ultimoPayload.itens.slice();
 
         if (somenteDiverg) {
-            arr = arr.filter(i => i.divergencia !== null && Math.abs(i.divergencia) > 1e-9);
+            arr = arr.filter(function (i) {
+                return i.divergencia !== null && Math.abs(i.divergencia) > 1e-9;
+            });
         }
 
         itensFiltrados = arr;
         renderTabela(arr);
     }
 
+    // ====== RENDER TABELA ======
     function renderTabela(itens) {
-        const $tbody = $('#tabela-resultado tbody');
+        var $tbody = $('#tabela-resultado tbody');
         $tbody.empty();
 
-        let totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDiv = 0;
+        var totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDiv = 0;
 
-        itens.forEach(item => {
+        itens.forEach(function (item) {
             totalIni += (item.saldo_inicial || 0);
             totalEnt += (item.entradas || 0);
             totalSai += (item.saidas || 0);
@@ -255,39 +277,40 @@
             totalFin += (item.saldo_final_balanco || 0);
             totalDiv += (item.divergencia || 0);
 
-            const cat = (item.categoria_id != null)
-                ? `${item.categoria_id} - ${item.nome_categoria || ''}`
+            var cat = (item.categoria_id != null)
+                ? (item.categoria_id + ' - ' + (item.nome_categoria || ''))
                 : (item.nome_categoria || '-');
 
-            const divBadge = badgeDivergencia(item.divergencia);
+            var divBadge = badgeDivergencia(item.divergencia);
 
-            const tr = `
-        <tr>
-          <td class="nowrap">${item.produto ?? '-'}</td>
-          <td>${escapeHtml(item.nome_produto) || '-'}</td>
-          <td>${escapeHtml(cat)}</td>
-          <td class="text-right">${brNumber(item.saldo_inicial)}</td>
-          <td class="text-right">${brNumber(item.entradas)}</td>
-          <td class="text-right">${brNumber(item.saidas)}</td>
-          <td class="text-right">${brNumber(item.saldo_esperado)}</td>
-          <td class="text-right">${item.saldo_final_balanco != null ? brNumber(item.saldo_final_balanco) : '-'}</td>
-          <td class="text-right">${divBadge}</td>
-        </tr>
-      `;
+            var tr =
+                '<tr>' +
+                '<td class="nowrap">' + (item.produto != null ? item.produto : '-') + '</td>' +
+                '<td>' + (escapeHtml(item.nome_produto) || '-') + '</td>' +
+                '<td>' + escapeHtml(cat) + '</td>' +
+                '<td class="text-right">' + brNumber(item.saldo_inicial) + '</td>' +
+                '<td class="text-right">' + brNumber(item.entradas) + '</td>' +
+                '<td class="text-right">' + brNumber(item.saidas) + '</td>' +
+                '<td class="text-right">' + brNumber(item.saldo_esperado) + '</td>' +
+                '<td class="text-right">' + (item.saldo_final_balanco != null ? brNumber(item.saldo_final_balanco) : '-') + '</td>' +
+                '<td class="text-right">' + divBadge + '</td>' +
+                '</tr>';
+
             $tbody.append(tr);
         });
 
-        $('#resumoTotais').html(`
-      Totais &nbsp;|&nbsp;
-      Inicial: <b>${brNumber(totalIni)}</b> &nbsp;·&nbsp;
-      Entradas: <b>${brNumber(totalEnt)}</b> &nbsp;·&nbsp;
-      Saídas: <b>${brNumber(totalSai)}</b> &nbsp;·&nbsp;
-      Esperado: <b>${brNumber(totalEsp)}</b> &nbsp;·&nbsp;
-      Balanço Final: <b>${brNumber(totalFin)}</b> &nbsp;·&nbsp;
-      Divergência: <b>${brNumber(totalDiv)}</b>
-    `);
+        $('#resumoTotais').html(
+            'Totais &nbsp;|&nbsp; ' +
+            'Inicial: <b>' + brNumber(totalIni) + '</b> &nbsp;·&nbsp; ' +
+            'Entradas: <b>' + brNumber(totalEnt) + '</b> &nbsp;·&nbsp; ' +
+            'Saídas: <b>' + brNumber(totalSai) + '</b> &nbsp;·&nbsp; ' +
+            'Esperado: <b>' + brNumber(totalEsp) + '</b> &nbsp;·&nbsp; ' +
+            'Balanço Final: <b>' + brNumber(totalFin) + '</b> &nbsp;·&nbsp; ' +
+            'Divergência: <b>' + brNumber(totalDiv) + '</b>'
+        );
     }
 
+    // ====== HELPERS VISUAIS ======
     function escapeHtml(s) {
         if (s == null) return s;
         return String(s)
@@ -300,22 +323,33 @@
 
     function brNumber(v) {
         if (v === null || v === undefined) return '-';
-        return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+        return Number(v).toLocaleString('pt-BR', {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3
+        });
     }
 
     function badgeDivergencia(val) {
-        if (val === null || val === undefined) return '<span class="label label-xs badge-gray">n/a</span>';
-        if (Math.abs(val) < 1e-9) return '<span class="label label-xs label-success">0,000</span>';
-        const cls = val > 0 ? 'badge-green' : 'badge-red';
-        return `<span class="label label-xs ${cls}">${brNumber(val)}</span>`;
+        if (val === null || val === undefined) {
+            return '<span class="label label-xs badge-gray">n/a</span>';
+        }
+        if (Math.abs(val) < 1e-9) {
+            return '<span class="label label-xs label-success">0,000</span>';
+        }
+        var cls = val > 0 ? 'badge-green' : 'badge-red';
+        return '<span class="label label-xs ' + cls + '">' + brNumber(val) + '</span>';
     }
 
     // ====== EXPORT CSV ======
     function onExportCSV() {
+        console.log('onExportCSV() chamado. itensFiltrados:', itensFiltrados.length);
+
         if (!itensFiltrados || !itensFiltrados.length) {
-            return Swal.fire('Atenção', 'Não há dados para exportar.', 'info');
+            Swal.fire('Atenção', 'Não há dados para exportar.', 'info');
+            return;
         }
-        const header = [
+
+        var header = [
             'produto',
             'nome_produto',
             'categoria_id',
@@ -328,13 +362,13 @@
             'divergencia'
         ];
 
-        const linhas = [header.join(';')];
+        var linhas = [header.join(';')];
 
-        itensFiltrados.forEach(i => {
-            const row = [
-                i.produto ?? '',
+        itensFiltrados.forEach(function (i) {
+            var row = [
+                i.produto != null ? i.produto : '',
                 csvSafe(i.nome_produto),
-                i.categoria_id ?? '',
+                i.categoria_id != null ? i.categoria_id : '',
                 csvSafe(i.nome_categoria),
                 num(i.saldo_inicial),
                 num(i.entradas),
@@ -346,18 +380,18 @@
             linhas.push(row.join(';'));
         });
 
-        const csvContent = '\uFEFF' + linhas.join('\n'); // BOM para Excel PT-BR
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        var csvContent = '\uFEFF' + linhas.join('\n'); // BOM pra Excel
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
 
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
         a.href = url;
 
-        const unidadeTexto = $('#selectUnidade option:selected').text().trim().replace(/\s+/g, '_');
-        const di = $('#dtInicio').val();
-        const df = $('#dtFim').val();
+        var unidadeTexto = $('#selectUnidade option:selected').text().trim().replace(/\s+/g, '_');
+        var di = $('#dtInicio').val();
+        var df = $('#dtFim').val();
 
-        a.download = `conferencia_cop_${unidadeTexto}_${di}_a_${df}.csv`;
+        a.download = 'conferencia_cop_' + unidadeTexto + '_' + di + '_a_' + df + '.csv';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -366,9 +400,10 @@
 
     function csvSafe(v) {
         if (v == null) return '';
-        const s = String(v).replace(/"/g, '""');
-        return `"${s}"`;
+        var s = String(v).replace(/"/g, '""');
+        return '"' + s + '"';
     }
+
     function num(v) {
         if (v == null) return '';
         return Number(v).toFixed(3);

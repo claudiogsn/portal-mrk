@@ -93,7 +93,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'getIntervalosMensais',
         'gerarPdfFaturamento',
         'gerarPdfCompras',
-        'listarNotasNaoImportadasUltimos30Dias'
+        'listarNotasNaoImportadasUltimos30Dias',
+        'getGroupsToConsolidation'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
@@ -232,6 +233,9 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getGroupsToProcess':
                 $response = BiController::getGroupsToProcess();
+                break;
+            case 'getGroupsToConsolidation':
+                    $response = BiController::getGroupsToConsolidation();
                 break;
             case 'ListUnitsByGroup':
                 if (isset($requestData['group_id'])) {

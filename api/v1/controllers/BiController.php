@@ -156,6 +156,31 @@ class BiController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public static function getGroupsToConsolidation() {
+        global $pdo;
+
+        $stmt = $pdo->prepare("
+        SELECT 
+            g.id, 
+            g.nome
+        FROM 
+            grupo_estabelecimento g
+        WHERE EXISTS (
+            SELECT 1
+            FROM grupo_estabelecimento_rel r    
+            JOIN system_unit su ON su.id = r.system_unit_id
+            WHERE 
+                r.grupo_id = g.id
+                AND (
+                    su.consolidacao_automatica = '1'
+                )
+        )
+    ");
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     public static function ListUnitsByGroup($group_id) {
         global $pdo;
 

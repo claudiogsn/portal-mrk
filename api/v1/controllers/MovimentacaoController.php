@@ -1956,14 +1956,17 @@ class MovimentacaoController
                 m.data_original,
                 m.quantidade,
                 m.valor,
-                m.usuario_id,
-                p.nome                 AS nome_produto,
-                p.und                  AS unidade,
+                m.usuario_id,              -- ainda retorna o ID
+                u.name             AS usuario_nome, -- novo campo com o nome do usuário
+                p.nome             AS nome_produto,
+                p.und              AS unidade,
                 p.preco_custo
             FROM movimentacao m
             LEFT JOIN products p
                    ON p.system_unit_id = m.system_unit_id
                   AND p.codigo         = m.produto
+            LEFT JOIN system_users u
+                   ON u.id             = m.usuario_id
             WHERE m.tipo           = 'p'
               AND m.system_unit_id = :unit_id
               AND m.status         = 1
