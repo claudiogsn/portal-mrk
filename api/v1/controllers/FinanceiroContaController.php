@@ -8,6 +8,7 @@ ini_set('memory_limit', '512M');
 
 
 require_once __DIR__ . '/../database/db.php';
+require_once __DIR__ . '/../controllers/BiController.php';
 
 
 class FinanceiroContaController {
@@ -1695,6 +1696,388 @@ class FinanceiroContaController {
             ];
         }
     }
+
+    public static function getDashboardFinanceiroPorGrupo(array $data): array
+    {
+        global $pdo;
+
+        $groupId   = isset($data['group_id'])   ? (int)$data['group_id']   : null;
+        $dtInicio  = $data['dt_inicio'] ?? null;
+        $dtFim     = $data['dt_fim']    ?? null;
+        $tipoData  = strtolower($data['tipo_data'] ?? 'vencimento');
+
+        if (!$groupId || !$dtInicio || !$dtFim) {
+            return [
+                'success' => false,
+                'message' => 'Parâmetros obrigatórios: group_id, dt_inicio, dt_fim'
+            ];
+        }
+
+        if (!in_array($tipoData, ['emissao', 'vencimento'], true)) {
+            $tipoData = 'vencimento';
+        }
+        $campoData = $tipoData === 'emissao' ? 'emissao' : 'vencimento';
+
+        try {
+            // 1) Descobrir unidades do grupo
+            $units = BiController::getUnitsByGroup($groupId);
+
+            if (empty($units)) {
+                return [
+                    'success' => false,
+                    'message' => 'Nenhuma unidade encontrada para o grupo informado.'
+                ];
+            }
+
+            $unitIds      = [];
+            $mapUnitNames = [];
+
+            foreach ($units as $unit) {
+                $id = isset($unit['id']) ? (int)$unit['id'] : (int)$unit['system_unit_id'];
+                $unitIds[] = $id;
+                $mapUnitNames[$id] = $unit['name'] ?? $unit['nome'] ?? ('Unidade ' . $id);
+            }
+
+            $unitIds = array_values(array_unique($unitIds));
+            if (empty($unitIds)) {
+                return [
+                    'success' => false,
+                    'message' => 'Nenhum ID de unidade válido encontrado para o grupo.'
+                ];
+            }
+
+            $unitIdsStr = implode(',', array_map('intval', $unitIds));
+
+            // ===========================
+            // Estrutura base do retorno
+            // ===========================
+            $result = [
+                'params' => [
+                    'group_id'   => $groupId,
+                    'dt_inicio'  => $dtInicio,
+                    'dt_fim'     => $dtFim,
+                    'tipo_data'  => $tipoData,
+                    'campo_data' => $campoData,
+                ],
+
+                // Contas a vencer (sempre por VENCIMENTO, tipo D, em aberto)
+                'total_contas_vencer_7'  => 0.0,
+                'qtd_contas_vencer_7'    => 0,
+                'contas_vencer_7'        => [],
+
+                'total_contas_vencer_30' => 0.0,
+                'qtd_contas_vencer_30'   => 0,
+                'contas_vencer_30'       => [],
+
+                // Totais gerais (grupo inteiro) - AGORA GERAIS, NÃO APENAS EM ABERTO
+                'total_debitos_geral'    => 0.0,
+                'total_creditos_geral'   => 0.0,
+
+                // Totais e planos por unidade
+                'por_unidade'            => [],
+
+                // Planos agregados no grupo (para gráfico geral)
+                'planos_geral'           => [],
+            ];
+
+            // Inicializar estrutura por unidade
+            foreach ($unitIds as $uid) {
+                $result['por_unidade'][$uid] = [
+                    'system_unit_id' => $uid,
+                    'nome_unidade'   => $mapUnitNames[$uid] ?? ('Unidade ' . $uid),
+                    'totais' => [
+                        'debitos'  => 0.0,
+                        'creditos' => 0.0,
+                    ],
+                    'planos' => [],
+                ];
+            }
+
+            // ===========================
+            // 2) Contas a vencer 7 e 30 dias (tipo D, EM ABERTO)
+            // ===========================
+            $hoje   = new DateTime();
+            $dtHoje = $hoje->format('Y-m-d');
+            $dt7    = (clone $hoje)->modify('+7 days')->format('Y-m-d');
+            $dt30   = (clone $hoje)->modify('+30 days')->format('Y-m-d');
+
+            $whereBaseAberto = "
+            fc.system_unit_id IN ($unitIdsStr)
+            AND (fc.baixa_dt IS NULL OR fc.baixa_dt = '0000-00-00')
+            AND fc.tipo = 'D'
+        ";
+
+            // 2.1) Próximos 7 dias
+            $sqlV7 = "
+            SELECT 
+                fc.id,
+                fc.system_unit_id,
+                fc.codigo,
+                fc.nome,
+                fc.entidade,
+                fc.cgc,
+                fc.tipo,
+                fc.doc,
+                fc.emissao,
+                fc.vencimento,
+                fc.valor,
+                fc.plano_contas,
+                fp.descricao AS plano_descricao
+            FROM financeiro_conta fc
+            LEFT JOIN financeiro_plano fp
+                ON fp.system_unit_id = fc.system_unit_id
+               AND fp.codigo = fc.plano_contas
+            WHERE $whereBaseAberto
+              AND fc.vencimento BETWEEN :dt_hoje AND :dt_limite
+            ORDER BY fc.vencimento ASC
+        ";
+
+            $stmtV7 = $pdo->prepare($sqlV7);
+            $stmtV7->execute([
+                ':dt_hoje'   => $dtHoje,
+                ':dt_limite' => $dt7,
+            ]);
+            $rows7 = $stmtV7->fetchAll(PDO::FETCH_ASSOC);
+
+            $total7 = 0.0;
+            foreach ($rows7 as $row) {
+                $total7 += (float)$row['valor'];
+            }
+
+            $result['total_contas_vencer_7'] = $total7;
+            $result['qtd_contas_vencer_7']   = count($rows7);
+            $result['contas_vencer_7']       = $rows7;
+
+            // 2.2) Próximos 30 dias
+            $sqlV30 = "
+            SELECT 
+                fc.id,
+                fc.system_unit_id,
+                fc.codigo,
+                fc.nome,
+                fc.entidade,
+                fc.cgc,
+                fc.tipo,
+                fc.doc,
+                fc.emissao,
+                fc.vencimento,
+                fc.valor,
+                fc.plano_contas,
+                fp.descricao AS plano_descricao
+            FROM financeiro_conta fc
+            LEFT JOIN financeiro_plano fp
+                ON fp.system_unit_id = fc.system_unit_id
+               AND fp.codigo = fc.plano_contas
+            WHERE $whereBaseAberto
+              AND fc.vencimento BETWEEN :dt_hoje AND :dt_limite
+            ORDER BY fc.vencimento ASC
+        ";
+
+            $stmtV30 = $pdo->prepare($sqlV30);
+            $stmtV30->execute([
+                ':dt_hoje'   => $dtHoje,
+                ':dt_limite' => $dt30,
+            ]);
+            $rows30 = $stmtV30->fetchAll(PDO::FETCH_ASSOC);
+
+            $total30 = 0.0;
+            foreach ($rows30 as $row) {
+                $total30 += (float)$row['valor'];
+            }
+
+            $result['total_contas_vencer_30'] = $total30;
+            $result['qtd_contas_vencer_30']   = count($rows30);
+            $result['contas_vencer_30']       = $rows30;
+
+            // ===========================
+            // 3) Totais por unidade (D / C) no período (tipo_data)
+            //    AGORA SEM FILTRAR POR baixa_dt (PEGA TUDO)
+            // ===========================
+            $sqlTotais = "
+            SELECT 
+                system_unit_id,
+                tipo,
+                SUM(valor) AS total
+            FROM financeiro_conta
+            WHERE system_unit_id IN ($unitIdsStr)
+              AND $campoData BETWEEN :dt_inicio AND :dt_fim
+            GROUP BY system_unit_id, tipo
+        ";
+
+            $stmtTotais = $pdo->prepare($sqlTotais);
+            $stmtTotais->execute([
+                ':dt_inicio' => $dtInicio,
+                ':dt_fim'    => $dtFim,
+            ]);
+
+            $rowsTotais = $stmtTotais->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($rowsTotais as $row) {
+                $uid  = (int)$row['system_unit_id'];
+                $tipo = strtoupper($row['tipo']);
+                $tot  = (float)$row['total'];
+
+                if (!isset($result['por_unidade'][$uid])) {
+                    $result['por_unidade'][$uid] = [
+                        'system_unit_id' => $uid,
+                        'nome_unidade'   => $mapUnitNames[$uid] ?? ('Unidade ' . $uid),
+                        'totais' => [
+                            'debitos'  => 0.0,
+                            'creditos' => 0.0,
+                        ],
+                        'planos' => [],
+                    ];
+                }
+
+                if ($tipo === 'D') {
+                    $result['por_unidade'][$uid]['totais']['debitos'] += $tot;
+                } elseif ($tipo === 'C') {
+                    $result['por_unidade'][$uid]['totais']['creditos'] += $tot;
+                }
+            }
+
+            // ===========================
+            // 4) Planos por unidade (para gráfico)
+            //    TAMBÉM SEM FILTRAR POR baixa_dt
+            // ===========================
+            $sqlPlanos = "
+            SELECT 
+                fc.system_unit_id,
+                fc.plano_contas,
+                fp.descricao AS plano_descricao,
+                fc.tipo,
+                SUM(fc.valor) AS total
+            FROM financeiro_conta fc
+            LEFT JOIN financeiro_plano fp
+                ON fp.system_unit_id = fc.system_unit_id
+               AND fp.codigo = fc.plano_contas
+            WHERE fc.system_unit_id IN ($unitIdsStr)
+              AND fc.$campoData BETWEEN :dt_inicio AND :dt_fim
+            GROUP BY 
+                fc.system_unit_id,
+                fc.plano_contas,
+                fp.descricao,
+                fc.tipo
+            ORDER BY 
+                fc.system_unit_id,
+                fp.descricao,
+                fc.plano_contas
+        ";
+
+            $stmtPlanos = $pdo->prepare($sqlPlanos);
+            $stmtPlanos->execute([
+                ':dt_inicio' => $dtInicio,
+                ':dt_fim'    => $dtFim,
+            ]);
+
+            $rowsPlanos = $stmtPlanos->fetchAll(PDO::FETCH_ASSOC);
+
+            // Mapa auxiliar para planos_geral
+            $planosGeral = [];
+
+            foreach ($rowsPlanos as $row) {
+                $uid        = (int)$row['system_unit_id'];
+                $codPlano   = $row['plano_contas'] ?? '';
+                $descPlano  = $row['plano_descricao'] ?? $codPlano;
+                $tipo       = strtoupper($row['tipo']);
+                $totalPlano = (float)$row['total'];
+
+                if (!$codPlano) {
+                    $codPlano  = 'SEM_PLANO';
+                    $descPlano = $descPlano ?: 'Sem Plano';
+                }
+
+                if (!isset($result['por_unidade'][$uid])) {
+                    $result['por_unidade'][$uid] = [
+                        'system_unit_id' => $uid,
+                        'nome_unidade'   => $mapUnitNames[$uid] ?? ('Unidade ' . $uid),
+                        'totais' => [
+                            'debitos'  => 0.0,
+                            'creditos' => 0.0,
+                        ],
+                        'planos' => [],
+                    ];
+                }
+
+                if (!isset($result['por_unidade'][$uid]['planos'][$codPlano])) {
+                    $result['por_unidade'][$uid]['planos'][$codPlano] = [
+                        'plano_codigo'    => $codPlano,
+                        'plano_descricao' => $descPlano,
+                        'total_debitos'   => 0.0,
+                        'total_creditos'  => 0.0,
+                        'total_geral'     => 0.0,
+                    ];
+                }
+
+                if ($tipo === 'D') {
+                    $result['por_unidade'][$uid]['planos'][$codPlano]['total_debitos'] += $totalPlano;
+                } elseif ($tipo === 'C') {
+                    $result['por_unidade'][$uid]['planos'][$codPlano]['total_creditos'] += $totalPlano;
+                }
+
+                // Agregado geral por plano (grupo inteiro)
+                if (!isset($planosGeral[$codPlano])) {
+                    $planosGeral[$codPlano] = [
+                        'plano_codigo'    => $codPlano,
+                        'plano_descricao' => $descPlano,
+                        'total_debitos'   => 0.0,
+                        'total_creditos'  => 0.0,
+                        'total_geral'     => 0.0,
+                    ];
+                }
+
+                if ($tipo === 'D') {
+                    $planosGeral[$codPlano]['total_debitos'] += $totalPlano;
+                } elseif ($tipo === 'C') {
+                    $planosGeral[$codPlano]['total_creditos'] += $totalPlano;
+                }
+            }
+
+            // ===========================
+            // 5) Fechar totais gerais e normalizar arrays
+            // ===========================
+            $totalDebitosGeral  = 0.0;
+            $totalCreditosGeral = 0.0;
+
+            foreach ($result['por_unidade'] as $uid => &$uData) {
+                $deb = (float)$uData['totais']['debitos'];
+                $cre = (float)$uData['totais']['creditos'];
+
+                $totalDebitosGeral  += $deb;
+                $totalCreditosGeral += $cre;
+
+                if (!empty($uData['planos']) && is_array($uData['planos'])) {
+                    foreach ($uData['planos'] as &$plano) {
+                        $plano['total_geral'] = (float)$plano['total_debitos'] + (float)$plano['total_creditos'];
+                    }
+                    $uData['planos'] = array_values($uData['planos']);
+                }
+            }
+            unset($uData);
+
+            $result['total_debitos_geral']  = $totalDebitosGeral;
+            $result['total_creditos_geral'] = $totalCreditosGeral;
+
+            foreach ($planosGeral as &$plano) {
+                $plano['total_geral'] = (float)$plano['total_debitos'] + (float)$plano['total_creditos'];
+            }
+            unset($plano);
+
+            $result['planos_geral'] = array_values($planosGeral);
+
+            return [
+                'success' => true,
+                'data'    => $result,
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar dashboard financeiro por grupo: ' . $e->getMessage(),
+            ];
+        }
+    }
+
 
 
 

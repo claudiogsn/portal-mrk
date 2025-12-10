@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Financeiro</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- não usado, mas mantido como no estoque -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        :root{
+            --mrk-blue: #0B46AC;
+            --mrk-green: #08A794;
+            --mrk-gray: #EBEBEB;
+            --mrk-black: #191F2A;
+        }
+
+        .animate-number { transition: all 1s ease-in-out; }
+        .btn-mrk {
+            background: color-mix(in srgb, var(--mrk-blue) 12%, white);
+            color: var(--mrk-blue);
+            border: 1px solid color-mix(in srgb, var(--mrk-blue) 25%, white);
+        }
+        .btn-mrk:hover {
+            background: color-mix(in srgb, var(--mrk-blue) 20%, white);
+        }
+
+        /* 🔥 Popup extra grande só pra lista de contas */
+        .swal2-popup.swal2-xl {
+            width: 90vw !important;
+            max-width: 1400px !important;
+        }
+
+        /* Garante que o conteúdo role dentro do modal grande */
+        .swal2-html-container {
+            max-height: 70vh;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body class="text-gray-800" style="background: var(--mrk-gray);">
+
+<div class="p-6">
+    <!-- FILTROS -->
+    <div class="mb-6">
+        <div class="flex items-center gap-4 flex-wrap">
+            <button onclick="setRange('hoje')" class="btn-mrk px-3 py-1 rounded shadow">Hoje</button>
+            <button onclick="setRange('ontem')" class="btn-mrk px-3 py-1 rounded shadow">Ontem</button>
+            <button onclick="setRange('7dias')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 7 dias</button>
+            <button onclick="setRange('mes')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 30 dias</button>
+
+            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
+            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
+
+            <select id="tipoData" class="border p-2 rounded-md shadow bg-white">
+                <option value="vencimento">Data de Vencimento</option>
+                <option value="emissao">Data de Emissão</option>
+            </select>
+
+            <select id="filtroGrupo" class="border p-2 rounded-md shadow bg-white">
+                <option value="">Todos os Grupos</option>
+            </select>
+
+            <select id="filtroLoja" class="border p-2 rounded-md shadow bg-white">
+                <option value="">Todas as lojas</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+
+        <!-- Contas a Vencer 7 dias -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex flex-col justify-between"
+             style="border-color: var(--mrk-blue);">
+            <div class="flex items-center gap-4">
+                <div class="text-4xl" style="color: var(--mrk-blue);">
+                    <i class="fas fa-calendar-week"></i>
+                </div>
+                <div>
+                    <div class="text-sm font-semibold" style="color: var(--mrk-black);">
+                        Contas a vencer nos próximos 7 dias
+                    </div>
+                    <div class="text-2xl md:text-3xl font-extrabold animate-number" id="contasVencer7"
+                         style="color: var(--mrk-black);">R$ 0,00</div>
+                </div>
+            </div>
+            <div class="mt-3 flex justify-between items-center text-xs text-gray-600">
+                <span id="qtdContas7">0 contas</span>
+                <button class="text-xs font-semibold text-blue-700 hover:underline"
+                        onclick="mostrarContasPrazo(7)">
+                    Ver mais
+                </button>
+            </div>
+        </div>
+
+        <!-- Contas a Vencer 30 dias -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex flex-col justify-between"
+             style="border-color: var(--mrk-green);">
+            <div class="flex items-center gap-4">
+                <div class="text-4xl" style="color: var(--mrk-green);">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div>
+                    <div class="text-sm font-semibold" style="color: var(--mrk-black);">
+                        Contas a vencer nos próximos 30 dias
+                    </div>
+                    <div class="text-2xl md:text-3xl font-extrabold animate-number" id="contasVencer30"
+                         style="color: var(--mrk-black);">R$ 0,00</div>
+                </div>
+            </div>
+            <div class="mt-3 flex justify-between items-center text-xs text-gray-600">
+                <span id="qtdContas30">0 contas</span>
+                <button class="text-xs font-semibold text-blue-700 hover:underline"
+                        onclick="mostrarContasPrazo(30)">
+                    Ver mais
+                </button>
+            </div>
+        </div>
+
+        <!-- Soma Débitos -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
+             style="border-color: var(--mrk-black);">
+            <div class="text-4xl" style="color: var(--mrk-black);">
+                <i class="fas fa-arrow-down-long"></i>
+            </div>
+            <div>
+                <div class="text-sm font-semibold" style="color: var(--mrk-black);">
+                    Débito
+                </div>
+                <div class="text-2xl md:text-3xl font-extrabold animate-number" id="totalDebitos"
+                     style="color: var(--mrk-black);">R$ 0,00</div>
+            </div>
+        </div>
+
+        <!-- Soma Créditos -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
+             style="border-color: var(--mrk-black);">
+            <div class="text-4xl" style="color: var(--mrk-black);">
+                <i class="fas fa-arrow-up-long"></i>
+            </div>
+            <div>
+                <div class="text-sm font-semibold" style="color: var(--mrk-black);">
+                    Créditos
+                </div>
+                <div class="text-2xl md:text-3xl font-extrabold animate-number" id="totalCreditos"
+                     style="color: var(--mrk-black);">R$ 0,00</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- GRÁFICO: PLANOS DE CONTAS -->
+    <div class="grid grid-cols-1 gap-6 mb-6">
+        <div class="w-full bg-white p-6 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">
+                Somatório das Contas por Plano de Contas
+            </h2>
+            <p class="text-xs text-gray-500 mb-2">
+                Considerando apenas contas em aberto no período e tipo de data selecionado.
+            </p>
+            <div id="chartPlanosContas" style="width:100%; height:360px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const baseUrlFinanceiro = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const system_unit_id = parseInt(urlParams.get('system_unit_id'));
+    const user_id = parseInt(urlParams.get('user_id'));
+    const token = urlParams.get('token');
+
+    // 🎨 PALETA MRK
+    const MRK = {
+        blue:  '#0B46AC',
+        green: '#08A794',
+        gray:  '#EBEBEB',
+        black: '#191F2A',
+        series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480']
+    };
+
+    let grupoId = null;
+    let gruposDisponiveis = {};
+    let lojasPorGrupo = {};
+    let lojasGrupo = [];
+
+    // Estado bruto vindo do backend financeiro
+    let dashboardFinanceiro = null;
+
+    function animateValue(id, start, end, duration, isCurrency = false) {
+        const element = document.getElementById(id);
+        if (!element) return;
+
+        let startTimestamp = null;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const value = start + progress * (end - start);
+
+            element.textContent = isCurrency
+                ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                : Math.floor(value);
+
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+
+        window.requestAnimationFrame(step);
+    }
+
+    function formatBRL(valor) {
+        const numero = Number(valor) || 0;
+        return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function setRange(tipo) {
+        const now = new Date();
+        const start = new Date();
+        if (tipo === 'ontem') {
+            start.setDate(now.getDate() - 1);
+            now.setDate(now.getDate() - 1);
+        } else if (tipo === '7dias') {
+            start.setDate(now.getDate() - 7);
+        } else if (tipo === 'mes') {
+            start.setMonth(now.getMonth() - 1);
+        }
+
+        document.getElementById('endDate').value = now.toISOString().split('T')[0];
+        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+        fetchData();
+    }
+
+    async function carregarGrupoInicial() {
+        const res = await axios.post(baseUrl, {
+            method: 'getGroupByUnit',
+            token,
+            data: { system_unit_id }
+        });
+
+        if (Array.isArray(res.data) && res.data.length > 0) {
+            grupoId = res.data[0].id;
+        }
+
+        await carregarGruposUsuario();
+    }
+
+    async function carregarGruposUsuario() {
+        const res = await axios.post(baseUrl, {
+            method: 'getGroupByUser',
+            token,
+            data: { user_id }
+        });
+
+        const { grupos, lojas_por_grupo } = res.data;
+        gruposDisponiveis = grupos || [];
+        lojasPorGrupo = lojas_por_grupo || {};
+
+        const grupoSelect = document.getElementById('filtroGrupo');
+        grupoSelect.innerHTML = '';
+
+        gruposDisponiveis.forEach(grupo => {
+            grupoSelect.innerHTML += `<option value="${grupo.id}" ${grupo.id == grupoId ? 'selected' : ''}>${grupo.nome}</option>`;
+        });
+
+        grupoSelect.addEventListener('change', () => {
+            grupoId = parseInt(grupoSelect.value);
+            dashboardFinanceiro = null;
+            limparCharts();
+            atualizarFiltroLoja();
+            document.getElementById('filtroLoja').value = "";
+            fetchData();
+        });
+
+        atualizarFiltroLoja();
+    }
+
+    function atualizarFiltroLoja() {
+        const lojas = lojasPorGrupo[grupoId] || [];
+        const filtro = document.getElementById('filtroLoja');
+
+        filtro.innerHTML = '<option value="">Todas as lojas</option>';
+        lojas.forEach(loja => {
+            filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`;
+        });
+    }
+
+    async function carregarLojasGrupo() {
+        const res = await axios.post(baseUrl, {
+            method: 'getUnitsByGroup',
+            token,
+            data: { group_id: grupoId }
+        });
+        lojasGrupo = res.data || [];
+    }
+
+    function limparCharts() {
+        const ids = ['chartPlanosContas'];
+        ids.forEach(id => {
+            const dom = document.getElementById(id);
+            if (!dom) return;
+            const inst = echarts.getInstanceByDom(dom);
+            if (inst) inst.dispose();
+        });
+    }
+
+    async function fetchData() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const tipoData = document.getElementById('tipoData').value || 'vencimento';
+
+        if (!grupoId) {
+            Swal.fire('Atenção', 'Nenhum grupo selecionado/encontrado.', 'warning');
+            return;
+        }
+
+        if (!startDate || !endDate) {
+            return; // espera o usuário escolher as datas
+        }
+
+        const dt_inicio = startDate; // formato Y-m-d
+        const dt_fim = endDate;
+
+        Swal.fire({
+            title: 'Carregando...',
+            html: 'Buscando dados financeiros.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            await carregarLojasGrupo();
+
+            const res = await axios.post(baseUrlFinanceiro, {
+                method: 'getDashboardFinanceiroPorGrupo',
+                token,
+                data: {
+                    group_id: grupoId,
+                    dt_inicio,
+                    dt_fim,
+                    tipo_data: tipoData
+                }
+            });
+
+            if (!res.data || !res.data.success) {
+                throw new Error(res.data?.message || 'Erro ao carregar dashboard financeiro.');
+            }
+
+            dashboardFinanceiro = res.data.data || null;
+
+            aplicarFiltroLoja();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro ao carregar', err.message || 'Falha ao buscar dados.', 'error');
+        } finally {
+            Swal.close();
+        }
+    }
+
+    function getNomeLojaById(lojaId) {
+        const lojas = lojasPorGrupo[grupoId] || [];
+        const l = lojas.find(x => parseInt(x.id) === parseInt(lojaId));
+        return l ? l.name : null;
+    }
+
+    function getUnidadesArray() {
+        if (!dashboardFinanceiro || !dashboardFinanceiro.por_unidade) return [];
+        const pu = dashboardFinanceiro.por_unidade;
+        if (Array.isArray(pu)) return pu;
+        return Object.values(pu);
+    }
+
+    function aplicarFiltroLoja() {
+        if (!dashboardFinanceiro) return;
+
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        let selectedLoja = parseInt(filtroLojaEl.value) || null;
+
+        const lojasValidas = (lojasPorGrupo[grupoId] || []).map(l => parseInt(l.id));
+        if (selectedLoja && !lojasValidas.includes(selectedLoja)) {
+            selectedLoja = null;
+            filtroLojaEl.value = "";
+        }
+
+        const unidades = getUnidadesArray();
+
+        let unidadesFiltradas = unidades;
+        if (selectedLoja) {
+            unidadesFiltradas = unidades.filter(u => parseInt(u.system_unit_id) === selectedLoja);
+        }
+
+        // Totais Débito / Crédito
+        let totalDebitos = 0;
+        let totalCreditos = 0;
+
+        unidadesFiltradas.forEach(u => {
+            totalDebitos += Number(u.totais?.debitos || 0);
+            totalCreditos += Number(u.totais?.creditos || 0);
+        });
+
+        animateValue('totalDebitos', 0, totalDebitos, 1000, true);
+        animateValue('totalCreditos', 0, totalCreditos, 1000, true);
+
+        // Contas a vencer 7 e 30 (sempre tipo D por vencimento, filtradas por loja se houver)
+        const contas7 = (dashboardFinanceiro.contas_vencer_7 || []).filter(c =>
+            !selectedLoja || parseInt(c.system_unit_id) === selectedLoja
+        );
+        const contas30 = (dashboardFinanceiro.contas_vencer_30 || []).filter(c =>
+            !selectedLoja || parseInt(c.system_unit_id) === selectedLoja
+        );
+
+        const total7 = contas7.reduce((acc, c) => acc + Number(c.valor || 0), 0);
+        const total30 = contas30.reduce((acc, c) => acc + Number(c.valor || 0), 0);
+
+        animateValue('contasVencer7', 0, total7, 1000, true);
+        animateValue('contasVencer30', 0, total30, 1000, true);
+
+        document.getElementById('qtdContas7').textContent = `${contas7.length} conta(s)`;
+        document.getElementById('qtdContas30').textContent = `${contas30.length} conta(s)`;
+
+        // Gráfico por planos
+        let planos = [];
+
+        if (selectedLoja) {
+            const unidade = unidades.find(u => parseInt(u.system_unit_id) === selectedLoja);
+            planos = unidade?.planos || [];
+        } else {
+            planos = dashboardFinanceiro.planos_geral || [];
+        }
+
+        renderChartPlanos(planos);
+    }
+
+    function renderChartPlanos(planos) {
+        const dom = document.getElementById('chartPlanosContas');
+        if (!dom) return;
+
+        const old = echarts.getInstanceByDom(dom);
+        if (old) old.dispose();
+
+        const chart = echarts.init(dom);
+
+        if (!planos || planos.length === 0) {
+            chart.setOption({
+                title: {
+                    text: 'Sem dados para exibir no período selecionado.',
+                    left: 'center',
+                    top: 'middle',
+                    textStyle: { color: '#999', fontSize: 14 }
+                }
+            });
+            return;
+        }
+
+        const labels = planos.map(p => (p.plano_descricao || p.plano_codigo || '').substring(0, 20));
+        const debitos = planos.map(p => Number(p.total_debitos || 0));
+        const creditos = planos.map(p => Number(p.total_creditos || 0));
+
+        const option = {
+            color: MRK.series,
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: (params) => {
+                    let idx = params[0].dataIndex;
+                    const plano = planos[idx];
+                    const nome = plano.plano_descricao || plano.plano_codigo;
+                    const d = Number(plano.total_debitos || 0);
+                    const c = Number(plano.total_creditos || 0);
+                    const tot = d + c;
+
+                    return `
+                        <b>${nome}</b><br/>
+                        Débitos: <b>${formatBRL(d)}</b><br/>
+                        Créditos: <b>${formatBRL(c)}</b><br/>
+                        Total: <b>${formatBRL(tot)}</b>
+                    `;
+                }
+            },
+            legend: {
+                top: 0,
+                textStyle: { color: MRK.black }
+            },
+            grid: { left: '3%', right: '4%', bottom: '10%', top: 40, containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: labels,
+                axisLabel: {
+                    fontSize: 11,
+                    rotate: labels.length > 10 ? 35 : 0,
+                    color: MRK.black
+                },
+                axisLine: { lineStyle: { color: MRK.black } }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: v => `R$ ${Number(v).toLocaleString('pt-BR')}`,
+                    color: MRK.black
+                },
+                splitLine: { lineStyle: { color: MRK.gray } }
+            },
+            series: [
+                {
+                    name: 'Débitos',
+                    type: 'bar',
+                    stack: 'total',
+                    data: debitos,
+                    itemStyle: { color: MRK.series[0] }
+                },
+                {
+                    name: 'Créditos',
+                    type: 'bar',
+                    stack: 'total',
+                    data: creditos,
+                    itemStyle: { color: MRK.series[1] }
+                }
+            ]
+        };
+
+        chart.setOption(option);
+    }
+
+    function mostrarContasPrazo(dias) {
+        if (!dashboardFinanceiro) return;
+
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        let selectedLoja = parseInt(filtroLojaEl.value) || null;
+
+        const listaBruta = dias === 7
+            ? (dashboardFinanceiro.contas_vencer_7 || [])
+            : (dashboardFinanceiro.contas_vencer_30 || []);
+
+        const lista = listaBruta.filter(c =>
+            !selectedLoja || parseInt(c.system_unit_id) === selectedLoja
+        );
+
+        if (lista.length === 0) {
+            Swal.fire('Sem contas', `Nenhuma conta a vencer nos próximos ${dias} dias para o filtro atual.`, 'info');
+            return;
+        }
+
+        let html = `
+            <div style="max-height:400px;overflow:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead>
+                        <tr>
+                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Loja</th>
+                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:center;">Nome</th>
+                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Doc</th>
+                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Vencimento</th>
+                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        lista.forEach(c => {
+            const venc = c.vencimento
+                ? new Date(c.vencimento).toLocaleDateString('pt-BR')
+                : '';
+            const lojaNome = getNomeLojaById(c.system_unit_id) || c.system_unit_id;
+            html += `
+                <tr>
+                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${lojaNome}</td>
+                    <td style="border-bottom:1px solid #eee;padding:4px;">${c.nome || ''}</td>
+                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${c.doc || ''}</td>
+                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${venc}</td>
+                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${formatBRL(c.valor)}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        Swal.fire({
+            title: `Contas a vencer nos próximos ${dias} dias`,
+            html,
+            customClass: {
+                popup: 'swal2-xl'
+            },
+            confirmButtonText: 'Fechar'
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('filtroLoja').addEventListener('change', aplicarFiltroLoja);
+        document.getElementById('tipoData').addEventListener('change', fetchData);
+
+        await carregarGrupoInicial();
+        setRange('7dias');
+    });
+</script>
+
+</body>
+</html>

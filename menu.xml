@@ -11,6 +11,10 @@
         <action>DashboardEstoque</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>
+        <menuitem label="Financeiro">
+            <action>DashboardFinanceiro</action>
+            <icon>fas:circle fa-fw</icon>
+        </menuitem>
     </menu>
   </menuitem>
   <menuitem label="Financeiro">
