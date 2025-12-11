@@ -68,6 +68,8 @@ class MovimentacaoController
 
     public static function efetivarTransacoes($systemUnitId, $doc): array
     {
+        global $pdo;
+
         try {
             // Buscar todas as movimentações associadas ao `doc` e `system_unit_id`
             $movimentacoes = self::getMovimentacao($systemUnitId, $doc);
@@ -80,23 +82,73 @@ class MovimentacaoController
                 ];
             }
 
+            // Inicia transação para garantir consistência
+            $pdo->beginTransaction();
+
             // Atualizar o status de todas as movimentações do `doc`
             $updateResult = self::atualizarStatusMovimentacoes($systemUnitId, $doc);
 
-
-            if ($updateResult > 0) {
-                return [
-                    "success" => true,
-                    "message" => "Transações efetivadas com sucesso!",
-                ];
-            } else {
+            if ($updateResult <= 0) {
+                $pdo->rollBack();
                 return [
                     "success" => false,
                     "message" => "Falha ao efetivar transações. Nenhuma movimentação foi atualizada.",
                 ];
             }
 
+            // Preparar UPDATE de saldo em products para movimentos de BALANÇO
+            $stmtUpdateSaldo = $pdo->prepare("
+            UPDATE products
+               SET saldo = :saldo,
+                   ultimo_doc = :doc,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE system_unit_id = :unit_id
+               AND codigo = :codigo_produto
+        ");
+
+            foreach ($movimentacoes as $mov) {
+                // Detecta se é balanço:
+                // pode vir como tipo_mov = 'balanco' ou tipo = 'b', dependendo de como está tua tabela
+                $isBalanco =
+                    (isset($mov['tipo_mov']) && $mov['tipo_mov'] === 'balanco') ||
+                    (isset($mov['tipo']) && $mov['tipo'] === 'b');
+
+                if (!$isBalanco) {
+                    continue;
+                }
+
+                // Produto/código
+                $codigoProduto = $mov['produto'] ?? $mov['codigo'] ?? null;
+                if ($codigoProduto === null) {
+                    continue; // não arrisca atualizar sem código
+                }
+
+                $quantidadeBalanco = isset($mov['quantidade'])
+                    ? (float)$mov['quantidade']
+                    : 0.0;
+
+                // Atualiza saldo do produto para o valor ABSOLUTO do balanço
+                $stmtUpdateSaldo->execute([
+                    ':saldo'          => $quantidadeBalanco,
+                    ':doc'            => $doc,
+                    ':unit_id'        => $systemUnitId,
+                    ':codigo_produto' => $codigoProduto,
+                ]);
+            }
+
+            // Tudo ok, confirma transação
+            $pdo->commit();
+
+            return [
+                "success" => true,
+                "message" => "Transações efetivadas com sucesso!",
+            ];
+
         } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
             return [
                 "success" => false,
                 "message" => "Erro ao efetivar transações: " . $e->getMessage(),
