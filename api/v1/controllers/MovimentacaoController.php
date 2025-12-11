@@ -1653,85 +1653,254 @@ class MovimentacaoController
         return $stmt->execute();
     }
 
+//    public static function extratoInsumo($systemUnitId, $produto, $dtInicio, $dtFim): array
+//    {
+//        try {
+//            global $pdo;
+//
+//            // 1. Buscar saldo inicial (último balanço antes da data de início)
+//            $stmt = $pdo->prepare("
+//            SELECT doc, quantidade
+//            FROM movimentacao
+//            WHERE system_unit_id = :unitId
+//              AND produto = :produto
+//              AND tipo_mov = 'balanco'
+//              AND status = 1
+//              AND data < :data_inicio
+//            ORDER BY data DESC, id DESC
+//            LIMIT 1
+//        ");
+//            $stmt->execute([
+//                ':unitId' => $systemUnitId,
+//                ':produto' => $produto,
+//                ':data_inicio' => $dtInicio
+//            ]);
+//            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+//            $saldoInicial = $row ? (float)$row['quantidade'] : 0;
+//            $docInicial = $row ? $row['doc'] : null;
+//
+//            // 2. Buscar todas as movimentações no período
+//            $stmt = $pdo->prepare("
+//            SELECT data, tipo_mov, doc, quantidade
+//            FROM movimentacao
+//            WHERE system_unit_id = :unitId
+//              AND produto = :produto
+//              AND status = 1
+//              AND data BETWEEN :data_inicio AND :data_fim
+//            ORDER BY data, id
+//        ");
+//            $stmt->execute([
+//                ':unitId' => $systemUnitId,
+//                ':produto' => $produto,
+//                ':data_inicio' => $dtInicio,
+//                ':data_fim' => $dtFim
+//            ]);
+//            $movs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+//
+//            // 3. Agrupar por data
+//            $dias = [];
+//            foreach ($movs as $mov) {
+//                $data = $mov['data'];
+//                unset($mov['data']);
+//                if (!isset($dias[$data])) {
+//                    $dias[$data] = [
+//                        'data' => $data,
+//                        'movimentacoes' => [],
+//                        'balanco' => null
+//                    ];
+//                }
+//
+//                if ($mov['tipo_mov'] === 'balanco') {
+//                    $dias[$data]['balanco'] = [
+//                        'doc' => $mov['doc'],
+//                        'quantidade' => (float)$mov['quantidade']
+//                    ];
+//                } else {
+//                    $dias[$data]['movimentacoes'][] = [
+//                        'tipo_mov' => $mov['tipo_mov'],
+//                        'doc' => $mov['doc'],
+//                        'quantidade' => (float)$mov['quantidade']
+//                    ];
+//                }
+//            }
+//
+//            // 4. Reordenar e calcular saldos
+//            $extrato = [];
+//            $saldoAtual = $saldoInicial;
+//            $docAnterior = $docInicial;
+//
+//            foreach ($dias as $dia) {
+//                $entradaTotal = 0;
+//                $saidaTotal = 0;
+//
+//                foreach ($dia['movimentacoes'] as $m) {
+//                    if ($m['tipo_mov'] === 'entrada') {
+//                        $entradaTotal += $m['quantidade'];
+//                    } elseif ($m['tipo_mov'] === 'saida') {
+//                        $saidaTotal += $m['quantidade'];
+//                    }
+//                }
+//
+//                $saldoAtual += $entradaTotal - $saidaTotal;
+//
+//                $extrato[] = [
+//                    'data' => $dia['data'],
+//                    'saldo_anterior' => $docAnterior ? [
+//                        'doc' => $docAnterior,
+//                        'quantidade' => $saldoAtual + $saidaTotal - $entradaTotal
+//                    ] : null,
+//                    'movimentacoes' => $dia['movimentacoes'],
+//                    'saldo_estimado' => $saldoAtual,
+//                    'balanco' => $dia['balanco']
+//                ];
+//
+//                if ($dia['balanco']) {
+//                    $docAnterior = $dia['balanco']['doc'];
+//                    $saldoAtual = $dia['balanco']['quantidade'];
+//                }
+//            }
+//
+//            return [
+//                'saldo_inicial' => $saldoInicial,
+//                'extrato' => $extrato
+//            ];
+//
+//        } catch (Exception $e) {
+//            return [
+//                'error' => 'Erro interno: ' . $e->getMessage()
+//            ];
+//        }
+//    }
+
     public static function extratoInsumo($systemUnitId, $produto, $dtInicio, $dtFim): array
     {
         try {
             global $pdo;
 
-            // 1. Buscar saldo inicial (último balanço antes da data de início)
+            // ===============================
+            // 1) Último BALANÇO <= data inicial
+            // ===============================
             $stmt = $pdo->prepare("
-            SELECT doc, quantidade
+            SELECT data, doc, quantidade
             FROM movimentacao
             WHERE system_unit_id = :unitId
-              AND produto = :produto
-              AND tipo_mov = 'balanco'
-              AND status = 1
-              AND data < :data_inicio
+              AND produto       = :produto
+              AND tipo_mov      = 'balanco'
+              AND status        = 1
+              AND data         <= :data_inicio
             ORDER BY data DESC, id DESC
             LIMIT 1
         ");
             $stmt->execute([
-                ':unitId' => $systemUnitId,
-                ':produto' => $produto,
+                ':unitId'      => $systemUnitId,
+                ':produto'     => $produto,
                 ':data_inicio' => $dtInicio
             ]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $saldoInicial = $row ? (float)$row['quantidade'] : 0;
-            $docInicial = $row ? $row['doc'] : null;
+            $balanco = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // 2. Buscar todas as movimentações no período
+            $saldoInicialPeriodo = 0.0;
+            $dataBalanco         = null;
+
+            if ($balanco) {
+                $saldoInicialPeriodo = (float) $balanco['quantidade']; // saldo absoluto do balanço
+                $dataBalanco         = $balanco['data'];
+            }
+
+            // ===============================
+            // 2) Ajustar saldo inicial com movs entre BALANÇO e dtInicio
+            //    (apenas para cálculo, não serão retornadas)
+            // ===============================
+            if ($dataBalanco !== null && $dataBalanco < $dtInicio) {
+                $stmt = $pdo->prepare("
+                SELECT data, tipo_mov, quantidade
+                FROM movimentacao
+                WHERE system_unit_id = :unitId
+                  AND produto        = :produto
+                  AND status         = 1
+                  AND data          > :data_balanco
+                  AND data          < :data_inicio
+                  AND tipo_mov IN ('entrada', 'saida')
+                ORDER BY data, id
+            ");
+                $stmt->execute([
+                    ':unitId'       => $systemUnitId,
+                    ':produto'      => $produto,
+                    ':data_balanco' => $dataBalanco,
+                    ':data_inicio'  => $dtInicio
+                ]);
+
+                $ajustes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($ajustes as $mov) {
+                    $qtd = (float) $mov['quantidade'];
+                    if ($mov['tipo_mov'] === 'entrada') {
+                        $saldoInicialPeriodo += $qtd;
+                    } elseif ($mov['tipo_mov'] === 'saida') {
+                        $saldoInicialPeriodo -= $qtd;
+                    }
+                }
+            }
+
+            // ===============================
+            // 3) Movimentações SOMENTE do PERÍODO solicitado
+            // ===============================
             $stmt = $pdo->prepare("
             SELECT data, tipo_mov, doc, quantidade
             FROM movimentacao
             WHERE system_unit_id = :unitId
-              AND produto = :produto
-              AND status = 1
+              AND produto        = :produto
+              AND status         = 1
               AND data BETWEEN :data_inicio AND :data_fim
             ORDER BY data, id
         ");
             $stmt->execute([
-                ':unitId' => $systemUnitId,
-                ':produto' => $produto,
+                ':unitId'      => $systemUnitId,
+                ':produto'     => $produto,
                 ':data_inicio' => $dtInicio,
-                ':data_fim' => $dtFim
+                ':data_fim'    => $dtFim
             ]);
             $movs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // 3. Agrupar por data
+            // ===============================
+            // 4) Agrupar por dia
+            // ===============================
             $dias = [];
             foreach ($movs as $mov) {
                 $data = $mov['data'];
                 unset($mov['data']);
+
                 if (!isset($dias[$data])) {
                     $dias[$data] = [
-                        'data' => $data,
+                        'data'          => $data,
                         'movimentacoes' => [],
-                        'balanco' => null
+                        'balanco'       => null, // último balanço do dia
                     ];
                 }
 
                 if ($mov['tipo_mov'] === 'balanco') {
+                    // Sempre sobrescreve, ficando com o ÚLTIMO balanço do dia
                     $dias[$data]['balanco'] = [
-                        'doc' => $mov['doc'],
-                        'quantidade' => (float)$mov['quantidade']
+                        'doc'        => $mov['doc'],
+                        'quantidade' => (float) $mov['quantidade'],
                     ];
                 } else {
                     $dias[$data]['movimentacoes'][] = [
-                        'tipo_mov' => $mov['tipo_mov'],
-                        'doc' => $mov['doc'],
-                        'quantidade' => (float)$mov['quantidade']
+                        'tipo_mov'   => $mov['tipo_mov'],
+                        'doc'        => $mov['doc'],
+                        'quantidade' => (float) $mov['quantidade'],
                     ];
                 }
             }
 
-            // 4. Reordenar e calcular saldos
-            $extrato = [];
-            $saldoAtual = $saldoInicial;
-            $docAnterior = $docInicial;
+            // ===============================
+            // 5) Montar EXTRATO apenas do range pedido
+            // ===============================
+            $extrato    = [];
+            $saldoAtual = $saldoInicialPeriodo;
 
             foreach ($dias as $dia) {
-                $entradaTotal = 0;
-                $saidaTotal = 0;
+                $entradaTotal = 0.0;
+                $saidaTotal   = 0.0;
 
                 foreach ($dia['movimentacoes'] as $m) {
                     if ($m['tipo_mov'] === 'entrada') {
@@ -1741,36 +1910,44 @@ class MovimentacaoController
                     }
                 }
 
-                $saldoAtual += $entradaTotal - $saidaTotal;
+                // Saldo no INÍCIO do dia (antes das movs)
+                $saldoAntesDia = $saldoAtual;
+
+                // Saldo teórico (se não houvesse balanço)
+                $saldoTeorico = $saldoAntesDia + $entradaTotal - $saidaTotal;
+
+                // Se houver BALANÇO no dia, o saldo final é o do balanço (ABSOLUTO)
+                if ($dia['balanco']) {
+                    $saldoFinalDia = (float) $dia['balanco']['quantidade'];
+                } else {
+                    $saldoFinalDia = $saldoTeorico;
+                }
 
                 $extrato[] = [
-                    'data' => $dia['data'],
-                    'saldo_anterior' => $docAnterior ? [
-                        'doc' => $docAnterior,
-                        'quantidade' => $saldoAtual + $saidaTotal - $entradaTotal
-                    ] : null,
-                    'movimentacoes' => $dia['movimentacoes'],
-                    'saldo_estimado' => $saldoAtual,
-                    'balanco' => $dia['balanco']
+                    'data'           => $dia['data'],
+                    // aqui só o valor numérico, sem doc
+                    'saldo_anterior' => $saldoAntesDia,
+                    'movimentacoes'  => $dia['movimentacoes'],
+                    'saldo_estimado' => $saldoFinalDia,
+                    'balanco'        => $dia['balanco'], // aqui você ainda vê o doc do balanço se quiser
                 ];
 
-                if ($dia['balanco']) {
-                    $docAnterior = $dia['balanco']['doc'];
-                    $saldoAtual = $dia['balanco']['quantidade'];
-                }
+                // Saldo para o próximo dia
+                $saldoAtual = $saldoFinalDia;
             }
 
             return [
-                'saldo_inicial' => $saldoInicial,
-                'extrato' => $extrato
+                'saldo_inicial' => $saldoInicialPeriodo,
+                'extrato'       => $extrato,
             ];
 
         } catch (Exception $e) {
             return [
-                'error' => 'Erro interno: ' . $e->getMessage()
+                'error' => 'Erro interno: ' . $e->getMessage(),
             ];
         }
     }
+
 
     public static function savePerdaItems($data): array
     {

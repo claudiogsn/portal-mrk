@@ -216,16 +216,17 @@
             extrato.forEach(dia => {
                 const diaFmt = formatarData(dia.data);
 
-                if (dia.saldo_anterior) {
+                if (typeof dia.saldo_anterior !== 'undefined' && dia.saldo_anterior !== null) {
                     $tb.append(linhaTabela(
                         diaFmt,
                         'Saldo Anterior',
-                        dia.saldo_anterior.doc || '',
-                        dia.saldo_anterior.quantidade,
+                        '',
+                        dia.saldo_anterior, // agora é um número
                         'Saldo do início do dia',
                         'saldo'
                     ));
                 }
+
 
                 (dia.movimentacoes || []).forEach(mov => {
                     const tipoLabel = mov.tipo_mov === 'entrada' ? 'Entrada' : 'Saída';
