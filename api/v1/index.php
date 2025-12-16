@@ -772,6 +772,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['success' => false, 'message' => 'Parâmetros product_id e unit_id são obrigatórios'];
                 }
                 break;
+            case 'executeProduction':
+                $response = ProducaoController::executeProduction($requestData);
+                break;
             // Métodos para ModeloBalancoController
             case 'createModelo':
                 if (isset($requestData['nome']) && isset($requestData['usuario_id']) && isset($requestData['itens'])) {

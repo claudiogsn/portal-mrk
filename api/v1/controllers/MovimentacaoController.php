@@ -204,6 +204,7 @@ class MovimentacaoController
                     WHEN m.tipo = 'v' THEN 'Venda'
                     WHEN m.tipo = 'p' THEN 'Perda'
                     WHEN m.tipo = 'c' THEN 'Compra'
+                    WHEN m.tipo = 'pr' THEN 'Produção'
                     ELSE 'Outro'
                 END AS tipo_movimentacao,
                 us.name as username,
@@ -350,7 +351,7 @@ class MovimentacaoController
         return $movimentacao ? $movimentacao["doc"] : $tipo . "-000000";
     }
 
-    private static function incrementDoc($ultimoDoc, $prefixo): string
+    public static function incrementDoc($ultimoDoc, $prefixo): string
     {
         // Supondo que o formato do doc seja algo como "t-000001" ou "b-000001"
         if (preg_match("/^" . $prefixo . '-(\d+)$/', $ultimoDoc, $matches)) {
