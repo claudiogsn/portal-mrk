@@ -575,7 +575,7 @@
 
         // NOVO: botão Entrada Avulsa (nova nota avulsa)
         $('#btnEntradaAvulsa').click(() => {
-            const usuario_id = urlParams.get('usuario_id') || '';
+            const usuario_id = urlParams.get('username') || '';
             const qs = [
                 `system_unit_id=${encodeURIComponent(unit_id)}`,
                 `token=${encodeURIComponent(token || '')}`,
@@ -609,7 +609,7 @@
         e.preventDefault();
 
         const tipoRaw     = ($(this).data('tipo') || 'i').toString().toLowerCase(); // 'i' ou 'a'
-        const usuario_id  = urlParams.get('usuario_id') || '';
+        const usuario_id  = urlParams.get('username') || '';
         const baseRedirect = baseUrlRedirect;
 
         // Se for nota AVULSA (tipo 'a') -> entradaNotaAvulsa.html com nota_id

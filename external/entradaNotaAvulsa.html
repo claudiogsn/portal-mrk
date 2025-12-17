@@ -259,7 +259,7 @@
     const params = new URLSearchParams(window.location.search);
     const system_unit_id = params.get('system_unit_id');
     const token          = params.get('token');
-    const usuario_id     = params.get('usuario_id') || 1;
+    const usuario_id     = params.get('usuario_id');
     let   nota_id        = params.get('nota_id'); // pode ser null
 
     console.log('INIT NOTA AVULSA', { system_unit_id, token, usuario_id, nota_id });
