@@ -1836,7 +1836,7 @@ class MovimentacaoController
               AND produto       = :produto
               AND tipo_mov      = 'balanco'
               AND status        = 1
-              AND data         <= :data_inicio
+              AND data         < :data_inicio
             ORDER BY data DESC, id DESC
             LIMIT 1
         ");
