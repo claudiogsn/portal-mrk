@@ -30,10 +30,35 @@
         .right { text-align: right; }
         .center { text-align: center; }
 
+        .bloco-produto {
+            margin-top: 16px;
+            padding-top: 10px;
+            border-top: 2px solid #000;
+        }
+
+        .titulo-produto {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+        }
+
+        .sub-produto {
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
         .no-print { margin-top: 12px; }
+
+        /* quebra de página entre produtos (impressão) */
+        .page-break {
+            display: none;
+        }
+
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; }
+            .page-break { display: block; page-break-after: always; }
         }
     </style>
 </head>
@@ -60,26 +85,31 @@
 
 <hr>
 
-<div class="linha-info"><strong>Produto:</strong> <span id="produto">-</span></div>
-<div class="linha-info"><strong>Quantidade Produzida:</strong> <span id="qtdProduzida">-</span></div>
+<!-- RESUMO (massa) -->
+<div id="resumoMassa" style="display:none;">
+    <div class="linha-info"><strong>Tipo:</strong> Produção</div>
 
-<hr>
+    <table class="table table-striped" style="margin:0;">
+        <thead>
+        <tr>
+            <th style="width:90px;">Código</th>
+            <th>Produto</th>
+            <th style="width:70px;" class="center">Unid</th>
+            <th style="width:160px;" class="right">Qtd Produzida</th>
+        </tr>
+        </thead>
+        <tbody id="produtosResumo">
+        <tr><td colspan="4" class="center">Carregando...</td></tr>
+        </tbody>
+    </table>
 
-<table class="table table-striped" style="margin:0;">
-    <thead>
-    <tr>
-        <th style="width:90px;">Código</th>
-        <th>Insumo</th>
-        <th style="width:70px;">Unid</th>
-        <th style="width:140px;" class="right">Consumo</th>
-        <th style="width:140px;" class="right">Rendimento</th>
-        <th style="width:140px;" class="right">Ficha</th>
-    </tr>
-    </thead>
-    <tbody id="itens">
-    <tr><td colspan="6" class="center">Carregando...</td></tr>
-    </tbody>
-</table>
+    <hr>
+</div>
+
+<!-- CONTEÚDO (simples OU massa) -->
+<div id="conteudo">
+    <div class="center" style="padding: 18px 0;">Carregando...</div>
+</div>
 
 <div class="no-print">
     <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
@@ -115,34 +145,21 @@
         return s;
     }
 
-    function preencher(data) {
+    function setHeader(data) {
         document.getElementById('estabelecimento').textContent = data?.unidade?.nome || '-';
         document.getElementById('doc').textContent = data?.doc || '-';
         document.getElementById('dataProducao').textContent = data?.data_producao || '-';
         document.getElementById('horaExecucao').textContent = data?.hora_execucao || '-';
         document.getElementById('usuario').textContent = data?.usuario?.nome || '-';
+    }
 
-        const pf = data?.produto_final || {};
-        const pfUnd = pf?.und ? ` ${pf.und}` : '';
-        document.getElementById('produto').textContent =
-            pf?.nome ? `${pf.nome} (${pf.codigo ?? '-'})` : (pf?.codigo ? String(pf.codigo) : '-');
-
-        document.getElementById('qtdProduzida').textContent =
-            (pf?.quantidade_produzida !== undefined
-                    ? `${formatBR(pf.quantidade_produzida, 3)}${pfUnd}`
-                    : '-'
-            );
-
-        const tbody = document.getElementById('itens');
-        tbody.innerHTML = '';
-
-        const itens = Array.isArray(data?.insumos) ? data.insumos : [];
+    function renderTabelaInsumos(insumos) {
+        const itens = Array.isArray(insumos) ? insumos : [];
         if (!itens.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="center">Sem itens</td></tr>';
-            return;
+            return `<tr><td colspan="6" class="center">Sem itens</td></tr>`;
         }
 
-        itens.forEach(i => {
+        return itens.map(i => {
             const codigo = escapeHtml(i.codigo ?? '');
             const nome = escapeHtml(i.nome ?? '');
             const und = escapeHtml(i.und ?? '');
@@ -150,38 +167,162 @@
             const rendimento = formatBR(i.rendimento ?? 1, 4);
             const ficha = formatBR(i.ficha ?? 0, 4);
 
+            return `
+                <tr>
+                  <td>${codigo}</td>
+                  <td>${nome}</td>
+                  <td class="center">${und}</td>
+                  <td class="right"><b>${escapeHtml(consumo)}</b></td>
+                  <td class="right">${escapeHtml(rendimento)}</td>
+                  <td class="right">${escapeHtml(ficha)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderProducaoSimples(data) {
+        const pf = data?.produto_final || {};
+        const pfUnd = pf?.und ? ` ${pf.und}` : '';
+
+        const produtoTxt =
+            pf?.nome ? `${escapeHtml(pf.nome)} (${escapeHtml(pf.codigo ?? '-')})`
+                : (pf?.codigo ? escapeHtml(String(pf.codigo)) : '-');
+
+        const qtdTxt =
+            (pf?.quantidade_produzida !== undefined)
+                ? `${escapeHtml(formatBR(pf.quantidade_produzida, 3))}${escapeHtml(pfUnd)}`
+                : '-';
+
+        const insumosHtml = renderTabelaInsumos(data?.insumos);
+
+        return `
+            <div class="linha-info"><strong>Produto:</strong> ${produtoTxt}</div>
+            <div class="linha-info"><strong>Quantidade Produzida:</strong> ${qtdTxt}</div>
+
+            <hr>
+
+            <table class="table table-striped" style="margin:0;">
+                <thead>
+                <tr>
+                    <th style="width:90px;">Código</th>
+                    <th>Insumo</th>
+                    <th style="width:70px;">Unid</th>
+                    <th style="width:140px;" class="right">Consumo</th>
+                    <th style="width:140px;" class="right">Rendimento</th>
+                    <th style="width:140px;" class="right">Ficha</th>
+                </tr>
+                </thead>
+                <tbody>
+                ${insumosHtml}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function renderResumoMassa(produtos) {
+        const tbody = document.getElementById('produtosResumo');
+        tbody.innerHTML = '';
+
+        if (!produtos.length) {
+            tbody.innerHTML = `<tr><td colspan="4" class="center">Sem produtos</td></tr>`;
+            return;
+        }
+
+        produtos.forEach(p => {
+            const codigo = escapeHtml(p.codigo ?? '');
+            const nome = escapeHtml(p.nome ?? '');
+            const und = escapeHtml((p.und || '').trim() || '-');
+            const qtd = (p.quantidade_produzida !== undefined)
+                ? escapeHtml(formatBR(p.quantidade_produzida, 3))
+                : '0';
+
             tbody.insertAdjacentHTML('beforeend', `
-        <tr>
-          <td>${codigo}</td>
-          <td>${nome}</td>
-          <td class="center">${und}</td>
-          <td class="right"><b>${escapeHtml(consumo)}</b></td>
-          <td class="right">${escapeHtml(rendimento)}</td>
-          <td class="right">${escapeHtml(ficha)}</td>
-        </tr>
-      `);
+                <tr>
+                    <td>${codigo}</td>
+                    <td>${nome}</td>
+                    <td class="center">${und}</td>
+                    <td class="right"><b>${qtd}</b> ${und !== '-' ? und : ''}</td>
+                </tr>
+            `);
         });
+    }
+
+    function renderProducaoMassa(data) {
+        const produtos = Array.isArray(data?.produtos) ? data.produtos : [];
+
+        document.getElementById('resumoMassa').style.display = 'block';
+        renderResumoMassa(produtos);
+
+        if (!produtos.length) {
+            return `<div class="center" style="padding:18px 0;">Sem produtos</div>`;
+        }
+
+        return produtos.map((p, idx) => {
+            const codigo = escapeHtml(p.codigo ?? '');
+            const nome = escapeHtml(p.nome ?? '');
+            const und = escapeHtml((p.und || '').trim() || '-');
+
+            const qtd = (p.quantidade_produzida !== undefined)
+                ? escapeHtml(formatBR(p.quantidade_produzida, 3))
+                : '0';
+
+            const insumosHtml = renderTabelaInsumos(p.insumos);
+
+            return `
+                <div class="bloco-produto">
+                    <div class="titulo-produto">${nome} (${codigo})</div>
+                    <div class="sub-produto"><b>Quantidade Produzida:</b> ${qtd} ${und !== '-' ? und : ''}</div>
+
+                    <table class="table table-striped" style="margin:0;">
+                        <thead>
+                        <tr>
+                            <th style="width:90px;">Código</th>
+                            <th>Insumo</th>
+                            <th style="width:70px;">Unid</th>
+                            <th style="width:140px;" class="right">Consumo</th>
+                            <th style="width:140px;" class="right">Rendimento</th>
+                            <th style="width:140px;" class="right">Ficha</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        ${insumosHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                ${idx < produtos.length - 1 ? `<div class="page-break"></div>` : ``}
+            `;
+        }).join('');
     }
 
     (function init() {
         const raw = localStorage.getItem('producaoPdfData');
+        const conteudo = document.getElementById('conteudo');
+
         if (!raw) {
-            document.getElementById('itens').innerHTML =
-                '<tr><td colspan="6" class="center">Nenhum dado encontrado no localStorage (producaoPdfData).</td></tr>';
+            conteudo.innerHTML = `<div class="center">Nenhum dado encontrado no localStorage (producaoPdfData).</div>`;
             return;
         }
 
         try {
             const data = JSON.parse(raw);
-            preencher(data);
 
-            // se quiser auto-imprimir sempre:
-            // setTimeout(() => window.print(), 300);
+            setHeader(data);
+
+            // se tiver "produtos" => massa, senão => simples
+            if (Array.isArray(data?.produtos)) {
+                conteudo.innerHTML = renderProducaoMassa(data);
+            } else {
+                // garante que o bloco de massa fica escondido
+                document.getElementById('resumoMassa').style.display = 'none';
+                conteudo.innerHTML = renderProducaoSimples(data);
+            }
+
+            setTimeout(() => window.print(), 300);
 
         } catch (e) {
             console.error(e);
-            document.getElementById('itens').innerHTML =
-                '<tr><td colspan="6" class="center">Erro ao ler dados do localStorage.</td></tr>';
+            conteudo.innerHTML = `<div class="center">Erro ao ler dados do localStorage.</div>`;
         }
     })();
 </script>

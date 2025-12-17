@@ -620,6 +620,270 @@ class ProducaoController
         }
     }
 
+    public static function executeProductionBatch($data): array
+    {
+        global $pdo;
+
+        // obrigatórios
+        $required = ["system_unit_id", "items"];
+        foreach ($required as $f) {
+            if (!isset($data[$f]) || $data[$f] === "" || $data[$f] === []) {
+                return ["success" => false, "message" => "O campo '$f' é obrigatório."];
+            }
+        }
+
+        $system_unit_id = (int)$data["system_unit_id"];
+
+        // usuário
+        $usuario_id = $data["user"] ?? $data["usuario_id"] ?? null;
+        if (!$usuario_id) {
+            return ["success" => false, "message" => "O campo 'user' (ou 'usuario_id') é obrigatório."];
+        }
+        $usuario_id = (string)$usuario_id;
+
+        $date_producao  = $data["date_producao"] ?? $data["data"] ?? date("Y-m-d");
+        $allow_negative = isset($data["allow_negative"]) ? (bool)$data["allow_negative"] : false;
+
+        if ($system_unit_id <= 0) return ["success" => false, "message" => "system_unit_id inválido."];
+
+        // items: [{ product_codigo, quantidade_produzida }]
+        $items = $data["items"];
+        if (!is_array($items) || count($items) === 0) {
+            return ["success" => false, "message" => "items deve ser um array com pelo menos 1 item."];
+        }
+
+        // normaliza e valida itens
+        $itensNorm = [];
+        foreach ($items as $idx => $it) {
+            $product_codigo = (int)($it["product_codigo"] ?? 0);
+
+            $q = $it["quantidade_produzida"] ?? $it["quantidade"] ?? $it["qtd"] ?? null;
+            if ($q === null || $q === "") $qtdProduzida = 0;
+            else $qtdProduzida = (float)str_replace(",", ".", (string)$q);
+
+            if ($product_codigo <= 0) {
+                return ["success" => false, "message" => "Item #".($idx+1).": product_codigo inválido."];
+            }
+            if ($qtdProduzida <= 0) {
+                return ["success" => false, "message" => "Item #".($idx+1).": quantidade_produzida deve ser > 0."];
+            }
+
+            $itensNorm[] = [
+                "product_codigo" => $product_codigo,
+                "quantidade_produzida" => (float)round($qtdProduzida, 4),
+            ];
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            // --- pega nome da unidade e usuário (pro retorno)
+            $stmtUnit = $pdo->prepare("SELECT id, name AS nome FROM system_unit WHERE id = :id LIMIT 1");
+            $stmtUnit->execute([":id" => $system_unit_id]);
+            $unidadeRow = $stmtUnit->fetch(PDO::FETCH_ASSOC);
+
+            $stmtUser = $pdo->prepare("SELECT id, name AS nome FROM system_users WHERE id = :id LIMIT 1");
+            $stmtUser->execute([":id" => $usuario_id]);
+            $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+            $unidadeRet = [
+                "id" => $system_unit_id,
+                "nome" => $unidadeRow["nome"] ?? ("Unidade ".$system_unit_id),
+            ];
+
+            $usuarioRet = [
+                "id" => (string)$usuario_id,
+                "nome" => $userRow["nome"] ?? ("Usuário ".$usuario_id),
+            ];
+
+            // 1) gera UM doc (pr-000001) para tudo
+            $ultimoDoc = MovimentacaoController::getLastMov($system_unit_id, "pr");
+            $doc = MovimentacaoController::incrementDoc($ultimoDoc, "pr");
+
+            $tipo = "pr";
+            $status = 1;
+            $seq = 1;
+
+            // 2) statements
+            $stmtInsMov = $pdo->prepare("
+            INSERT INTO movimentacao
+                (system_unit_id, system_unit_id_destino, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id)
+            VALUES
+                (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+            $stmtUpdSaldoByCodigo = $pdo->prepare("
+            UPDATE products
+               SET saldo = COALESCE(saldo,0) + :delta,
+                   ultimo_doc = :doc,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE system_unit_id = :unit
+               AND codigo = :codigo
+        ");
+
+            // 3) processa cada produto da lista
+            $produtosResumo = [];
+
+            foreach ($itensNorm as $it) {
+                $product_codigo = (int)$it["product_codigo"];
+                $qtdProduzida   = (float)$it["quantidade_produzida"];
+
+                // 3.1) busca produto final por CODIGO (FOR UPDATE)
+                $stmtProd = $pdo->prepare("
+                SELECT codigo, nome, und, COALESCE(saldo,0) AS saldo
+                  FROM products
+                 WHERE system_unit_id = :unit
+                   AND codigo = :codigo
+                 FOR UPDATE
+            ");
+                $stmtProd->execute([":unit" => $system_unit_id, ":codigo" => $product_codigo]);
+                $produtoFinal = $stmtProd->fetch(PDO::FETCH_ASSOC);
+
+                if (!$produtoFinal) {
+                    $pdo->rollBack();
+                    return ["success" => false, "message" => "Produto final não encontrado (codigo={$product_codigo}) nessa unidade."];
+                }
+
+                // 3.2) ficha pelo CODIGO do produto (FOR UPDATE)
+                $stmtFicha = $pdo->prepare("
+                SELECT
+                    p.insumo_id,                           -- CODIGO do insumo (products.codigo)
+                    p.quantity AS ficha_qtd,
+                    COALESCE(p.rendimento, NULL) AS rendimento,
+                    pr.codigo AS insumo_codigo,
+                    pr.nome   AS insumo_nome,
+                    pr.und AS insumo_und,
+                    COALESCE(pr.saldo,0) AS insumo_saldo
+                FROM productions p
+                INNER JOIN products pr
+                    ON pr.codigo = p.insumo_id
+                   AND pr.system_unit_id = p.system_unit_id
+                WHERE p.system_unit_id = :unit
+                  AND p.product_id = :product_codigo       -- ✅ product_id = CODIGO do produto
+                FOR UPDATE
+            ");
+                $stmtFicha->execute([":unit" => $system_unit_id, ":product_codigo" => $product_codigo]);
+                $ficha = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!$ficha || count($ficha) === 0) {
+                    $pdo->rollBack();
+                    return ["success" => false, "message" => "Ficha não encontrada em productions para esse produto (codigo={$product_codigo})."];
+                }
+
+                $insumosResumo = [];
+
+                // 3.3) SAÍDA dos insumos
+                foreach ($ficha as $row) {
+                    $insumoCodigo = (int)$row["insumo_codigo"];
+                    $insumoNome   = (string)$row["insumo_nome"];
+                    $insumoUnd    = (string)($row["insumo_und"] ?? "");
+
+                    $fichaQtd = (float)$row["ficha_qtd"];
+                    $rend     = $row["rendimento"] !== null ? (float)$row["rendimento"] : null;
+
+                    $rendimento = ($rend !== null && $rend > 0) ? $rend : 1;
+
+                    // consumo proporcional
+                    $consumo = $fichaQtd * ($qtdProduzida / $rendimento);
+                    $consumo = (float)round($consumo, 4);
+
+                    $saldoAtual = (float)$row["insumo_saldo"];
+
+                    if (!$allow_negative && $saldoAtual < $consumo) {
+                        $pdo->rollBack();
+                        return [
+                            "success" => false,
+                            "message" => "Saldo insuficiente no insumo {$insumoNome} (código {$insumoCodigo}). Saldo: {$saldoAtual} | Consumo: {$consumo}"
+                        ];
+                    }
+
+                    // movimentacao: SAIDA do insumo
+                    $stmtInsMov->execute([
+                        $system_unit_id,
+                        $status,
+                        $doc,
+                        $tipo,
+                        "saida",
+                        $insumoCodigo,
+                        $seq,
+                        $date_producao,
+                        $date_producao,
+                        $consumo,
+                        $usuario_id
+                    ]);
+                    $seq++;
+
+                    // saldo insumo -= consumo
+                    $stmtUpdSaldoByCodigo->execute([
+                        ":delta" => -1 * $consumo,
+                        ":doc"   => $doc,
+                        ":unit"  => $system_unit_id,
+                        ":codigo"=> $insumoCodigo
+                    ]);
+
+                    $insumosResumo[] = [
+                        "codigo" => $insumoCodigo,
+                        "nome" => $insumoNome,
+                        "und" => $insumoUnd,
+                        "ficha" => (float)round($fichaQtd, 4),
+                        "rendimento" => (float)round($rendimento, 4),
+                        "consumo" => (float)round($consumo, 4),
+                    ];
+                }
+
+                // 3.4) ENTRADA do produto final
+                $stmtInsMov->execute([
+                    $system_unit_id,
+                    $status,
+                    $doc,
+                    $tipo,
+                    "entrada",
+                    $product_codigo,
+                    $seq,
+                    $date_producao,
+                    $date_producao,
+                    (float)round($qtdProduzida, 4),
+                    $usuario_id
+                ]);
+                $seq++;
+
+                // saldo produto final += qtdProduzida
+                $stmtUpdSaldoByCodigo->execute([
+                    ":delta" => (float)round($qtdProduzida, 4),
+                    ":doc"   => $doc,
+                    ":unit"  => $system_unit_id,
+                    ":codigo"=> $product_codigo
+                ]);
+
+                $produtosResumo[] = [
+                    "codigo" => (int)$product_codigo,
+                    "nome" => (string)$produtoFinal["nome"],
+                    "und" => (string)($produtoFinal["unidade"] ?? ""),
+                    "quantidade_produzida" => (float)round($qtdProduzida, 4),
+                    "insumos" => $insumosResumo
+                ];
+            }
+
+            $pdo->commit();
+
+            return [
+                "success" => true,
+                "message" => "Produção em massa executada com sucesso!",
+                "doc" => $doc,
+                "data_producao" => $date_producao,
+                "hora_execucao" => date("H:i"),
+                "unidade" => $unidadeRet,
+                "usuario" => $usuarioRet,
+                "produtos" => $produtosResumo
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo && $pdo->inTransaction()) $pdo->rollBack();
+            return ["success" => false, "message" => "Erro ao executar produção em massa: " . $e->getMessage()];
+        }
+    }
+
+
 
 
 

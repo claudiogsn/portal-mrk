@@ -18,130 +18,61 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <style>
-        .form-control {
-            display: block;
-            width: 100%;
-            height: 34px;
-            padding: 6px 12px;
-            font-size: 14px;
-            line-height: 1.42857143;
-            color: #555;
-            background-color: #fff;
-            background-image: none;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-            -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
-            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-        }
-        .form-control:focus {
-            border-color: #66afe9;
-            outline: 0;
-            -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-        }
-
-        .select2-container .select2-selection--single { height: 34px; }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 34px; }
-        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 34px; }
-
-        /* Barra cinza */
-        #produtoBar {
-            display: none;
-            background: #f2f2f2;
-            border: 1px solid #e6e6e6;
-            border-radius: 6px;
-            padding: 10px 12px;
-            margin-top: 10px;
-        }
-        #produtoBar .titulo { font-weight: 700; font-size: 14px; }
-        #produtoBar .sub { color: #777; font-size: 12px; margin-top: 2px; }
-
-        #produtoBar .linha {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        #produtoBar .colInfo { flex: 1; min-width: 260px; }
-        #produtoBar .colQtd {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 10px;
-            min-width: 340px;
-        }
-        #produtoBar .colQtd input {
-            width: 210px;
-            text-align: right;
-        }
-
+        .form-control { height: 34px; }
+        .select2-container .select2-selection--multiple { min-height: 34px; }
+        .select2-container--default .select2-selection--multiple .select2-selection__rendered { line-height: 22px; }
         .right { text-align: right; }
+        .center { text-align: center; }
+        .btn-mini { padding: 3px 8px; }
     </style>
 </head>
 
 <body class="theme-blue">
-
 <div class="container-fluid">
     <br>
 
     <div class="card">
         <div class="header"><h2>Produção</h2></div>
 
-        <div class="row" style="margin: 15px 0;">
-            <div class="col-md-2">
-                <label>Data</label>
-                <input type="date" id="dateProducao" class="form-control">
-            </div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-2">
+                    <label>Data</label>
+                    <input type="date" id="dateProducao" class="form-control">
+                </div>
 
-            <div class="col-md-10">
-                <label>Produto</label>
-                <select id="produtoSelect" class="form-control" style="width: 100%;">
-                    <option value="">Carregando...</option>
-                </select>
+                <div class="col-md-8">
+                    <label>Produtos</label>
+                    <select id="produtoSelect" class="form-control" multiple style="width:100%;">
+                        <option value="">Carregando...</option>
+                    </select>
+                    <small class="text-muted">Selecione vários e clique em “Adicionar”.</small>
+                </div>
 
-                <div id="produtoBar">
-                    <div class="linha">
-                        <div class="colInfo">
-                            <div class="titulo" id="produtoNome">-</div>
-                            <div class="sub">
-                                Código: <span id="produtoCodigo">-</span>
-                                &nbsp;&nbsp;|&nbsp;&nbsp;
-                                Unidade: <span id="produtoUnidade">-</span>
-                            </div>
-                        </div>
-
-                        <div class="colQtd">
-                            <div style="font-weight:700;">Quantidade Produzida</div>
-                            <input type="text" id="qtdProduzida" inputmode="decimal" class="form-control" placeholder="">
-                        </div>
-                    </div>
+                <div class="col-md-2" style="padding-top:25px;">
+                    <button type="button" id="btnAdd" class="btn btn-info waves-effect" style="width:100%;">Adicionar</button>
                 </div>
             </div>
-        </div>
 
-        <div class="body">
-            <table class="table table-striped table-hover" id="tabelaInsumos">
+            <hr>
+
+            <table class="table table-striped table-hover" id="tabelaProdutos">
                 <thead>
                 <tr>
-                    <th style="width:90px">Código</th>
-                    <th>Insumo</th>
-                    <th style="width:90px">Unid</th>
-                    <th style="width:140px">Consumo</th>
-                    <th style="width:140px">Rendimento</th>
-                    <th style="width:140px">Ficha</th>
+                    <th style="width:90px;">Código</th>
+                    <th>Produto</th>
+                    <th style="width:80px;">Unid</th>
+                    <th style="width:200px;" class="right">Qtd Produzida</th>
+                    <th style="width:70px;" class="center">Ação</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr><td colspan="6" class="text-center text-muted">Selecione um produto</td></tr>
+                <tr><td colspan="5" class="text-center text-muted">Adicione produtos para produzir</td></tr>
                 </tbody>
             </table>
 
             <center style="margin-top: 15px;">
-                <button type="button" id="btnSalvar" class="btn btn-success waves-effect">Salvar Produção</button>
+                <button type="button" id="btnSalvar" class="btn btn-success waves-effect">Executar Produção</button>
             </center>
         </div>
     </div>
@@ -157,9 +88,8 @@
     const system_unit_id = parseInt(qs.get('system_unit_id') || qs.get('unit_id') || qs.get('unit') || '0', 10);
     const userId = parseInt(qs.get('user_id') || qs.get('user') || qs.get('username') || '0', 10);
 
-    let producoes = [];
-    let selected = null;
-    let computedRows = [];
+    let producoes = [];        // vindo do listProducoes (já com unidade do produto e insumos)
+    let linhas = [];           // [{ codigo, nome, unidade, quantidade_str }]
 
     function escapeHtml(str) {
         return (str || '').toString()
@@ -168,30 +98,6 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
-    }
-
-    function parseBRNumber(v) {
-        if (v === null || v === undefined) return 0;
-        let s = v.toString().trim();
-        if (!s) return 0;
-
-        s = s.replace(/\s/g, '');
-        if (s.includes(',') && s.includes('.')) {
-            s = s.replace(/\./g, '').replace(',', '.');
-        } else if (s.includes(',')) {
-            s = s.replace(',', '.');
-        }
-
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-
-    function formatBR(n, dec=4) {
-        const v = (typeof n === 'number') ? n : parseBRNumber(n);
-        let s = v.toFixed(dec);
-        s = s.replace(/\.?0+$/, (m) => m.startsWith('.') ? '' : m);
-        s = s.replace('.', ',');
-        return s;
     }
 
     function loading(title) {
@@ -209,102 +115,90 @@
         input.value = today;
     }
 
-    function renderEmpty(msg) {
-        const tbody = $('#tabelaInsumos tbody');
-        tbody.empty();
-        tbody.append(`<tr><td colspan="6" class="text-center text-muted">${escapeHtml(msg)}</td></tr>`);
-        computedRows = [];
+    function parseBRNumber(v) {
+        if (v === null || v === undefined) return 0;
+        let s = v.toString().trim();
+        if (!s) return 0;
+
+        s = s.replace(/\s/g, '');
+        if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+        else if (s.includes(',')) s = s.replace(',', '.');
+
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
     }
 
-    function computeConsumption(item, qtdProduzida) {
-        const fichaQtd = parseBRNumber(item.quantity);
-        const rend = parseBRNumber(item.rendimento);
-        const rendimento = (rend && rend > 0) ? rend : 1;
-
-        const consumo = fichaQtd * (qtdProduzida / rendimento);
-        return {
-            fichaQtd,
-            rendimento,
-            consumo: Math.round(consumo * 10000) / 10000
-        };
+    function formatBR(n, dec=3) {
+        const v = (typeof n === 'number') ? n : parseBRNumber(n);
+        let s = v.toFixed(dec);
+        s = s.replace('.', ',');
+        return s;
     }
 
-    function recalcGrid() {
-        if (!selected) return;
-
-        const qtd = parseBRNumber($('#qtdProduzida').val());
-        const insumos = selected.insumos || [];
-
-        computedRows = insumos.map(i => {
-            const r = computeConsumption(i, qtd);
-            return {
-                codigo: i.insumo_id,
-                nome: i.nome,
-                unidade: i.unidade || '-',     // ✅ unidade do insumo (backend)
-                ficha: r.fichaQtd,
-                rend: r.rendimento,
-                consumo: r.consumo
-            };
-        });
-
-        const tbody = $('#tabelaInsumos tbody');
+    function renderGrid() {
+        const tbody = $('#tabelaProdutos tbody');
         tbody.empty();
 
-        computedRows.forEach(r => {
-            tbody.append(`
-                <tr>
-                    <td>${escapeHtml(r.codigo)}</td>
-                    <td>${escapeHtml(r.nome)}</td>
-                    <td>${escapeHtml(r.unidade)}</td>
-                    <td><b>${escapeHtml(formatBR(r.consumo, 4))}</b></td>
-                    <td>${escapeHtml(formatBR(r.rend, 4))}</td>
-                    <td>${escapeHtml(formatBR(r.ficha, 4))}</td>
-                </tr>
-            `);
-        });
-    }
-
-    // ✅ Regra do campo quantidade produzida baseado na unidade do PRODUTO
-    function bindQtdMaskByProdutoUnidade(unidadeProduto) {
-        const u = (unidadeProduto || '').toUpperCase().trim();
-        const $inp = $('#qtdProduzida');
-
-        $inp.off('input._mask');
-        $inp.val('');
-
-        const isUnidadeInteira = (u === 'UN' || u === 'UND');
-
-        if (isUnidadeInteira) {
-            $inp.on('input._mask', function () {
-                $(this).val($(this).val().replace(/\D/g, ''));
-                if (!selected) return;
-
-                const qtd = parseBRNumber($(this).val());
-                if (!qtd || qtd <= 0) {
-                    renderEmpty('Digite a quantidade produzida');
-                    computedRows = [];
-                    return;
-                }
-                recalcGrid();
-            });
-        } else {
-            // 3 casas decimais após vírgula (igual sua lógica)
-            $inp.on('input._mask', function () {
-                let valor = $(this).val().replace(/\D/g, '');
-                valor = (parseInt(valor || '0', 10) / 1000).toFixed(3);
-                $(this).val(valor.replace('.', ','));
-
-                if (!selected) return;
-
-                const qtd = parseBRNumber($(this).val());
-                if (!qtd || qtd <= 0) {
-                    renderEmpty('Digite a quantidade produzida');
-                    computedRows = [];
-                    return;
-                }
-                recalcGrid();
-            });
+        if (!linhas.length) {
+            tbody.append(`<tr><td colspan="5" class="text-center text-muted">Adicione produtos para produzir</td></tr>`);
+            return;
         }
+
+        linhas.forEach((r, idx) => {
+            tbody.append(`
+        <tr data-idx="${idx}">
+          <td>${escapeHtml(r.codigo)}</td>
+          <td>${escapeHtml(r.nome)}</td>
+          <td>${escapeHtml(r.unidade || '-')}</td>
+          <td class="right">
+            <input type="text"
+                   class="form-control qtdInput"
+                   data-unidade="${escapeHtml(r.unidade || '')}"
+                   value="${escapeHtml(r.quantidade_str || '')}"
+                   style="text-align:right;">
+          </td>
+          <td class="center">
+            <button type="button" class="btn btn-danger btn-mini btnRemover">X</button>
+          </td>
+        </tr>
+      `);
+        });
+
+        bindGridEvents();
+    }
+
+    function maskValueByUnidade(rawDigits, unidade) {
+        const u = (unidade || '').toUpperCase().trim();
+        const inteiro = (u === 'UN' || u === 'UND');
+
+        if (inteiro) {
+            return (rawDigits || '').replace(/\D/g, '');
+        } else {
+            let v = (rawDigits || '').replace(/\D/g, '');
+            v = (parseInt(v || '0', 10) / 1000).toFixed(3);
+            return v.replace('.', ',');
+        }
+    }
+
+    function bindGridEvents() {
+        // remove
+        $('.btnRemover').off('click').on('click', function() {
+            const idx = parseInt($(this).closest('tr').attr('data-idx'), 10);
+            linhas.splice(idx, 1);
+            renderGrid();
+        });
+
+        // digitação quantidade (máscara por unidade do produto)
+        $('.qtdInput').off('input').on('input', function() {
+            const $tr = $(this).closest('tr');
+            const idx = parseInt($tr.attr('data-idx'), 10);
+            const unidade = $(this).data('unidade');
+
+            const masked = maskValueByUnidade($(this).val(), unidade);
+            $(this).val(masked);
+
+            linhas[idx].quantidade_str = masked;
+        });
     }
 
     async function loadProducoes() {
@@ -331,40 +225,17 @@
 
             const sel = $('#produtoSelect');
             sel.empty();
-            sel.append('<option value="">Selecione</option>');
-            producoes.forEach(p => sel.append(new Option(`${p.produto} - ${p.nome}`, p.produto)));
 
-            sel.select2({ width: '100%', placeholder: 'Selecione', allowClear: true });
-
-            sel.off('change').on('change', function() {
-                const cod = parseInt($(this).val() || '0', 10);
-                selected = producoes.find(x => parseInt(x.produto, 10) === cod) || null;
-
-                if (!selected) {
-                    $('#produtoBar').hide();
-                    $('#produtoNome').text('-');
-                    $('#produtoCodigo').text('-');
-                    $('#produtoUnidade').text('-');
-                    $('#qtdProduzida').val('');
-                    renderEmpty('Selecione um produto');
-                    return;
-                }
-
-                $('#produtoBar').show();
-                $('#produtoNome').text(selected.nome || '-');
-                $('#produtoCodigo').text(selected.produto || '-');
-                $('#produtoUnidade').text(selected.unidade || '-'); // ✅ unidade do produto
-
-                renderEmpty('Digite a quantidade produzida');
-
-                // ✅ aplica máscara da quantidade produzida pela unidade do produto
-                bindQtdMaskByProdutoUnidade(selected.unidade);
-
-                $('#qtdProduzida').focus();
+            producoes.forEach(p => {
+                const txt = `${p.produto} - ${p.nome} (${p.unidade || '-'})`;
+                sel.append(new Option(txt, p.produto));
             });
 
-            renderEmpty('Selecione um produto');
-            $('#produtoBar').hide();
+            sel.select2({
+                width: '100%',
+                placeholder: 'Selecione vários produtos',
+                allowClear: true
+            });
 
         } catch (e) {
             console.error(e);
@@ -373,44 +244,75 @@
         }
     }
 
-    async function salvar() {
-        const product_codigo = parseInt($('#produtoSelect').val() || '0', 10);
-        const quantidade = parseBRNumber($('#qtdProduzida').val());
+    function addSelecionadosAoGrid() {
+        const values = ($('#produtoSelect').val() || []).map(v => parseInt(v, 10)).filter(Boolean);
+        if (!values.length) {
+            Swal.fire('Atenção', 'Selecione pelo menos 1 produto.', 'warning');
+            return;
+        }
+
+        values.forEach(cod => {
+            const p = producoes.find(x => parseInt(x.produto, 10) === cod);
+            if (!p) return;
+
+            const jaTem = linhas.some(l => parseInt(l.codigo, 10) === cod);
+            if (jaTem) return;
+
+            linhas.push({
+                codigo: cod,
+                nome: p.nome || '',
+                unidade: p.unidade || '',
+                quantidade_str: ''
+            });
+        });
+
+        $('#produtoSelect').val(null).trigger('change');
+
+        renderGrid();
+    }
+
+    async function salvarMassa() {
+        if (!linhas.length) {
+            return Swal.fire('Erro', 'Adicione pelo menos 1 produto no grid.', 'error');
+        }
+
         const date_producao = $('#dateProducao').val();
 
-        if (!product_codigo) return Swal.fire('Erro', 'Selecione um produto.', 'error');
-        if (!quantidade || quantidade <= 0) return Swal.fire('Erro', 'Informe a quantidade.', 'error');
-        if (!selected) return Swal.fire('Erro', 'Produto inválido.', 'error');
+        const items = [];
+        for (const l of linhas) {
+            const qtd = parseBRNumber(l.quantidade_str);
+            if (!qtd || qtd <= 0) {
+                return Swal.fire('Erro', `Informe a quantidade do produto ${l.codigo} - ${l.nome}`, 'error');
+            }
+            items.push({
+                product_codigo: l.codigo,
+                quantidade_produzida: l.quantidade_str
+            });
+        }
 
-        const resumo = `
-            <div style="text-align:left">
-                <div><b>${escapeHtml(selected.nome)}</b> (${escapeHtml(product_codigo)})</div>
-                <div style="margin-top:6px">Quantidade: <b>${escapeHtml(formatBR(quantidade, 3))}</b> ${escapeHtml(selected.unidade || '')}</div>
-                <hr/>
-                <div style="max-height:260px; overflow:auto; border:1px solid #eee; border-radius:6px;">
-                    <table class="table table-striped" style="margin:0">
-                        <thead>
-                        <tr>
-                            <th>Insumo</th>
-                            <th>Consumo</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        ${computedRows.map(r => `
-                            <tr>
-                                <td>${escapeHtml(r.codigo)} - ${escapeHtml(r.nome)}</td>
-                                <td><b>${escapeHtml(formatBR(r.consumo, 4))}</b> ${escapeHtml(r.unidade || '')}</td>
-                            </tr>
-                        `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
+        const htmlResumo = `
+      <div style="text-align:left">
+        <div><b>Total de produtos:</b> ${items.length}</div>
+        <div style="max-height:260px; overflow:auto; margin-top:10px; border:1px solid #eee; border-radius:6px;">
+          <table class="table table-striped" style="margin:0">
+            <thead><tr><th>Produto</th><th class="right">Qtd</th></tr></thead>
+            <tbody>
+              ${linhas.map(l => `
+                <tr>
+                  <td>${escapeHtml(l.codigo)} - ${escapeHtml(l.nome)}</td>
+                  <td class="right"><b>${escapeHtml(l.quantidade_str)}</b> ${escapeHtml(l.unidade || '')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px" class="text-muted">Será gerado <b>1 único documento</b>.</div>
+      </div>
+    `;
 
         const ok = await Swal.fire({
-            title: 'Confirmar?',
-            html: resumo,
+            title: 'Confirmar Produção?',
+            html: htmlResumo,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Confirmar',
@@ -420,61 +322,57 @@
 
         if (!ok.isConfirmed) return;
 
-        loading('Salvando...');
+        loading('Executando...');
 
         try {
             const { data } = await axios.post(baseUrl, {
-                method: 'executeProduction',
+                method: 'executeProductionBatch',
                 token,
                 data: {
-                    system_unit_id: system_unit_id,
-                    product_codigo: product_codigo,
-                    quantidade_produzida: quantidade,
+                    system_unit_id,
                     user: userId,
-                    date_producao: date_producao,
-                    allow_negative: true
+                    date_producao,
+                    allow_negative: true,
+                    items
                 }
             });
 
             Swal.close();
 
-            if (data?.success) {
-                const doc = data?.doc || '';
-
-                await Swal.fire({
-                    title: 'Produção executada!',
-                    html: doc ? `Documento: <b>${doc}</b>` : 'Produção executada.',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                });
-
-                // ✅ grava o retorno completo pra impressão
-                localStorage.setItem('producaoPdfData', JSON.stringify(data));
-
-                // ✅ abre a impressão numa nova aba
-                window.open(`./reports/producao.html`, '_blank', 'width=1024,height=768,scrollbars=yes,resizable=yes');
-
-                // limpa campo
-                $('#qtdProduzida').val('');
-                renderEmpty('Digite a quantidade produzida');
-
-            } else {
-                Swal.fire('Erro', data?.message || 'Falha ao salvar.', 'error');
+            if (!data?.success) {
+                Swal.fire('Erro', data?.message || 'Falha ao executar.', 'error');
+                return;
             }
 
+            localStorage.setItem('producaoPdfData', JSON.stringify(data));
+
+            const doc = data?.doc || '-';
+
+            await Swal.fire({
+                title: 'Produção executada!',
+                html: `Documento: <b>${doc}</b><br/>${escapeHtml(data?.message || '')}`,
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+
+            window.open(`./reports/producao.html`, '_blank');
+
+            linhas = [];
+            renderGrid();
 
         } catch (e) {
             console.error(e);
             Swal.close();
-            Swal.fire('Erro', 'Erro ao salvar.', 'error');
+            Swal.fire('Erro', 'Erro ao executar produção.', 'error');
         }
     }
 
-    $('#btnSalvar').on('click', salvar);
+    $('#btnAdd').on('click', addSelecionadosAoGrid);
+    $('#btnSalvar').on('click', salvarMassa);
 
     setDateToday();
     loadProducoes();
+    renderGrid();
 </script>
-
 </body>
 </html>
