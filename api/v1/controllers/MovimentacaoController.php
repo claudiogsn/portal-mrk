@@ -1640,9 +1640,6 @@ class MovimentacaoController
         }
     }
 
-    /**
-     * @throws DateMalformedStringException
-     */
     public static function getDatesByDoc($system_unit_id, $doc): array
     {
         global $pdo;
@@ -1681,7 +1678,6 @@ class MovimentacaoController
 
         return [];
     }
-
 
     public static function updateDataByDoc($system_unit_id, $doc, $data): bool
     {
@@ -2001,7 +1997,6 @@ class MovimentacaoController
         }
     }
 
-
     public static function savePerdaItems($data): array
     {
         global $pdo;
@@ -2236,8 +2231,6 @@ class MovimentacaoController
             ];
         }
     }
-
-
 
     public static function extratoCopEntreBalancos(int $systemUnitId, string $dtInicio, string $dtFim): array
     {
@@ -2499,6 +2492,218 @@ class MovimentacaoController
             return ['error' => 'Erro interno: ' . $e->getMessage()];
         }
     }
+
+    private static function buildCurvaABC(array $rows): array
+    {
+        // Normaliza e garante tipos
+        $itens = [];
+        $total = 0.0;
+
+        foreach ($rows as $r) {
+            $codigo = isset($r['codigo']) ? (int)$r['codigo'] : 0;
+            if ($codigo <= 0) continue;
+
+            $nome = (string)($r['nome'] ?? '');
+            $qtd  = (float)($r['quantidade'] ?? 0);
+            $val  = (float)($r['valor'] ?? 0);
+
+            $total += $val;
+
+            $itens[] = [
+                "codigo" => $codigo,
+                "nome" => $nome,
+                "quantidade" => $qtd,
+                "valor" => (float)round($val, 2),
+            ];
+        }
+
+        // Ordena por valor desc (maior impacto primeiro)
+        usort($itens, fn($a, $b) => $b['valor'] <=> $a['valor']);
+
+        $acum = 0.0;
+
+        $resumo = [
+            "A" => ["valor" => 0.0, "itens" => 0],
+            "B" => ["valor" => 0.0, "itens" => 0],
+            "C" => ["valor" => 0.0, "itens" => 0],
+        ];
+
+        foreach ($itens as &$item) {
+            $valor = (float)$item["valor"];
+            $pct = ($total > 0) ? ($valor / $total) * 100.0 : 0.0;
+
+            $acum += $pct;
+
+            // Regra: A até 80% acumulado, B até 95%, C resto
+            $classe = "C";
+            if ($acum <= 80.0) $classe = "A";
+            else if ($acum <= 95.0) $classe = "B";
+
+            $item["percentual_total"] = (float)round($pct, 4);
+            $item["percentual_acumulado"] = (float)round($acum, 4);
+            $item["classe"] = $classe;
+
+            $resumo[$classe]["valor"] += $valor;
+            $resumo[$classe]["itens"] += 1;
+        }
+        unset($item);
+
+        // arredonda resumo
+        foreach (["A","B","C"] as $k) {
+            $resumo[$k]["valor"] = (float)round($resumo[$k]["valor"], 2);
+        }
+
+        return [
+            "total_valor" => (float)round($total, 2),
+            "itens" => $itens,
+            "resumo" => $resumo,
+        ];
+    }
+
+    public static function getCurvaABCFaturamento($data): array
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = (int)($data['system_unit_id'] ?? $data['unit_id'] ?? 0);
+            $dt_inicio = (string)($data['dt_inicio'] ?? '');
+            $dt_fim    = (string)($data['dt_fim'] ?? '');
+
+            if ($system_unit_id <= 0) {
+                return ["success" => false, "message" => "system_unit_id inválido."];
+            }
+            if (!$dt_inicio || !$dt_fim) {
+                return ["success" => false, "message" => "dt_inicio e dt_fim são obrigatórios (YYYY-MM-DD)."];
+            }
+
+            // Busca agregada de vendas
+            $stmt = $pdo->prepare("
+            SELECT
+                s.cod_material AS codigo,
+                COALESCE(p.nome, CONCAT('Produto ', s.cod_material)) AS nome,
+                SUM(s.quantidade) AS quantidade,
+                SUM(s.valor_liquido) AS valor
+            FROM _bi_sales s
+            LEFT JOIN products p
+                   ON p.system_unit_id = s.system_unit_id
+                  AND p.codigo = s.cod_material
+            WHERE s.system_unit_id = :unit
+              AND DATE(s.data_movimento) BETWEEN :dt_inicio AND :dt_fim
+            GROUP BY s.cod_material, p.nome
+        ");
+
+            $stmt->execute([
+                ":unit" => $system_unit_id,
+                ":dt_inicio" => $dt_inicio,
+                ":dt_fim" => $dt_fim
+            ]);
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            // monta curva ABC
+            $abc = self::buildCurvaABC($rows);
+
+            return [
+                "success" => true,
+                "tipo" => "FATURAMENTO",
+                "dt_inicio" => $dt_inicio,
+                "dt_fim" => $dt_fim,
+                "total_valor" => $abc["total_valor"], // total faturamento período
+                "itens" => $abc["itens"],             // lista com % e classe
+                "resumo" => $abc["resumo"],           // totais por A/B/C
+            ];
+
+        } catch (Exception $e) {
+            return ["success" => false, "message" => "Erro Curva ABC Faturamento: " . $e->getMessage()];
+        }
+    }
+
+    public static function getCurvaABCCompras($data): array
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = (int)($data['system_unit_id'] ?? $data['unit_id'] ?? 0);
+            $dt_inicio = (string)($data['dt_inicio'] ?? '');
+            $dt_fim    = (string)($data['dt_fim'] ?? '');
+
+            // opcional: permitir filtrar por tipos específicos de compra (se você usa isso)
+            $tipos_incluir = $data['tipos_incluir'] ?? null; // ex: ["c","nfe"]
+            $tipos_excluir = $data['tipos_excluir'] ?? ["b","t","v","p","pr"]; // default: exclui tipos comuns que NÃO são compra
+
+            if ($system_unit_id <= 0) return ["success" => false, "message" => "system_unit_id inválido."];
+            if (!$dt_inicio || !$dt_fim) return ["success" => false, "message" => "dt_inicio e dt_fim são obrigatórios (YYYY-MM-DD)."];
+
+            $whereTipos = "";
+            $params = [
+                ":unit" => $system_unit_id,
+                ":dt_inicio" => $dt_inicio,
+                ":dt_fim" => $dt_fim,
+            ];
+
+            if (is_array($tipos_incluir) && count($tipos_incluir) > 0) {
+                $in = [];
+                foreach ($tipos_incluir as $i => $t) {
+                    $k = ":tin_$i";
+                    $in[] = $k;
+                    $params[$k] = (string)$t;
+                }
+                $whereTipos = " AND m.tipo IN (" . implode(",", $in) . ") ";
+            } else if (is_array($tipos_excluir) && count($tipos_excluir) > 0) {
+                $notIn = [];
+                foreach ($tipos_excluir as $i => $t) {
+                    $k = ":tex_$i";
+                    $notIn[] = $k;
+                    $params[$k] = (string)$t;
+                }
+                $whereTipos = " AND m.tipo NOT IN (" . implode(",", $notIn) . ") ";
+            }
+
+            $stmt = $pdo->prepare("
+            SELECT
+                CAST(m.produto AS UNSIGNED) AS codigo,
+                COALESCE(p.nome, CONCAT('Produto ', m.produto)) AS nome,
+                SUM(m.quantidade) AS quantidade,
+                SUM(COALESCE(m.valor,0) * m.quantidade) AS valor
+            FROM movimentacao m
+            LEFT JOIN products p
+                   ON p.system_unit_id = m.system_unit_id
+                  AND p.codigo = CAST(m.produto AS UNSIGNED)
+            WHERE m.system_unit_id = :unit
+              AND m.status = 1
+              AND m.tipo_mov = 'entrada'
+              AND m.data BETWEEN :dt_inicio AND :dt_fim
+              AND m.valor IS NOT NULL
+              AND m.valor > 0
+              AND m.produto REGEXP '^[0-9]+$'
+              {$whereTipos}
+            GROUP BY CAST(m.produto AS UNSIGNED), p.nome
+        ");
+
+            $stmt->execute($params);
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $abc = self::buildCurvaABC($rows);
+
+            return [
+                "success" => true,
+                "tipo" => "COMPRAS",
+                "dt_inicio" => $dt_inicio,
+                "dt_fim" => $dt_fim,
+                "total_valor" => $abc["total_valor"],
+                "resumo" => $abc["resumo"],
+                "itens" => $abc["itens"],
+            ];
+
+        } catch (Exception $e) {
+            return ["success" => false, "message" => "Erro Curva ABC Compras: " . $e->getMessage()];
+        }
+    }
+
+
+
+
+
 
 
 

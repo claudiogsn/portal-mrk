@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Curva ABC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- AdminBSB / Bootstrap -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        .muted { color: #777; }
+        .nowrap { white-space: nowrap; }
+        .text-right { text-align:right; }
+        .text-small { font-size: 12px; }
+
+        /* Cards KPI */
+        .kpi {
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            margin-bottom: 10px;
+        }
+        .kpi h4 { margin: 4px 0 0 0; font-weight: 700; }
+        .kpi small { color: #333; opacity: .9; display: block; }
+
+        .kpi.blue  { background: #e3f2fd; border-color: #bbdefb; color: #1565c0; }
+        .kpi.green { background: #e8f5e9; border-color: #c8e6c9; color: #1b5e20; }
+        .kpi.orange{ background: #fff3e0; border-color: #ffe0b2; color: #e65100; }
+        .kpi.gray  { background: #f5f5f5; border-color: #e0e0e0; color: #424242; }
+
+        /* Labels ABC */
+        .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
+        .lblA { background:#1b5e20; color:#fff; }
+        .lblB { background:#e65100; color:#fff; }
+        .lblC { background:#424242; color:#fff; }
+
+        /* Resumo ABC box */
+        .resumo-box {
+            border:1px solid #eee;
+            border-radius: 6px;
+            padding: 10px;
+            background: #fafafa;
+            margin-bottom: 10px;
+        }
+        .resumo-linha {
+            display:flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 4px 0;
+            border-bottom:1px dashed #e6e6e6;
+        }
+        .resumo-linha:last-child { border-bottom:none; }
+        .resumo-linha b { font-weight: 700; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
+            .kpi h4 { font-size: 14px; }
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+
+    <div class="card">
+        <div class="header">
+            <h2>Relatório Curva ABC</h2>
+        </div>
+
+        <!-- FILTROS PRINCIPAIS -->
+        <div class="row" style="margin: 15px 0 5px;">
+            <div class="col-md-3">
+                <label class="muted">Data inicial</label>
+                <input type="date" id="dtInicio" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Data final</label>
+                <input type="date" id="dtFim" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Tipo</label>
+                <select id="tipoRel" class="form-control">
+                    <option value="FATURAMENTO">Faturamento (vendas)</option>
+                    <option value="COMPRAS">Compras (insumos)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Ações</label><br>
+                <button id="btnConsultar" class="btn btn-primary">
+                    <i class="fa fa-search"></i> Consultar
+                </button>
+                <button id="btnLimpar" class="btn btn-default">
+                    <i class="fa fa-eraser"></i> Limpar
+                </button>
+            </div>
+        </div>
+
+        <!-- FILTROS EM TEMPO REAL -->
+        <div class="row" style="margin: 5px 0 10px;">
+            <div class="col-md-4">
+                <label class="muted">Buscar Produto (código/nome)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar...">
+            </div>
+            <div class="col-md-2">
+                <label class="muted">Classe</label>
+                <select id="filtroClasse" class="form-control">
+                    <option value="">Todas</option>
+                    <option value="A">A (até 80%)</option>
+                    <option value="B">B (até 95%)</option>
+                    <option value="C">C (restante)</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <div class="resumo-box">
+                    <div class="text-small muted" style="margin-bottom:4px;">
+                        Regras: <b>A=80%</b> | <b>B=15%</b> | <b>C=5%</b> (por valor, ordenado desc)
+                    </div>
+                    <div class="resumo-linha">
+                        <span><span class="label label-xs lblA">A</span> Itens / Valor</span>
+                        <span><b id="resA">0</b> | <b id="resAValor">R$ 0,00</b> (<span id="resAPerc">0%</span>)</span>
+                    </div>
+                    <div class="resumo-linha">
+                        <span><span class="label label-xs lblB">B</span> Itens / Valor</span>
+                        <span><b id="resB">0</b> | <b id="resBValor">R$ 0,00</b> (<span id="resBPerc">0%</span>)</span>
+                    </div>
+                    <div class="resumo-linha">
+                        <span><span class="label label-xs lblC">C</span> Itens / Valor</span>
+                        <span><b id="resC">0</b> | <b id="resCValor">R$ 0,00</b> (<span id="resCPerc">0%</span>)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOTALIZADORES (KPIs) -->
+        <div class="row" style="margin: 0 0 5px;">
+            <div class="col-md-3">
+                <div class="kpi blue">
+                    <small>Total do período</small>
+                    <h4 id="kpiTotal">R$ 0,00</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi gray">
+                    <small>Quantidade total</small>
+                    <h4 id="kpiQtd">0,0000</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi green">
+                    <small>Itens (produtos)</small>
+                    <h4 id="kpiItens">0</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi orange">
+                    <small>Registros filtrados</small>
+                    <h4 id="kpiFiltrados">0</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABELA -->
+        <div class="body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-resultado">
+                    <thead>
+                    <tr>
+                        <th class="nowrap" style="width:60px;">#</th>
+                        <th class="nowrap" style="width:110px;">Código</th>
+                        <th>Produto</th>
+                        <th class="nowrap text-right" style="width:140px;">Quantidade</th>
+                        <th class="nowrap text-right" style="width:160px;">Valor (R$)</th>
+                        <th class="nowrap text-right" style="width:120px;">% no total</th>
+                        <th class="nowrap text-right" style="width:140px;">% acumulado</th>
+                        <th class="nowrap center" style="width:80px;">Classe</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td colspan="8" class="text-center muted text-small">Informe o período e clique em Consultar.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ====== CONFIG ======
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = Number(urlParams.get('system_unit_id') || urlParams.get('unit_id') || urlParams.get('unit') || 0);
+
+    // ====== STATE ======
+    let dadosBrutos = [];    // retorno do backend normalizado (sem ABC)
+    let dadosABC = [];       // com % e classe calculados
+    let dadosFiltrados = []; // filtro em tempo real
+
+    // ====== UTILS ======
+    function brNumber(v, casas = 4) {
+        const n = Number(v || 0);
+        return n.toLocaleString('pt-BR', {
+            minimumFractionDigits: casas,
+            maximumFractionDigits: casas
+        });
+    }
+
+    function brMoney(v) {
+        const n = Number(v || 0);
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function swalLoading(title) {
+        Swal.fire({
+            title: title || 'Carregando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+    }
+
+    // Normaliza o retorno do backend em um array com campos padronizados:
+    // { codigo, nome, quantidade, valor }
+    function normalizeItens(api) {
+        const payload = api?.data || api || {};
+        const arr =
+            payload?.itens ||
+            payload?.items ||
+            payload?.produtos ||
+            payload?.rows ||
+            [];
+
+        if (!Array.isArray(arr)) return [];
+
+        return arr.map(it => ({
+            codigo: it.codigo ?? it.cod_material ?? it.produto ?? it.product_codigo ?? it.product_id ?? '',
+            nome: it.nome ?? it.produto_nome ?? it.descricao ?? it.description ?? '',
+            quantidade: Number(it.quantidade ?? it.qtd ?? it.qtde ?? 0),
+            valor: Number(it.valor_total ?? it.valor ?? it.total ?? it.valor_liquido ?? it.valor_bruto ?? 0)
+        }));
+    }
+
+    // Calcula ABC (A=80%, B=15% (até 95%), C=restante), por VALOR.
+    function computeABC(itens) {
+        const arr = (Array.isArray(itens) ? itens : []).slice();
+
+        // ordena por valor desc
+        arr.sort((a,b) => (Number(b.valor||0) - Number(a.valor||0)));
+
+        const total = arr.reduce((sum, it) => sum + Number(it.valor || 0), 0);
+        let acumulado = 0;
+
+        const out = arr.map((it, idx) => {
+            const v = Number(it.valor || 0);
+            const share = total > 0 ? (v / total) : 0;
+            acumulado += share;
+
+            // classe por % acumulado
+            let classe = 'C';
+            if (acumulado <= 0.80 + 1e-12) classe = 'A';
+            else if (acumulado <= 0.95 + 1e-12) classe = 'B';
+
+            return {
+                rank: idx + 1,
+                codigo: it.codigo,
+                nome: it.nome,
+                quantidade: Number(it.quantidade || 0),
+                valor: v,
+                perc: share,          // fração (0..1)
+                percAcum: acumulado,  // fração (0..1)
+                classe
+            };
+        });
+
+        return { itens: out, total };
+    }
+
+    function labelClasse(classe) {
+        if (classe === 'A') return '<span class="label label-xs lblA">A</span>';
+        if (classe === 'B') return '<span class="label label-xs lblB">B</span>';
+        return '<span class="label label-xs lblC">C</span>';
+    }
+
+    // ====== RENDER ======
+    function renderTabela(itens) {
+        const $tbody = $('#tabela-resultado tbody');
+        $tbody.empty();
+
+        (itens || []).forEach(it => {
+            $tbody.append(`
+                <tr>
+                    <td class="nowrap">${it.rank}</td>
+                    <td class="nowrap"><b>${escapeHtml(it.codigo)}</b></td>
+                    <td>${escapeHtml(it.nome || '')}</td>
+                    <td class="text-right nowrap">${brNumber(it.quantidade, 2)}</td>
+                    <td class="text-right nowrap"><b>${brMoney(it.valor)}</b></td>
+                    <td class="text-right nowrap">${(it.perc * 100).toFixed(2).replace('.', ',')}%</td>
+                    <td class="text-right nowrap">${(it.percAcum * 100).toFixed(2).replace('.', ',')}%</td>
+                    <td class="center nowrap">${labelClasse(it.classe)}</td>
+                </tr>
+            `);
+        });
+
+        if (!itens || itens.length === 0) {
+            $tbody.append(`
+                <tr>
+                    <td colspan="8" class="text-center muted text-small">
+                        Nenhum registro para os filtros atuais.
+                    </td>
+                </tr>
+            `);
+        }
+    }
+
+    function renderKPIs(allItens, filteredItens, totalValorAll) {
+        const totalQtd = (allItens || []).reduce((s, it) => s + Number(it.quantidade || 0), 0);
+        const itensCount = (allItens || []).length;
+        const filtradosCount = (filteredItens || []).length;
+
+        $('#kpiTotal').text(brMoney(totalValorAll || 0));
+        $('#kpiQtd').text(brNumber(totalQtd, 4));
+        $('#kpiItens').text(String(itensCount));
+        $('#kpiFiltrados').text(String(filtradosCount));
+    }
+
+    function renderResumoABC(itens, totalValor) {
+        const total = Number(totalValor || 0);
+
+        const grp = { A: {n:0, v:0}, B:{n:0, v:0}, C:{n:0, v:0} };
+        (itens || []).forEach(it => {
+            const c = it.classe || 'C';
+            if (!grp[c]) grp[c] = {n:0, v:0};
+            grp[c].n += 1;
+            grp[c].v += Number(it.valor || 0);
+        });
+
+        function pct(v) {
+            const p = total > 0 ? (v/total)*100 : 0;
+            return p.toFixed(2).replace('.', ',') + '%';
+        }
+
+        $('#resA').text(grp.A.n);
+        $('#resAValor').text(brMoney(grp.A.v));
+        $('#resAPerc').text(pct(grp.A.v));
+
+        $('#resB').text(grp.B.n);
+        $('#resBValor').text(brMoney(grp.B.v));
+        $('#resBPerc').text(pct(grp.B.v));
+
+        $('#resC').text(grp.C.n);
+        $('#resCValor').text(brMoney(grp.C.v));
+        $('#resCPerc').text(pct(grp.C.v));
+    }
+
+    // ====== FILTROS EM TEMPO REAL ======
+    function applyFiltros() {
+        const texto = ($('#filtroTexto').val() || '').trim().toLowerCase();
+        const classe = ($('#filtroClasse').val() || '').trim().toUpperCase();
+
+        let arr = (dadosABC || []).slice();
+
+        if (texto) {
+            arr = arr.filter(it => {
+                const campos = [
+                    it.codigo,
+                    it.nome
+                ].map(x => (x == null ? '' : String(x).toLowerCase()));
+                return campos.some(c => c.indexOf(texto) !== -1);
+            });
+        }
+
+        if (classe) {
+            arr = arr.filter(it => (it.classe === classe));
+        }
+
+        dadosFiltrados = arr;
+        renderTabela(arr);
+
+        // KPIs/Resumo sempre com BASE TOTAL (não filtrado) e também mostra qtd filtrada no KPI
+        const totalValorAll = (window.__abcTotalValor || 0);
+        renderKPIs(dadosBrutos, arr, totalValorAll);
+        renderResumoABC(dadosABC, totalValorAll);
+    }
+
+    // ====== CONSULTA BACKEND ======
+    async function onConsultar() {
+        const dt_inicio = $('#dtInicio').val();
+        const dt_fim = $('#dtFim').val();
+        const tipoRel = $('#tipoRel').val(); // FATURAMENTO | COMPRAS
+
+        if (!token || !system_unit_id) {
+            return Swal.fire('Atenção', 'URL deve conter token e system_unit_id.', 'warning');
+        }
+        if (!dt_inicio || !dt_fim) {
+            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+        }
+        if (dt_inicio > dt_fim) {
+            return Swal.fire('Atenção', 'Data inicial não pode ser maior que a final.', 'warning');
+        }
+
+        const method = (tipoRel === 'COMPRAS') ? 'getCurvaABCCompras' : 'getCurvaABCFaturamento';
+
+        swalLoading('Consultando...');
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method,
+                token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    dt_inicio,
+                    dt_fim
+                }
+            });
+
+            Swal.close();
+
+            const api = res.data;
+            if (!api || api.success === false) {
+                dadosBrutos = [];
+                dadosABC = [];
+                dadosFiltrados = [];
+                window.__abcTotalValor = 0;
+
+                renderTabela([]);
+                renderKPIs([], [], 0);
+                renderResumoABC([], 0);
+
+                return Swal.fire('Atenção', api?.message || 'Falha ao consultar.', 'warning');
+            }
+
+            // Normaliza itens
+            dadosBrutos = normalizeItens(api);
+
+            // Calcula ABC
+            const { itens, total } = computeABC(dadosBrutos);
+
+            dadosABC = itens;
+            window.__abcTotalValor = total;
+
+            // limpa filtros realtime
+            $('#filtroTexto').val('');
+            $('#filtroClasse').val('');
+
+            // render inicial
+            dadosFiltrados = itens.slice();
+            renderTabela(dadosFiltrados);
+            renderKPIs(dadosBrutos, dadosFiltrados, total);
+            renderResumoABC(dadosABC, total);
+
+        } catch (e) {
+            Swal.close();
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+        }
+    }
+
+    function onLimpar() {
+        $('#filtroTexto').val('');
+        $('#filtroClasse').val('');
+        $('#tabela-resultado tbody').html(`
+            <tr><td colspan="8" class="text-center muted text-small">Informe o período e clique em Consultar.</td></tr>
+        `);
+
+        dadosBrutos = [];
+        dadosABC = [];
+        dadosFiltrados = [];
+        window.__abcTotalValor = 0;
+
+        renderKPIs([], [], 0);
+        renderResumoABC([], 0);
+    }
+
+    // ====== INIT ======
+    $(document).ready(() => {
+        // datas padrão (hoje e -7 dias)
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const d = String(hoje.getDate()).padStart(2, '0');
+        $('#dtFim').val(`${y}-${m}-${d}`);
+
+        const semana = new Date(hoje.getTime() - 7*24*60*60*1000);
+        const y2 = semana.getFullYear();
+        const m2 = String(semana.getMonth() + 1).padStart(2, '0');
+        const d2 = String(semana.getDate()).padStart(2, '0');
+        $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+
+        $('#btnConsultar').on('click', onConsultar);
+        $('#btnLimpar').on('click', onLimpar);
+
+        $('#filtroTexto').on('input', applyFiltros);
+        $('#filtroClasse').on('change', applyFiltros);
+        $('#tipoRel').on('change', () => {
+            // troca tipo só muda o método; não consulta automaticamente
+            onLimpar();
+        });
+    });
+</script>
+</body>
+</html>

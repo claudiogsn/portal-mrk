@@ -70,6 +70,10 @@
       <menuitem label="Relatórios Estoque">
         <icon>fas:newspaper fa-fw</icon>
         <menu>
+          <menuitem label="Curva ABC">
+            <action>CurvaABC</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="COP">
             <action>ReportCop</action>
             <icon>fas:circle fa-fw</icon>

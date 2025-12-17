@@ -533,6 +533,13 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id, dt_inicio ou dt_fim ausentes'];
                 }
                 break;
+            case 'getCurvaABCCompras':
+                $response = MovimentacaoController::getCurvaABCCompras($requestData);
+                break;
+                case 'getCurvaABCFaturamento':
+                $response = MovimentacaoController::getCurvaABCFaturamento($requestData);
+                break;
+
 
             case 'consolidateSalesByUnit':
                 if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
