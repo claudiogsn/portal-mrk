@@ -78,6 +78,11 @@
             <action>ReportCop</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Compras por Fornecedor">
+            <action>ComprasFornecedor</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
+
             <menuitem label="Produtos Comprados">
                 <action>ListCompras</action>
                 <icon>fas:circle fa-fw</icon>

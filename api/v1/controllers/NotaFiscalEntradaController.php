@@ -1427,6 +1427,177 @@ class NotaFiscalEntradaController {
         }
     }
 
+    public static function getComprasPorPeriodo($data): array
+    {
+        try {
+            global $pdo;
+
+            $system_unit_id = (int)($data['system_unit_id'] ?? 0);
+            $dt_inicio      = $data['dt_inicio'] ?? null;
+            $dt_fim         = $data['dt_fim'] ?? null;
+            $tipoData       = strtolower(trim($data['tipoData'] ?? 'entrada')); // entrada | emissao
+
+            if (!$system_unit_id || !$dt_inicio || !$dt_fim) {
+                return [
+                    "success" => false,
+                    "message" => "Parâmetros obrigatórios: system_unit_id, dt_inicio, dt_fim."
+                ];
+            }
+
+            if (!in_array($tipoData, ['entrada', 'emissao'], true)) {
+                return [
+                    "success" => false,
+                    "message" => "tipoData inválido. Use 'entrada' ou 'emissao'."
+                ];
+            }
+
+            $campoData = ($tipoData === 'emissao') ? 'n.data_emissao' : 'n.data_entrada';
+
+            // 🔧 AJUSTE AQUI se necessário:
+            // - se doc = chave_acesso => "m.doc = n.chave_acesso"
+            // - se doc = numero/serie => "m.doc = CONCAT(n.numero_nf,'/',IFNULL(n.serie,''))"
+            $joinDoc = "m.doc = n.numero_nf";
+
+            $sql = "
+            SELECT
+                n.id               AS nota_id,
+                n.system_unit_id,
+                n.fornecedor_id,
+                f.razao             AS fornecedor_nome,      -- ✅ FORNECEDOR
+                n.chave_acesso,
+                n.numero_nf,
+                n.serie,
+                n.data_emissao,
+                n.data_entrada,
+                n.natureza_operacao,
+                n.valor_total,
+                n.valor_produtos,
+                n.valor_frete,
+
+                m.id               AS mov_id,
+                m.seq              AS item_seq,
+                m.produto          AS item_produto,
+                m.quantidade       AS item_quantidade,
+                m.valor            AS item_valor_unitario,
+                m.data             AS item_data_mov,
+                m.data_emissao     AS item_data_emissao_mov,
+                m.data_original    AS item_data_original,
+
+                p.nome             AS produto_nome,          -- ✅ PRODUTO
+                p.und          AS produto_unidade        -- ✅ (se existir no seu products)
+
+            FROM estoque_nota n
+
+            LEFT JOIN financeiro_fornecedor f
+                ON f.id = n.fornecedor_id
+               AND f.system_unit_id = n.system_unit_id      -- ✅ recomendado
+
+            LEFT JOIN movimentacao m
+                ON m.system_unit_id = n.system_unit_id
+               AND {$joinDoc}
+               AND m.tipo = 'c'
+               AND m.status = 1
+
+            LEFT JOIN products p
+                ON p.codigo = m.produto
+               AND p.system_unit_id = m.system_unit_id      -- ✅ remova se não existir no seu schema
+
+            WHERE n.system_unit_id = :system_unit_id
+              AND n.incluida_estoque = 1
+              AND DATE($campoData) BETWEEN :dt_inicio AND :dt_fim
+
+            ORDER BY $campoData DESC, n.numero_nf DESC, m.seq ASC
+        ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':system_unit_id' => $system_unit_id,
+                ':dt_inicio'      => $dt_inicio,
+                ':dt_fim'         => $dt_fim,
+            ]);
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $notasMap = [];
+            $totNotas = 0;
+            $sumValorNotas = 0.0;
+
+            $sumQtdTotal = 0.0;
+            $sumValorItens = 0.0;
+            $countItens = 0;
+
+            foreach ($rows as $r) {
+                $notaKey = $r['chave_acesso'] ?: ($r['numero_nf'] . '|' . ($r['serie'] ?? ''));
+
+                if (!isset($notasMap[$notaKey])) {
+                    $totNotas++;
+                    $valorNota = (float)($r['valor_total'] ?? 0);
+                    $sumValorNotas += $valorNota;
+
+                    $notasMap[$notaKey] = [
+                        "fornecedor_id"     =>  (int)$r['fornecedor_id'],
+                        "fornecedor_nome"   => $r['fornecedor_nome'] ?? null,
+                        "chave_acesso"      => $r['chave_acesso'],
+                        "numero_nf"         => $r['numero_nf'],
+                        "serie"             => $r['serie'],
+                        "data_emissao"      => $r['data_emissao'],
+                        "data_entrada"      => $r['data_entrada'],
+                        "valor_total"       => $valorNota,
+                        "itens"             => []
+                    ];
+                }
+
+                if (!empty($r['mov_id'])) {
+                    $qtd = (float)($r['item_quantidade'] ?? 0);
+                    $vu  = (float)($r['item_valor_unitario'] ?? 0);
+                    $vt  = $qtd * $vu;
+
+                    $notasMap[$notaKey]["itens"][] = [
+                        "mov_id"         => (int)$r['mov_id'],
+                        "seq"            => (int)$r['item_seq'],
+                        "produto"        => is_numeric($r['item_produto']) ? (int)$r['item_produto'] : $r['item_produto'],
+                        "produto_nome"   => $r['produto_nome'] ?? null,          // ✅
+                        "produto_unidade"=> $r['produto_unidade'] ?? null,       // ✅
+                        "quantidade"     => $qtd,
+                        "valor_unitario" => $vu,
+                        "valor_total"    => (float)round($vt, 2),
+                        "data_mov"       => $r['item_data_mov'],
+                        "data_emissao"   => $r['item_data_emissao_mov'],
+                        "data_original"  => $r['item_data_original']
+                    ];
+
+                    $countItens++;
+                    $sumQtdTotal += $qtd;
+                    $sumValorItens += $vt;
+                }
+            }
+
+            return [
+                "success" => true,
+                "system_unit_id" => $system_unit_id,
+                "tipoData"       => strtoupper($tipoData),
+                "dt_inicio"      => $dt_inicio,
+                "dt_fim"         => $dt_fim,
+                "totais" => [
+                    "notas"       => $totNotas,
+                    "valor_notas" => (float)round($sumValorNotas, 2),
+                    "qtd_itens"   => $countItens,
+                    "qtd_total"   => (float)round($sumQtdTotal, 4),
+                    "valor_itens" => (float)round($sumValorItens, 2)
+                ],
+                "notas" => array_values($notasMap)
+            ];
+
+        } catch (Exception $e) {
+            return [
+                "success" => false,
+                "message" => "Erro ao listar compras por período.",
+                "error" => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 

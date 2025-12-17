@@ -1835,6 +1835,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'getComprasPorPeriodo':
+                $response = NotaFiscalEntradaController::getComprasPorPeriodo($requestData);
+                break;
             case 'lancarItensNotaAvulsaNoEstoque':
                 if ($requestData['system_unit_id'] && $requestData['itens'] && $requestData['usuario_id']) {
                     $response = NotaFiscalEntradaController::lancarItensNotaAvulsaNoEstoque($requestData);
