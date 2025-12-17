@@ -299,56 +299,150 @@ class ProductController {
         }
     }
 
+    public static function recalcularCustosPorFichas($unit_id): array
+    {
+        try {
+            global $pdo;
 
+            $unit_id = (int)$unit_id;
+            if (!$unit_id) {
+                return ["success" => false, "message" => "unit_id inválido."];
+            }
 
-    public static function listProdutosDetalhado($unit_id) {
+            $pdo->beginTransaction();
+
+            // =========================================================
+            // 1) INSUMOS PRODUZIDOS (compravel = 0) -> custo via productions
+            // custo_unitario = sum(qtd * custo_insumo) / rendimento (se houver)
+            // =========================================================
+            $sqlProducao = "
+            UPDATE products prod
+            JOIN (
+                SELECT
+                    pr.product_id AS codigo_produto,
+                    CASE
+                        WHEN MAX(COALESCE(pr.rendimento, 0)) > 0
+                            THEN SUM(pr.quantity * ins.preco_custo) / MAX(pr.rendimento)
+                        ELSE
+                            SUM(pr.quantity * ins.preco_custo)
+                    END AS custo_unitario
+                FROM productions pr
+                JOIN products ins
+                  ON ins.system_unit_id = pr.system_unit_id
+                 AND ins.codigo         = pr.insumo_id
+                WHERE pr.system_unit_id = :unit_id
+                GROUP BY pr.product_id
+            ) x
+              ON x.codigo_produto   = prod.codigo
+             AND prod.system_unit_id = :unit_id
+            SET prod.preco_custo = ROUND(x.custo_unitario, 4)
+            WHERE prod.system_unit_id = :unit_id
+              AND prod.insumo = 1
+              AND prod.compravel = 0
+        ";
+            $stmt1 = $pdo->prepare($sqlProducao);
+            $stmt1->execute([":unit_id" => $unit_id]);
+            $rowsProducao = $stmt1->rowCount();
+
+            // =========================================================
+            // 2) PRODUTOS DE VENDA COM COMPOSIÇÃO -> custo via compositions
+            // custo_total = sum(c.quantity * custo_insumo)
+            // (EXATAMENTE como você descreveu)
+            // =========================================================
+            $sqlComposicao = "
+            UPDATE products prod
+            JOIN (
+                SELECT
+                    c.product_id AS codigo_produto,
+                    SUM(c.quantity * ins.preco_custo) AS custo_total
+                FROM compositions c
+                JOIN products ins
+                  ON ins.system_unit_id = c.system_unit_id
+                 AND ins.codigo         = c.insumo_id
+                WHERE c.system_unit_id = :unit_id
+                GROUP BY c.product_id
+            ) x
+              ON x.codigo_produto    = prod.codigo
+             AND prod.system_unit_id = :unit_id
+            SET prod.preco_custo = ROUND(x.custo_total, 4)
+            WHERE prod.system_unit_id = :unit_id
+              AND prod.venda = 1
+              AND prod.composicao = 1
+        ";
+            $stmt2 = $pdo->prepare($sqlComposicao);
+            $stmt2->execute([":unit_id" => $unit_id]);
+            $rowsComposicao = $stmt2->rowCount();
+
+            $pdo->commit();
+
+            return [
+                "success" => true,
+                "system_unit_id" => $unit_id,
+                "updated" => [
+                    "producao"   => $rowsProducao,
+                    "composicao" => $rowsComposicao
+                ]
+            ];
+
+        } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+            return [
+                "success" => false,
+                "message" => "Erro ao recalcular custos por fichas.",
+                "error" => $e->getMessage()
+            ];
+        }
+    }
+
+    public static function listProdutosDetalhado($unit_id)
+    {
         global $pdo;
 
-        // 1. Query SQL: Garante 0 em vez de NULL para preco_custo e saldo
         $stmt = $pdo->prepare("
-    SELECT 
-        id, codigo, nome, und, preco,
-        IFNULL(preco_custo, 0) AS preco_custo,
-        categoria,
-        venda, composicao, insumo, compravel, estoque_minimo, 
-        IFNULL(saldo, 0.00) AS saldo,
-        status,
-        sku_zig AS codigo_pdv
-    FROM products
-    WHERE system_unit_id = :unit_id
-    ORDER BY nome
-");
-        $stmt->bindValue(':unit_id', $unit_id, PDO::PARAM_INT);
+        SELECT 
+            id, codigo, nome, und, preco,
+            IFNULL(preco_custo, 0) AS preco_custo,
+            categoria,
+            venda, composicao, insumo, compravel, estoque_minimo, 
+            IFNULL(saldo, 0.00) AS saldo,
+            status,
+            sku_zig AS codigo_pdv
+        FROM products
+        WHERE system_unit_id = :unit_id
+        ORDER BY nome
+    ");
+        $stmt->bindValue(':unit_id', (int)$unit_id, PDO::PARAM_INT);
         $stmt->execute();
 
         $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // 2. Lógica de Formatação Condicional (Ajuste do Frontend levado ao Backend)
-        $produtosFormatados = array_map(function($p) {
-            // O valor do INSUMO vem como string '1' ou '0' do banco
-            if (isset($p['insumo']) && $p['insumo'] == 1) {
+        $produtosFormatados = array_map(function ($p) {
 
-                // --- Lógica para preco_custo ---
-                // Converte para float para garantir precisão e usa number_format para R$
-                $preco = (float)$p['preco_custo'];
-                // number_format(valor, decimais, separador_decimal, separador_milhar)
-                $p['preco_custo'] = 'R$ ' . number_format($preco, 2, '.', '');
+            $precoVenda   = (float)($p['preco'] ?? 0);
+            $custoUnitario = (float)($p['preco_custo'] ?? 0);
 
-                // --- Lógica para saldo ---
-                $saldo = (float)$p['saldo'];
-                // Se o saldo for 0, formatamos para 0.00. Se for um número, formatamos com 2 decimais.
-                $p['saldo'] = number_format($saldo, 2, '.', '');
+            // %CV = custo / venda
+            $percCV = ($precoVenda > 0) ? (($custoUnitario / $precoVenda) * 100) : 0;
 
+            // Se você quiser manter como string pra UI:
+            $p['percentual_cv'] = number_format($percCV, 2, '.', '') . '%';
+
+            // ✅ Agora "custo_calculado" é só o próprio preco_custo (persistido)
+            // (se quiser mostrar pra todos, descomenta abaixo)
+            // $p['custo_calculado'] = 'R$ ' . number_format($custoUnitario, 2, '.', '');
+
+            // mantém sua lógica antiga para exibir custo e saldo SOMENTE se for insumo
+            if (($p['insumo'] ?? 0) == 1) {
+                $p['preco_custo'] = 'R$ ' . number_format($custoUnitario, 2, '.', '');
+                $p['saldo']       = number_format((float)($p['saldo'] ?? 0), 2, '.', '');
             } else {
-                // Se não for insumo, define como traço
-                $p['preco_custo'] = '-';
-                $p['saldo'] = '-';
+                $p['preco_custo'] = 'R$ ' . number_format($custoUnitario, 2, '.', '');
+                $p['saldo']       = '-';
             }
 
             return $p;
         }, $produtos);
 
-        // 3. Retorna o array de produtos formatados
         return ['success' => true, 'produtos' => $produtosFormatados];
     }
 

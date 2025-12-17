@@ -97,7 +97,7 @@
         </div>
         <div class="row" style="margin: 15px 0;">
             <div class="col-md-4">
-                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome ou código">
             </div>
             <div class="col-md-3">
                 <select id="filtroStatus" class="form-control">
@@ -137,7 +137,10 @@
                     <th>Und</th>
                     <th>Saldo</th>
                     <th>Preço Custo</th>
+                    <th>Preço Venda</th>
+                    <th>%CV</th>
                     <th>Status</th>
+
                 </tr>
                 </thead>
                 <tbody></tbody>
@@ -443,15 +446,49 @@
 
     }
 
+    function showTab(tabId, show) {
+        const $a = $(`a[href="${tabId}"]`);
+        const $li = $a.closest('li');
+        const $pane = $(tabId);
+
+        // remove qualquer style inline que tenha sido colocado antes (show/hide)
+        $pane.removeAttr('style');
+
+        if (show) {
+            $li.show();
+            $pane.removeClass('hidden');
+        } else {
+            const wasActive = $li.hasClass('active');
+
+            $li.hide().removeClass('active');
+            $pane.addClass('hidden').removeClass('active in');
+
+            // Se a aba que foi escondida estava ativa, ativa a primeira visível
+            if (wasActive) {
+                const $firstVisibleA = $li.siblings(':visible').first().find('a');
+                if ($firstVisibleA.length) $firstVisibleA.tab('show');
+            }
+        }
+    }
+
+
+
     async function abrirModalEditar(produto) {
         $('#gerarCodigo').hide(); // esconde o botão de gerar código
-        $('#labelPrecoCusto').text(`Preço de Custo: R$ ${parseFloat(produto.preco_custo || 0).toFixed(2)}`);
-        $('#labelSaldo').text(`Saldo: ${parseFloat(produto.saldo || 0).toFixed(2)}`);
+
+        // ===== Labels (sem NaN) =====
+        const custoNum = toNumberSafe(produto.preco_custo);
+        const saldoNum = toNumberSafe(produto.saldo);
+
+        $('#labelPrecoCusto').text(`Preço de Custo: ${fmtMoney(custoNum)}`);
+        $('#labelSaldo').text(`Saldo: ${fmtNumber(saldoNum, 2)}`);
+
         $('#labelCompravel')
             .text(`Comprável: ${produto.compravel == 1 ? 'Sim' : 'Não'}`)
             .removeClass('label-success label-default')
             .addClass(produto.compravel == 1 ? 'label-success' : 'label-default');
 
+        // ===== Campos =====
         $('#modalTituloProduto').text('Editar Produto');
         $('#produtoId').val(produto.id);
         $('#codigo_pdv').val(produto.codigo_pdv || '');
@@ -464,41 +501,88 @@
         $('#insumo').prop('checked', produto.insumo == 1);
         loadCategories(produto.categoria);
 
+        // ===== RESET tabs/panes (EVITA "empilhar" conteúdos) =====
+        $('#modalProduto .tab-pane')
+            .removeAttr('style')              // remove display:block inline que quebra tab
+            .removeClass('hidden active in'); // limpa classes do bootstrap/controle
+
+        $('#modalProduto .nav-tabs li')
+            .show()
+            .removeClass('active');
+
+        // ativa uma aba padrão temporária (depois ajusta conforme o que existir)
+        $('#modalProduto .nav-tabs li:first a').tab('show');
+
+        // ===== Busca dados =====
         const [ficha, composicao, movimentacoes] = await Promise.all([
             axios.post(baseUrl, { method: 'getFichaTecnica', token, data: { system_unit_id, product_id: produto.codigo } }),
             axios.post(baseUrl, { method: 'getComposicaoByProduto', token, data: { unit_id: system_unit_id, product_id: produto.codigo } }),
             axios.post(baseUrl, { method: 'getUltimasMovimentacoesProduto', token, data: { system_unit_id, codigo_produto: produto.codigo } })
         ]);
 
+        // ===== Normaliza arrays =====
+        const fichaArr = Array.isArray(ficha.data) ? ficha.data : (Array.isArray(ficha.data?.data) ? ficha.data.data : []);
+        const compArr  = Array.isArray(composicao.data) ? composicao.data : (Array.isArray(composicao.data?.data) ? composicao.data.data : []);
+        const movArr   = Array.isArray(movimentacoes.data?.movimentacoes) ? movimentacoes.data.movimentacoes : [];
 
-        const fichaHTML = ficha.data.map(item =>
-            `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity).toFixed(3)}</td></tr>`).join('');
-        $('#tabelaFicha').html(fichaHTML);
+        // ===== Preenche tabelas =====
+        $('#tabelaFicha').html(
+            fichaArr.map(item =>
+                `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity || 0).toFixed(3)}</td></tr>`
+            ).join('')
+        );
 
-        const compHTML = composicao.data.map(item =>
-            `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity).toFixed(3)}</td></tr>`).join('');
-        $('#tabelaComposicao').html(compHTML);
+        $('#tabelaComposicao').html(
+            compArr.map(item =>
+                `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity || 0).toFixed(3)}</td></tr>`
+            ).join('')
+        );
 
-        const movHTML = movimentacoes.data.movimentacoes.map(m =>
-            `<tr>
-            <td>${m.data.split('-').reverse().join('/')}</td>
-            <td>${m.tipo_mov}</td>
-            <td>${m.doc}</td>
-            <td>${parseFloat(m.quantidade).toFixed(2)}</td>
-             </tr>`).join('');
-        $('#tabelaMovimentacoes').html(movHTML);
+        $('#tabelaMovimentacoes').html(
+            movArr.map(m => `
+            <tr>
+                <td>${(m.data || '').toString().split('-').reverse().join('/')}</td>
+                <td>${m.tipo_mov || '-'}</td>
+                <td>${m.doc || '-'}</td>
+                <td>${parseFloat(m.quantidade || 0).toFixed(2)}</td>
+            </tr>
+        `).join('')
+        );
 
+        // ===== Regra: nunca tem as duas (Composição vs Produção) =====
+        const temComposicao = compArr.length > 0;
+        const temProducao   = fichaArr.length > 0;
+        const temMov        = movArr.length > 0;
+
+        // mostra só o que existe (NÃO usa .show()/.hide() no pane!)
+        showTab('#composicaoTab', temComposicao);
+        showTab('#fichaTab', temProducao);
+
+        // se por algum motivo vierem as duas, prioriza composição
+        if (temComposicao && temProducao) showTab('#fichaTab', false);
+
+        // movimentações: (eu recomendo sempre mostrar, mas respeitei sua regra atual)
+        showTab('#movimentacoesTab', temMov);
+
+        // garante aba ativa visível
+        setTimeout(() => {
+            const $activeVisible = $('#modalProduto .nav-tabs li:visible.active');
+            if (!$activeVisible.length) {
+                $('#modalProduto .nav-tabs li:visible:first a').tab('show');
+            }
+        }, 0);
+
+        // ===== Botão deletar =====
         if (canDelete) {
             $('#btnDeletarProduto')
                 .show()
                 .off('click')
                 .on('click', async () => {
-                    await excluirProduto(produto.codigo); // usa a confirmação com "EXCLUIR"
+                    await excluirProduto(produto.codigo);
                 });
         } else {
             $('#btnDeletarProduto').hide().off('click');
         }
-
 
         $('#modalProduto').modal('show');
     }
@@ -584,7 +668,10 @@
         tbody.empty();
 
         const filtrados = todosProdutos.filter(p => {
-            const nomeCond = p.nome.toLowerCase().includes(nomeFiltro);
+            const termo = (nomeFiltro || '').trim();
+            const nome = String(p.nome || '').toLowerCase();
+            const codigo = String(p.codigo || '').toLowerCase();
+            const nomeCond = termo === '' || nome.includes(termo) || codigo.includes(termo);
             const statusCond = statusFiltro === '' || String(p.status) === statusFiltro;
 
             const tagsCond =
@@ -630,16 +717,23 @@
             if (p.insumo == 1) tags += '<span class="label label-warning" style="margin-right:2px;">Insumo</span>';
             if (p.compravel == 1) tags += '<span class="label label-purple" style="margin-right:2px; background-color: #7e57c2;">Comprável</span>';
 
-            // if (p.insumo == 1) {
-            //     const preco = parseFloat(p.preco_custo);
-            //     const saldo = parseFloat(p.saldo);
-            //
-            //     p.preco_custo = isNaN(preco) ? 'R$ 0.00' : `R$ ${preco.toFixed(2)}`;
-            //     p.saldo = isNaN(saldo) ? '-' : saldo.toFixed(2);
-            // } else {
-            //     p.preco_custo = '-';
-            //     p.saldo = '-';
-            // }
+            // Preço venda
+            const precoVendaNum = Number(p.preco ?? 0);
+            const precoVendaFmt = (!isNaN(precoVendaNum) && precoVendaNum > 0)
+                ? `R$ ${precoVendaNum.toFixed(2)}`
+                : '-';
+
+// Preço custo (pode vir como número ou string "R$ 12.34")
+            const custoNum = Number(String(p.preco_custo ?? '0').replace('R$', '').trim());
+            const custoValido = !isNaN(custoNum) && custoNum > 0;
+
+// %CV = custo / venda
+            let cvFmt = '-';
+            if (custoValido && !isNaN(precoVendaNum) && precoVendaNum > 0) {
+                const cv = (custoNum / precoVendaNum) * 100;
+                cvFmt = `${cv.toFixed(2)}%`;
+            }
+
 
 
             tbody.append(`
@@ -660,7 +754,10 @@
                     <td>${p.und || '-'}</td>
                     <td>${p.saldo}</td>
                     <td>${p.preco_custo}</td>
+                    <td>${precoVendaFmt}</td>
+                    <td>${cvFmt}</td>
                     <td class="text-center">${status}</td>
+
 
                 </tr>
             `);
@@ -685,6 +782,39 @@
             select.val(selectedCategory);
         }
     }
+
+    function toNumberSafe(v) {
+        if (v === null || v === undefined) return 0;
+
+        if (typeof v === 'number') return v;
+
+        let s = String(v).trim();
+
+        // casos tipo "-" ou vazio
+        if (!s || s === '-') return 0;
+
+        // remove "R$" e qualquer coisa que não seja número/virgula/ponto/sinal
+        s = s.replace(/R\$\s?/gi, '').replace(/[^0-9.,-]/g, '');
+
+        // trata formato PT-BR: "1.234,56" -> "1234.56"
+        if (s.includes(',') && s.includes('.')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        } else if (s.includes(',')) {
+            s = s.replace(',', '.');
+        }
+
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function fmtMoney(v) {
+        return `R$ ${toNumberSafe(v).toFixed(2)}`;
+    }
+
+    function fmtNumber(v, dec = 2) {
+        return toNumberSafe(v).toFixed(dec);
+    }
+
 
     function withModalFocusDisabled(fn) {
         // guarda a função original do Bootstrap que força foco no modal
