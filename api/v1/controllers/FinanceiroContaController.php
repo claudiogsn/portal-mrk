@@ -2078,6 +2078,207 @@ class FinanceiroContaController {
         }
     }
 
+    public static function getMapaDeContas(array $data): array
+    {
+        global $pdo;
+
+        try {
+            // ========= helpers =========
+            $normalizeTipo = function($s) {
+                $s = trim(mb_strtolower((string)$s));
+                $s = str_replace(['á','à','ã','â','ä','é','è','ê','ë','í','ì','î','ï','ó','ò','õ','ô','ö','ú','ù','û','ü','ç'],
+                    ['a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','c'], $s);
+                if (in_array($s, ['emissao','emissao_data','data_emissao','e'])) return 'emissao';
+                if (in_array($s, ['vencimento','vcto','data_vencimento','v'])) return 'vencimento';
+                throw new Exception("tipo_data inválido. Use 'emissao' ou 'vencimento'.");
+            };
+
+            $parseAnoMes = function($s): array {
+                $s = trim((string)$s);
+                if ($s === '') throw new Exception("ano_mes é obrigatório.");
+
+                // YYYY-MM ou YYYY/MM
+                if (preg_match('/^(\d{4})[-\/](\d{2})$/', $s, $m)) {
+                    $ano = (int)$m[1];
+                    $mes = (int)$m[2];
+                }
+                // MM/YYYY
+                elseif (preg_match('/^(\d{2})[-\/](\d{4})$/', $s, $m)) {
+                    $mes = (int)$m[1];
+                    $ano = (int)$m[2];
+                }
+                // YYYYMM
+                elseif (preg_match('/^(\d{4})(\d{2})$/', $s, $m)) {
+                    $ano = (int)$m[1];
+                    $mes = (int)$m[2];
+                } else {
+                    throw new Exception("ano_mes inválido. Exemplos aceitos: 2025-12, 2025/12, 12/2025, 202512");
+                }
+
+                if ($mes < 1 || $mes > 12) throw new Exception("Mês inválido em ano_mes.");
+
+                $inicio = sprintf('%04d-%02d-01', $ano, $mes);
+                $dt = new DateTime($inicio);
+                $fim = $dt->modify('last day of this month')->format('Y-m-d');
+
+                return [$ano, $mes, $inicio, $fim];
+            };
+
+            // ========= validação =========
+            $unitId = (int)($data['unit_id'] ?? $data['system_unit_id'] ?? 0);
+            if ($unitId <= 0) throw new Exception("unit_id (ou system_unit_id) é obrigatório.");
+
+            $tipoData = $normalizeTipo($data['tipo_data'] ?? '');
+            [$ano, $mes, $dtInicio, $dtFim] = $parseAnoMes($data['ano_mes'] ?? '');
+
+            // ========= query =========
+            if ($tipoData === 'vencimento') {
+                // filtra pelas duplicatas dentro do mês (data_vencimento)
+                $sql = "
+                SELECT
+                    n.id                    AS nota_id,
+                    n.fornecedor_id         AS fornecedor_id,
+                    n.numero_nf             AS documento,
+                    n.data_emissao          AS data_emissao,
+                    d.id                    AS duplicata_id,
+                    d.numero_duplicata      AS numero_duplicata,
+                    d.data_vencimento       AS data_vencimento,
+                    d.valor_parcela         AS valor,
+                    COALESCE(NULLIF(ff.nome,''), NULLIF(ff.razao,''), 'Fornecedor') AS fornecedor_nome
+                FROM estoque_nota_duplicata d
+                INNER JOIN estoque_nota n
+                        ON n.id = d.nota_id
+                       AND n.system_unit_id = d.system_unit_id
+                LEFT JOIN financeiro_fornecedor ff
+                       ON ff.id = n.fornecedor_id
+                      AND ff.system_unit_id = n.system_unit_id
+                WHERE d.system_unit_id = :unit
+                  AND d.data_vencimento BETWEEN :ini AND :fim
+                ORDER BY d.data_vencimento ASC, fornecedor_nome ASC, n.numero_nf ASC, d.numero_duplicata ASC
+            ";
+            } else {
+                // filtra notas pela emissão dentro do mês (data_emissao)
+                // - se tiver duplicatas, retorna 1 linha por duplicata
+                // - se não tiver duplicata, retorna 1 linha com valor = n.valor_total
+                $sql = "
+                SELECT
+                    n.id                    AS nota_id,
+                    n.fornecedor_id         AS fornecedor_id,
+                    n.numero_nf             AS documento,
+                    n.data_emissao          AS data_emissao,
+                    d.id                    AS duplicata_id,
+                    d.numero_duplicata      AS numero_duplicata,
+                    d.data_vencimento       AS data_vencimento,
+                    CASE 
+                        WHEN d.id IS NULL THEN n.valor_total
+                        ELSE d.valor_parcela
+                    END                     AS valor,
+                    COALESCE(NULLIF(ff.nome,''), NULLIF(ff.razao,''), 'Fornecedor') AS fornecedor_nome
+                FROM estoque_nota n
+                LEFT JOIN estoque_nota_duplicata d
+                       ON d.nota_id = n.id
+                      AND d.system_unit_id = n.system_unit_id
+                LEFT JOIN financeiro_fornecedor ff
+                       ON ff.id = n.fornecedor_id
+                      AND ff.system_unit_id = n.system_unit_id
+                WHERE n.system_unit_id = :unit
+                  AND n.data_emissao BETWEEN :ini AND :fim
+                ORDER BY n.data_emissao ASC, fornecedor_nome ASC, n.numero_nf ASC, d.numero_duplicata ASC
+            ";
+            }
+
+            $st = $pdo->prepare($sql);
+            $st->execute([
+                ':unit' => $unitId,
+                ':ini'  => $dtInicio,
+                ':fim'  => $dtFim,
+            ]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+
+            // ========= monta retorno =========
+            $itens = [];
+            $diasMap = []; // 'YYYY-MM-DD' => ['data'=>..., 'total'=>..., 'itens'=>[]]
+            $totalGeral = 0.0;
+
+            foreach ($rows as $r) {
+                $emissao = !empty($r['data_emissao']) ? date('Y-m-d', strtotime($r['data_emissao'])) : null;
+                $venc    = !empty($r['data_vencimento']) ? date('Y-m-d', strtotime($r['data_vencimento'])) : null;
+
+                $valor = (float)($r['valor'] ?? 0);
+                $totalGeral += $valor;
+
+                $dataRef = ($tipoData === 'vencimento') ? $venc : $emissao; // dia do mapa
+
+                $item = [
+                    'tipo_data'         => $tipoData,
+                    'data_ref'          => $dataRef,
+                    'nota_id'           => (int)$r['nota_id'],
+                    'duplicata_id'      => $r['duplicata_id'] !== null ? (int)$r['duplicata_id'] : null,
+                    'fornecedor_id'     => (int)($r['fornecedor_id'] ?? 0),
+                    'fornecedor_nome'   => (string)($r['fornecedor_nome'] ?? ''),
+                    'documento'         => (string)($r['documento'] ?? ''),
+                    'numero_duplicata'  => $r['numero_duplicata'] !== null ? (string)$r['numero_duplicata'] : null,
+                    'emissao'           => $emissao,
+                    'vencimento'        => $venc,
+                    'valor'             => number_format($valor, 2, '.', ''),
+                ];
+
+                $itens[] = $item;
+
+                // agrupa no mapa por dia
+                if ($dataRef) {
+                    if (!isset($diasMap[$dataRef])) {
+                        $diasMap[$dataRef] = [
+                            'data'  => $dataRef,
+                            'total' => 0.0,
+                            'itens' => [],
+                        ];
+                    }
+                    $diasMap[$dataRef]['total'] += $valor;
+                    $diasMap[$dataRef]['itens'][] = $item;
+                }
+            }
+
+            // normaliza dias para array ordenado
+            ksort($diasMap);
+            $dias = [];
+            foreach ($diasMap as $d) {
+                $dias[] = [
+                    'data'  => $d['data'],
+                    'total' => number_format((float)$d['total'], 2, '.', ''),
+                    'itens' => $d['itens'],
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data' => [
+                    'periodo' => [
+                        'system_unit_id' => $unitId,
+                        'ano'            => $ano,
+                        'mes'            => $mes,
+                        'dt_inicio'      => $dtInicio,
+                        'dt_fim'         => $dtFim,
+                        'tipo_data'      => $tipoData,
+                    ],
+                    'totais' => [
+                        'qtd_itens'   => count($itens),
+                        'valor_total' => number_format($totalGeral, 2, '.', ''),
+                    ],
+                    'dias'  => $dias,
+                    'itens' => $itens,
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error'   => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 

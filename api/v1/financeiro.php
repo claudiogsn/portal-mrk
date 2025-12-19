@@ -388,6 +388,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getDashboardFinanceiroPorGrupo':
                 $response = FinanceiroContaController::getDashboardFinanceiroPorGrupo($requestData);
                 break;
+            case 'getMapaDeContas':
+                $response = FinanceiroContaController::getMapaDeContas($requestData);
+                break;
 
 
 

@@ -767,29 +767,31 @@ class NotaFiscalEntradaController {
                 ];
             }
 
-            // marca a nota como incluída no estoque
+            // marca a nota como incluída no estoque (NUNCA usar CURRENT_TIMESTAMP na data_entrada)
             try {
-                $stU = $pdo->prepare("
-                UPDATE estoque_nota
-                SET incluida_estoque = 1, updated_at = CURRENT_TIMESTAMP, data_entrada = CURRENT_TIMESTAMP
-                WHERE id = :id AND system_unit_id = :unit
-                LIMIT 1
-            ");
-                $stU->execute([':id'=>$notaId, ':unit'=>$unitId]);
 
-                if ($stU->rowCount() === 0) {
-                    // fallback: alguns schemas usam só 'incluida'
-                    $stU2 = $pdo->prepare("
+                // garante formato YYYY-MM-DD
+                $dataEntradaDB = $parseDate((string)$dataEntrada);
+
+                $stU = $pdo->prepare("
                     UPDATE estoque_nota
-                    SET incluida_estoque = 1, updated_at = CURRENT_TIMESTAMP, data_entrada = :data_entrada
+                    SET
+                        incluida_estoque = 1,
+                        updated_at = CURRENT_TIMESTAMP,
+                        data_entrada = :data_entrada
                     WHERE id = :id AND system_unit_id = :unit
                     LIMIT 1
                 ");
-                    $stU2->execute([':id'=>$notaId, ':unit'=>$unitId, ':data_entrada'=>$dataEntrada]);
-                }
+                $stU->execute([
+                    ':id'          => $notaId,
+                    ':unit'        => $unitId,
+                    ':data_entrada'=> $dataEntradaDB
+                ]);
+
             } catch (\Throwable $e) {
                 // se a coluna não existir, apenas ignora
             }
+
 
             $pdo->commit();
 

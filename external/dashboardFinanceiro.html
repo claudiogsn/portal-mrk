@@ -43,6 +43,34 @@
             max-height: 70vh;
             overflow: auto;
         }
+
+        .cal-grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+        .cal-dow { font-size: 11px; color:#6b7280; text-transform: uppercase; letter-spacing: .06em; text-align:center; }
+        .cal-day {
+            background:#fff;
+            border:1px solid #eee;
+            border-radius: 14px;
+            padding: 10px;
+            min-height: 84px;
+            position: relative;
+            cursor: pointer;
+            transition: transform .08s ease, box-shadow .08s ease;
+        }
+        .cal-day:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.06); }
+        .cal-day.muted { opacity: .40; cursor: default; }
+        .cal-day.hasdata { border-color: rgba(11,70,172,.25); background: color-mix(in srgb, var(--mrk-blue) 6%, white); }
+        .cal-num { font-weight: 800; font-size: 13px; color: var(--mrk-black); }
+        .cal-total { position:absolute; bottom:10px; left:10px; right:10px; font-size: 12px; font-weight: 800; color: var(--mrk-black); }
+        .cal-badge {
+            position:absolute; top:10px; right:10px;
+            font-size: 11px; font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--mrk-green) 14%, white);
+            color: var(--mrk-green);
+            border:1px solid color-mix(in srgb, var(--mrk-green) 30%, white);
+        }
+        .cal-empty { color:#9ca3af; font-size:12px; font-weight:700; position:absolute; bottom:10px; left:10px; }
     </style>
 </head>
 
@@ -170,7 +198,44 @@
             <div id="chartPlanosContas" style="width:100%; height:360px;"></div>
         </div>
     </div>
+    <!-- CALENDÁRIO: MAPA DE CONTAS -->
+    <div class="w-full bg-white p-6 rounded-lg shadow mt-6">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+                <h2 class="text-lg font-semibold" style="color: var(--mrk-black);">
+                    Calendário de Contas (Mapa do Mês)
+                </h2>
+                <p class="text-xs text-gray-500">
+                    Clique em um dia para ver as contas daquele dia (conforme o tipo de data selecionado).
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button class="btn-mrk px-3 py-1 rounded shadow" onclick="navMes(-1)">
+                    <i class="fa fa-chevron-left"></i>
+                </button>
+
+                <div class="px-3 py-1 rounded shadow bg-white border text-sm font-extrabold" id="calTituloMes">
+                    —
+                </div>
+
+                <button class="btn-mrk px-3 py-1 rounded shadow" onclick="navMes(1)">
+                    <i class="fa fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-4 cal-grid" id="calDows"></div>
+        <div class="mt-2 cal-grid" id="calGrid"></div>
+
+        <div class="mt-4 text-xs text-gray-500" id="calHint"></div>
+    </div>
 </div>
+
+
+
+
+
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -365,6 +430,8 @@
             dashboardFinanceiro = res.data.data || null;
 
             aplicarFiltroLoja();
+            await atualizarCalendario();
+
         } catch (err) {
             console.error(err);
             Swal.fire('Erro ao carregar', err.message || 'Falha ao buscar dados.', 'error');
@@ -603,9 +670,261 @@
         });
     }
 
+    // ====== Calendário (Mapa de Contas) ======
+    let mapaDeContas = null;          // resposta do getMapaDeContas
+    let calAnoMesAtual = null;        // "YYYY-MM"
+    const DOWS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    function toAnoMes(dateStr) {
+        // dateStr: YYYY-MM-DD
+        if (!dateStr) return null;
+        return dateStr.slice(0, 7);
+    }
+
+    function addMonths(anoMes, delta) {
+        // anoMes: "YYYY-MM"
+        const [y, m] = anoMes.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        d.setMonth(d.getMonth() + delta);
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        return `${yy}-${mm}`;
+    }
+
+    function tituloMes(anoMes) {
+        const [y, m] = anoMes.split('-').map(Number);
+        const dt = new Date(y, m - 1, 1);
+        return dt.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    }
+
+    async function fetchMapaDeContas(anoMes, unitId, tipoData) {
+        // chama seu método novo
+        const res = await axios.post(baseUrlFinanceiro, {
+            method: 'getMapaDeContas',
+            token,
+            data: {
+                unit_id: unitId,
+                ano_mes: anoMes,
+                tipo_data: tipoData
+            }
+        });
+
+        if (!res.data || !res.data.success) {
+            throw new Error(res.data?.error || res.data?.message || 'Falha ao buscar mapa de contas.');
+        }
+        return res.data.data;
+    }
+
+    function montarMapaDias(mapa) {
+        const byDate = {};
+        (mapa?.dias || []).forEach(d => {
+            byDate[d.data] = d;
+        });
+        return byDate;
+    }
+
+    function renderCalendario(mapa, anoMes) {
+        const grid = document.getElementById('calGrid');
+        const dows = document.getElementById('calDows');
+        const titulo = document.getElementById('calTituloMes');
+        const hint = document.getElementById('calHint');
+
+        if (!grid || !dows || !titulo || !hint) return;
+
+        // cabeçalho DOW
+        dows.innerHTML = DOWS.map(x => `<div class="cal-dow">${x}</div>`).join('');
+
+        titulo.textContent = tituloMes(anoMes);
+
+        // se não tem mapa, limpa
+        if (!mapa || !anoMes) {
+            grid.innerHTML = '';
+            hint.innerHTML = `<span class="text-gray-500">Sem dados para exibir.</span>`;
+            return;
+        }
+
+        const byDate = montarMapaDias(mapa);
+
+        const [yy, mm] = anoMes.split('-').map(Number);
+        const first = new Date(yy, mm - 1, 1);
+        const last = new Date(yy, mm, 0); // último dia do mês
+        const daysInMonth = last.getDate();
+        const startDow = first.getDay(); // 0..6
+
+        // grade 6 semanas (42 células)
+        const totalCells = 42;
+
+        let html = '';
+        for (let i = 0; i < totalCells; i++) {
+            const dayNum = i - startDow + 1;
+            const isInMonth = dayNum >= 1 && dayNum <= daysInMonth;
+
+            if (!isInMonth) {
+                html += `<div class="cal-day muted"></div>`;
+                continue;
+            }
+
+            const dateStr = `${anoMes}-${String(dayNum).padStart(2, '0')}`;
+            const dia = byDate[dateStr];
+            const total = dia ? Number(dia.total || 0) : 0;
+            const qtd = dia ? (dia.itens || []).length : 0;
+
+            const has = dia && qtd > 0;
+
+            html += `
+      <div class="cal-day ${has ? 'hasdata' : ''}" ${has ? `onclick="abrirDia('${dateStr}')"` : ''}>
+        <div class="cal-num">${dayNum}</div>
+        ${has ? `<div class="cal-badge">${qtd}</div>` : ''}
+        ${has
+                ? `<div class="cal-total">${formatBRL(total)}</div>`
+                : `<div class="cal-empty">—</div>`
+            }
+      </div>
+    `;
+        }
+
+        grid.innerHTML = html;
+
+        const totalGeral = Number(mapa?.totais?.valor_total || 0);
+        const qtdItens = Number(mapa?.totais?.qtd_itens || 0);
+        hint.innerHTML = `
+    <b>Total do mês:</b> ${formatBRL(totalGeral)} &nbsp; • &nbsp;
+    <b>Itens:</b> ${qtdItens}
+  `;
+    }
+
+    function abrirDia(dateStr) {
+        if (!mapaDeContas) return;
+
+        const dia = (mapaDeContas.dias || []).find(d => d.data === dateStr);
+        if (!dia || !dia.itens || dia.itens.length === 0) {
+            Swal.fire('Sem contas', 'Nenhuma conta nesse dia.', 'info');
+            return;
+        }
+
+        const totalDia = Number(dia.total || 0);
+
+        let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:12px;color:#666;">
+        <b>Data:</b> ${new Date(dateStr).toLocaleDateString('pt-BR')}
+      </div>
+      <div style="font-size:12px;">
+        <b>Total:</b> ${formatBRL(totalDia)}
+      </div>
+    </div>
+
+    <div style="max-height:520px;overflow:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr>
+            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:left;">Fornecedor</th>
+            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Doc</th>
+            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Dup</th>
+            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Emissão</th>
+            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Venc.</th>
+            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:right;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+        dia.itens.forEach(i => {
+            const em = i.emissao ? new Date(i.emissao).toLocaleDateString('pt-BR') : '';
+            const vc = i.vencimento ? new Date(i.vencimento).toLocaleDateString('pt-BR') : '';
+            html += `
+      <tr>
+        <td style="border-bottom:1px solid #eee;padding:6px;text-align:left;">${i.fornecedor_nome || ''}</td>
+        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.documento || ''}</td>
+        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.numero_duplicata || '-'}</td>
+        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${em}</td>
+        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${vc}</td>
+        <td style="border-bottom:1px solid #eee;padding:6px;text-align:right;">${formatBRL(i.valor)}</td>
+      </tr>
+    `;
+        });
+
+        html += `</tbody></table></div>`;
+
+        Swal.fire({
+            title: `Contas do dia`,
+            html,
+            customClass: { popup: 'swal2-xl' },
+            confirmButtonText: 'Fechar'
+        });
+    }
+
+    async function atualizarCalendario() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const tipoData = document.getElementById('tipoData').value || 'vencimento';
+
+        // mês do endDate (mais intuitivo)
+        const anoMes = toAnoMes(endDate || startDate);
+        calAnoMesAtual = anoMes;
+
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        const selectedLoja = parseInt(filtroLojaEl.value) || null;
+
+        if (!anoMes) {
+            mapaDeContas = null;
+            renderCalendario(null, null);
+            return;
+        }
+
+        if (!selectedLoja) {
+            mapaDeContas = null;
+            renderCalendario(null, anoMes);
+            document.getElementById('calHint').innerHTML =
+                `<span class="text-gray-500">Selecione uma <b>loja</b> para exibir o calendário desse mês.</span>`;
+            return;
+        }
+
+        try {
+            // loader leve (sem travar o dashboard)
+            document.getElementById('calHint').innerHTML =
+                `<span class="text-gray-500">Carregando calendário do mês...</span>`;
+
+            const data = await fetchMapaDeContas(anoMes, selectedLoja, tipoData);
+            mapaDeContas = data;
+            renderCalendario(mapaDeContas, anoMes);
+        } catch (e) {
+            console.error(e);
+            mapaDeContas = null;
+            renderCalendario(null, anoMes);
+            document.getElementById('calHint').innerHTML =
+                `<span class="text-red-600">Erro ao carregar calendário: ${e.message || 'falha.'}</span>`;
+        }
+    }
+
+    function navMes(delta) {
+        if (!calAnoMesAtual) {
+            const endDate = document.getElementById('endDate').value;
+            calAnoMesAtual = toAnoMes(endDate);
+        }
+        if (!calAnoMesAtual) return;
+
+        const novo = addMonths(calAnoMesAtual, delta);
+        calAnoMesAtual = novo;
+
+        // Ajusta os inputs de data para esse mês (mantendo o “range” do mês)
+        const [yy, mm] = novo.split('-').map(Number);
+        const first = new Date(yy, mm - 1, 1);
+        const last = new Date(yy, mm, 0);
+
+        document.getElementById('startDate').value = first.toISOString().split('T')[0];
+        document.getElementById('endDate').value = last.toISOString().split('T')[0];
+
+        // Recarrega dashboard + calendário
+        fetchData();
+    }
+
+
     window.addEventListener('DOMContentLoaded', async () => {
-        document.getElementById('filtroLoja').addEventListener('change', aplicarFiltroLoja);
-        document.getElementById('tipoData').addEventListener('change', fetchData);
+        document.getElementById('filtroLoja').addEventListener('change', async () => {
+            aplicarFiltroLoja();
+            await atualizarCalendario();
+        });        document.getElementById('tipoData').addEventListener('change', fetchData);
 
         await carregarGrupoInicial();
         setRange('7dias');
