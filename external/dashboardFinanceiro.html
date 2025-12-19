@@ -604,6 +604,12 @@
         chart.setOption(option);
     }
 
+    const parseDateLocal = (dateStr) => {
+        if (!dateStr) return null;
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    };
+
     function mostrarContasPrazo(dias) {
         if (!dashboardFinanceiro) return;
 
@@ -619,46 +625,55 @@
         );
 
         if (lista.length === 0) {
-            Swal.fire('Sem contas', `Nenhuma conta a vencer nos próximos ${dias} dias para o filtro atual.`, 'info');
+            Swal.fire(
+                'Sem contas',
+                `Nenhuma conta a vencer nos próximos ${dias} dias para o filtro atual.`,
+                'info'
+            );
             return;
         }
 
+        // 🔥 FUNÇÃO LOCAL PARA CORRIGIR TIMEZONE
+
+
         let html = `
-            <div style="max-height:400px;overflow:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                    <thead>
-                        <tr>
-                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Loja</th>
-                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:center;">Nome</th>
-                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Doc</th>
-                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Vencimento</th>
-                            <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        <div style="max-height:400px;overflow:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Loja</th>
+                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:center;">Nome</th>
+                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Doc</th>
+                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Vencimento</th>
+                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
 
         lista.forEach(c => {
             const venc = c.vencimento
-                ? new Date(c.vencimento).toLocaleDateString('pt-BR')
+                ? parseDateLocal(c.vencimento).toLocaleDateString('pt-BR')
                 : '';
+
             const lojaNome = getNomeLojaById(c.system_unit_id) || c.system_unit_id;
+
             html += `
-                <tr>
-                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${lojaNome}</td>
-                    <td style="border-bottom:1px solid #eee;padding:4px;">${c.nome || ''}</td>
-                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${c.doc || ''}</td>
-                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${venc}</td>
-                    <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${formatBRL(c.valor)}</td>
-                </tr>
-            `;
+            <tr>
+                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${lojaNome}</td>
+                <td style="border-bottom:1px solid #eee;padding:4px;">${c.nome || ''}</td>
+                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${c.doc || ''}</td>
+                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${venc}</td>
+                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${formatBRL(c.valor)}</td>
+            </tr>
+        `;
         });
 
         html += `
-                    </tbody>
-                </table>
-            </div>
-        `;
+                </tbody>
+            </table>
+        </div>
+    `;
 
         Swal.fire({
             title: `Contas a vencer nos próximos ${dias} dias`,
@@ -804,50 +819,62 @@
 
         const totalDia = Number(dia.total || 0);
 
-        let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <div style="font-size:12px;color:#666;">
-        <b>Data:</b> ${new Date(dateStr).toLocaleDateString('pt-BR')}
-      </div>
-      <div style="font-size:12px;">
-        <b>Total:</b> ${formatBRL(totalDia)}
-      </div>
-    </div>
+        const dataFormatada = parseDateLocal(dateStr).toLocaleDateString('pt-BR');
 
-    <div style="max-height:520px;overflow:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead>
-          <tr>
-            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:left;">Fornecedor</th>
-            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Doc</th>
-            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Dup</th>
-            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Emissão</th>
-            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Venc.</th>
-            <th style="border-bottom:1px solid #ccc;padding:6px;text-align:right;">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
+        let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:12px;color:#666;">
+                <b>Data:</b> ${dataFormatada}
+            </div>
+            <div style="font-size:12px;">
+                <b>Total:</b> ${formatBRL(totalDia)}
+            </div>
+        </div>
+
+        <div style="max-height:520px;overflow:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr>
+                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:left;">Fornecedor</th>
+                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Doc</th>
+                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Dup</th>
+                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Emissão</th>
+                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Venc.</th>
+                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:right;">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
 
         dia.itens.forEach(i => {
-            const em = i.emissao ? new Date(i.emissao).toLocaleDateString('pt-BR') : '';
-            const vc = i.vencimento ? new Date(i.vencimento).toLocaleDateString('pt-BR') : '';
+            const em = i.emissao
+                ? parseDateLocal(i.emissao).toLocaleDateString('pt-BR')
+                : '';
+
+            const vc = i.vencimento
+                ? parseDateLocal(i.vencimento).toLocaleDateString('pt-BR')
+                : '';
+
             html += `
-      <tr>
-        <td style="border-bottom:1px solid #eee;padding:6px;text-align:left;">${i.fornecedor_nome || ''}</td>
-        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.documento || ''}</td>
-        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.numero_duplicata || '-'}</td>
-        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${em}</td>
-        <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${vc}</td>
-        <td style="border-bottom:1px solid #eee;padding:6px;text-align:right;">${formatBRL(i.valor)}</td>
-      </tr>
-    `;
+            <tr>
+                <td style="border-bottom:1px solid #eee;padding:6px;text-align:left;">${i.fornecedor_nome || ''}</td>
+                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.documento || ''}</td>
+                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.numero_duplicata || '-'}</td>
+                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${em}</td>
+                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${vc}</td>
+                <td style="border-bottom:1px solid #eee;padding:6px;text-align:right;">${formatBRL(i.valor)}</td>
+            </tr>
+        `;
         });
 
-        html += `</tbody></table></div>`;
+        html += `
+                </tbody>
+            </table>
+        </div>
+    `;
 
         Swal.fire({
-            title: `Contas do dia`,
+            title: 'Contas do dia',
             html,
             customClass: { popup: 'swal2-xl' },
             confirmButtonText: 'Fechar'
