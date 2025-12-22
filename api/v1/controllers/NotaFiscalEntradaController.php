@@ -610,12 +610,11 @@ class NotaFiscalEntradaController {
             $parseDate = function (?string $s) {
                 if (!$s) throw new Exception("Data inválida.");
                 $s = trim($s);
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;               // YYYY-MM-DD
-                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {                      // DD/MM/YYYY
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {
                     [$d,$m,$y] = explode('/',$s);
                     return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
                 }
-                // tenta normalizar qualquer coisa que strtotime aceite
                 $t = strtotime($s);
                 if ($t !== false) return date('Y-m-d', $t);
                 throw new Exception("Data inválida: {$s}");
@@ -633,36 +632,49 @@ class NotaFiscalEntradaController {
 
             $unitId      = (int)$data['system_unit_id'];
             $usuarioId   = (int)$data['usuario_id'];
-            $chaveAcess  = trim((string)$data['chave_acesso']);
-            $dataEntrada = $data['data_entrada'];
+            $chaveAcesso = trim((string)$data['chave_acesso']);
+            $dataEntrada = $parseDate((string)$data['data_entrada']);
+
             $dataEmissaoOverride = isset($data['data_emissao']) && $data['data_emissao'] !== ''
                 ? $parseDate((string)$data['data_emissao'])
                 : null;
 
-            // ===== busca nota (doc/datas) =====
+            // ===== parâmetros opcionais de transferência =====
+            $transferirDestino = isset($data['transferir_destino']) && $data['transferir_destino'] === true;
+            $unitDestino = isset($data['system_unit_id_destino'])
+                ? (int)$data['system_unit_id_destino']
+                : null;
+
+            if ($transferirDestino && !$unitDestino) {
+                throw new Exception("system_unit_id_destino é obrigatório quando transferir_destino = true");
+            }
+
+            // ===== busca nota =====
             $stNota = $pdo->prepare("
-            SELECT id, numero_nf, data_emissao, data_entrada, fornecedor_id
+            SELECT id, numero_nf, data_emissao
             FROM estoque_nota
             WHERE system_unit_id = :unit AND chave_acesso = :chave
             LIMIT 1
         ");
-            $stNota->execute([':unit'=>$unitId, ':chave'=>$chaveAcess]);
+            $stNota->execute([':unit'=>$unitId, ':chave'=>$chaveAcesso]);
             $nota = $stNota->fetch(PDO::FETCH_ASSOC);
             if (!$nota) throw new Exception("Nota não encontrada para a chave de acesso informada.");
 
-            $notaId      = (int)$nota['id'];
-            $docNumero   = (string)$nota['numero_nf'];
-            $dataEmissaoNota = $nota['data_emissao'] ? date('Y-m-d', strtotime($nota['data_emissao'])) : null;
+            $notaId    = (int)$nota['id'];
+            $docNumero = (string)$nota['numero_nf'];
+            $dataEmissaoNota = $nota['data_emissao']
+                ? date('Y-m-d', strtotime($nota['data_emissao']))
+                : null;
 
-            // Emissão usada: override > emissão da nota > data_entrada (payload)
             $dataEmissao = $dataEmissaoOverride ?? ($dataEmissaoNota ?? $dataEntrada);
 
-            // ===== prepareds auxiliares =====
+            // ===== prepareds =====
             $stCheckProd = $pdo->prepare("
             SELECT id FROM products
             WHERE system_unit_id = :unit AND codigo = :cod
             LIMIT 1
         ");
+
             $stItemNota = $pdo->prepare("
             SELECT numero_item, valor_unitario, valor_total
             FROM estoque_nota_item
@@ -670,8 +682,7 @@ class NotaFiscalEntradaController {
             LIMIT 1
         ");
 
-            // mesma query base do seu importCompras (com upsert)
-            $insertQuery = "
+            $stInsert = $pdo->prepare("
             INSERT INTO movimentacao (
                 system_unit_id, status, doc, tipo, tipo_mov, produto, seq,
                 data, data_emissao, data_original, quantidade, valor, usuario_id
@@ -684,127 +695,113 @@ class NotaFiscalEntradaController {
                 quantidade = VALUES(quantidade),
                 valor = VALUES(valor),
                 usuario_id = VALUES(usuario_id)
-        ";
-            $stInsert = $pdo->prepare($insertQuery);
+        ");
 
             $pdo->beginTransaction();
 
-            $countIns = 0;
             $detalhes = [];
+            $countIns = 0;
 
             foreach ($data['itens'] as $idx => $item) {
-                // ===== validação por item =====
-                foreach (['numero_item_nota','codigo_produto_interno','unidade_interno','quantidade_interno'] as $k) {
-                    if (!isset($item[$k]) || $item[$k] === '' || $item[$k] === null) {
+
+                foreach (['numero_item_nota','codigo_produto_interno','quantidade_interno'] as $k) {
+                    if (!isset($item[$k])) {
                         throw new Exception("Item {$idx}: campo obrigatório ausente: {$k}");
                     }
                 }
 
                 $seq        = (int)$item['numero_item_nota'];
                 $prodCodigo = (int)$item['codigo_produto_interno'];
-                $undInterna = strtoupper(trim((string)$item['unidade_interno']));
-                $qtdInterna = (float)$item['quantidade_interno'];
-                if ($qtdInterna <= 0) throw new Exception("Item {$idx}: quantidade_interno deve ser > 0.");
+                $qtd        = (float)$item['quantidade_interno'];
 
-                // valida produto
+                if ($qtd <= 0) throw new Exception("Item {$idx}: quantidade inválida.");
+
                 $stCheckProd->execute([':unit'=>$unitId, ':cod'=>$prodCodigo]);
                 if (!$stCheckProd->fetchColumn()) {
-                    throw new Exception("Item {$idx}: produto interno {$prodCodigo} não encontrado nesta unidade.");
+                    throw new Exception("Item {$idx}: produto {$prodCodigo} não encontrado.");
                 }
 
-                // calcula valor (unitário) se não foi enviado
-                $valorUnit = null;
-                if (isset($item['valor_unitario_interno']) && $item['valor_unitario_interno'] !== '' && $item['valor_unitario_interno'] !== null) {
-                    $v = (string)$item['valor_unitario_interno'];
-                    $v = str_replace(['.', ' '], ['', ''], $v);
-                    $v = str_replace(',', '.', $v);
-                    if (!is_numeric($v)) throw new Exception("Item {$idx}: valor_unitario_interno inválido.");
-                    $valorUnit = (float)$v;
-                } else {
-                    // tenta a partir do item da nota
-                    $stItemNota->execute([':unit'=>$unitId, ':nota'=>$notaId, ':ni'=>$seq]);
-                    $infNota = $stItemNota->fetch(PDO::FETCH_ASSOC);
+                $valorUnit = 0.00;
 
-                    $fator  = isset($item['fator_conversao']) ? (float)$item['fator_conversao'] : null; // se vier
-                    $vUnitN = $infNota && $infNota['valor_unitario'] !== null ? (float)$infNota['valor_unitario'] : null;
-                    $vTotN  = $infNota && $infNota['valor_total']    !== null ? (float)$infNota['valor_total']    : null;
-
-                    if ($vTotN !== null && $qtdInterna > 0) {
-                        $valorUnit = $vTotN / $qtdInterna; // total da nota / qtd interna
-                    } elseif ($vUnitN !== null && $fator && $fator > 0) {
-                        $valorUnit = $vUnitN / $fator;     // unit da nota (ex.: 1 FD) / fator = unit interna (ex.: UN)
-                    } else {
-                        $valorUnit = 0.00;
+                $stItemNota->execute([':unit'=>$unitId, ':nota'=>$notaId, ':ni'=>$seq]);
+                if ($inf = $stItemNota->fetch(PDO::FETCH_ASSOC)) {
+                    if ($inf['valor_total'] !== null && $qtd > 0) {
+                        $valorUnit = (float)$inf['valor_total'] / $qtd;
                     }
                 }
 
-                // monta linha p/ movimentacao
-                $row = [
-                    $unitId,            // system_unit_id
-                    1,                  // status
-                    $docNumero,         // doc (numero da NF)
-                    'c',                // tipo (compra)
-                    'entrada',          // tipo_mov
-                    $prodCodigo,        // produto (products.codigo)
-                    $seq,               // seq (nº item da nota)
-                    $dataEntrada,       // data (OBRIGATÓRIA e vinda do payload)
-                    $dataEmissao,       // data_emissao (override > nota > data_entrada)
-                    $dataEntrada,       // data_original
-                    $qtdInterna,        // quantidade (já convertida)
-                    $valorUnit,         // valor (unitário interno)
-                    $usuarioId          // usuario_id
-                ];
-
-                $stInsert->execute($row);
-                $countIns++;
-
-                $detalhes[] = [
-                    'seq'        => $seq,
-                    'produto'    => $prodCodigo,
-                    'qtd'        => $qtdInterna,
-                    'valor_unit' => round($valorUnit, 6),
-                    'und'        => $undInterna
-                ];
-            }
-
-            // marca a nota como incluída no estoque (NUNCA usar CURRENT_TIMESTAMP na data_entrada)
-            try {
-
-                // garante formato YYYY-MM-DD
-                $dataEntradaDB = $parseDate((string)$dataEntrada);
-
-                $stU = $pdo->prepare("
-                    UPDATE estoque_nota
-                    SET
-                        incluida_estoque = 1,
-                        updated_at = CURRENT_TIMESTAMP,
-                        data_entrada = :data_entrada
-                    WHERE id = :id AND system_unit_id = :unit
-                    LIMIT 1
-                ");
-                $stU->execute([
-                    ':id'          => $notaId,
-                    ':unit'        => $unitId,
-                    ':data_entrada'=> $dataEntradaDB
+                $stInsert->execute([
+                    $unitId,
+                    1,
+                    $docNumero,
+                    'c',
+                    'entrada',
+                    $prodCodigo,
+                    $seq,
+                    $dataEntrada,
+                    $dataEmissao,
+                    $dataEntrada,
+                    $qtd,
+                    $valorUnit,
+                    $usuarioId
                 ]);
 
-            } catch (\Throwable $e) {
-                // se a coluna não existir, apenas ignora
+                $detalhes[] = [
+                    'seq'     => $seq,
+                    'produto' => $prodCodigo,
+                    'qtd'     => $qtd
+                ];
+
+                $countIns++;
             }
 
+            // marca nota
+            $pdo->prepare("
+            UPDATE estoque_nota
+            SET incluida_estoque = 1, data_entrada = :dt, updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id AND system_unit_id = :unit
+        ")->execute([
+                ':dt'   => $dataEntrada,
+                ':id'   => $notaId,
+                ':unit' => $unitId
+            ]);
 
             $pdo->commit();
 
+            // ===== TRANSFERÊNCIA AUTOMÁTICA =====
+            $transferResult = null;
+
+            if ($transferirDestino === true) {
+
+                $payloadTransfer = [
+                    'system_unit_id'         => $unitId,
+                    'system_unit_id_destino' => $unitDestino,
+                    'usuario_id'             => $usuarioId,
+                    'transfer_date'          => $dataEntrada,
+                    'itens'                  => array_map(fn($d) => [
+                        'codigo'     => $d['produto'],
+                        'seq'        => $d['seq'],
+                        'quantidade' => $d['qtd'],
+                    ], $detalhes)
+                ];
+
+                $transferResult = MovimentacaoController::createTransferItems($payloadTransfer);
+
+                if (!$transferResult['success']) {
+                    return [
+                        'success' => false,
+                        'message' => 'Entrada concluída, mas a transferência falhou: ' . $transferResult['message']
+                    ];
+                }
+            }
+
             return [
-                'success'   => true,
-                'message'   => 'Movimentações salvas com sucesso.',
-                'inseridos' => $countIns,
-                'doc'       => $docNumero,
-                'data'      => [
-                    'data_entrada' => $dataEntrada,
-                    'data_emissao' => $dataEmissao
-                ],
-                'detalhes'  => $detalhes
+                'success'        => true,
+                'message'        => 'Entrada realizada com sucesso.',
+                'doc'            => $docNumero,
+                'inseridos'      => $countIns,
+                'transferencia'  => $transferResult,
+                'detalhes'       => $detalhes
             ];
 
         } catch (Exception $e) {

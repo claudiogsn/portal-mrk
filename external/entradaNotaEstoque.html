@@ -85,6 +85,29 @@
 
         #btnNovoInsumo { margin-left: 4px; }
 
+        /* === ALERTA VISUAL DE TRANSFERÊNCIA === */
+        .transfer-alert {
+            box-shadow:
+                    0 0 0 2px rgba(255, 193, 7, 0.9),
+                    0 0 12px rgba(255, 193, 7, 0.8),
+                    0 0 24px rgba(255, 193, 7, 0.6);
+            border-radius: 6px;
+            transition: box-shadow .3s ease;
+        }
+
+        /* Badge explicativo abaixo do select */
+        .transfer-hint {
+            margin-top: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 6px;
+            background: rgba(255, 193, 7, 0.15);
+            color: #8a6d00;
+            border: 1px solid rgba(255, 193, 7, 0.6);
+            display: none;
+        }
+
+
     </style>
 </head>
 <body class="theme-blue">
@@ -93,6 +116,7 @@
     <div class="card">
         <div class="header d-flex justify-content-between align-items-center">
             <span id="flagEstoque" class="badge badge-pill"></span>
+
         </div>
 
         <div class="body">
@@ -124,6 +148,15 @@
                             <label>Chave de Acesso</label>
                             <div id="notaChave" class="readonly-field"></div>
                         </div>
+                        <div class="col-md-12" style="margin-top:8px;">
+                            <label>Loja de Destino dos Itens</label>
+                            <select id="selLojaDestino" class="form-control"></select>
+                            <span id="transferHint" class="transfer-hint">
+                                ⚠️ Os itens desta nota serão transferidos automaticamente para a loja selecionada
+                            </span>
+
+                        </div>
+
                     </div>
                 </div>
 
@@ -319,6 +352,8 @@
     let itens = [];
     let insumos = [];
     let selectedIndex = null;
+    let lojasDestino = [];
+
 
     // === Helpers de unidade/quantidade (ATUALIZADOS) ===
     const INT_UNITS = ['UN', 'U', 'UND', 'PC', 'PÇ', 'PÇS'];
@@ -722,18 +757,49 @@
     }
 
     async function gravarNota(){
-        if (!allSynced()) return Swal.fire('Atenção','Existem itens pendentes de sincronização.','warning');
-        const data_entrada = $('#notaDataEntrada').val();
-        if (!data_entrada) return Swal.fire('Atenção','Informe a data de entrada.','warning');
 
+        // 🔒 valida sincronização
+        if (!allSynced()) {
+            return Swal.fire(
+                'Atenção',
+                'Existem itens pendentes de sincronização.',
+                'warning'
+            );
+        }
+
+        const data_entrada = $('#notaDataEntrada').val();
+        if (!data_entrada) {
+            return Swal.fire(
+                'Atenção',
+                'Informe a data de entrada.',
+                'warning'
+            );
+        }
+
+        // 🏬 lógica NOVA de destino
+        const lojaSelecionada = $('#selLojaDestino').val();
+
+        const transferirDestino =
+            lojaSelecionada &&
+            String(lojaSelecionada) !== String(system_unit_id);
+
+        const lojaDestino = transferirDestino
+            ? Number(lojaSelecionada)
+            : null;
+
+        // 📦 itens
         const itensReq = itens.map(it => ({
             numero_item_nota: it.numero_item_nota,
             codigo_produto_interno: it.codigo_produto_interno,
             unidade_interno: it.unidade_interno,
-            quantidade_interno: Number(it.quantidade_interno || (Number(it.quantidade_nota||0) * Number(it.fator_conversao||1))),
+            quantidade_interno: Number(
+                it.quantidade_interno ??
+                (Number(it.quantidade_nota || 0) * Number(it.fator_conversao || 1))
+            ),
             fator_conversao: Number(it.fator_conversao || 1)
         }));
 
+        // 🧾 payload final
         const req = {
             method: 'lancarItensNotaNoEstoque',
             token,
@@ -742,23 +808,51 @@
                 usuario_id: Number(usuario_id),
                 chave_acesso: String(chave_acesso),
                 data_entrada: String(data_entrada),
+                transferir_destino: transferirDestino,
+                system_unit_id_destino: lojaDestino,
                 itens: itensReq
             }
         };
 
-        try{
-            Swal.fire({ title:'Gravando entrada...', didOpen:()=>Swal.showLoading() });
-            const res = await axios.post(baseUrl, req);
-            if (!res.data.success) throw new Error(res.data.message || 'Falha ao lançar itens');
+        try {
+            Swal.fire({
+                title: 'Gravando entrada...',
+                didOpen: () => Swal.showLoading()
+            });
 
+            const res = await axios.post(baseUrl, req);
+
+            if (!res.data?.success) {
+                throw new Error(res.data?.message || 'Falha ao lançar itens no estoque');
+            }
+
+            // ✅ estado local
             nota.incluida_estoque = 1;
             setFlagEstoque(nota);
             toggleGravarNota();
 
-            Swal.fire('Sucesso','Nota incluída no estoque.','success');
-        }catch(e){
+            let msg = 'Nota incluída no estoque com sucesso.';
+
+            if (transferirDestino) {
+                msg += `
+                <br><br>
+                <b>Transferência automática realizada</b>
+            `;
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso',
+                html: msg
+            });
+
+        } catch (e) {
             console.error(e);
-            Swal.fire('Erro', e.message || 'Erro ao gravar nota no estoque', 'error');
+            Swal.fire(
+                'Erro',
+                e.message || 'Erro ao gravar nota no estoque',
+                'error'
+            );
         }
     }
 
@@ -791,6 +885,125 @@
         $('#iframeNovoProduto').attr('src', url);
         $('#modalNovoInsumoIframe').modal('show');
     }
+
+    async function carregarLojasDestino(){
+        try{
+            const res = await axios.post(baseUrl, {
+                method: 'getGroupByUser',
+                token,
+                data: { user_id: Number(usuario_id) }
+            });
+
+            if (!res.data?.lojas_por_grupo) {
+                throw new Error('Nenhuma loja encontrada');
+            }
+
+            const lojas = [];
+            Object.values(res.data.lojas_por_grupo).forEach(arr => {
+                arr.forEach(l => {
+                    if (!lojas.find(x => Number(x.id) === Number(l.id))) {
+                        lojas.push(l);
+                    }
+                });
+            });
+
+            const $sel = $('#selLojaDestino');
+
+            if ($sel.hasClass('select2-hidden-accessible')) {
+                $sel.select2('destroy');
+            }
+
+            $sel.empty();
+
+            lojas.forEach(l => {
+                $sel.append(new Option(l.name, l.id));
+            });
+
+            $sel.select2({
+                width: 'resolve'
+            });
+
+            // ✅ loja atual pré-selecionada
+            $sel.val(String(system_unit_id)).trigger('change');
+
+        }catch(e){
+            console.error(e);
+            Swal.fire(
+                'Erro',
+                'Erro ao carregar lojas disponíveis',
+                'error'
+            );
+        }
+    }
+
+    function setFlagEstoque(n){
+        const el = $('#flagEstoque');
+
+        if (Number(n?.incluida_estoque) === 1) {
+            el
+                .removeClass()
+                .addClass('badge bg-green')
+                .text('Incluída no estoque');
+
+            $('#btnGravarNota').prop('disabled', true);
+        } else {
+            el
+                .removeClass()
+                .addClass('badge bg-orange')
+                .text('Ainda não incluída no estoque');
+
+            carregarLojasDestino();
+        }
+    }
+
+
+    $('#chkTransferirDestino').on('change', function(){
+        if (this.checked) {
+            $('#boxLojaDestino').show();
+        } else {
+            $('#boxLojaDestino').hide();
+            $('#selLojaDestino').val(null).trigger('change');
+        }
+    });
+
+
+    $('#selLojaDestino').on('change', function () {
+        const lojaSelecionada = String($(this).val());
+        const $select2 = $('#selLojaDestino').next('.select2-container');
+
+        if (lojaSelecionada && lojaSelecionada !== String(system_unit_id)) {
+
+            // 🔆 glow amarelo no campo
+            $select2.addClass('transfer-alert');
+
+            // 🏷️ mostra aviso textual
+            $('#transferHint').fadeIn(150);
+
+            // ⚠️ alerta único (não fica repetindo)
+            Swal.fire({
+                icon: 'warning',
+                title: 'Transferência automática',
+                html: `
+                A entrada será registrada na <b>loja atual</b>,
+                porém os itens serão <b>transferidos automaticamente</b>
+                para a loja selecionada.
+            `,
+                confirmButtonText: 'Entendi'
+            });
+
+        } else {
+
+            // ❌ remove destaque se voltar para loja original
+            $select2.removeClass('transfer-alert');
+            $('#transferHint').fadeOut(150);
+        }
+    });
+
+
+
+
+
+
 
     $(function () {
         $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
