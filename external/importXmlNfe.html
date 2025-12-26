@@ -340,19 +340,38 @@
         const dets = xml.getElementsByTagName("det");
         for (let d of dets) {
             const prod = first("prod", d);
+            const imposto = first("imposto", d);
+            const ipi = imposto ? first("IPI", imposto) : null;
+
             itens.push({
                 numero_item: d.getAttribute("nItem"),
+
+                // identificação
                 codigo_produto: pick("cProd", prod),
                 descricao: pick("xProd", prod),
                 ncm: pick("NCM", prod),
                 cfop: pick("CFOP", prod),
                 unidade: pick("uCom", prod),
+
+                // quantidade
                 quantidade: parseFloat(pick("qCom", prod) || 0),
-                valor_unitario: parseFloat(pick("vUnCom", prod) || 0),
-                valor_total: parseFloat(pick("vProd", prod) || 0),
-                valor_frete: parseFloat(pick("vFrete", prod) || 0)
+
+                // valores fiscais puros (XML)
+                vProd:   parseFloat(pick("vProd", prod) || 0),
+                vFrete:  parseFloat(pick("vFrete", prod) || 0),
+                vOutro:  parseFloat(pick("vOutro", prod) || 0),
+
+                // IPI (fica em outro nó)
+                vIPI: ipi
+                    ? parseFloat(
+                        pick("vIPI", first("IPITrib", ipi)) ||
+                        pick("vIPI", ipi) ||
+                        0
+                    )
+                    : 0
             });
         }
+
 
         const joinEndereco = (ender) => {
             const partes = [

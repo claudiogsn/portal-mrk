@@ -672,7 +672,9 @@ class MdeController
         try {
             $pdo->beginTransaction();
 
-            // ===== 1) Validar CNPJ do destinatário x CNPJ da unidade =====
+            // =========================
+            // 1) VALIDAR CNPJ
+            // =========================
             $cnpjDest = $notaJson['destinatario']['cnpj_cpf']
                 ?? $notaJson['dest']['cnpj_cpf']
                 ?? $notaJson['destinatario']['cnpj']
@@ -687,30 +689,22 @@ class MdeController
             $stmt->execute([$system_unit_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$row) {
-                throw new Exception("Unidade ($system_unit_id) não encontrada.");
+            if (!$row || !$row['cnpj']) {
+                throw new Exception("CNPJ da unidade não encontrado.");
             }
 
-            $cnpjUnit = $row['cnpj'] ?? null;
-            if (!$cnpjUnit) {
-                throw new Exception("CNPJ da unidade não cadastrado.");
+            $norm = fn($v) => preg_replace('/\D+/', '', (string)$v);
+
+            if ($norm($cnpjDest) !== $norm($row['cnpj'])) {
+                throw new Exception("CNPJ do destinatário não corresponde ao da unidade.");
             }
 
-            $norm = static function ($v) {
-                return preg_replace('/\D+/', '', (string)$v);
-            };
-
-            if ($norm($cnpjDest) !== $norm($cnpjUnit)) {
-                throw new Exception(
-                    "CNPJ do destinatário (" . $norm($cnpjDest) .
-                    ") não corresponde ao CNPJ da unidade (" . $norm($cnpjUnit) . ")."
-                );
-            }
-
-            // ===== 2) Prossegue importação =====
+            // =========================
+            // 2) FORNECEDOR / NOTA
+            // =========================
             $fornecedorData = $notaJson['fornecedor'] ?? null;
             if (!$fornecedorData) {
-                throw new Exception("Dados do fornecedor não enviados");
+                throw new Exception("Fornecedor não informado.");
             }
 
             $fornecedor_id = self::getCreateFornecedor($system_unit_id, $fornecedorData);
@@ -720,25 +714,30 @@ class MdeController
             $serie       = $notaJson['serie'] ?? null;
 
             if (!$chaveAcesso || !$numeroNF) {
-                throw new Exception("Chave de acesso e número da NF são obrigatórios");
+                throw new Exception("Chave de acesso e número da NF são obrigatórios.");
             }
 
-            // Duplicidade (mesma unidade + fornecedor + número + série)
+            // Duplicidade
             $stmt = $pdo->prepare("
-                SELECT id FROM estoque_nota 
-                WHERE system_unit_id = ? AND fornecedor_id = ? AND numero_nf = ? AND serie = ?
-            ");
+            SELECT id FROM estoque_nota
+             WHERE system_unit_id = ? AND fornecedor_id = ? AND numero_nf = ? AND serie = ?
+        ");
             $stmt->execute([$system_unit_id, $fornecedor_id, $numeroNF, $serie]);
-            if ($stmt->fetch(PDO::FETCH_ASSOC)) {
-                throw new Exception("Nota já existe para este fornecedor, série e unidade");
+            if ($stmt->fetch()) {
+                throw new Exception("Nota já importada para este fornecedor.");
             }
 
-            // Inserir nota
+            // =========================
+            // 3) INSERE NOTA
+            // =========================
             $stmt = $pdo->prepare("
-                INSERT INTO estoque_nota 
-                (system_unit_id, fornecedor_id, chave_acesso, numero_nf, serie, data_emissao, data_saida, natureza_operacao, valor_total, valor_produtos, valor_frete) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+            INSERT INTO estoque_nota
+            (system_unit_id, fornecedor_id, chave_acesso, numero_nf, serie,
+             data_emissao, data_saida, natureza_operacao,
+             valor_total, valor_produtos, valor_frete)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
             $stmt->execute([
                 $system_unit_id,
                 $fornecedor_id,
@@ -748,79 +747,55 @@ class MdeController
                 $notaJson['data_emissao'] ?? null,
                 $notaJson['data_saida'] ?? null,
                 $notaJson['natureza_operacao'] ?? null,
-                $notaJson['valor_total'] ?? 0,
-                $notaJson['valor_produtos'] ?? 0,
-                $notaJson['valor_frete'] ?? 0
+                (float)($notaJson['valor_total'] ?? 0),
+                (float)($notaJson['valor_produtos'] ?? 0),
+                (float)($notaJson['valor_frete'] ?? 0),
             ]);
 
             $nota_id = (int)$pdo->lastInsertId();
 
-            // Itens
+            // =========================
+            // 4) ITENS (CUSTO REAL)
+            // =========================
             if (!empty($notaJson['itens']) && is_array($notaJson['itens'])) {
+
                 $stmtItem = $pdo->prepare("
-                    INSERT INTO estoque_nota_item
-                    (system_unit_id, nota_id, numero_item, codigo_produto, descricao, ncm, cfop, unidade, quantidade, valor_unitario, valor_total, valor_frete)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
+                INSERT INTO estoque_nota_item
+                (system_unit_id, nota_id, numero_item, codigo_produto, descricao,
+                 ncm, cfop, unidade, quantidade,
+                 valor_unitario, valor_total, valor_frete)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
 
                 foreach ($notaJson['itens'] as $item) {
+
+                    $quantidade = (float)($item['quantidade'] ?? 0);
+                    if ($quantidade <= 0) continue;
+
+                    $vProd   = (float)($item['valor_produto'] ?? $item['vProd'] ?? 0);
+                    $vIPI    = (float)($item['valor_ipi'] ?? $item['vIPI'] ?? 0);
+                    $vOutro  = (float)($item['valor_outros'] ?? $item['vOutro'] ?? 0);
+                    $vFrete  = (float)($item['valor_frete'] ?? $item['vFrete'] ?? 0);
+
+                    // 👉 CUSTO REAL DO ITEM
+                    $valorTotalItem = round($vProd + $vIPI + $vOutro + $vFrete, 2);
+
+                    // 👉 VALOR UNITÁRIO REAL
+                    $valorUnitario = round($valorTotalItem / $quantidade, 6);
+
                     $stmtItem->execute([
                         $system_unit_id,
                         $nota_id,
-                        $item['numero_item'] ?? 0,
+                        (int)($item['numero_item'] ?? 0),
                         $item['codigo_produto'] ?? null,
                         $item['descricao'] ?? null,
                         $item['ncm'] ?? null,
                         $item['cfop'] ?? null,
                         $item['unidade'] ?? null,
-                        $item['quantidade'] ?? 0,
-                        $item['valor_unitario'] ?? 0,
-                        $item['valor_total'] ?? 0,
-                        $item['valor_frete'] ?? 0
-                    ]);
-                }
-            }
-
-            // ===== DUPLICATAS (opcional no JSON) =====
-            if (!empty($notaJson['duplicatas']) && is_array($notaJson['duplicatas'])) {
-                $stmtDup = $pdo->prepare("
-                    INSERT INTO estoque_nota_duplicata
-                      (system_unit_id, nota_id, numero_duplicata, data_vencimento, valor_parcela)
-                    VALUES
-                      (:unit, :nota, :num, :venc, :valor)
-                    ON DUPLICATE KEY UPDATE
-                      data_vencimento = VALUES(data_vencimento),
-                      valor_parcela   = VALUES(valor_parcela),
-                      updated_at      = CURRENT_TIMESTAMP
-                ");
-
-                $toISO = static function (?string $s) {
-                    if (!$s) return null;
-                    $s = trim($s);
-                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s; // YYYY-MM-DD
-                    if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {       // DD/MM/YYYY
-                        [$d,$m,$y] = explode('/', $s);
-                        return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
-                    }
-                    return null;
-                };
-
-                foreach ($notaJson['duplicatas'] as $dup) {
-                    $num   = isset($dup['numero_duplicata']) ? (string)$dup['numero_duplicata'] :
-                        (isset($dup['nDup']) ? (string)$dup['nDup'] : null);
-                    $venc  = isset($dup['data_vencimento']) ? $toISO($dup['data_vencimento']) :
-                        (isset($dup['dVenc']) ? $toISO($dup['dVenc']) : null);
-                    $valor = isset($dup['valor_parcela']) ? (float)$dup['valor_parcela'] :
-                        (isset($dup['vDup']) ? (float)$dup['vDup'] : 0.0);
-
-                    if (!$num || !$venc) { continue; }
-
-                    $stmtDup->execute([
-                        ':unit'  => $system_unit_id,
-                        ':nota'  => $nota_id,
-                        ':num'   => $num,
-                        ':venc'  => $venc,
-                        ':valor' => $valor
+                        $quantidade,
+                        $valorUnitario,
+                        $valorTotalItem,
+                        $vFrete
                     ]);
                 }
             }
@@ -947,7 +922,6 @@ class MdeController
             ];
         }
     }
-
     public static function lancarNotaAvulsa(int $system_unit_id, array $data): array
     {
         global $pdo;
@@ -1168,7 +1142,6 @@ class MdeController
             ];
         }
     }
-
     public static function getNotaAvulsa(int $system_unit_id, int $nota_id): array
     {
         global $pdo;
