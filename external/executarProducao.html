@@ -181,14 +181,15 @@
     }
 
     function bindGridEvents() {
-        // remove
+
+        // 🔴 remover linha
         $('.btnRemover').off('click').on('click', function() {
             const idx = parseInt($(this).closest('tr').attr('data-idx'), 10);
             linhas.splice(idx, 1);
             renderGrid();
         });
 
-        // digitação quantidade (máscara por unidade do produto)
+        // ✏️ digitação + máscara
         $('.qtdInput').off('input').on('input', function() {
             const $tr = $(this).closest('tr');
             const idx = parseInt($tr.attr('data-idx'), 10);
@@ -199,7 +200,29 @@
 
             linhas[idx].quantidade_str = masked;
         });
+
+        // ⏭️ TAB → próximo input de quantidade
+        $('.qtdInput').off('keydown').on('keydown', function(e) {
+
+            if (e.key === 'Tab') {
+                e.preventDefault(); // 🔒 bloqueia tab padrão do navegador
+
+                const inputs = $('.qtdInput');
+                const idxAtual = inputs.index(this);
+
+                // se existir próximo input
+                if (idxAtual >= 0 && idxAtual < inputs.length - 1) {
+                    const $next = inputs.eq(idxAtual + 1);
+                    $next.focus().select();
+                } else {
+                    // último input → vai para o botão salvar (opcional)
+                    $('#btnSalvar').focus();
+                }
+            }
+
+        });
     }
+
 
     async function loadProducoes() {
         if (!token) return Swal.fire('Erro', 'Token não informado na URL.', 'error');

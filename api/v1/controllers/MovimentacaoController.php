@@ -71,81 +71,139 @@ class MovimentacaoController
         global $pdo;
 
         try {
-            // Buscar todas as movimentações associadas ao `doc` e `system_unit_id`
+            // 🔎 Busca movimentações do documento informado
             $movimentacoes = self::getMovimentacao($systemUnitId, $doc);
 
-            // Verificar se as movimentações foram encontradas
             if (empty($movimentacoes)) {
                 return [
                     "success" => false,
-                    "message" => "Nenhuma movimentação encontrada para o documento especificado.",
+                    "message" => "Nenhuma movimentação encontrada para o documento informado.",
                 ];
             }
 
-            // Inicia transação para garantir consistência
             $pdo->beginTransaction();
 
-            // Atualizar o status de todas as movimentações do `doc`
-            $updateResult = self::atualizarStatusMovimentacoes($systemUnitId, $doc);
+            /**
+             * 1️⃣ Aprova todas as movimentações do documento atual
+             */
+            $stmtUpdateAtual = $pdo->prepare("
+            UPDATE movimentacao
+               SET status = 1,
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE system_unit_id = :unit
+               AND doc = :doc
+               AND status = 0
+        ");
+            $stmtUpdateAtual->execute([
+                ':unit' => $systemUnitId,
+                ':doc'  => $doc,
+            ]);
 
-            if ($updateResult <= 0) {
-                $pdo->rollBack();
-                return [
-                    "success" => false,
-                    "message" => "Falha ao efetivar transações. Nenhuma movimentação foi atualizada.",
-                ];
+            /**
+             * 2️⃣ Para cada movimentação, aprova o PAR da transferência
+             *     usando produto + seq + data + quantidade + usuario
+             */
+            foreach ($movimentacoes as $mov) {
+
+                $tipo = $mov['tipo'] ?? null;
+                if ($tipo !== 'ts' && $tipo !== 'te') {
+                    continue;
+                }
+
+                $produto    = $mov['produto'];
+                $seq        = $mov['seq'];
+                $quantidade = (float)$mov['quantidade'];
+                $dataMov    = $mov['data'];
+                $usuarioId  = $mov['usuario_id'];
+
+                if ($tipo === 'ts') {
+                    // 🔴 TS → busca TE
+                    $stmtPar = $pdo->prepare("
+                    UPDATE movimentacao
+                       SET status = 1,
+                           updated_at = CURRENT_TIMESTAMP
+                     WHERE system_unit_id = :unit_destino
+                       AND status = 0
+                       AND tipo = 'te'
+                       AND produto = :produto
+                       AND seq = :seq
+                       AND quantidade = :quantidade
+                       AND data = :data
+                       AND usuario_id = :usuario
+                ");
+
+                    $stmtPar->execute([
+                        ':unit_destino' => $mov['system_unit_id_destino'],
+                        ':produto'      => $produto,
+                        ':seq'          => $seq,
+                        ':quantidade'   => $quantidade,
+                        ':data'         => $dataMov,
+                        ':usuario'      => $usuarioId,
+                    ]);
+
+                } elseif ($tipo === 'te') {
+                    // 🟢 TE → busca TS
+                    $stmtPar = $pdo->prepare("
+                    UPDATE movimentacao
+                       SET status = 1,
+                           updated_at = CURRENT_TIMESTAMP
+                     WHERE system_unit_id_destino = :unit_te
+                       AND status = 0
+                       AND tipo = 'ts'
+                       AND produto = :produto
+                       AND seq = :seq
+                       AND quantidade = :quantidade
+                       AND data = :data
+                       AND usuario_id = :usuario
+                ");
+
+                    $stmtPar->execute([
+                        ':unit_te'     => $mov['system_unit_id'],
+                        ':produto'     => $produto,
+                        ':seq'         => $seq,
+                        ':quantidade'  => $quantidade,
+                        ':data'        => $dataMov,
+                        ':usuario'     => $usuarioId,
+                    ]);
+                }
             }
 
-            // Preparar UPDATE de saldo em products para movimentos de BALANÇO
-            $stmtUpdateSaldo = $pdo->prepare("
+            /**
+             * 3️⃣ Atualiza saldo SOMENTE para BALANÇO
+             */
+            $stmtSaldo = $pdo->prepare("
             UPDATE products
                SET saldo = :saldo,
                    ultimo_doc = :doc,
                    updated_at = CURRENT_TIMESTAMP
-             WHERE system_unit_id = :unit_id
-               AND codigo = :codigo_produto
+             WHERE system_unit_id = :unit
+               AND codigo = :produto
         ");
 
             foreach ($movimentacoes as $mov) {
-                // Detecta se é balanço:
-                // pode vir como tipo_mov = 'balanco' ou tipo = 'b', dependendo de como está tua tabela
                 $isBalanco =
-                    (isset($mov['tipo_mov']) && $mov['tipo_mov'] === 'balanco') ||
-                    (isset($mov['tipo']) && $mov['tipo'] === 'b');
+                    (($mov['tipo'] ?? '') === 'b') ||
+                    (($mov['tipo_mov'] ?? '') === 'balanco');
 
-                if (!$isBalanco) {
-                    continue;
-                }
+                if (!$isBalanco) continue;
 
-                // Produto/código
-                $codigoProduto = $mov['produto'] ?? $mov['codigo'] ?? null;
-                if ($codigoProduto === null) {
-                    continue; // não arrisca atualizar sem código
-                }
-
-                $quantidadeBalanco = isset($mov['quantidade'])
-                    ? (float)$mov['quantidade']
-                    : 0.0;
-
-                // Atualiza saldo do produto para o valor ABSOLUTO do balanço
-                $stmtUpdateSaldo->execute([
-                    ':saldo'          => $quantidadeBalanco,
-                    ':doc'            => $doc,
-                    ':unit_id'        => $systemUnitId,
-                    ':codigo_produto' => $codigoProduto,
+                $stmtSaldo->execute([
+                    ':saldo'   => (float)$mov['quantidade'],
+                    ':doc'     => $doc,
+                    ':unit'    => $systemUnitId,
+                    ':produto' => $mov['produto'],
                 ]);
             }
 
-            // Tudo ok, confirma transação
             $pdo->commit();
 
             return [
                 "success" => true,
-                "message" => "Transações efetivadas com sucesso!",
+                "message" => "Transações efetivadas com sucesso.",
             ];
 
         } catch (Exception $e) {
-            if (isset($pdo) && $pdo->inTransaction()) {
+            if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
 

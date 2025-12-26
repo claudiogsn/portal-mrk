@@ -516,7 +516,7 @@ class FinanceiroContaController {
         }
 
         // ORDER BY vem por último
-        $sql .= " ORDER BY fc.{$colunaData} ASC";
+        $sql .= " ORDER BY id DESC";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
