@@ -62,6 +62,7 @@ class MdeController
                     'date_ini'            => $data_inicial,
                     'date_end'            => $data_final,
                     'transaction'         => 'received',
+                    'situation'           => 'AUTORIZADA',
                     'mod'                 => 'NFE'
                 ];
 
