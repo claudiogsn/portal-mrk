@@ -144,6 +144,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou nota_id ausentes'];
                 }
                 break;
+            case 'marcarNotaComoDevolvida':
+                if (isset($requestData['system_unit_id']) && isset($requestData['chave'])) {
+                    $response = MdeController::marcarNotaComoDevolvida($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ou chave ausentes'];
+                }
+                break;
 
             case 'listarNotas':
                 if (isset($requestData['system_unit_id'])) {

@@ -32,12 +32,20 @@ class MdeController
 
         try {
 
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicial) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_final)) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicial) ||
+                !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_final)) {
                 return ['success' => false, 'message' => 'Datas devem estar no formato YYYY-MM-DD'];
             }
 
-            // 1) Busca CNPJ da unidade
-            $stmt = $pdo->prepare("SELECT cnpj FROM system_unit WHERE id = :id LIMIT 1");
+            // ===============================
+            // 1) CNPJ DA UNIDADE
+            // ===============================
+            $stmt = $pdo->prepare("
+            SELECT cnpj 
+              FROM system_unit 
+             WHERE id = :id 
+             LIMIT 1
+        ");
             $stmt->bindValue(':id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -51,6 +59,25 @@ class MdeController
                 return ['success' => false, 'message' => 'CNPJ da unidade inválido'];
             }
 
+            // ===============================
+            // 2) BUSCA CHAVES DEVOLVIDAS
+            // ===============================
+            $stmtDev = $pdo->prepare("
+            SELECT chave_acesso
+              FROM estoque_nota_devolvida
+             WHERE system_unit_id = :unit
+        ");
+            $stmtDev->bindValue(':unit', $system_unit_id, PDO::PARAM_INT);
+            $stmtDev->execute();
+
+            $devolvidas = [];
+            foreach ($stmtDev->fetchAll(PDO::FETCH_ASSOC) as $d) {
+                $devolvidas[$d['chave_acesso']] = true;
+            }
+
+            // ===============================
+            // 3) BUSCA NA PLUG STORAGE
+            // ===============================
             $lastId = null;
             $allInvoices = [];
             $loopCount = 0;
@@ -72,27 +99,22 @@ class MdeController
 
                 $url = self::PLUG_BASE_URL . 'keys?' . http_build_query($query);
 
-                // Chamada GET
                 [$httpCode, $body, $err] = UtilsController::httpGet($url);
                 if ($err) {
                     return ['success' => false, 'message' => "Falha na chamada à API: $err"];
                 }
                 if ($httpCode < 200 || $httpCode >= 300) {
-                    return ['success' => false, 'message' => "API retornou HTTP $httpCode", 'data' => ['raw' => $body]];
+                    return ['success' => false, 'message' => "API retornou HTTP $httpCode"];
                 }
 
                 $json = json_decode($body, true);
-                if (!is_array($json)) {
-                    return ['success' => false, 'message' => 'Resposta da API inválida (JSON)'];
-                }
-                if (!empty($json['error'])) {
-                    $msg = $json['message'] ?? 'Erro desconhecido pela API';
-                    return ['success' => false, 'message' => "API retornou erro: $msg", 'data' => $json];
+                if (!is_array($json) || !empty($json['error'])) {
+                    return ['success' => false, 'message' => 'Erro na resposta da API'];
                 }
 
                 $invoices = $json['data']['invoices'] ?? [];
-                $count    = $json['data']['count']  ?? 0;
-                $total    = $json['data']['total']  ?? 0;
+                $count    = $json['data']['count'] ?? 0;
+                $total    = $json['data']['total'] ?? 0;
                 $lastId   = $json['data']['last_id'] ?? null;
 
                 if (empty($invoices)) break;
@@ -100,29 +122,17 @@ class MdeController
                 $allInvoices = array_merge($allInvoices, $invoices);
                 $loopCount++;
 
-                // Continua somente se houver mais páginas
                 $continue = ($count == 30 && $total > count($allInvoices));
 
-            } while ($continue && $loopCount < 200);   // trava anti loop infinito
+            } while ($continue && $loopCount < 200);
 
-            if (empty($allInvoices)) {
-                return [
-                    'success' => true,
-                    'message' => 'Nenhuma nota retornada no período informado.',
-                    'data'    => [
-                        'cnpj'      => $cnpjUnidade,
-                        'periodo'   => ['inicio' => $data_inicial, 'fim' => $data_final],
-                        'total_api' => 0,
-                        'notas'     => [],
-                    ]
-                ];
-            }
-
-            // PREPARA SELECT PARA CHECAR IMPORTAÇÃO
+            // ===============================
+            // 4) PREPARA CHECK DE IMPORTAÇÃO
+            // ===============================
             $selNota = $pdo->prepare("
             SELECT id
               FROM estoque_nota
-             WHERE system_unit_id = :system_unit_id
+             WHERE system_unit_id = :unit
                AND chave_acesso = :chave
              LIMIT 1
         ");
@@ -130,40 +140,45 @@ class MdeController
             $notas = [];
 
             foreach ($allInvoices as $inv) {
-                $chave   = $inv['key']            ?? '';
-                $numero  = $inv['number']         ?? '';
-                $serie   = $inv['serie']          ?? null;
-                $emissao = $inv['date_emission']  ?? null;
-                $valor   = $inv['value']          ?? null;
-                $razao   = $inv['razao_social']   ?? null;
-                $fantasia= $inv['fantasia']       ?? null;
-                $cnpjEmi = $inv['cnpj_emitter']   ?? null;
+
+                $chave = $inv['key'] ?? '';
+
+                // >>> IGNORA DEVOLVIDAS <<<
+                if (!$chave || isset($devolvidas[$chave])) {
+                    continue;
+                }
+
+                $numero   = $inv['number'] ?? '';
+                $serie    = $inv['serie'] ?? null;
+                $emissao  = $inv['date_emission'] ?? null;
+                $valor    = $inv['value'] ?? null;
+                $razao    = $inv['razao_social'] ?? null;
+                $fantasia = $inv['fantasia'] ?? null;
+                $cnpjEmi  = $inv['cnpj_emitter'] ?? null;
 
                 $importada = false;
                 $estoqueNotaId = null;
 
-                if ($chave) {
-                    $selNota->bindValue(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
-                    $selNota->bindValue(':chave', $chave);
-                    $selNota->execute();
-                    $existe = $selNota->fetch(PDO::FETCH_ASSOC);
-                    if ($existe && !empty($existe['id'])) {
-                        $importada = true;
-                        $estoqueNotaId = (int)$existe['id'];
-                    }
+                $selNota->bindValue(':unit', $system_unit_id, PDO::PARAM_INT);
+                $selNota->bindValue(':chave', $chave);
+                $selNota->execute();
+
+                if ($rowNota = $selNota->fetch(PDO::FETCH_ASSOC)) {
+                    $importada = true;
+                    $estoqueNotaId = (int)$rowNota['id'];
                 }
 
                 $notas[] = [
-                    'chave_acesso'     => $chave,
-                    'numero_nf'        => $numero,
-                    'serie'            => $serie,
-                    'data_emissao'     => $emissao,
-                    'valor_total'      => is_numeric($valor) ? (float)$valor : null,
-                    'emitente_cnpj'    => $cnpjEmi,
-                    'emitente_razao'   => $razao,
-                    'emitente_fantasia'=> $fantasia,
-                    'status'           => $importada ? 'importada' : 'nao_importada',
-                    'estoque_nota_id'  => $estoqueNotaId,
+                    'chave_acesso'      => $chave,
+                    'numero_nf'         => $numero,
+                    'serie'             => $serie,
+                    'data_emissao'      => $emissao,
+                    'valor_total'       => is_numeric($valor) ? (float)$valor : null,
+                    'emitente_cnpj'     => $cnpjEmi,
+                    'emitente_razao'    => $razao,
+                    'emitente_fantasia' => $fantasia,
+                    'status'            => $importada ? 'importada' : 'nao_importada',
+                    'estoque_nota_id'   => $estoqueNotaId,
                 ];
             }
 
@@ -174,8 +189,7 @@ class MdeController
                     'cnpj'      => $cnpjUnidade,
                     'periodo'   => ['inicio' => $data_inicial, 'fim' => $data_final],
                     'total_api' => count($notas),
-                    'notas'     => $notas,
-                    'last_id'   => $lastId,
+                    'notas'     => $notas
                 ]
             ];
 
@@ -1446,6 +1460,64 @@ class MdeController
             ];
         }
     }
+
+    public static function marcarNotaComoDevolvida(array $data): array
+    {
+        global $pdo;
+
+        try {
+            // validações básicas
+            if (empty($data['system_unit_id']) || empty($data['chave']) || empty($data['motivo'])) {
+                return [
+                    'success' => false,
+                    'message' => 'Parâmetros obrigatórios: system_unit_id, chave, motivo'
+                ];
+            }
+
+            $system_unit_id = (int)$data['system_unit_id'];
+            $chave          = preg_replace('/\D/', '', $data['chave']);
+            $motivo         = trim($data['motivo']);
+            $usuario_id     = isset($data['usuario_id']) ? (int)$data['usuario_id'] : null;
+
+            if (strlen($chave) !== 44) {
+                return [
+                    'success' => false,
+                    'message' => 'Chave de acesso inválida'
+                ];
+            }
+
+            $stmt = $pdo->prepare("
+            INSERT INTO estoque_nota_devolvida
+                (system_unit_id, chave_acesso, motivo, usuario_id)
+            VALUES
+                (:unit, :chave, :motivo, :usuario)
+            ON DUPLICATE KEY UPDATE
+                motivo = VALUES(motivo),
+                usuario_id = VALUES(usuario_id),
+                created_at = CURRENT_TIMESTAMP
+        ");
+
+            $stmt->execute([
+                ':unit'    => $system_unit_id,
+                ':chave'   => $chave,
+                ':motivo'  => $motivo,
+                ':usuario' => $usuario_id
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Nota marcada como devolvida com sucesso.'
+            ];
+
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao marcar nota como devolvida: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 }

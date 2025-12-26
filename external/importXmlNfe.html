@@ -149,6 +149,8 @@
                                 <th>Valor Total</th>
                                 <th>Data Emissão</th>
                                 <th>Status</th>
+                                <th>Ação</th>
+
                             </tr>
                             </thead>
                             <tbody></tbody>
@@ -204,6 +206,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const unit_id = urlParams.get('unit_id');
+    const user_id = urlParams.get('user_id');
 
     // ==============================
     // XML MANUAL (FILEPOND)
@@ -575,6 +578,12 @@
                 ? '<span class="label bg-green">importada</span>'
                 : '<span class="label bg-orange">nao_importada</span>'}
                   </td>
+                  <td>
+                    <button class="btn btn-danger btnDevolverNota"
+                            data-chave="${n.chave_acesso}">
+                        <i class="fa fa-undo"></i> Devolver
+                    </button>
+                </td>
                 </tr>
             `);
 
@@ -830,6 +839,74 @@
             Swal.fire('Erro', err.message || 'Falha ao gerar PDF', 'error');
         }
     });
+
+    // ==============================
+    // DEVOLVER NOTA (CONTROLE INTERNO)
+    // ==============================
+    $(document).off('click', '.btnDevolverNota').on('click', '.btnDevolverNota', async function () {
+        const chave = $(this).data('chave');
+
+        if (!chave) {
+            return Swal.fire('Erro', 'Chave não encontrada.', 'error');
+        }
+
+        const { value: motivo, isConfirmed } = await Swal.fire({
+            title: 'Devolver Nota',
+            icon: 'warning',
+            html: `
+            <p style="font-size:13px;color:#555;">
+                ⚠️ <b>Atenção:</b> esta ação <u>não possui validade fiscal</u>.<br>
+                Ela serve apenas para controle interno, impedindo que a nota
+                continue aparecendo como pendente de importação.
+            </p>
+            <textarea id="motivoDevolucao"
+                      class="swal2-textarea"
+                      placeholder="Informe o motivo da devolução..."></textarea>
+        `,
+            showCancelButton: true,
+            confirmButtonText: 'Confirmar devolução',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const m = document.getElementById('motivoDevolucao').value.trim();
+                if (!m) {
+                    Swal.showValidationMessage('Informe o motivo da devolução');
+                }
+                return m;
+            }
+        });
+
+        if (!isConfirmed) return;
+
+        Swal.fire({ title: 'Processando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const { data: resp } = await axios.post(baseUrl, {
+                method: "marcarNotaComoDevolvida",
+                token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    chave: String(chave),
+                    motivo: motivo,
+                    usuario_id: user_id
+
+                }
+            });
+
+            if (!resp?.success) {
+                throw new Error(resp?.message || 'Falha ao marcar nota como devolvida');
+            }
+
+            Swal.fire('Sucesso', 'Nota marcada como devolvida no controle interno.', 'success');
+
+            // remove da lista atual sem precisar rebuscar
+            notasSefaz = notasSefaz.filter(n => n.chave_acesso !== chave);
+            renderTabelaSefaz();
+
+        } catch (err) {
+            Swal.fire('Erro', err.message || 'Erro ao devolver nota', 'error');
+        }
+    });
+
 </script>
 </body>
 </html>

@@ -568,7 +568,7 @@
             .on('input change', aplicarFiltros);
 
         $('#btnAbrirImportacao').click(() => {
-            const url = `${baseUrlRedirect}/external/importXmlNfe.html?username=${username}&token=${token}&unit_id=${unit_id}&tag=${modelo.tag}`;
+            const url = `${baseUrlRedirect}/external/importXmlNfe.html?username=${username}&token=${token}&unit_id=${unit_id}&tag=${modelo.tag}&user_id=${encodeURIComponent(username)}`;
             $('#iframeImportacao').attr('src', url);
             $('#modalImportacao').modal('show');
         });
