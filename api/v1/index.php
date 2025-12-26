@@ -112,8 +112,8 @@ if (isset($data['method']) && isset($data['data'])) {
         switch ($method) {
             // Métodos para MdeController
             case 'importNotaFiscal':
-                if (isset($requestData['system_unit_id']) && isset($requestData['notaJson'])) {
-                    $response = MdeController::importNotaFiscal($requestData['system_unit_id'], $requestData['notaJson']);
+                if (isset($requestData['system_unit_id']) && isset($requestData['xml'])) {
+                    $response = MdeController::importNotaFiscal($requestData['system_unit_id'], $requestData['xml']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id ou notaJson ausentes'];

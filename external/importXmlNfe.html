@@ -287,11 +287,14 @@
       `);
             try {
                 const xmlText = await file.text();
-                const notaJson = xmlToJson(xmlText);
+                //const notaJson = xmlToJson(xmlText);
                 const { data: resp } = await axios.post(baseUrl, {
                     method: "importNotaFiscal",
                     token,
-                    data: { system_unit_id: unit_id, notaJson }
+                    data: {
+                        system_unit_id: unit_id,
+                        xml: xmlText
+                    }
                 });
                 if (resp && resp.success) {
                     ok++;
@@ -322,111 +325,111 @@
     }
 
     // Converte XML string -> JSON (igual ao seu)
-    function xmlToJson(xmlString) {
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlString, "text/xml");
-        const first = (tag, ctx = xml) => (ctx ? ctx.getElementsByTagName(tag)[0] : null);
-        const pick  = (tag, ctx = xml) => {
-            const el = first(tag, ctx);
-            return el ? el.textContent : null;
-        };
-        const emit      = first("emit");
-        const enderEmit = first("enderEmit");
-        const dest      = first("dest");
-        const enderDest = first("enderDest");
-        const infNFe    = first("infNFe");
-
-        const itens = [];
-        const dets = xml.getElementsByTagName("det");
-        for (let d of dets) {
-            const prod = first("prod", d);
-            const imposto = first("imposto", d);
-            const ipi = imposto ? first("IPI", imposto) : null;
-
-            itens.push({
-                numero_item: d.getAttribute("nItem"),
-
-                // identificação
-                codigo_produto: pick("cProd", prod),
-                descricao: pick("xProd", prod),
-                ncm: pick("NCM", prod),
-                cfop: pick("CFOP", prod),
-                unidade: pick("uCom", prod),
-
-                // quantidade
-                quantidade: parseFloat(pick("qCom", prod) || 0),
-
-                // valores fiscais puros (XML)
-                vProd:   parseFloat(pick("vProd", prod) || 0),
-                vFrete:  parseFloat(pick("vFrete", prod) || 0),
-                vOutro:  parseFloat(pick("vOutro", prod) || 0),
-
-                // IPI (fica em outro nó)
-                vIPI: ipi
-                    ? parseFloat(
-                        pick("vIPI", first("IPITrib", ipi)) ||
-                        pick("vIPI", ipi) ||
-                        0
-                    )
-                    : 0
-            });
-        }
-
-
-        const joinEndereco = (ender) => {
-            const partes = [
-                pick("xLgr", ender), pick("nro", ender), pick("xCpl", ender), pick("xBairro", ender),
-                [pick("xMun", ender), pick("UF", ender)].filter(Boolean).join("/")
-            ].filter(Boolean);
-            return partes.join(", ");
-        };
-
-        const duplicatas = [];
-        const dups = xml.getElementsByTagName("dup");
-        for (let dup of dups) {
-            duplicatas.push({
-                numero_duplicata: pick("nDup", dup),
-                data_vencimento:  pick("dVenc", dup),
-                valor_parcela:    parseFloat(pick("vDup", dup) || 0)
-            });
-        }
-
-        return {
-            fornecedor: {
-                cnpj_cpf: pick("CNPJ", emit) || pick("CPF", emit),
-                razao: pick("xNome", emit),
-                nome: pick("xFant", emit),
-                endereco: joinEndereco(enderEmit),
-                cep: pick("CEP", enderEmit),
-                insc_estadual: pick("IE", emit),
-                fone: pick("fone", enderEmit)
-            },
-            destinatario: {
-                cnpj_cpf: pick("CNPJ", dest) || pick("CPF", dest),
-                razao: pick("xNome", dest),
-                endereco: joinEndereco(enderDest),
-                cep: pick("CEP", enderDest),
-                municipio_codigo: pick("cMun", enderDest),
-                municipio: pick("xMun", enderDest),
-                uf: pick("UF", enderDest),
-                pais_codigo: pick("cPais", enderDest),
-                pais: pick("xPais", enderDest),
-                indicador_ie: pick("indIEDest", dest),
-                insc_estadual: pick("IE", dest),
-                fone: pick("fone", enderDest)
-            },
-            chave_acesso: (infNFe?.getAttribute("Id") || "").replace(/^NFe/i, ""),
-            numero_nf: pick("nNF"),
-            serie: pick("serie"),
-            data_emissao: pick("dhEmi"),
-            data_saida: pick("dhSaiEnt"),
-            natureza_operacao: pick("natOp"),
-            valor_total: parseFloat(pick("vNF") || 0),
-            valor_produtos: parseFloat(pick("vProd") || 0),
-            valor_frete: parseFloat(pick("vFrete") || 0),
-            itens, duplicatas
-        };
-    }
+    // function xmlToJson(xmlString) {
+    //     const parser = new DOMParser();
+    //     const xml = parser.parseFromString(xmlString, "text/xml");
+    //     const first = (tag, ctx = xml) => (ctx ? ctx.getElementsByTagName(tag)[0] : null);
+    //     const pick  = (tag, ctx = xml) => {
+    //         const el = first(tag, ctx);
+    //         return el ? el.textContent : null;
+    //     };
+    //     const emit      = first("emit");
+    //     const enderEmit = first("enderEmit");
+    //     const dest      = first("dest");
+    //     const enderDest = first("enderDest");
+    //     const infNFe    = first("infNFe");
+    //
+    //     const itens = [];
+    //     const dets = xml.getElementsByTagName("det");
+    //     for (let d of dets) {
+    //         const prod = first("prod", d);
+    //         const imposto = first("imposto", d);
+    //         const ipi = imposto ? first("IPI", imposto) : null;
+    //
+    //         itens.push({
+    //             numero_item: d.getAttribute("nItem"),
+    //
+    //             // identificação
+    //             codigo_produto: pick("cProd", prod),
+    //             descricao: pick("xProd", prod),
+    //             ncm: pick("NCM", prod),
+    //             cfop: pick("CFOP", prod),
+    //             unidade: pick("uCom", prod),
+    //
+    //             // quantidade
+    //             quantidade: parseFloat(pick("qCom", prod) || 0),
+    //
+    //             // valores fiscais puros (XML)
+    //             vProd:   parseFloat(pick("vProd", prod) || 0),
+    //             vFrete:  parseFloat(pick("vFrete", prod) || 0),
+    //             vOutro:  parseFloat(pick("vOutro", prod) || 0),
+    //
+    //             // IPI (fica em outro nó)
+    //             vIPI: ipi
+    //                 ? parseFloat(
+    //                     pick("vIPI", first("IPITrib", ipi)) ||
+    //                     pick("vIPI", ipi) ||
+    //                     0
+    //                 )
+    //                 : 0
+    //         });
+    //     }
+    //
+    //
+    //     const joinEndereco = (ender) => {
+    //         const partes = [
+    //             pick("xLgr", ender), pick("nro", ender), pick("xCpl", ender), pick("xBairro", ender),
+    //             [pick("xMun", ender), pick("UF", ender)].filter(Boolean).join("/")
+    //         ].filter(Boolean);
+    //         return partes.join(", ");
+    //     };
+    //
+    //     const duplicatas = [];
+    //     const dups = xml.getElementsByTagName("dup");
+    //     for (let dup of dups) {
+    //         duplicatas.push({
+    //             numero_duplicata: pick("nDup", dup),
+    //             data_vencimento:  pick("dVenc", dup),
+    //             valor_parcela:    parseFloat(pick("vDup", dup) || 0)
+    //         });
+    //     }
+    //
+    //     return {
+    //         fornecedor: {
+    //             cnpj_cpf: pick("CNPJ", emit) || pick("CPF", emit),
+    //             razao: pick("xNome", emit),
+    //             nome: pick("xFant", emit),
+    //             endereco: joinEndereco(enderEmit),
+    //             cep: pick("CEP", enderEmit),
+    //             insc_estadual: pick("IE", emit),
+    //             fone: pick("fone", enderEmit)
+    //         },
+    //         destinatario: {
+    //             cnpj_cpf: pick("CNPJ", dest) || pick("CPF", dest),
+    //             razao: pick("xNome", dest),
+    //             endereco: joinEndereco(enderDest),
+    //             cep: pick("CEP", enderDest),
+    //             municipio_codigo: pick("cMun", enderDest),
+    //             municipio: pick("xMun", enderDest),
+    //             uf: pick("UF", enderDest),
+    //             pais_codigo: pick("cPais", enderDest),
+    //             pais: pick("xPais", enderDest),
+    //             indicador_ie: pick("indIEDest", dest),
+    //             insc_estadual: pick("IE", dest),
+    //             fone: pick("fone", enderDest)
+    //         },
+    //         chave_acesso: (infNFe?.getAttribute("Id") || "").replace(/^NFe/i, ""),
+    //         numero_nf: pick("nNF"),
+    //         serie: pick("serie"),
+    //         data_emissao: pick("dhEmi"),
+    //         data_saida: pick("dhSaiEnt"),
+    //         natureza_operacao: pick("natOp"),
+    //         valor_total: parseFloat(pick("vNF") || 0),
+    //         valor_produtos: parseFloat(pick("vProd") || 0),
+    //         valor_frete: parseFloat(pick("vFrete") || 0),
+    //         itens, duplicatas
+    //     };
+    // }
 
     // ==============================
     // VIA SEFAZ

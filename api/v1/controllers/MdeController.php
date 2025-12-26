@@ -290,171 +290,54 @@ class MdeController
             }
 
             // CNPJ da unidade
-            $stmt = $pdo->prepare("SELECT cnpj FROM system_unit WHERE id = :id LIMIT 1");
-            $stmt->bindValue(':id', $system_unit_id, PDO::PARAM_INT);
-            $stmt->execute();
+            $stmt = $pdo->prepare("SELECT cnpj FROM system_unit WHERE id = ? LIMIT 1");
+            $stmt->execute([$system_unit_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
             if (!$row || empty($row['cnpj'])) {
-                return ['success' => false, 'message' => 'CNPJ não encontrado para a unidade'];
-            }
-            $cnpjUnidade = UtilsController::somenteNumeros($row['cnpj']);
-            if (strlen($cnpjUnidade) !== 14) {
-                return ['success' => false, 'message' => 'CNPJ da unidade inválido'];
+                return ['success' => false, 'message' => 'CNPJ não encontrado'];
             }
 
-            // Pasta XML
+            $cnpjUnidade = UtilsController::somenteNumeros($row['cnpj']);
+
             if (!UtilsController::ensureDir(self::XML_DIR)) {
-                return ['success' => false, 'message' => 'Não foi possível criar a pasta de XMLs'];
+                return ['success' => false, 'message' => 'Erro ao criar diretório de XML'];
             }
 
             $resultados = [];
 
             foreach ($chaves as $chave) {
                 $chave = trim((string)$chave);
+
                 if ($chave === '') {
                     $resultados[] = [
-                        'chave'   => $chave,
+                        'chave' => '',
                         'success' => false,
-                        'step'    => 'validacao',
+                        'step' => 'validacao',
                         'message' => 'Chave vazia'
                     ];
                     continue;
                 }
 
-                // ============================
-                // (0) Verifica se já existe nota para essa chave + unidade
-                // ============================
+                // 🔁 Duplicidade
                 $stmtDup = $pdo->prepare("
-                SELECT id 
-                  FROM estoque_nota 
-                 WHERE system_unit_id = :unit 
-                   AND chave_acesso  = :chave
-                 LIMIT 1
+                SELECT id FROM estoque_nota
+                WHERE system_unit_id = ? AND chave_acesso = ?
+                LIMIT 1
             ");
-                $stmtDup->bindValue(':unit', $system_unit_id, PDO::PARAM_INT);
-                $stmtDup->bindValue(':chave', $chave, PDO::PARAM_STR);
-                $stmtDup->execute();
-                $jaExiste = $stmtDup->fetch(PDO::FETCH_ASSOC);
+                $stmtDup->execute([$system_unit_id, $chave]);
 
-                if ($jaExiste) {
+                if ($stmtDup->fetch()) {
                     $resultados[] = [
-                        'chave'   => $chave,
+                        'chave' => $chave,
                         'success' => false,
-                        'step'    => 'duplicidade',
-                        'message' => 'Nota já importada para esta unidade (chave de acesso já existe na base)'
+                        'step' => 'duplicidade',
+                        'message' => 'Nota já importada'
                     ];
                     continue;
                 }
 
-                // (A) Baixa JSON
-                $urlJson = self::PLUG_BASE_URL . 'export?' . http_build_query([
-                        'softwarehouse_token' => self::PLUG_TOKEN,
-                        'cpf_cnpj'            => $cnpjUnidade,
-                        'invoice_key'         => $chave,
-                        'mode'                => 'JSON',
-                        'resume'              => 'false',
-                        'downloaded'          => 'true'
-                    ]);
-                [$codeJ, $bodyJ, $errJ] = UtilsController::httpGet($urlJson);
-                if ($errJ || $codeJ < 200 || $codeJ >= 300) {
-                    // tenta extrair mensagem amigável do body (ex: "Nota não encontrada.")
-                    $plugMsg = null;
-
-                    if (!$errJ && !empty($bodyJ)) {
-                        $bodyDecoded = json_decode($bodyJ, true);
-                        if (is_array($bodyDecoded) && !empty($bodyDecoded['message'])) {
-                            $plugMsg = $bodyDecoded['message'];
-                        }
-                    }
-
-                    // monta mensagem final
-                    $msgFinal = $errJ
-                        ? "Erro de rede: $errJ"
-                        : ($plugMsg ?: "HTTP $codeJ");
-
-                    $resultados[] = [
-                        'chave'   => $chave,
-                        'success' => false,
-                        'step'    => 'json',
-                        'message' => $msgFinal,
-                        'raw'     => $bodyJ
-                    ];
-                    continue;
-                }
-
-                $json = json_decode($bodyJ, true);
-                if (!is_array($json) || !empty($json['error'])) {
-                    $resultados[] = [
-                        'chave'   => $chave,
-                        'success' => false,
-                        'step'    => 'json',
-                        'message' => $json['message'] ?? 'Resposta JSON inválida'
-                    ];
-                    continue;
-                }
-
-                // Normaliza JSON -> formato do importNotaFiscal
-                try {
-                    $notaJson = self::mapPlugJsonToNota($json);
-                } catch (Throwable $e) {
-                    $resultados[] = [
-                        'chave'   => $chave,
-                        'success' => false,
-                        'step'    => 'map',
-                        'message' => 'Falha ao normalizar JSON: ' . $e->getMessage()
-                    ];
-                    continue;
-                }
-
-                // ============================
-                // (1) Valida CNPJ destinatário x CNPJ da unidade
-                // ============================
-                try {
-                    $cnpjDest = null;
-
-                    if (isset($notaJson['destinatario']['cnpj_cpf'])) {
-                        $cnpjDest = UtilsController::somenteNumeros($notaJson['destinatario']['cnpj_cpf']);
-                    } elseif (isset($notaJson['destinatario']['cnpj'])) {
-                        $cnpjDest = UtilsController::somenteNumeros($notaJson['destinatario']['cnpj']);
-                    } elseif (isset($notaJson['destinatario']['cpf'])) {
-                        // Em teoria não deveria cair aqui pra NFe de entrada pra PJ, mas deixei como fallback
-                        $cnpjDest = UtilsController::somenteNumeros($notaJson['destinatario']['cpf']);
-                    }
-
-                    if (!$cnpjDest || strlen($cnpjDest) !== 14) {
-                        $resultados[] = [
-                            'chave'   => $chave,
-                            'success' => false,
-                            'step'    => 'cnpj',
-                            'message' => 'CNPJ do destinatário não encontrado ou inválido na nota fiscal'
-                        ];
-                        continue;
-                    }
-
-                    if ($cnpjDest !== $cnpjUnidade) {
-                        $resultados[] = [
-                            'chave'   => $chave,
-                            'success' => false,
-                            'step'    => 'cnpj',
-                            'message' => 'CNPJ do destinatário da NFe é diferente do CNPJ da unidade'
-                        ];
-                        continue;
-                    }
-                } catch (Throwable $e) {
-                    $resultados[] = [
-                        'chave'   => $chave,
-                        'success' => false,
-                        'step'    => 'cnpj',
-                        'message' => 'Erro ao validar CNPJ do destinatário: ' . $e->getMessage()
-                    ];
-                    continue;
-                }
-
-                // (B) Importa no banco
-                $respImport = self::importNotaFiscal($system_unit_id, $notaJson);
-                $notaId  = $respImport['nota_id'] ?? null;
-
-                // (C) Baixa XML puro e salva
+                // 🔽 Baixa XML da Plug
                 $urlXml = self::PLUG_BASE_URL . 'export?' . http_build_query([
                         'softwarehouse_token' => self::PLUG_TOKEN,
                         'cpf_cnpj'            => $cnpjUnidade,
@@ -464,168 +347,150 @@ class MdeController
                         'resume'              => 'false',
                         'downloaded'          => 'true'
                     ]);
-                [$codeX, $bodyX, $errX] = UtilsController::httpGet($urlXml, ['Accept: */*']);
-                $xmlSavedUrl = null;
 
-                if (!$errX && $codeX >= 200 && $codeX < 300 && !empty($bodyX)) {
-                    $fileName = $chave . '.xml';
-                    $filePath = rtrim(self::XML_DIR, '/\\') . DIRECTORY_SEPARATOR . $fileName;
-                    if (UtilsController::saveFileOverwrite($filePath, $bodyX) !== false) {
-                        $xmlSavedUrl = self::getPublicBaseUrl() . $fileName;
-                    }
+                [$code, $xmlString, $err] = UtilsController::httpGet($urlXml, ['Accept: */*']);
+
+                if ($err || $code < 200 || $code >= 300 || empty($xmlString)) {
+                    $resultados[] = [
+                        'chave' => $chave,
+                        'success' => false,
+                        'step' => 'xml',
+                        'message' => $err ?: "Erro HTTP $code"
+                    ];
+                    continue;
                 }
+
+                // 💾 Salva XML bruto
+                $filePath = self::XML_DIR . '/' . $chave . '.xml';
+                UtilsController::saveFileOverwrite($filePath, $xmlString);
+
+                // 🚀 Importa diretamente do XML
+                $resp = self::importNotaFiscal($system_unit_id, $xmlString);
 
                 $resultados[] = [
-                    'chave'      => $chave,
-                    'success'    => !empty($respImport['success']),
-                    'nota_id'    => $notaId,
-                    'xml_public' => $xmlSavedUrl,
-                    'message'    => $respImport['message'] ?? ($respImport['success'] ?? false ? 'OK' : 'Falha na importação')
+                    'chave' => $chave,
+                    'success' => !empty($resp['success']),
+                    'nota_id' => $resp['nota_id'] ?? null,
+                    'xml_public' => self::getPublicBaseUrl() . $chave . '.xml',
+                    'message' => $resp['message'] ?? 'OK'
                 ];
-            }
-
-            // ============================
-            // SUCESSO GLOBAL (TOPO DO JSON)
-            // ============================
-            $sucessos = 0;
-            $falhas   = 0;
-
-            foreach ($resultados as $r) {
-                if (!empty($r['success'])) {
-                    $sucessos++;
-                } else {
-                    $falhas++;
-                }
-            }
-
-            $successGlobal = $sucessos > 0;
-
-            if ($successGlobal && $falhas === 0) {
-                $mensagemGlobal = 'Processamento concluído com sucesso.';
-            } elseif ($successGlobal && $falhas > 0) {
-                $mensagemGlobal = 'Processamento concluído com falhas.';
-            } else {
-                $mensagemGlobal = 'Nenhuma nota importada.';
             }
 
             return [
-                'success' => $successGlobal,
-                'message' => $mensagemGlobal,
-                'data'    => [
-                    'system_unit_id' => $system_unit_id,
-                    'cnpj'           => $cnpjUnidade,
-                    'itens'          => $resultados
-                ]
+                'success' => true,
+                'message' => 'Processamento concluído',
+                'data' => $resultados
             ];
+
         } catch (Throwable $e) {
-            return ['success' => false, 'message' => 'Erro inesperado: ' . $e->getMessage()];
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    private static function mapPlugJsonToNota(array $plugJson): array
-    {
-        $xml = $plugJson['data']['xml'] ?? null;
-        if (!$xml || empty($xml['NFe']['infNFe'])) {
-            throw new Exception('Bloco NFe.infNFe não encontrado no JSON');
-        }
-
-        $inf  = $xml['NFe']['infNFe'];
-        $ide  = $inf['ide']  ?? [];
-        $emit = $inf['emit'] ?? [];
-        $dest = $inf['dest'] ?? [];
-        $det  = $inf['det']  ?? [];
-        $tot  = $inf['total']['ICMSTot'] ?? [];
-        $cobr = $inf['cobr'] ?? [];
-
-        $protChave = $xml['protNFe']['infProt']['chNFe'] ?? null;
-        $chave = $protChave ?: UtilsController::extraiChaveDoId($inf['@attributes']['Id'] ?? null);
-        if (!$chave) throw new Exception('Chave de acesso não encontrada no JSON');
-
-        // Datas (YYYY-MM-DD)
-        $dhEmi    = $ide['dhEmi']    ?? null;
-        $dhSaiEnt = $ide['dhSaiEnt'] ?? null;
-
-        // Totais
-        $valorNF    = isset($tot['vNF'])    ? (float)$tot['vNF']    : 0.0;
-        $valorProd  = isset($tot['vProd'])  ? (float)$tot['vProd']  : 0.0;
-        $valorFrete = isset($tot['vFrete']) ? (float)$tot['vFrete'] : 0.0;
-
-        // Fornecedor (emitente)
-        $fornecedor = [
-            'cnpj_cpf'  => $emit['CNPJ'] ?? null,      // seu getCreateFornecedor exige cnpj_cpf
-            'razao'     => $emit['xNome'] ?? null,
-            'nome'      => $emit['xFant'] ?? null,
-            'endereco'  => ($emit['enderEmit']['xLgr'] ?? '') . ', ' . ($emit['enderEmit']['nro'] ?? ''),
-            'cep'       => $emit['enderEmit']['CEP'] ?? null,
-            'insc_estadual' => $emit['IE'] ?? null,
-            'fone'      => $emit['enderEmit']['fone'] ?? null,
-            'plano_contas' => null, // ajuste se necessário
-            'codigo'    => '',      // se usar código próprio
-        ];
-
-        // Destinatário (para validação que já existe em importNotaFiscal)
-        $destinatario = [
-            'cnpj'     => $dest['CNPJ'] ?? null,
-            'cnpj_cpf' => $dest['CNPJ'] ?? ($dest['CPF'] ?? null),
-            'razao'    => $dest['xNome'] ?? null,
-            'email'    => $dest['email'] ?? null,
-        ];
-
-        // Itens: det pode ser objeto ou array
-        $detArray = UtilsController::isAssoc($det) ? [$det] : $det;
-        $itens = [];
-        foreach ($detArray as $d) {
-            $nItem = isset($d['@attributes']['nItem']) ? (int)$d['@attributes']['nItem'] : null;
-            $p     = $d['prod'] ?? [];
-
-            $qtd = isset($p['qCom'])  ? (float)str_replace(',', '.', $p['qCom'])   : 0.0;
-            $vUn = isset($p['vUnCom'])? (float)str_replace(',', '.', $p['vUnCom']) : 0.0;
-            $vTo = isset($p['vProd']) ? (float)str_replace(',', '.', $p['vProd'])  : ($qtd * $vUn);
-
-            $itens[] = [
-                'numero_item'    => $nItem,
-                'codigo_produto' => $p['cProd'] ?? null,
-                'descricao'      => $p['xProd'] ?? null,
-                'ncm'            => $p['NCM'] ?? null,
-                'cfop'           => $p['CFOP'] ?? null,
-                'unidade'        => $p['uCom'] ?? null,
-                'quantidade'     => $qtd,
-                'valor_unitario' => $vUn,
-                'valor_total'    => $vTo,
-                'valor_frete'    => 0.0
-            ];
-        }
-
-        // Duplicatas
-        $duplicatas = [];
-        if (!empty($cobr['dup'])) {
-            $dups = $cobr['dup'];
-            $dups = UtilsController::isAssoc($dups) ? [$dups] : $dups;
-            foreach ($dups as $d) {
-                $duplicatas[] = [
-                    'numero_duplicata' => $d['nDup'] ?? null,
-                    'data_vencimento'  => $d['dVenc'] ?? null,
-                    'valor_parcela'    => isset($d['vDup']) ? (float)$d['vDup'] : null,
-                ];
-            }
-        }
-
-        return [
-            'chave_acesso'      => $chave,
-            'numero_nf'         => (string)($ide['nNF'] ?? ''),
-            'serie'             => (string)($ide['serie'] ?? ''),
-            'data_emissao'      => UtilsController::toISODate($dhEmi),
-            'data_saida'        => UtilsController::toISODate($dhSaiEnt),
-            'natureza_operacao' => $ide['natOp'] ?? null,
-            'valor_total'       => $valorNF,
-            'valor_produtos'    => $valorProd,
-            'valor_frete'       => $valorFrete,
-
-            'fornecedor'        => $fornecedor,
-            'destinatario'      => $destinatario,
-            'itens'             => $itens,
-            'duplicatas'        => $duplicatas
-        ];
-    }
+//    private static function mapPlugJsonToNota(array $plugJson): array
+//    {
+//        $xml = $plugJson['data']['xml'] ?? null;
+//        if (!$xml || empty($xml['NFe']['infNFe'])) {
+//            throw new Exception('Bloco NFe.infNFe não encontrado no JSON');
+//        }
+//
+//        $inf  = $xml['NFe']['infNFe'];
+//        $ide  = $inf['ide']  ?? [];
+//        $emit = $inf['emit'] ?? [];
+//        $dest = $inf['dest'] ?? [];
+//        $det  = $inf['det']  ?? [];
+//        $tot  = $inf['total']['ICMSTot'] ?? [];
+//        $cobr = $inf['cobr'] ?? [];
+//
+//        $protChave = $xml['protNFe']['infProt']['chNFe'] ?? null;
+//        $chave = $protChave ?: UtilsController::extraiChaveDoId($inf['@attributes']['Id'] ?? null);
+//        if (!$chave) throw new Exception('Chave de acesso não encontrada no JSON');
+//
+//        // Datas (YYYY-MM-DD)
+//        $dhEmi    = $ide['dhEmi']    ?? null;
+//        $dhSaiEnt = $ide['dhSaiEnt'] ?? null;
+//
+//        // Totais
+//        $valorNF    = isset($tot['vNF'])    ? (float)$tot['vNF']    : 0.0;
+//        $valorProd  = isset($tot['vProd'])  ? (float)$tot['vProd']  : 0.0;
+//        $valorFrete = isset($tot['vFrete']) ? (float)$tot['vFrete'] : 0.0;
+//
+//        // Fornecedor (emitente)
+//        $fornecedor = [
+//            'cnpj_cpf'  => $emit['CNPJ'] ?? null,      // seu getCreateFornecedor exige cnpj_cpf
+//            'razao'     => $emit['xNome'] ?? null,
+//            'nome'      => $emit['xFant'] ?? null,
+//            'endereco'  => ($emit['enderEmit']['xLgr'] ?? '') . ', ' . ($emit['enderEmit']['nro'] ?? ''),
+//            'cep'       => $emit['enderEmit']['CEP'] ?? null,
+//            'insc_estadual' => $emit['IE'] ?? null,
+//            'fone'      => $emit['enderEmit']['fone'] ?? null,
+//            'plano_contas' => null, // ajuste se necessário
+//            'codigo'    => '',      // se usar código próprio
+//        ];
+//
+//        // Destinatário (para validação que já existe em importNotaFiscal)
+//        $destinatario = [
+//            'cnpj'     => $dest['CNPJ'] ?? null,
+//            'cnpj_cpf' => $dest['CNPJ'] ?? ($dest['CPF'] ?? null),
+//            'razao'    => $dest['xNome'] ?? null,
+//            'email'    => $dest['email'] ?? null,
+//        ];
+//
+//        // Itens: det pode ser objeto ou array
+//        $detArray = UtilsController::isAssoc($det) ? [$det] : $det;
+//        $itens = [];
+//        foreach ($detArray as $d) {
+//            $nItem = isset($d['@attributes']['nItem']) ? (int)$d['@attributes']['nItem'] : null;
+//            $p     = $d['prod'] ?? [];
+//
+//            $qtd = isset($p['qCom'])  ? (float)str_replace(',', '.', $p['qCom'])   : 0.0;
+//            $vUn = isset($p['vUnCom'])? (float)str_replace(',', '.', $p['vUnCom']) : 0.0;
+//            $vTo = isset($p['vProd']) ? (float)str_replace(',', '.', $p['vProd'])  : ($qtd * $vUn);
+//
+//            $itens[] = [
+//                'numero_item'    => $nItem,
+//                'codigo_produto' => $p['cProd'] ?? null,
+//                'descricao'      => $p['xProd'] ?? null,
+//                'ncm'            => $p['NCM'] ?? null,
+//                'cfop'           => $p['CFOP'] ?? null,
+//                'unidade'        => $p['uCom'] ?? null,
+//                'quantidade'     => $qtd,
+//                'valor_unitario' => $vUn,
+//                'valor_total'    => $vTo,
+//                'valor_frete'    => 0.0
+//            ];
+//        }
+//
+//        // Duplicatas
+//        $duplicatas = [];
+//        if (!empty($cobr['dup'])) {
+//            $dups = $cobr['dup'];
+//            $dups = UtilsController::isAssoc($dups) ? [$dups] : $dups;
+//            foreach ($dups as $d) {
+//                $duplicatas[] = [
+//                    'numero_duplicata' => $d['nDup'] ?? null,
+//                    'data_vencimento'  => $d['dVenc'] ?? null,
+//                    'valor_parcela'    => isset($d['vDup']) ? (float)$d['vDup'] : null,
+//                ];
+//            }
+//        }
+//
+//        return [
+//            'chave_acesso'      => $chave,
+//            'numero_nf'         => (string)($ide['nNF'] ?? ''),
+//            'serie'             => (string)($ide['serie'] ?? ''),
+//            'data_emissao'      => UtilsController::toISODate($dhEmi),
+//            'data_saida'        => UtilsController::toISODate($dhSaiEnt),
+//            'natureza_operacao' => $ide['natOp'] ?? null,
+//            'valor_total'       => $valorNF,
+//            'valor_produtos'    => $valorProd,
+//            'valor_frete'       => $valorFrete,
+//
+//            'fornecedor'        => $fornecedor,
+//            'destinatario'      => $destinatario,
+//            'itens'             => $itens,
+//            'duplicatas'        => $duplicatas
+//        ];
+//    }
     public static function getCreateFornecedor($system_unit_id, $fornecedorData)
     {
         global $pdo;
@@ -665,7 +530,7 @@ class MdeController
 
         return $pdo->lastInsertId();
     }
-    public static function importNotaFiscal($system_unit_id, $notaJson): array
+    public static function importNotaFiscal($system_unit_id, string $xmlString): array
     {
         global $pdo;
 
@@ -673,62 +538,72 @@ class MdeController
             $pdo->beginTransaction();
 
             // =========================
-            // 1) VALIDAR CNPJ
+            // 1) CARREGA XML
             // =========================
-            $cnpjDest = $notaJson['destinatario']['cnpj_cpf']
-                ?? $notaJson['dest']['cnpj_cpf']
-                ?? $notaJson['destinatario']['cnpj']
-                ?? $notaJson['dest']['cnpj']
-                ?? null;
+            libxml_use_internal_errors(true);
+            $xml = simplexml_load_string($xmlString);
 
-            if (!$cnpjDest) {
-                throw new Exception("Dados do destinatário não enviados (CNPJ ausente).");
+            if (!$xml) {
+                throw new Exception("XML inválido.");
             }
+
+            $infNFe = $xml->NFe->infNFe ?? null;
+            if (!$infNFe) {
+                throw new Exception("Estrutura NFe não encontrada.");
+            }
+
+            // =========================
+            // 2) DESTINATÁRIO (VALIDAÇÃO)
+            // =========================
+            $dest = $infNFe->dest;
+            $cnpjDest = preg_replace('/\D+/', '', (string)($dest->CNPJ ?? $dest->CPF));
 
             $stmt = $pdo->prepare("SELECT cnpj FROM system_unit WHERE id = ? LIMIT 1");
             $stmt->execute([$system_unit_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$row || !$row['cnpj']) {
-                throw new Exception("CNPJ da unidade não encontrado.");
+            if (!$row) {
+                throw new Exception("Unidade não encontrada.");
             }
 
-            $norm = fn($v) => preg_replace('/\D+/', '', (string)$v);
-
-            if ($norm($cnpjDest) !== $norm($row['cnpj'])) {
-                throw new Exception("CNPJ do destinatário não corresponde ao da unidade.");
+            if ($cnpjDest !== preg_replace('/\D+/', '', $row['cnpj'])) {
+                throw new Exception("CNPJ do destinatário não corresponde à unidade.");
             }
 
             // =========================
-            // 2) FORNECEDOR / NOTA
+            // 3) FORNECEDOR
             // =========================
-            $fornecedorData = $notaJson['fornecedor'] ?? null;
-            if (!$fornecedorData) {
-                throw new Exception("Fornecedor não informado.");
-            }
+            $emit = $infNFe->emit;
+
+            $fornecedorData = [
+                'cnpj_cpf' => (string)($emit->CNPJ ?? $emit->CPF),
+                'razao'    => (string)$emit->xNome,
+                'nome'     => (string)($emit->xFant ?? ''),
+                'insc_estadual' => (string)($emit->IE ?? '')
+            ];
 
             $fornecedor_id = self::getCreateFornecedor($system_unit_id, $fornecedorData);
 
-            $chaveAcesso = $notaJson['chave_acesso'] ?? null;
-            $numeroNF    = $notaJson['numero_nf'] ?? null;
-            $serie       = $notaJson['serie'] ?? null;
+            // =========================
+            // 4) DADOS DA NOTA
+            // =========================
+            $ide = $infNFe->ide;
+            $total = $infNFe->total->ICMSTot;
 
-            if (!$chaveAcesso || !$numeroNF) {
-                throw new Exception("Chave de acesso e número da NF são obrigatórios.");
-            }
+            $chaveAcesso = str_replace('NFe', '', (string)$infNFe['Id']);
 
             // Duplicidade
             $stmt = $pdo->prepare("
             SELECT id FROM estoque_nota
-             WHERE system_unit_id = ? AND fornecedor_id = ? AND numero_nf = ? AND serie = ?
+            WHERE system_unit_id = ? AND fornecedor_id = ? AND chave_acesso = ?
         ");
-            $stmt->execute([$system_unit_id, $fornecedor_id, $numeroNF, $serie]);
+            $stmt->execute([$system_unit_id, $fornecedor_id, $chaveAcesso]);
             if ($stmt->fetch()) {
-                throw new Exception("Nota já importada para este fornecedor.");
+                throw new Exception("Nota já importada.");
             }
 
             // =========================
-            // 3) INSERE NOTA
+            // 5) INSERE NOTA
             // =========================
             $stmt = $pdo->prepare("
             INSERT INTO estoque_nota
@@ -742,62 +617,64 @@ class MdeController
                 $system_unit_id,
                 $fornecedor_id,
                 $chaveAcesso,
-                $numeroNF,
-                $serie,
-                $notaJson['data_emissao'] ?? null,
-                $notaJson['data_saida'] ?? null,
-                $notaJson['natureza_operacao'] ?? null,
-                (float)($notaJson['valor_total'] ?? 0),
-                (float)($notaJson['valor_produtos'] ?? 0),
-                (float)($notaJson['valor_frete'] ?? 0),
+                (string)$ide->nNF,
+                (string)$ide->serie,
+                (string)$ide->dhEmi,
+                (string)($ide->dhSaiEnt ?? null),
+                (string)$ide->natOp,
+                (float)$total->vNF,
+                (float)$total->vProd,
+                (float)$total->vFrete
             ]);
 
             $nota_id = (int)$pdo->lastInsertId();
 
             // =========================
-            // 4) ITENS (CUSTO REAL)
+            // 6) ITENS (CUSTO REAL)
             // =========================
-            if (!empty($notaJson['itens']) && is_array($notaJson['itens'])) {
+            $stmtItem = $pdo->prepare("
+            INSERT INTO estoque_nota_item
+            (system_unit_id, nota_id, numero_item, codigo_produto, descricao,
+             ncm, cfop, unidade, quantidade,
+             valor_unitario, valor_total, valor_frete)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
 
-                $stmtItem = $pdo->prepare("
-                INSERT INTO estoque_nota_item
-                (system_unit_id, nota_id, numero_item, codigo_produto, descricao,
-                 ncm, cfop, unidade, quantidade,
-                 valor_unitario, valor_total, valor_frete)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+            foreach ($infNFe->det as $det) {
+                $prod = $det->prod;
+                $imp  = $det->imposto;
 
-                foreach ($notaJson['itens'] as $item) {
+                $quantidade = (float)$prod->qCom;
+                if ($quantidade <= 0) continue;
 
-                    $quantidade = (float)($item['quantidade'] ?? 0);
-                    if ($quantidade <= 0) continue;
+                $vProd  = (float)$prod->vProd;
+                $vFrete = (float)($prod->vFrete ?? 0);
+                $vOutro = (float)($prod->vOutro ?? 0);
 
-                    $vProd   = (float)($item['valor_produto'] ?? $item['vProd'] ?? 0);
-                    $vIPI    = (float)($item['valor_ipi'] ?? $item['vIPI'] ?? 0);
-                    $vOutro  = (float)($item['valor_outros'] ?? $item['vOutro'] ?? 0);
-                    $vFrete  = (float)($item['valor_frete'] ?? $item['vFrete'] ?? 0);
-
-                    // 👉 CUSTO REAL DO ITEM
-                    $valorTotalItem = round($vProd + $vIPI + $vOutro + $vFrete, 2);
-
-                    // 👉 VALOR UNITÁRIO REAL
-                    $valorUnitario = round($valorTotalItem / $quantidade, 6);
-
-                    $stmtItem->execute([
-                        $system_unit_id,
-                        $nota_id,
-                        (int)($item['numero_item'] ?? 0),
-                        $item['codigo_produto'] ?? null,
-                        $item['descricao'] ?? null,
-                        $item['ncm'] ?? null,
-                        $item['cfop'] ?? null,
-                        $item['unidade'] ?? null,
-                        $quantidade,
-                        $valorUnitario,
-                        $valorTotalItem,
-                        $vFrete
-                    ]);
+                // IPI
+                $vIPI = 0;
+                if (isset($imp->IPI->IPITrib->vIPI)) {
+                    $vIPI = (float)$imp->IPI->IPITrib->vIPI;
                 }
+
+                // 👉 CUSTO REAL
+                $valorTotalItem = round($vProd + $vFrete + $vOutro + $vIPI, 2);
+                $valorUnitario  = round($valorTotalItem / $quantidade, 6);
+
+                $stmtItem->execute([
+                    $system_unit_id,
+                    $nota_id,
+                    (int)$det['nItem'],
+                    (string)$prod->cProd,
+                    (string)$prod->xProd,
+                    (string)$prod->NCM,
+                    (string)$prod->CFOP,
+                    (string)$prod->uCom,
+                    $quantidade,
+                    $valorUnitario,
+                    $valorTotalItem,
+                    $vFrete
+                ]);
             }
 
             $pdo->commit();
