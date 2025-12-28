@@ -634,8 +634,8 @@ class MdeController
                 $chaveAcesso,
                 (string)$ide->nNF,
                 (string)$ide->serie,
-                (string)$ide->dhEmi,
-                (string)($ide->dhSaiEnt ?? null),
+                self::xmlDateOrNull($ide->dhEmi ?? null),
+                self::xmlDateOrNull($ide->dhSaiEnt ?? null),
                 (string)$ide->natOp,
                 (float)$total->vNF,
                 (float)$total->vProd,
@@ -1516,6 +1516,18 @@ class MdeController
             ];
         }
     }
+
+
+    private static function xmlDateOrNull($value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $str = trim((string)$value);
+        return $str === '' ? null : $str;
+    }
+
 
 
 
