@@ -17,6 +17,32 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
     <style>
+        /* ====== FUNDO TRANSPARENTE PARA IFRAME ====== */
+        html, body {
+            background: transparent !important;
+        }
+
+        /* AdminBSB costuma pintar o body pelo tema */
+        body.theme-blue,
+        body.theme-red,
+        body.theme-green,
+        body.theme-purple,
+        body.theme-black {
+            background: transparent !important;
+        }
+
+        /* Evita “placa cinza” atrás do conteúdo */
+        .container-fluid,
+        .tab-content {
+            background: transparent !important;
+        }
+
+        /* Se quiser manter os cards bem “clean” */
+        .card,
+        .card .body {
+            background: rgba(255, 255, 255, 0.98) !important;
+        }
+        
         body { background:#f7f9fc; }
         .page-wrap { max-width: 900px; margin: 32px auto; }
         .card { border-radius: 8px; }
