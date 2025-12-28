@@ -19,6 +19,31 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     <style>
+        /* ====== FUNDO TRANSPARENTE PARA IFRAME ====== */
+        html, body {
+            background: transparent !important;
+        }
+
+        /* AdminBSB costuma pintar o body pelo tema */
+        body.theme-blue,
+        body.theme-red,
+        body.theme-green,
+        body.theme-purple,
+        body.theme-black {
+            background: transparent !important;
+        }
+
+        /* Evita “placa cinza” atrás do conteúdo */
+        .container-fluid,
+        .tab-content {
+            background: transparent !important;
+        }
+
+        /* Se quiser manter os cards bem “clean” */
+        .card,
+        .card .body {
+            background: rgba(255, 255, 255, 0.98) !important;
+        }
         .form-control { margin-bottom:10px; }
         .table th, .table td { vertical-align: middle !important; }
         .modal-body { max-height: 500px; overflow-y: auto; }
