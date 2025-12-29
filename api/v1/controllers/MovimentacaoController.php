@@ -892,6 +892,9 @@ class MovimentacaoController
             // Inicia a transação
             $pdo->beginTransaction();
 
+            $transferKey = UtilsController::uuidv4();
+
+
             // Criação dos movimentos de saída
             foreach ($itens as $item) {
                 // Verifica se cada item possui os campos obrigatórios
@@ -911,14 +914,34 @@ class MovimentacaoController
                 $quantidade = str_replace(",", ".", $item["quantidade"]);
 
                 // Inserção no banco de dados para o movimento de saída
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_destino, doc, tipo, tipo_mov, produto, seq, data,data_original, quantidade, usuario_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("
+                    INSERT INTO movimentacao (
+                        system_unit_id,
+                        system_unit_id_destino,
+                        system_unit_id_remetente,
+                        doc,
+                        doc_par,
+                        transfer_key,
+                        tipo,
+                        tipo_mov,
+                        produto,
+                        seq,
+                        data,
+                        data_original,
+                        quantidade,
+                        usuario_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+
                 $stmt->execute([
-                    $system_unit_id,
-                    $system_unit_id_destino,
-                    $docSaida,
-                    $tipo_saida_doc,
-                    $tipo_saida,
+                    $system_unit_id,             // origem
+                    $system_unit_id_destino,     // destino
+                    $system_unit_id,             // ✅ remetente = a própria origem
+                    $docSaida,                   // doc TS
+                    $docEntrada,                 // ✅ par = doc TE
+                    $transferKey,                // ✅ transfer_key igual
+                    $tipo_saida_doc,             // 'ts'
+                    $tipo_saida,                 // 'saida'
                     $produto,
                     $seq,
                     $transferDate,
@@ -926,6 +949,7 @@ class MovimentacaoController
                     $quantidade,
                     $usuario_id,
                 ]);
+
             }
 
             // Criação dos movimentos de entrada
@@ -935,14 +959,34 @@ class MovimentacaoController
                 $seq = $item["seq"];
                 $quantidade = str_replace(",", ".", $item["quantidade"]);
 
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_remetente, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("
+                    INSERT INTO movimentacao (
+                        system_unit_id,
+                        system_unit_id_destino,
+                        system_unit_id_remetente,
+                        doc,
+                        doc_par,
+                        transfer_key,
+                        tipo,
+                        tipo_mov,
+                        produto,
+                        seq,
+                        data,
+                        data_original,
+                        quantidade,
+                        usuario_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+
                 $stmt->execute([
-                    $system_unit_id_destino,
-                    $system_unit_id,
-                    $docEntrada,
-                    $tipo_entrada_doc,
-                    $tipo_entrada,
+                    $system_unit_id_destino,     // unit que está recebendo (TE)
+                    $system_unit_id_destino,     // ✅ destino = a própria unit do TE
+                    $system_unit_id,             // remetente = origem
+                    $docEntrada,                 // doc TE
+                    $docSaida,                   // ✅ par = doc TS
+                    $transferKey,                // ✅ transfer_key igual
+                    $tipo_entrada_doc,           // 'te'
+                    $tipo_entrada,               // 'entrada'
                     $produto,
                     $seq,
                     $transferDate,
@@ -950,6 +994,7 @@ class MovimentacaoController
                     $quantidade,
                     $usuario_id,
                 ]);
+
             }
 
             // Consulta o nome da unidade de destino
