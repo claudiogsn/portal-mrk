@@ -62,12 +62,7 @@
 
         /* link da setinha (parece botão sem ser button) */
         a.btnToggle {
-            display: inline-block;
-            padding: 2px 6px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            background: #f7f7f7;
-            color: #333;
+            color: #000000;
             text-decoration: none !important;
         }
         a.btnToggle:hover { background:#eee; }
@@ -302,7 +297,7 @@
                     <!-- 1ª coluna: seta como LINK clicável (sem button) -->
                     <td class="text-center nowrap">
                         <a href="#" class="btnToggle" data-doc="${escapeHtml(doc)}" title="Expandir/Fechar">
-                            <i class="fa ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                            <i class="fa ${isOpen ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
                         </a>
                     </td>
 
