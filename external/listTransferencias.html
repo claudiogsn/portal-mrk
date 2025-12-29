@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório - Transferências</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- AdminBSB / Bootstrap -->
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        .muted { color: #777; }
+        .nowrap { white-space: nowrap; }
+        .text-right { text-align:right; }
+        .text-small { font-size: 12px; }
+        .clickable { cursor:pointer; }
+
+        /* KPIs */
+        .kpi {
+            text-align: center;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+            margin-bottom: 10px;
+        }
+        .kpi h4 { margin: 4px 0 0 0; font-weight: 700; }
+        .kpi small { color: #333; opacity: .9; display: block; }
+
+        .kpi.blue  { background: #e3f2fd; border-color: #bbdefb; color: #1565c0; }
+        .kpi.green { background: #e8f5e9; border-color: #c8e6c9; color: #1b5e20; }
+        .kpi.orange{ background: #fff3e0; border-color: #ffe0b2; color: #e65100; }
+        .kpi.gray  { background: #f5f5f5; border-color: #e0e0e0; color: #424242; }
+
+        /* Expansão */
+        .row-head { background:#fff; }
+        .row-head.open { background:#f7fbff; }
+        .row-items td { background:#fbfbfb; }
+        .subtable thead th { font-size: 12px; background:#f1f1f1; }
+        .subtable td { font-size: 12px; }
+
+        .badge-status {
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #fff;
+            display:inline-block;
+        }
+        .st-1 { background:#2e7d32; } /* concluido */
+        .st-0 { background:#ef6c00; } /* pendente */
+
+        .mov-entrada { color:#1b5e20; font-weight:700; }
+        .mov-saida { color:#b71c1c; font-weight:700; }
+
+        /* link da setinha (parece botão sem ser button) */
+        a.btnToggle {
+            display: inline-block;
+            padding: 2px 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: #f7f7f7;
+            color: #333;
+            text-decoration: none !important;
+        }
+        a.btnToggle:hover { background:#eee; }
+        a.btnToggle i { font-size: 12px; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
+            .kpi h4 { font-size: 14px; }
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+
+    <div class="card">
+        <div class="header">
+            <h2>Relatório - Transferências</h2>
+        </div>
+
+        <!-- FILTROS PRINCIPAIS -->
+        <div class="row" style="margin: 15px 0 5px;">
+            <div class="col-md-3">
+                <label class="muted">Data inicial</label>
+                <input type="date" id="dtInicio" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="muted">Data final</label>
+                <input type="date" id="dtFim" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label class="muted">Tipo</label>
+                <select id="filtroTipo" class="form-control">
+                    <option value="">Todos</option>
+                    <option value="ts">Saida (ts)</option>
+                    <option value="te">Entrada (te)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="muted">Documento</label>
+                <input type="text" id="filtroDoc" class="form-control" placeholder="ex: te-0003">
+            </div>
+            <div class="col-md-2">
+                <label class="muted">Ações</label><br>
+                <button id="btnConsultar" class="btn btn-primary">
+                    <i class="fa fa-search"></i> Consultar
+                </button>
+                <button id="btnLimpar" class="btn btn-default">
+                    <i class="fa fa-eraser"></i> Limpar
+                </button>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="row" style="margin: 0 0 5px;">
+            <div class="col-md-3">
+                <div class="kpi blue">
+                    <small>Transferências (docs)</small>
+                    <h4 id="kpiDocs">0</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi green">
+                    <small>Total custo</small>
+                    <h4 id="kpiTotalCusto">R$ 0,00</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi gray">
+                    <small>Total itens (somados)</small>
+                    <h4 id="kpiItens">0</h4>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi orange">
+                    <small>Custo médio / doc</small>
+                    <h4 id="kpiMedio">R$ 0,00</h4>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABELA -->
+        <div class="body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-resultado">
+                    <thead>
+                    <tr>
+                        <!-- 1ª coluna: seta (sem título) -->
+                        <th class="nowrap text-center" style="width:34px;"></th>
+
+                        <th class="nowrap" style="width:50px;">#</th>
+                        <th class="nowrap" style="width:130px;">Doc</th>
+                        <th class="nowrap" style="width:110px;">Data</th>
+                        <th class="nowrap" style="width:90px;">Status</th>
+
+                        <!-- NOVO: tipo_mov depois do status -->
+                        <th class="nowrap" style="width:110px;">Tipo mov</th>
+
+                        <!-- REMOVIDO: coluna Unidade -->
+                        <th>Remetente</th>
+                        <th>Destino</th>
+
+                        <th class="nowrap text-right" style="width:150px;">Total custo</th>
+                        <th class="nowrap text-right" style="width:70px;">Itens</th>
+
+                        <!-- REMOVIDO: coluna Abrir -->
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td colspan="10" class="text-center muted text-small">Informe o período e clique em Consultar.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-small muted" style="margin-top:8px;">
+                * Clique na linha para expandir/fechar e ver os itens da transferência.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ====== CONFIG ======
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = Number(urlParams.get('system_unit_id') || urlParams.get('unit_id') || urlParams.get('unit') || 0);
+
+    // ====== STATE ======
+    let docs = [];                 // retorno do backend (array de docs, cada doc com itens)
+    const openDocs = {};           // { doc: true/false }
+
+    // ====== UTILS ======
+    function brMoney(v) {
+        const n = Number(v || 0);
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    function brNumber(v, casas = 4) {
+        const n = Number(v || 0);
+        return n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+    }
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+    function swalLoading(title) {
+        Swal.fire({
+            title: title || 'Carregando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+    }
+    function fmtDateBR(iso) {
+        if (!iso) return '';
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+        if (!m) return String(iso);
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+    function badgeStatus(st) {
+        const s = Number(st || 0);
+        const txt = (s === 1) ? 'concluído' : 'pendente';
+        return `<span class="badge-status ${s===1?'st-1':'st-0'}">${txt}</span>`;
+    }
+    function tipoMovLabel(tm) {
+        const t = String(tm || '').toLowerCase();
+        if (t === 'entrada') return `<span class="mov-entrada"><i class="fa fa-arrow-down"></i> entrada</span>`;
+        if (t === 'saida') return `<span class="mov-saida"><i class="fa fa-arrow-up"></i> saída</span>`;
+        return escapeHtml(tm || '');
+    }
+
+    // tipo_mov do cabeçalho (você disse que agora vem no topo)
+    function getTipoMovDoc(docObj) {
+        if (docObj && docObj.tipo_mov) return docObj.tipo_mov;
+        const it = (docObj && Array.isArray(docObj.itens) && docObj.itens.length) ? docObj.itens[0] : null;
+        return it ? (it.tipo_mov || '') : '';
+    }
+
+    // ====== RENDER ======
+    function renderKPIs() {
+        const totalDocs = docs.length;
+        const totalCusto = docs.reduce((s, d) => s + Number(d.total_custo || 0), 0);
+        const totalItens = docs.reduce((s, d) => s + ((d.itens || []).length), 0);
+        const medio = totalDocs > 0 ? (totalCusto / totalDocs) : 0;
+
+        $('#kpiDocs').text(String(totalDocs));
+        $('#kpiTotalCusto').text(brMoney(totalCusto));
+        $('#kpiItens').text(String(totalItens));
+        $('#kpiMedio').text(brMoney(medio));
+    }
+
+    function renderTabela() {
+        const $tbody = $('#tabela-resultado tbody');
+        $tbody.empty();
+
+        if (!docs || docs.length === 0) {
+            $tbody.append(`
+                <tr>
+                    <td colspan="10" class="text-center muted text-small">
+                        Nenhum registro para os filtros atuais.
+                    </td>
+                </tr>
+            `);
+            renderKPIs();
+            return;
+        }
+
+        docs.forEach((d, idx) => {
+            const doc = d.doc || '';
+            const isOpen = !!openDocs[doc];
+            const itensCount = (d.itens || []).length;
+
+            const remetenteNome = d.system_unit_remetente_name || d.system_unit_id_remetente || (d.system_unit_name || d.system_unit_id || '');
+            const destinoNome   = d.system_unit_destino_name || d.system_unit_id_destino || '';
+
+            const tipoMov = getTipoMovDoc(d);
+
+            // LINHA CABEÇA (somente campos do topo)
+            $tbody.append(`
+                <tr class="row-head clickable ${isOpen ? 'open' : ''}" data-doc="${escapeHtml(doc)}">
+                    <!-- 1ª coluna: seta como LINK clicável (sem button) -->
+                    <td class="text-center nowrap">
+                        <a href="#" class="btnToggle" data-doc="${escapeHtml(doc)}" title="Expandir/Fechar">
+                            <i class="fa ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                        </a>
+                    </td>
+
+                    <td class="nowrap">${idx + 1}</td>
+                    <td class="nowrap"><b>${escapeHtml(doc)}</b></td>
+                    <td class="nowrap">${fmtDateBR(d.data)}</td>
+                    <td class="nowrap">${badgeStatus(d.status)}</td>
+
+                    <!-- tipo_mov logo após status -->
+                    <td class="nowrap">${tipoMovLabel(tipoMov)}</td>
+
+                    <td>${escapeHtml(remetenteNome || '')}</td>
+                    <td>${escapeHtml(destinoNome || '')}</td>
+
+                    <td class="text-right nowrap"><b>${brMoney(d.total_custo)}</b></td>
+                    <td class="text-right nowrap">${itensCount}</td>
+                </tr>
+            `);
+
+            // LINHA EXPANDIDA (itens)
+            if (isOpen) {
+                $tbody.append(`
+                    <tr class="row-items" data-doc="${escapeHtml(doc)}">
+                        <td colspan="10">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-condensed subtable" style="margin:0;">
+                                    <thead>
+                                        <tr>
+                                            <th class="nowrap" style="width:60px;">Seq</th>
+                                            <th class="nowrap" style="width:110px;">Produto</th>
+                                            <th>Descrição</th>
+                                            <th class="nowrap" style="width:80px;">Und</th>
+                                            <th class="nowrap text-right" style="width:140px;">Quantidade</th>
+                                            <th class="nowrap text-right" style="width:140px;">Custo unit.</th>
+                                            <th class="nowrap text-right" style="width:160px;">Subtotal</th>
+                                            <th class="nowrap" style="width:90px;">Tipo mov</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${renderItensRows(d.itens || [])}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                `);
+            }
+        });
+
+        renderKPIs();
+        bindRowEvents();
+    }
+
+    function renderItensRows(itens) {
+        if (!itens || itens.length === 0) {
+            return `<tr><td colspan="8" class="text-center muted text-small">Sem itens.</td></tr>`;
+        }
+
+        let html = '';
+        itens.forEach(it => {
+            html += `
+                <tr>
+                    <td class="nowrap">${Number(it.seq || 0)}</td>
+                    <td class="nowrap"><b>${escapeHtml(it.produto)}</b></td>
+                    <td>${escapeHtml(it.product_nome || '')}</td>
+                    <td class="nowrap">${escapeHtml(it.product_und || '')}</td>
+                    <td class="text-right nowrap">${brNumber(it.quantidade, 4)}</td>
+                    <td class="text-right nowrap">${brMoney(it.preco_custo)}</td>
+                    <td class="text-right nowrap"><b>${brMoney(it.subtotal_custo)}</b></td>
+                    <td class="nowrap">${tipoMovLabel(it.tipo_mov)}</td>
+                </tr>
+            `;
+        });
+
+        const total = itens.reduce((s, it) => s + Number(it.subtotal_custo || 0), 0);
+        html += `
+            <tr>
+                <td colspan="6" class="text-right"><b>Total</b></td>
+                <td class="text-right nowrap"><b>${brMoney(total)}</b></td>
+                <td></td>
+            </tr>
+        `;
+
+        return html;
+    }
+
+    function bindRowEvents() {
+        // clique na linha
+        $('#tabela-resultado tbody tr.row-head').off('click').on('click', function(e) {
+            // se clicou na seta, deixa o handler dela
+            if ($(e.target).closest('.btnToggle').length) return;
+            const doc = $(this).data('doc');
+            toggleDoc(doc);
+        });
+
+        // seta como LINK
+        $('.btnToggle').off('click').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const doc = $(this).data('doc');
+            toggleDoc(doc);
+        });
+    }
+
+    function toggleDoc(doc) {
+        if (!doc) return;
+        openDocs[doc] = !openDocs[doc];
+        renderTabela();
+    }
+
+    // ====== CONSULTA BACKEND ======
+    async function onConsultar() {
+        const dt_inicio = $('#dtInicio').val();
+        const dt_fim = $('#dtFim').val();
+        const tipo = ($('#filtroTipo').val() || '').trim(); // ts|te|''
+        const docLike = ($('#filtroDoc').val() || '').trim();
+
+        if (!token || !system_unit_id) {
+            return Swal.fire('Atenção', 'URL deve conter token e system_unit_id.', 'warning');
+        }
+        if (!dt_inicio || !dt_fim) {
+            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+        }
+        if (dt_inicio > dt_fim) {
+            return Swal.fire('Atenção', 'Data inicial não pode ser maior que a final.', 'warning');
+        }
+
+        swalLoading('Consultando...');
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: "getTransferenciasComCustos",
+                token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    dt_inicio,
+                    dt_fim,
+                    ...(tipo ? { tipo } : {}),
+                    ...(docLike ? { doc: docLike } : {})
+                }
+            });
+
+            Swal.close();
+
+            const api = res.data;
+            if (!api || api.success === false) {
+                docs = [];
+                for (const k in openDocs) delete openDocs[k];
+                renderTabela();
+                return Swal.fire('Atenção', api?.message || 'Falha ao consultar.', 'warning');
+            }
+
+            docs = Array.isArray(api.data) ? api.data : [];
+
+            // fecha tudo por padrão ao consultar
+            for (const k in openDocs) delete openDocs[k];
+
+            renderTabela();
+
+        } catch (e) {
+            Swal.close();
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+        }
+    }
+
+    function onLimpar() {
+        $('#filtroTipo').val('');
+        $('#filtroDoc').val('');
+
+        docs = [];
+        for (const k in openDocs) delete openDocs[k];
+
+        $('#tabela-resultado tbody').html(`
+            <tr><td colspan="10" class="text-center muted text-small">Informe o período e clique em Consultar.</td></tr>
+        `);
+
+        $('#kpiDocs').text('0');
+        $('#kpiTotalCusto').text(brMoney(0));
+        $('#kpiItens').text('0');
+        $('#kpiMedio').text(brMoney(0));
+    }
+
+    // ====== INIT ======
+    $(document).ready(() => {
+        // datas padrão: hoje e -7 dias
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const d = String(hoje.getDate()).padStart(2, '0');
+        $('#dtFim').val(`${y}-${m}-${d}`);
+
+        const semana = new Date(hoje.getTime() - 7*24*60*60*1000);
+        const y2 = semana.getFullYear();
+        const m2 = String(semana.getMonth() + 1).padStart(2, '0');
+        const d2 = String(semana.getDate()).padStart(2, '0');
+        $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+
+        $('#btnConsultar').on('click', onConsultar);
+        $('#btnLimpar').on('click', onLimpar);
+    });
+</script>
+</body>
+</html>

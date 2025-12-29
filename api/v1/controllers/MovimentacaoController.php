@@ -935,11 +935,11 @@ class MovimentacaoController
                 $seq = $item["seq"];
                 $quantidade = str_replace(",", ".", $item["quantidade"]);
 
-                // Inserção no banco de dados para o movimento de entrada
-                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, doc, tipo, tipo_mov, produto, seq, data,data_original, quantidade, usuario_id) 
-                               VALUES (?, ?, ?, ?,?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, system_unit_id_remetente, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $stmt->execute([
                     $system_unit_id_destino,
+                    $system_unit_id,
                     $docEntrada,
                     $tipo_entrada_doc,
                     $tipo_entrada,
@@ -1044,6 +1044,228 @@ class MovimentacaoController
                 "message" => "Erro ao criar transferência: " . $e->getMessage(),
             ];
         }
+    }
+
+    public static function getTransferenciasComCustos(array $data): array
+    {
+        global $pdo;
+
+        try {
+            $unitId = isset($data['system_unit_id']) ? (int)$data['system_unit_id'] : 0;
+            if (!$unitId) {
+                return ["success" => false, "message" => "Informe system_unit_id."];
+            }
+
+            $dtInicio = self::parseDate($data['dt_inicio'] ?? null);
+            $dtFim    = self::parseDate($data['dt_fim'] ?? null);
+            if (!$dtInicio || !$dtFim) {
+                return ["success" => false, "message" => "Informe dt_inicio e dt_fim (YYYY-MM-DD ou DD/MM/YYYY)."];
+            }
+
+            // =========================
+            // 1) Buscar DOCs (ts/te) no período
+            // =========================
+            $where = [];
+            $bind  = [
+                ':unit_id'   => $unitId,
+                ':dt_inicio' => $dtInicio,
+                ':dt_fim'    => $dtFim,
+            ];
+
+            $where[] = "m.system_unit_id = :unit_id";
+            $where[] = "m.tipo IN ('ts','te')";
+            $where[] = "m.data BETWEEN :dt_inicio AND :dt_fim";
+
+            if (isset($data['status']) && ($data['status'] === 0 || $data['status'] === '0' || $data['status'] === 1 || $data['status'] === '1')) {
+                $where[] = "m.status = :status";
+                $bind[':status'] = (int)$data['status'];
+            }
+
+            if (!empty($data['doc'])) {
+                $where[] = "m.doc LIKE :doc";
+                $bind[':doc'] = '%' . trim((string)$data['doc']) . '%';
+            }
+
+            if (!empty($data['tipo'])) {
+                $tipo = strtolower(trim((string)$data['tipo']));
+                if (in_array($tipo, ['ts','te'], true)) {
+                    $where[] = "m.tipo = :tipo";
+                    $bind[':tipo'] = $tipo;
+                }
+            }
+
+            $whereSql = implode(" AND ", $where);
+
+            // =========================
+            // Cache de nomes das unidades
+            // =========================
+            $unitNameCache = [];
+
+            $getUnitName = function (?int $id) use (&$unitNameCache, $pdo) {
+                if (!$id) return null;
+                if (isset($unitNameCache[$id])) return $unitNameCache[$id];
+
+                $st = $pdo->prepare("SELECT name FROM system_unit WHERE id = :id LIMIT 1");
+                $st->bindValue(':id', $id, PDO::PARAM_INT);
+                $st->execute();
+
+                $name = $st->fetchColumn();
+                $unitNameCache[$id] = $name ? (string)$name : (string)$id;
+
+                return $unitNameCache[$id];
+            };
+
+            // Aqui pegamos um resumo determinístico por doc.
+            $sqlDocs = "
+            SELECT
+                m.doc,
+                m.tipo_mov,
+                MIN(m.data) AS data,
+                MAX(m.status) AS status,
+                MAX(m.system_unit_id_destino) AS system_unit_id_destino,
+                MAX(m.system_unit_id_remetente) AS system_unit_id_remetente,
+                GROUP_CONCAT(DISTINCT m.tipo ORDER BY m.tipo) AS tipos_presentes
+            FROM movimentacao m
+            WHERE {$whereSql}
+            GROUP BY m.doc
+            ORDER BY MIN(m.data) DESC, m.doc DESC
+        ";
+
+            $stmtDocs = $pdo->prepare($sqlDocs);
+            foreach ($bind as $k => $v) {
+                if (in_array($k, [':unit_id', ':status'], true)) $stmtDocs->bindValue($k, (int)$v, PDO::PARAM_INT);
+                else $stmtDocs->bindValue($k, $v);
+            }
+            $stmtDocs->execute();
+            $docs = $stmtDocs->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!$docs) {
+                return ["success" => true, "data" => []];
+            }
+
+            // =========================
+            // 2) Buscar detalhes por doc (itens) + join em products
+            // =========================
+            $sqlItens = "
+            SELECT
+                m.doc,
+                m.tipo,
+                m.tipo_mov,              -- ✅ ADICIONADO
+                m.seq,
+                m.produto,
+                m.quantidade,
+                m.valor,
+                m.data,
+                m.status,
+                m.system_unit_id,
+                m.system_unit_id_destino,
+                m.system_unit_id_remetente,
+
+                p.nome AS product_nome,
+                p.preco_custo AS product_preco_custo,
+                p.und AS product_und
+            FROM movimentacao m
+            LEFT JOIN products p
+                ON p.system_unit_id = m.system_unit_id
+               AND p.codigo = CAST(m.produto AS UNSIGNED)
+            WHERE m.system_unit_id = :unit_id
+              AND m.doc = :doc
+              AND m.tipo IN ('ts','te')
+            ORDER BY m.seq ASC
+        ";
+            $stmtItens = $pdo->prepare($sqlItens);
+
+            $out = [];
+
+            foreach ($docs as $d) {
+                $doc = (string)$d['doc'];
+
+                $stmtItens->bindValue(':unit_id', $unitId, PDO::PARAM_INT);
+                $stmtItens->bindValue(':doc', $doc);
+                $stmtItens->execute();
+                $rows = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+                $itens = [];
+                $totalCusto = 0.0;
+
+                foreach ($rows as $r) {
+                    $qtd = (float)($r['quantidade'] ?? 0);
+
+                    // custo unitário: products.preco_custo (se não existir, 0)
+                    $precoCusto = (float)($r['product_preco_custo'] ?? 0);
+                    $subtotalCusto = $qtd * $precoCusto;
+
+                    $totalCusto += $subtotalCusto;
+
+                    $itens[] = [
+                        "tipo" => (string)$r["tipo"],
+                        "tipo_mov" => (string)($r["tipo_mov"] ?? ""),
+                        "seq" => (int)$r["seq"],
+                        "produto" => (string)$r["produto"],
+                        "product_nome" => (string)($r["product_nome"] ?? ""),
+                        "product_und" => (string)($r["product_und"] ?? ""),
+                        "quantidade" => $qtd,
+                        "preco_custo" => $precoCusto,
+                        "subtotal_custo" => $subtotalCusto
+                    ];
+                }
+
+                // =========================
+                // Ajuste: destino para TE
+                // =========================
+                $tiposPresentesArr = !empty($d["tipos_presentes"])
+                    ? explode(",", (string)$d["tipos_presentes"])
+                    : [];
+
+                $temTE = in_array('te', $tiposPresentesArr, true);
+
+                $destinoIdRaw   = $d["system_unit_id_destino"] !== null ? (int)$d["system_unit_id_destino"] : null;
+                $remetenteId    = $d["system_unit_id_remetente"] !== null ? (int)$d["system_unit_id_remetente"] : null;
+
+                // ✅ Se for TE, destino = a própria unidade do relatório (system_unit_id)
+                $destinoId = $temTE ? $unitId : $destinoIdRaw;
+
+                $out[] = [
+                    "doc" => $doc,
+                    "data" => (string)($d["data"] ?? ""),
+                    "status" => (int)($d["status"] ?? 0),
+
+                    "system_unit_id" => $unitId,
+                    "system_unit_id_destino" => $destinoId,
+                    "system_unit_id_remetente" => $remetenteId,
+
+                    "system_unit_name" => $getUnitName($unitId),
+                    "system_unit_destino_name" => $getUnitName($destinoId),
+                    "system_unit_remetente_name" => $getUnitName($remetenteId),
+
+                    "tipos_presentes" => $tiposPresentesArr,
+                    "tipo_mov" => (string)($d["tipo_mov"] ?? ""),
+
+                    "total_custo" => $totalCusto,
+                    "itens" => $itens,
+                ];
+            }
+
+            return ["success" => true, "data" => $out];
+
+        } catch (Exception $e) {
+            return ["success" => false, "message" => $e->getMessage()];
+        }
+    }
+
+    private static function parseDate(?string $s): ?string
+    {
+        if (!$s) return null;
+        $s = trim($s);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;
+
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $s)) {
+            [$d, $m, $y] = explode('/', $s);
+            return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
+        }
+
+        return null;
     }
 
     public static function importCompras($usuarioId, $produtos): array {

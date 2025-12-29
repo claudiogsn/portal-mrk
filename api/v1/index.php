@@ -956,6 +956,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'createTransferItems':
                 $response = MovimentacaoController::createTransferItems($requestData);
                 break;
+            case 'getTransferenciasComCustos':
+                $response = MovimentacaoController::getTransferenciasComCustos($requestData);
+                break;
             case 'contarDiasSemana':
                 $response = NecessidadesController::contarDiasSemana($requestData['dias']);
                 break;
