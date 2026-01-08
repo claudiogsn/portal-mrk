@@ -1,4 +1,33 @@
 <?php
+// --- CORS (colocar antes de qualquer outro header / output) ---
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+$allowed = [
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+    'http://localhost:19006',
+    'http://127.0.0.1:19006',
+];
+
+if ($origin && in_array($origin, $allowed, true)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header("Vary: Origin");
+    header("Access-Control-Allow-Credentials: true");
+} else {
+
+    header("Access-Control-Allow-Origin: *");
+}
+
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept");
+header("Access-Control-Max-Age: 86400");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+header('Content-Type: application/json; charset=utf-8');
 
 
 ini_set('post_max_size', '100M');
@@ -7,13 +36,14 @@ ini_set('max_execution_time', '600');
 ini_set('max_input_time', '600');
 ini_set('memory_limit', '512M');
 
-
-header("Access-Control-Allow-Origin: *"); // Permitir todas as origens
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Métodos permitidos
-header("Access-Control-Allow-Headers: Content-Type, Authorization"); // Cabeçalhos permitidos
-header("Access-Control-Allow-Origin: http://localhost:3000");
-header("Access-Control-Allow-Origin: http://localhost");
-header('Content-Type: application/json; charset=utf-8');
+//
+//header("Access-Control-Allow-Origin: *"); // Permitir todas as origens
+//header("Access-Control-Allow-Methods: GET, POST, OPTIONS"); // Métodos permitidos
+//header("Access-Control-Allow-Headers: Content-Type, Authorization"); // Cabeçalhos permitidos
+//header("Access-Control-Allow-Origin: http://localhost:3000");
+//header("Access-Control-Allow-Origin: http://localhost:8081");
+//header("Access-Control-Allow-Origin: http://localhost");
+//header('Content-Type: application/json; charset=utf-8');
 
 require_once 'controllers/ComposicaoController.php';
 require_once 'controllers/DashboardController.php';
@@ -94,7 +124,9 @@ if (isset($data['method']) && isset($data['data'])) {
         'gerarPdfFaturamento',
         'gerarPdfCompras',
         'listarNotasNaoImportadasUltimos30Dias',
-        'getGroupsToConsolidation'
+        'getGroupsToConsolidation',
+        'getGroupByUnit',
+        'getGroupByUser'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
