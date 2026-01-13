@@ -119,7 +119,7 @@ class BootstrapFormBuilder implements AdiantiFormInterface
      */
     public function enableCSRFProtection()
     {
-        $this->csrf_validation = true;
+        $this->csrf_validation = false;
         
         TSession::setValue('csrf_token_'.$this->name.'_before', TSession::getValue('csrf_token_'.$this->name));
         TSession::setValue('csrf_token_'.$this->name, bin2hex(random_bytes(32)));

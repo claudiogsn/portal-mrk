@@ -844,6 +844,8 @@ class MovimentacaoController
         {
             global $pdo;
 
+
+
             // Verifica se todos os campos obrigatórios estão presentes
             $requiredFields = [
                 "system_unit_id",
@@ -851,6 +853,9 @@ class MovimentacaoController
                 "itens",
                 "usuario_id",
             ];
+
+            $mobile = isset($data['mobile']) && $data['mobile'] === true;
+
             foreach ($requiredFields as $field) {
                 if (!isset($data[$field])) {
                     return [
@@ -1070,6 +1075,21 @@ class MovimentacaoController
 
                 // Commit da transação
                 $pdo->commit();
+
+                // ================= NOTIFICAÇÃO MOBILE =================
+                if ($mobile === true) {
+                    try {
+                        self::notifyTransferencia([
+                            'system_unit_id' => $system_unit_id,
+                            'user_id'        => $usuario_id,
+                            'transfer_key'   => $transferKey,
+                        ]);
+                    } catch (Exception $e) {
+                        // Não interrompe o fluxo
+                        // opcional: log interno
+                    }
+                }
+
                 return [
                     "success" => true,
                     "message" => "Transferência criada com sucesso",
@@ -1090,6 +1110,26 @@ class MovimentacaoController
                 ];
             }
         }
+
+    private static function notifyTransferencia(array $payload): void
+    {
+        $url = 'https://portal.mrksolucoes.com.br/jobs/notify/transferencia';
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json'
+            ],
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_TIMEOUT => 5, // não travar request
+        ]);
+
+        curl_exec($ch);
+        curl_close($ch);
+    }
+
 
     public static function getTransferenciaByKey(array $data): array
     {
