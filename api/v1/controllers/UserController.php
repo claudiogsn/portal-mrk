@@ -10,7 +10,7 @@ require_once __DIR__ . '/../database/db.php';
 
 class UserController {
 
-    public static function getUserDetails($login)
+    public static function getUserDetails($login): array
     {
         global $pdo;
 
@@ -21,7 +21,7 @@ class UserController {
 
         if ($isId) {
             $stmt = $pdo->prepare("
-        SELECT id, name, login, function_name, system_unit_id
+        SELECT id, name, login, function_name, system_unit_id, phone
         FROM system_users
         WHERE id = :user AND active = 'Y'
         LIMIT 1
@@ -29,7 +29,7 @@ class UserController {
             $stmt->bindParam(':user', $user, PDO::PARAM_INT);
         } else {
             $stmt = $pdo->prepare("
-        SELECT id, name, login, function_name, system_unit_id
+        SELECT id, name, login, function_name, system_unit_id, phone
         FROM system_users
         WHERE login = :user AND active = 'Y'
         LIMIT 1

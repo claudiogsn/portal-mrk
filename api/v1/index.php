@@ -988,6 +988,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'createTransferItems':
                 $response = MovimentacaoController::createTransferItems($requestData);
                 break;
+            case 'getTransferenciaByKey':
+                $response = MovimentacaoController::getTransferenciaByKey($requestData);
+                break;
             case 'getTransferenciasComCustos':
                 $response = MovimentacaoController::getTransferenciasComCustos($requestData);
                 break;
