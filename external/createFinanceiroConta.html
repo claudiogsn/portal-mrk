@@ -6,7 +6,6 @@
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- AdminBSB / Bootstrap -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
@@ -14,36 +13,16 @@
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
-    <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     <style>
         /* ====== FUNDO TRANSPARENTE PARA IFRAME ====== */
-        html, body {
-            background: transparent !important;
-        }
-
-        /* AdminBSB costuma pintar o body pelo tema */
-        body.theme-blue,
-        body.theme-red,
-        body.theme-green,
-        body.theme-purple,
-        body.theme-black {
-            background: transparent !important;
-        }
-
-        /* Evita “placa cinza” atrás do conteúdo */
-        .container-fluid,
-        .tab-content {
-            background: transparent !important;
-        }
-
-        /* Se quiser manter os cards bem “clean” */
-        .card,
-        .card .body {
-            background: rgba(255, 255, 255, 0.98) !important;
-        }
+        html, body { background: transparent !important; }
+        body.theme-blue, body.theme-red, body.theme-green, body.theme-purple, body.theme-black { background: transparent !important; }
+        .container-fluid, .tab-content { background: transparent !important; }
+        .card, .card .body { background: rgba(255, 255, 255, 0.98) !important; }
         .form-control { margin-bottom:10px; }
         .table th, .table td { vertical-align: middle !important; }
         .modal-body { max-height: 500px; overflow-y: auto; }
@@ -52,13 +31,38 @@
         .select2-selection__arrow { height: 34px !important; }
         .text-right { text-align:right; }
 
-        /* força fundo branco em tudo dentro do iframe */
-        html, body, .container-fluid, .card, .card .body {
-            background: #fff !important;
+        html, body, .container-fluid, .card, .card .body { background: #fff !important; }
+        .content, .content .container-fluid { background: #fff !important; }
+
+        /* Estilo para os Cards de Rateio */
+        .rateio-card {
+            border: 1px solid #ddd;
+            border-left: 4px solid #2196F3;
+            padding: 25px 15px 15px 15px; /* Top padding maior para o icone */
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .rateio-card:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        .content, .content .container-fluid {
-            background: #fff !important;
+        /* Botão Lixeira */
+        .btn-remove-rateio {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            color: #F44336; /* Vermelho */
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 10;
+            padding: 5px;
+        }
+        .btn-remove-rateio:hover {
+            color: #d32f2f;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -72,7 +76,6 @@
                 <div class="header"><h2>Nova Conta Financeira</h2></div>
 
                 <div class="body">
-                    <!-- Topo -->
                     <div class="row">
                         <div class="col-md-6">
                             <label>Fornecedor</label>
@@ -80,7 +83,8 @@
                                 <option value="">Selecione...</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+
+                        <div class="col-md-6" id="divPlanoPrincipal">
                             <label>Plano de Contas</label>
                             <select id="plano_contas" class="form-control">
                                 <option value="">Selecione...</option>
@@ -127,25 +131,30 @@
 
                     <hr>
 
-                    <!-- Toggle parcelamento -->
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <div class="checkbox">
                                 <input id="chkParcelar" type="checkbox" class="filled-in">
                                 <label for="chkParcelar">Deseja parcelar?</label>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="checkbox">
+                                <input id="chkRateio" type="checkbox" class="filled-in chk-col-blue">
+                                <label for="chkRateio">É rateio entre centros de custo?</label>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Área de parcelamento (esconde/mostra) -->
-                    <div id="areaParcelas" style="display:none;">
+                    <div id="areaParcelas" style="display:none; background: #fffde7; padding:10px; margin-top:10px; border-radius:4px;">
+                        <h4 style="margin-top:0; font-size:16px;">Parcelamento</h4>
                         <div class="row">
                             <div class="col-md-3">
-                                <label>Quantidade de parcelas</label>
+                                <label>Qtd. Parcelas</label>
                                 <input type="number" id="qtParcelas" class="form-control" min="1" step="1" value="1">
                             </div>
                             <div class="col-md-3" style="margin-top:25px;">
-                                <button type="button" class="btn btn-primary" id="btnGerarParcelas">Gerar parcelas</button>
+                                <button type="button" class="btn btn-primary btn-sm" id="btnGerarParcelas">Gerar parcelas</button>
                             </div>
                         </div>
 
@@ -153,25 +162,48 @@
                             <table class="table table-striped" id="tblParcelas">
                                 <thead>
                                 <tr>
-                                    <th style="width:90px;">Parcela</th>
+                                    <th style="width:90px;">#</th>
                                     <th>Documento</th>
-                                    <th style="width:160px;">Emissão</th>
-                                    <th style="width:160px;">Vencimento</th>
-                                    <th style="width:160px;">Valor</th>
+                                    <th>Vencimento</th>
+                                    <th>Valor</th>
                                 </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
                         </div>
+                        <div class="row">
+                            <div class="col-md-12 text-right">
+                                <strong>Total Parcelas: <span id="totalParcelas">R$ 0,00</span></strong>
+                                <br><small id="avisoParcelas" class="text-danger" style="display:none;">Diferença encontrada!</small>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div class="row" style="margin-top:8px;">
-                            <div class="col-md-6">
-                                <small id="avisoParcelas" class="text-danger" style="display:none;">
-                                    A soma das parcelas difere do total ajustado (valor total - desconto + acréscimo).
+                    <div id="areaRateio" style="display:none; background: #e3f2fd; padding:15px; margin-top:10px; border-radius:4px;">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h4 style="margin-top:0; font-size:16px;">Itens do Rateio</h4>
+                                <small>Defina os centros de custo (planos) e os valores para cada item.</small>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button type="button" class="btn btn-info btn-sm" id="btnAddRateioItem">
+                                    <i class="fa fa-plus"></i> Adicionar Item
+                                </button>
+                            </div>
+                        </div>
+                        <hr style="border-top: 1px solid #bbdefb;">
+
+                        <div id="listaRateioCards"></div>
+
+                        <div class="row" style="margin-top:15px;">
+                            <div class="col-md-7">
+                                <small id="avisoRateio" class="text-danger" style="display:none; font-weight:bold;">
+                                    A soma do rateio difere do Valor Total Ajustado!
                                 </small>
                             </div>
-                            <div class="col-md-6 text-right">
-                                <strong>Total das parcelas: <span id="totalParcelas">R$ 0,00</span></strong>
+                            <div class="col-md-5 text-right">
+                                <strong>Total Rateado: <span id="totalRateio">R$ 0,00</span></strong><br>
+                                <small style="color:#666;">Meta (Total - Desc + Acr): <span id="metaRateio">R$ 0,00</span></small>
                             </div>
                         </div>
                     </div>
@@ -181,21 +213,16 @@
                             <i class="fa fa-save"></i> Salvar
                         </button>
                     </div>
-                </div><!-- body -->
-            </div><!-- card -->
-        </div>
+                </div></div></div>
     </div>
 </div>
 
-<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
 <script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<!-- Select2 -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
@@ -203,14 +230,14 @@
     const urlParams   = new URLSearchParams(window.location.search);
     const token       = urlParams.get('token');
     const unit_id     = urlParams.get('system_unit_id') || urlParams.get('unit_id');
-    const user_id     = urlParams.get('user_id') || urlParams.get('username'); // compat
+    const user_id     = urlParams.get('user_id') || urlParams.get('username');
 
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
         : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
-    // cache de bancos / formas de pagamento
     let BANCOS_CACHE = [];
+    let PLANOS_CACHE = []; // Armazena os planos
 
     // ======= Helpers =======
     function toBRL(v){ const n = Number(v)||0; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
@@ -221,35 +248,91 @@
         const tz = new Date(d.getTime() - d.getTimezoneOffset()*60000);
         return tz.toISOString().slice(0,10);
     }
+    function getValorAjustado() {
+        const total = parseFloat($('#valor_total').val() || 0);
+        const desc  = parseFloat($('#desconto').val() || 0);
+        const acres = parseFloat($('#acrescimo').val() || 0);
+        return Math.max(0, total - desc + acres);
+    }
 
     // ======= Init =======
     $(document).ready(() => {
-        // Select2 com pesquisa e placeholder
+        // Select2 padrão
         $('#fornecedor').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
         $('#plano_contas').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
         $('#forma_pagamento_id').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
 
         carregarFornecedores();
         carregarPlanos();
-        carregarBancos(); // agora busca do endpoint listBancos
+        carregarBancos();
 
-        // Toggle de parcelamento
+        // --- Lógica Parcelamento (Bloqueia Rateio) ---
         $('#chkParcelar').on('change', function(){
-            const show = $(this).is(':checked');
-            $('#areaParcelas').toggle(show);
-            if (show) gerarParcelas(); else limparParcelasUI();
+            if($(this).is(':checked')) {
+                // Bloqueio/Desmarco Rateio
+                if($('#chkRateio').is(':checked')) {
+                    $('#chkRateio').prop('checked', false).trigger('change');
+                }
+
+                $('#areaParcelas').slideDown();
+                gerarParcelas();
+            } else {
+                $('#areaParcelas').slideUp();
+                limparParcelasUI();
+            }
         });
+
+        // --- Lógica Rateio (Bloqueia Parcelamento) ---
+        $('#chkRateio').on('change', function(){
+            if($(this).is(':checked')) {
+                // Bloqueio/Desmarco Parcelamento
+                if($('#chkParcelar').is(':checked')) {
+                    $('#chkParcelar').prop('checked', false).trigger('change');
+                }
+
+                // Esconde plano de contas principal (pois será definido por item no card)
+                $('#divPlanoPrincipal').addClass('hidden');
+                $('#plano_contas').val(null).trigger('change');
+
+                $('#areaRateio').slideDown();
+
+                // Se não houver cards, adiciona o primeiro automaticamente
+                if ($('.rateio-card').length === 0) {
+                    adicionarItemRateio();
+                }
+                atualizarTotalRateio();
+            } else {
+                $('#divPlanoPrincipal').removeClass('hidden');
+                $('#areaRateio').slideUp();
+                $('#listaRateioCards').empty(); // limpa os cards
+                atualizarTotalRateio();
+            }
+        });
+
+        // Botão adicionar card rateio
+        $('#btnAddRateioItem').on('click', adicionarItemRateio);
 
         // Geração de parcelas
         $('#btnGerarParcelas').on('click', gerarParcelas);
 
-        // Se qualquer base mudar e estiver parcelando, pode regenerar
+        // Recalculos globais
         $('#qtParcelas, #valor_total, #desconto, #acrescimo, #vencimento, #doc').on('change input', () => {
             if ($('#chkParcelar').is(':checked')) gerarParcelas();
+            if ($('#chkRateio').is(':checked')) atualizarTotalRateio();
         });
 
-        // Recalcular total quando editar manualmente valores
-        $(document).on('input change', '.valorParcela, .emissaoParcela, .vencParcela', atualizarTotalParcelas);
+        $(document).on('input change', '.valorParcela', atualizarTotalParcelas);
+        $(document).on('input change', '.valorRateio', atualizarTotalRateio);
+
+        // ==== AQUI ESTÁ A LIXEIRA ====
+        // Remover card de rateio ao clicar na lixeira
+        $(document).on('click', '.btn-remove-rateio', function(){
+            // Efeito visual de remoção
+            $(this).closest('.rateio-card').fadeOut(300, function(){
+                $(this).remove();
+                atualizarTotalRateio();
+            });
+        });
 
         $('#btnSalvar').on('click', salvarConta);
     });
@@ -257,91 +340,102 @@
     // ======= Loaders =======
     async function carregarFornecedores(){
         try{
-            const res = await axios.post(baseUrl, {
-                method: 'listFornecedores',
-                token,
-                data: { system_unit_id: Number(unit_id) }
-            });
-            const list = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
-            const sel = $('#fornecedor');
-            list.forEach(f => {
-                const label = f.razao && f.razao.trim() !== '' ? f.razao : f.nome;
-                sel.append(new Option(`${f.id} - ${label}`, f.id, false, false));
-            });
-            sel.trigger('change.select2');
-        }catch(e){
-            console.error(e);
-            Swal.fire('Erro','Falha ao carregar fornecedores.','error');
-        }
+            const res = await axios.post(baseUrl, { method: 'listFornecedores', token, data: { system_unit_id: Number(unit_id) } });
+            const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+            list.forEach(f => $('#fornecedor').append(new Option(`${f.id} - ${f.razao||f.nome}`, f.id)));
+        } catch(e){ console.error(e); }
     }
 
     async function carregarPlanos(){
         try{
-            const res = await axios.post(baseUrl, {
-                method: 'listPlanos',
-                token,
-                data: { system_unit_id: Number(unit_id) }
-            });
+            const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
+            PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+            PLANOS_CACHE.sort((a,b) => a.codigo.localeCompare(b.codigo));
 
-            const lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
-            const sel = $('#plano_contas');
-
-            // ordena por código
-            lista.sort((a,b) => a.codigo.localeCompare(b.codigo));
-
-            lista.forEach(p => {
+            // Popula o select principal
+            PLANOS_CACHE.forEach(p => {
                 const nivel = Math.floor((p.codigo.length - 2) / 2);
-                const indent = '\u00A0'.repeat(nivel * 4); // espaços reais
-
-                sel.append(
-                    new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo, false, false)
-                );
+                const indent = '\u00A0'.repeat(nivel * 4);
+                $('#plano_contas').append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
             });
-
-            sel.trigger('change.select2');
-
-        }catch(e){
-            console.error(e);
-            Swal.fire('Erro','Falha ao carregar planos de conta.','error');
-        }
+        } catch(e){ console.error(e); }
     }
 
-    // >>> NOVO: carregar formas de pagamento a partir de financeiro_banco
     async function carregarBancos(){
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'listBancos',
-                token,
-                data: {
-                    system_unit_id: Number(unit_id),
-                    apenas_ativos: true
-                }
-            });
-
-            const lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
-            BANCOS_CACHE = lista || [];
-
-            const sel = $('#forma_pagamento_id');
-            sel.empty();
-            sel.append(new Option('Selecione...', '', false, false));
-
+            const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+            BANCOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
             BANCOS_CACHE.forEach(b => {
-                const codigo = b.codigo ?? '';
-                const nome   = (b.nome || b.descricao || '').trim();
-                const label  = codigo ? `${codigo} - ${nome}` : nome;
-                // Usamos o CODIGO como value (1..9), para manter a referência nas contas
-                sel.append(new Option(label, codigo, false, false));
+                $('#forma_pagamento_id').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome||b.descricao), b.codigo));
             });
+        } catch(e){}
+    }
 
-            sel.trigger('change.select2');
+    // ======= Lógica Rateio (Cards) =======
+    function adicionarItemRateio() {
+        const idUnico = 'rateio_' + Date.now() + Math.floor(Math.random() * 1000);
 
-        } catch(e){
-            console.error(e);
-            Swal.fire('Erro','Falha ao carregar formas de pagamento (bancos).','error');
+        // Tenta calcular o valor restante para preencher o input automaticamente
+        const totalAjustado = getValorAjustado();
+        let somaAtual = 0;
+        $('.valorRateio').each(function(){ somaAtual += parseFloat($(this).val()||0); });
+        const restante = Math.max(0, totalAjustado - somaAtual).toFixed(2);
+
+        const html = `
+            <div class="rateio-card" id="card_${idUnico}">
+                <i class="fa fa-trash btn-remove-rateio" title="Remover item"></i>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <label>Plano de Contas</label>
+                        <select class="form-control select-rateio-plano" id="sel_${idUnico}" style="width:100%">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Valor do Item</label>
+                        <input type="number" step="0.01" class="form-control valorRateio" value="${restante}">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        $('#listaRateioCards').append(html);
+
+        // Popula o select deste card usando o cache
+        const $sel = $(`#sel_${idUnico}`);
+        PLANOS_CACHE.forEach(p => {
+            const nivel = Math.floor((p.codigo.length - 2) / 2);
+            const indent = '\u00A0'.repeat(nivel * 4);
+            $sel.append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
+        });
+
+        // Inicializa Select2
+        $sel.select2({ placeholder: 'Selecione o plano', width: '100%' });
+
+        atualizarTotalRateio();
+    }
+
+    function atualizarTotalRateio() {
+        let soma = 0;
+        $('.valorRateio').each(function(){
+            soma += parseFloat($(this).val() || 0);
+        });
+
+        const meta = getValorAjustado();
+        $('#totalRateio').text(toBRL(soma));
+        $('#metaRateio').text(toBRL(meta));
+
+        if (Math.abs(soma - meta) > 0.01) {
+            $('#avisoRateio').show();
+            $('#totalRateio').css('color', 'red');
+        } else {
+            $('#avisoRateio').hide();
+            $('#totalRateio').css('color', 'green');
         }
     }
 
-    // ======= Parcelas =======
+    // ======= Lógica Parcelamento =======
     function limparParcelasUI(){
         $('#tblParcelas tbody').empty();
         $('#totalParcelas').text('R$ 0,00');
@@ -349,190 +443,193 @@
     }
 
     function gerarParcelas(){
-        const qt           = Math.max(1, parseInt($('#qtParcelas').val() || '1', 10));
-        const docBase      = ($('#doc').val() || '').trim();
-        const emissao      = $('#emissao').val();
-        const vencInicial  = $('#vencimento').val();
+        const qt = Math.max(1, parseInt($('#qtParcelas').val() || '1'));
+        const docBase = ($('#doc').val() || '').trim();
+        const emissao = $('#emissao').val();
+        const vencInicial = $('#vencimento').val();
+        const totalAjustado = getValorAjustado();
 
-        const valor_total  = parseFloat($('#valor_total').val() || 0);
-        const desconto     = parseFloat($('#desconto').val() || 0);
-        const acrescimo    = parseFloat($('#acrescimo').val() || 0);
+        if (!docBase || !vencInicial || totalAjustado <= 0) return;
 
-        const totalAjustado = (valor_total - desconto + acrescimo);
-
-        if (!docBase || !vencInicial || totalAjustado <= 0 || qt < 1) {
-            limparParcelasUI();
-            return;
-        }
-
-        const baseParcela = Math.floor((totalAjustado / qt) * 100) / 100; // trunc 2 casas
+        const base = Math.floor((totalAjustado / qt) * 100) / 100;
         let soma = 0;
         const tbody = $('#tblParcelas tbody').empty();
 
         for (let i=1; i<=qt; i++){
-            let valor = (i < qt) ? baseParcela : (Math.round((totalAjustado - soma)*100)/100);
-            soma = Math.round((soma + valor)*100)/100;
-
-            const doc = `${docBase}-${pad2(i)}`;
-            const emiss = emissao || '';
-            const venc  = addMonths(vencInicial, i-1);
+            let val = (i < qt) ? base : (totalAjustado - soma);
+            soma += val;
 
             tbody.append(`
-        <tr>
-          <td>${i}/${qt}</td>
-          <td><input type="text" class="form-control docParcela" value="${doc}"></td>
-          <td><input type="date" class="form-control emissaoParcela" value="${emiss}"></td>
-          <td><input type="date" class="form-control vencParcela" value="${venc}"></td>
-          <td><input type="number" step="0.01" class="form-control valorParcela" value="${valor.toFixed(2)}"></td>
-        </tr>
-      `);
+                <tr>
+                    <td>${i}/${qt}</td>
+                    <td><input type="text" class="form-control docParcela" value="${docBase}-${pad2(i)}"></td>
+                    <td style="display:none"><input type="date" class="form-control emissaoParcela" value="${emissao}"></td>
+                    <td><input type="date" class="form-control vencParcela" value="${addMonths(vencInicial, i-1)}"></td>
+                    <td><input type="number" step="0.01" class="form-control valorParcela" value="${val.toFixed(2)}"></td>
+                </tr>
+            `);
         }
-
-        $('#totalParcelas').text(toBRL(soma));
-        const dif = Math.abs(soma - totalAjustado);
-        $('#avisoParcelas').toggle(dif > 0.009);
+        atualizarTotalParcelas();
     }
 
     function atualizarTotalParcelas(){
         let soma = 0;
-        $('#tblParcelas tbody tr').each(function(){
-            const v = parseFloat($(this).find('.valorParcela').val() || 0);
-            soma += v;
-        });
-
-        const valor_total  = parseFloat($('#valor_total').val() || 0);
-        const desconto     = parseFloat($('#desconto').val() || 0);
-        const acrescimo    = parseFloat($('#acrescimo').val() || 0);
-        const totalAjustado = (valor_total - desconto + acrescimo);
-
+        $('.valorParcela').each(function(){ soma += parseFloat($(this).val()||0); });
+        const meta = getValorAjustado();
         $('#totalParcelas').text(toBRL(soma));
-        $('#avisoParcelas').toggle(Math.abs(soma - totalAjustado) > 0.009);
+        $('#avisoParcelas').toggle(Math.abs(soma - meta) > 0.01);
     }
 
     // ======= Salvar =======
     async function salvarConta(){
-        const fornecedor_id       = $('#fornecedor').val();
-        const documentoBase       = ($('#doc').val() || '').trim();
-        const emissao             = $('#emissao').val();
-        const vencInicial         = $('#vencimento').val();
-        const plano_contas        = $('#plano_contas').val();
-        const forma_pagamento_id  = $('#forma_pagamento_id').val();
-        const obs_extra           = $('#obs_extra').val();
+        const dadosBase = {
+            fornecedor_id: $('#fornecedor').val(),
+            documento: ($('#doc').val() || '').trim(),
+            emissao: $('#emissao').val(),
+            vencimento: $('#vencimento').val(),
+            valor_total: parseFloat($('#valor_total').val() || 0),
+            desconto: parseFloat($('#desconto').val() || 0),
+            acrescimo: parseFloat($('#acrescimo').val() || 0),
+            forma_pagamento_id: $('#forma_pagamento_id').val(),
+            obs_extra: $('#obs_extra').val()
+        };
 
-        const valor_total         = parseFloat($('#valor_total').val() || 0);
-        const desconto            = parseFloat($('#desconto').val() || 0);
-        const acrescimo           = parseFloat($('#acrescimo').val() || 0);
-
-        if (!fornecedor_id || !documentoBase || !vencInicial || !valor_total) {
+        if (!dadosBase.fornecedor_id || !dadosBase.documento || !dadosBase.vencimento || !dadosBase.valor_total) {
             return Swal.fire('Atenção','Preencha Fornecedor, Documento, Vencimento e Valor Total.','warning');
         }
 
-        const parcelar = $('#chkParcelar').is(':checked');
-
+        const isParcelado = $('#chkParcelar').is(':checked');
+        const isRateio    = $('#chkRateio').is(':checked');
         let contas = [];
 
-        if (parcelar) {
-            // monta pelas linhas da tabela (variáveis por parcela)
-            let soma = 0; let linhas = 0;
+        const formaSel = getFormaSelecionada();
+        const bancoCod = formaSel ? formaSel.codigo : null;
+
+        // 1. RATEIO
+        if (isRateio) {
+            let somaRateio = 0;
+            const items = [];
+
+            $('.rateio-card').each(function() {
+                const plano = $(this).find('.select-rateio-plano').val();
+                const valor = parseFloat($(this).find('.valorRateio').val() || 0);
+
+                if (plano && valor > 0) {
+                    items.push({ plano, valor });
+                    somaRateio += valor;
+                }
+            });
+
+            if (items.length === 0) return Swal.fire('Erro', 'Adicione pelo menos um item ao rateio.', 'warning');
+
+            const totalAjustado = getValorAjustado();
+            if (Math.abs(somaRateio - totalAjustado) > 0.01) {
+                return Swal.fire('Erro', 'A soma dos itens do rateio não bate com o valor total da conta.', 'error');
+            }
+
+            items.forEach(item => {
+                contas.push({
+                    fornecedor_id: Number(dadosBase.fornecedor_id),
+                    documento: dadosBase.documento,
+                    emissao: dadosBase.emissao || null,
+                    vencimento: dadosBase.vencimento,
+                    valor: item.valor,
+                    adicional: 0,
+                    desconto: 0,
+                    plano_contas: item.plano,
+                    forma_pagamento: bancoCod,
+                    banco: bancoCod,
+                    obs_extra: dadosBase.obs_extra
+                });
+            });
+
+            // 2. PARCELADO
+        } else if (isParcelado) {
+            let soma = 0;
             $('#tblParcelas tbody tr').each(function(){
-                const doc  = ($(this).find('.docParcela').val() || '').trim();
-                const em   = $(this).find('.emissaoParcela').val() || null;
-                const ven  = $(this).find('.vencParcela').val();
-                const val  = parseFloat($(this).find('.valorParcela').val() || 0);
+                const doc = $(this).find('.docParcela').val();
+                const ven = $(this).find('.vencParcela').val();
+                const val = parseFloat($(this).find('.valorParcela').val() || 0);
 
                 if (doc && ven && val > 0) {
-                    linhas++;
                     soma += val;
-                    const formaSel = getFormaSelecionada();
-
                     contas.push({
-                        fornecedor_id: Number(fornecedor_id),
+                        fornecedor_id: Number(dadosBase.fornecedor_id),
                         documento: doc,
-                        emissao: em,              // pode variar por parcela
-                        vencimento: ven,          // pode variar por parcela
-                        valor: val,               // já final por parcela
-                        adicional: 0,             // zera p/ não duplicar
-                        desconto: 0,              // zera p/ não duplicar
-                        plano_contas: plano_contas || null,
-                        // usamos o CODIGO do banco/forma (1..9) como referência
-                        forma_pagamento:    formaSel ? formaSel.codigo : null,
-                        banco:              formaSel ? formaSel.codigo : null,
-                        forma_pagamento_id: formaSel ? formaSel.codigo : null,
-                        obs_extra
+                        emissao: dadosBase.emissao,
+                        vencimento: ven,
+                        valor: val,
+                        adicional: 0,
+                        desconto: 0,
+                        plano_contas: $('#plano_contas').val(),
+                        forma_pagamento: bancoCod,
+                        banco: bancoCod,
+                        obs_extra: dadosBase.obs_extra
                     });
                 }
             });
 
-            if (!linhas) {
-                return Swal.fire('Atenção','Gere/edite as parcelas antes de salvar.','warning');
+            if (Math.abs(soma - getValorAjustado()) > 0.01) {
+                return Swal.fire('Erro', 'Soma das parcelas incorreta.', 'error');
             }
-            const totalAjustado = (valor_total - desconto + acrescimo);
-            if (Math.abs(soma - totalAjustado) > 0.009) {
-                return Swal.fire('Atenção','A soma das parcelas difere do total ajustado (valor - desconto + acréscimo).','warning');
-            }
-        } else {
-            // 1 única conta (dados do topo)
-            const formaSel = getFormaSelecionada();
+            if (contas.length === 0) return Swal.fire('Atenção', 'Gere as parcelas antes de salvar.', 'warning');
 
+            // 3. PADRÃO
+        } else {
             contas.push({
-                fornecedor_id: Number(fornecedor_id),
-                documento: documentoBase,
-                emissao: emissao || null,
-                vencimento: vencInicial,
-                valor: valor_total,                // bruto informado
-                adicional: acrescimo,              // aplica no item único
-                desconto: desconto,                // aplica no item único
-                plano_contas: plano_contas || null,
-                forma_pagamento:    formaSel ? formaSel.codigo : null,
-                banco:              formaSel ? formaSel.codigo : null,
-                forma_pagamento_id: formaSel ? formaSel.codigo : null,
-                obs_extra
+                fornecedor_id: Number(dadosBase.fornecedor_id),
+                documento: dadosBase.documento,
+                emissao: dadosBase.emissao,
+                vencimento: dadosBase.vencimento,
+                valor: dadosBase.valor_total,
+                adicional: dadosBase.acrescimo,
+                desconto: dadosBase.desconto,
+                plano_contas: $('#plano_contas').val(),
+                forma_pagamento: bancoCod,
+                banco: bancoCod,
+                obs_extra: dadosBase.obs_extra
             });
         }
 
-        Swal.fire({ title:'Salvando...', didOpen:()=>Swal.showLoading() });
-        try{
-            const res = await axios.post(baseUrl, {
-                method: 'createContaLote',
-                token,
-                data: {
-                    system_unit_id: Number(unit_id),
-                    usuario_id: user_id || null,
-                    contas
-                }
-            });
+        const payload = {
+            system_unit_id: Number(unit_id),
+            usuario_id: user_id || null,
+            rateio: isRateio ? 1 : 0,
+            contas: contas
+        };
 
+        Swal.fire({ title:'Salvando...', didOpen:()=>Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, { method: 'createContaLote', token, data: payload });
             Swal.close();
 
             if (res.data && res.data.success) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Sucesso',
-                    text: `Conta(s) criada(s): ${res.data.inseridos}`
+                    text: `Conta(s) salva(s)!`
                 }).then(() => {
-                    // limpa primeiro
                     limparFormulario();
-
-                    // fecha modal do parent
                     fecharModalParent();
-
-                    // dispara refresh no parent, se existir
-                    if (window.parent) {
-                        if (typeof window.parent.buscar === 'function') window.parent.buscar();
-                        if (typeof window.parent.recarregarContas === 'function') window.parent.recarregarContas();
+                    if (window.parent && typeof window.parent.buscar === 'function') {
+                        window.parent.buscar();
                     }
                 });
             } else {
-                Swal.fire('Erro', res.data?.error || res.data?.message || 'Falha ao salvar conta.', 'error');
+                Swal.fire('Erro', res.data?.message || 'Erro desconhecido', 'error');
             }
-
-        } catch(e){
-            console.error(e);
-            Swal.fire('Erro','Falha na comunicação com o servidor.','error');
+        } catch(e) {
+            Swal.fire('Erro', 'Falha na comunicação com servidor.', 'error');
         }
     }
 
-    // Fecha modal do parent (por ID conhecido ou qualquer modal visível)
+    function getFormaSelecionada(){
+        const cod = $('#forma_pagamento_id').val();
+        if(!BANCOS_CACHE) return null;
+        return BANCOS_CACHE.find(b => String(b.codigo) === String(cod)) || null;
+    }
+
     function fecharModalParent() {
         const $p = (window.parent && window.parent.$) ? window.parent.$ : null;
         if (!$p) return;
@@ -544,64 +641,16 @@
         if (!fechou) { $p('.modal.in, .modal.show').modal('hide'); }
     }
 
-    (function enableEscClose(){
-        // dá foco no body do iframe pra capturar teclas
-        if (!document.body.hasAttribute('tabindex')) document.body.setAttribute('tabindex','-1');
-        document.body.focus();
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' || e.keyCode === 27) {
-                e.preventDefault();
-                fecharModalParent();
-            }
-        });
-    })();
-
     function limparFormulario() {
-        // Se existir um form raiz
-        const form = document.getElementById('formConta');
-        if (form) form.reset();
-
-        // Campos simples (garante que fiquem vazios, mesmo sem <form>)
         $('#doc, #valor_total, #emissao, #vencimento, #desconto, #acrescimo, #obs_extra').val('');
+        $('#fornecedor').val(null).trigger('change');
+        $('#plano_contas').val(null).trigger('change');
+        $('#forma_pagamento_id').val(null).trigger('change');
 
-        // Select2 (fornecedor, plano de contas, forma de pagamento)
-        if ($('#fornecedor').length)           $('#fornecedor').val(null).trigger('change');
-        if ($('#plano_contas')?.length)        $('#plano_contas').val(null).trigger('change');
-        if ($('#forma_pagamento_id')?.length)  $('#forma_pagamento_id').val(null).trigger('change');
-
-        // Checkbox “Deseja parcelar?”
-        const $chk = $('#chkParcelar').length ? $('#chkParcelar') : $('#chkProgramar');
-        if ($chk.length) {
-            $chk.prop('checked', false);
-            $('#areaParcelas, #divParcelas, #divProgramar').hide();
-        }
-
-        // Limpa grid de parcelas e totalizador/aviso
-        $('#tblParcelas tbody').empty();
-        $('#avisoParcelas').hide();
-        $('#totalParcelas, #finTotalParcelas, #lblTotalParcelas').text('R$ 0,00');
+        $('#chkParcelar').prop('checked', false).trigger('change');
+        $('#chkRateio').prop('checked', false).trigger('change');
 
         $('#doc').focus();
-    }
-
-    // Agora a forma de pagamento vem de BANCOS_CACHE / listBancos
-    function getFormaSelecionada(){
-        const codigoSel = $('#forma_pagamento_id').val();
-        if (!codigoSel) return null;
-        if (!Array.isArray(BANCOS_CACHE)) return null;
-
-        const banco = BANCOS_CACHE.find(
-            b => String(b.codigo) === String(codigoSel)
-        );
-        if (!banco) return null;
-
-        return {
-            id: banco.id,
-            codigo: banco.codigo,
-            nome: banco.nome,
-            descricao: banco.descricao
-        };
     }
 </script>
 </body>

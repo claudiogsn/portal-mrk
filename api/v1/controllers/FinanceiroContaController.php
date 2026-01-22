@@ -9,6 +9,7 @@ ini_set('memory_limit', '512M');
 
 require_once __DIR__ . '/../database/db.php';
 require_once __DIR__ . '/../controllers/BiController.php';
+require_once __DIR__ . '/../controllers/UtilsController.php';
 
 
 class FinanceiroContaController {
@@ -44,44 +45,6 @@ class FinanceiroContaController {
         }
     }
 
-
-    public static function importaContaByNota($data) {
-        global $pdo;
-
-        try {
-            $sql = "INSERT INTO financeiro_conta
-            (system_unit_id, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
-            VALUES
-            (:system_unit_id, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL, :valor, :plano_contas, NULL, :obs, NULL, NULL, NULL, :adic, :comissao, NULL, NULL, NULL, NULL)";
-
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':system_unit_id' => $data['system_unit_id'],
-                ':nome'           => $data['nome'],
-                ':entidade'       => $data['entidade'],
-                ':cgc'            => $data['cgc'],
-                ':tipo'           => $data['tipo'],
-                ':doc'            => $data['doc'],
-                ':emissao'        => $data['emissao'],
-                ':vencimento'     => $data['vencimento'],
-                ':valor'          => $data['valor'],
-                ':plano_contas'   => $data['plano_contas'] ?? null,
-                ':obs'            => $data['obs'] ?? null,
-                ':adic'           => $data['adic'] ?? 0,
-                ':comissao'       => $data['comissao'] ?? 0,
-            ]);
-
-            return [
-                'success'  => true,
-                'message'  => 'Conta importada com sucesso',
-                'conta_id' => (int)$pdo->lastInsertId()
-            ];
-
-        } catch (PDOException $e) {
-            return ['success' => false, 'message' => 'Erro ao inserir: '.$e->getMessage()];
-        }
-    }
-
     public static function createConta(array $data): array
     {
         global $pdo;
@@ -90,7 +53,7 @@ class FinanceiroContaController {
             // 🧾 Validação obrigatória
             $required = ['system_unit_id', 'codigo', 'nome', 'tipo', 'valor'];
             foreach ($required as $field) {
-                if (empty($data[$field]) && $data[$field] !== '0') {
+                if (!array_key_exists($field, $data) || $data[$field] === '') {
                     throw new Exception("Campo obrigatório ausente: {$field}");
                 }
             }
@@ -98,33 +61,58 @@ class FinanceiroContaController {
             $system_unit_id = (int)$data['system_unit_id'];
             $usuario_id     = $data['usuario_id'] ?? null;
 
+            // 🔹 Rateio (controlado 100% pelo backend)
+            $rateio = isset($data['rateio']) ? (int)$data['rateio'] : 0;
+            $rateio_id = null;
+
+            if ($rateio === 1) {
+                $rateio_id = UtilsController::uuidv4();
+            }
+
             // 🔍 Validação do plano de contas, se informado
             if (!empty($data['plano_contas'])) {
                 $stPlano = $pdo->prepare("
-                SELECT id FROM financeiro_plano 
-                WHERE system_unit_id = :unit AND codigo = :codigo LIMIT 1
+                SELECT id
+                FROM financeiro_plano
+                WHERE system_unit_id = :unit
+                  AND codigo = :codigo
+                LIMIT 1
             ");
                 $stPlano->execute([
                     ':unit'   => $system_unit_id,
                     ':codigo' => $data['plano_contas']
                 ]);
+
                 if (!$stPlano->fetch(PDO::FETCH_ASSOC)) {
-                    throw new Exception("Plano de contas '{$data['plano_contas']}' não encontrado para esta unidade.");
+                    throw new Exception(
+                        "Plano de contas '{$data['plano_contas']}' não encontrado para esta unidade."
+                    );
                 }
             }
 
             // 💾 Inserção
-            $sql = "INSERT INTO financeiro_conta 
-            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor, 
-             plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+            $sql = "
+            INSERT INTO financeiro_conta
+            (
+                system_unit_id, codigo, nome, entidade, cgc, tipo, doc,
+                emissao, vencimento, baixa_dt, valor,
+                plano_contas, banco, obs, inc_ope, bax_ope,
+                comp_dt, adic, comissao, local, cheque,
+                dt_cheque, segmento, rateio, rateio_id
+            )
             VALUES
-            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, :baixa_dt, 
-             :valor, :plano_contas, :banco, :obs, :inc_ope, :bax_ope, :comp_dt, :adic, :comissao, :local, 
-             :cheque, :dt_cheque, :segmento)";
+            (
+                :system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc,
+                :emissao, :vencimento, :baixa_dt, :valor,
+                :plano_contas, :banco, :obs, :inc_ope, :bax_ope,
+                :comp_dt, :adic, :comissao, :local, :cheque,
+                :dt_cheque, :segmento, :rateio, :rateio_id
+            )
+        ";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
-                ':system_unit_id' => $data['system_unit_id'],
+                ':system_unit_id' => $system_unit_id,
                 ':codigo'         => $data['codigo'],
                 ':nome'           => $data['nome'],
                 ':entidade'       => $data['entidade'] ?? null,
@@ -134,7 +122,7 @@ class FinanceiroContaController {
                 ':emissao'        => $data['emissao'] ?? null,
                 ':vencimento'     => $data['vencimento'] ?? null,
                 ':baixa_dt'       => $data['baixa_dt'] ?? null,
-                ':valor'          => $data['valor'] ?? 0,
+                ':valor'          => $data['valor'],
                 ':plano_contas'   => $data['plano_contas'] ?? null,
                 ':banco'          => $data['banco'] ?? null,
                 ':obs'            => $data['obs'] ?? null,
@@ -146,7 +134,9 @@ class FinanceiroContaController {
                 ':local'          => $data['local'] ?? null,
                 ':cheque'         => $data['cheque'] ?? null,
                 ':dt_cheque'      => $data['dt_cheque'] ?? null,
-                ':segmento'       => $data['segmento'] ?? null
+                ':segmento'       => $data['segmento'] ?? null,
+                ':rateio'         => $rateio,
+                ':rateio_id'      => $rateio_id
             ]);
 
             if ($stmt->rowCount() === 0) {
@@ -155,8 +145,13 @@ class FinanceiroContaController {
 
             $novoId = (int)$pdo->lastInsertId();
 
-            // 🔍 Busca a conta recém-criada para log completo
-            $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+            // 🔍 Busca a conta recém-criada para auditoria
+            $stConta = $pdo->prepare("
+            SELECT *
+            FROM financeiro_conta
+            WHERE id = :id
+            LIMIT 1
+        ");
             $stConta->execute([':id' => $novoId]);
             $novaConta = $stConta->fetch(PDO::FETCH_ASSOC);
 
@@ -165,8 +160,8 @@ class FinanceiroContaController {
                 'CREATE',
                 'financeiro_conta',
                 $novoId,
-                null,             // antes
-                $novaConta,       // depois
+                null,
+                $novaConta,
                 $system_unit_id,
                 $usuario_id
             );
@@ -174,7 +169,9 @@ class FinanceiroContaController {
             return [
                 'success'   => true,
                 'message'   => 'Conta criada com sucesso.',
-                'conta_id'  => $novoId
+                'conta_id'  => $novoId,
+                'rateio'    => $rateio,
+                'rateio_id' => $rateio_id
             ];
 
         } catch (Exception $e) {
@@ -196,11 +193,23 @@ class FinanceiroContaController {
             if (empty($data['system_unit_id'])) {
                 throw new Exception('system_unit_id é obrigatório.');
             }
-            $system_unit_id = $data['system_unit_id'];
+
+            $system_unit_id = (int)$data['system_unit_id'];
             $usuario_id     = isset($data['usuario_id']) ? $data['usuario_id'] : null;
 
             if (empty($data['contas']) || !is_array($data['contas'])) {
                 throw new Exception('contas deve ser um array válido.');
+            }
+
+            // ===== Lógica de Rateio (ADICIONADO) =====
+            $rateio = isset($data['rateio']) ? (int)$data['rateio'] : 0;
+            $rateio_id = null;
+
+            if ($rateio === 1) {
+                // Gera um UUID único para o lote
+                // Se tiver UtilsController use: $rateio_id = UtilsController::uuidv4();
+                // Caso contrário, verifique se tem a função uuidv4 disponível no escopo
+                $rateio_id = UtilsController::uuidv4();
             }
 
             // ===== Função utilitária de fornecedor (pega cgc e razao social) =====
@@ -237,14 +246,20 @@ class FinanceiroContaController {
             $minCodigo = $stMin->fetchColumn();
             $nextCodigo = ($minCodigo !== null) ? ($minCodigo - 1) : 0;
 
-            // ===== INSERT (sem normalizar valores, exatamente como veio na requisição) =====
+            // ===== INSERT (Com colunas de Rateio) =====
             $stmtIns = $pdo->prepare("
             INSERT INTO financeiro_conta
-            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
-             valor, plano_contas, banco, forma_pagamento, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+            (
+                system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
+                valor, plano_contas, banco, forma_pagamento, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento,
+                rateio, rateio_id
+            )
             VALUES
-            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
-             :valor, :plano_contas, :banco, :forma_pagamento, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL)
+            (
+                :system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
+                :valor, :plano_contas, :banco, :forma_pagamento, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL,
+                :rateio, :rateio_id
+            )
         ");
 
             $ids = [];
@@ -259,17 +274,24 @@ class FinanceiroContaController {
 
                 // Dados do fornecedor
                 $forn = $getFornecedor($c['fornecedor_id']);
-                $nome = $forn['razao'];  // <<< SEM FALLBACK
 
-                // Usa exatamente os valores enviados
+                // Lógica do Nome: Se vier nome no item (rateio), usa ele. Se não, usa a Razão do fornecedor.
+                $nome = !empty($c['nome']) ? $c['nome'] : $forn['razao'];
+
+                // Normalização dos valores
                 $valor          = $c['valor'];
                 $plano_contas   = isset($c['plano_contas']) ? $c['plano_contas'] : null;
-                $obs            = isset($c['obs']) ? $c['obs'] : (isset($c['obs_extra']) ? $c['obs_extra'] : '');
-                $banco          = array_key_exists('banco', $c) ? $c['banco'] : null;
+
+                // Tratamento de Obs (obs ou obs_extra)
+                $obs = isset($c['obs']) ? $c['obs'] : (isset($c['obs_extra']) ? $c['obs_extra'] : '');
+
+                $banco = array_key_exists('banco', $c) ? $c['banco'] : null;
+
                 $forma_pagamento = array_key_exists('forma_pagamento', $c) ? $c['forma_pagamento']
                     : (array_key_exists('forma_pagamento_id', $c) ? $c['forma_pagamento_id'] : null);
 
-                $adic           = isset($c['acrescimo']) ? $c['acrescimo'] : (isset($c['adicional']) ? $c['adicional'] : 0);
+                // Tratamento de Adicional (acrescimo ou adicional)
+                $adic = isset($c['acrescimo']) ? $c['acrescimo'] : (isset($c['adicional']) ? $c['adicional'] : 0);
 
                 if (!is_numeric($valor)) throw new Exception("Conta #".($idx+1).": valor inválido.");
                 if ($valor + 0 <= 0) throw new Exception("Conta #".($idx+1).": valor deve ser > 0.");
@@ -289,24 +311,34 @@ class FinanceiroContaController {
                     ':banco'           => $banco,
                     ':forma_pagamento' => $forma_pagamento,
                     ':obs'             => $obs,
-                    ':adic'            => $adic
+                    ':adic'            => $adic,
+                    ':rateio'          => $rateio,     // << Novo campo
+                    ':rateio_id'       => $rateio_id   // << Novo campo
                 ]);
 
                 $id = $pdo->lastInsertId();
                 $ids[] = $id;
 
-                $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
-                $stConta->execute([':id' => $id]);
-                $novaConta = $stConta->fetch(PDO::FETCH_ASSOC);
-
-                self::logAuditoria('CREATE', 'financeiro_conta', $id, null, $novaConta, $system_unit_id, $usuario_id);
+                // Log Auditoria
+                if (method_exists(__CLASS__, 'logAuditoria')) {
+                    $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+                    $stConta->execute([':id' => $id]);
+                    $novaConta = $stConta->fetch(PDO::FETCH_ASSOC);
+                    self::logAuditoria('CREATE', 'financeiro_conta', $id, null, $novaConta, $system_unit_id, $usuario_id);
+                }
 
                 $nextCodigo -= 1;
             }
 
             $pdo->commit();
 
-            return ['success' => true, 'inseridos' => count($ids), 'ids' => $ids];
+            return [
+                'success'   => true,
+                'inseridos' => count($ids),
+                'ids'       => $ids,
+                'rateio'    => $rateio,
+                'rateio_id' => $rateio_id
+            ];
 
         } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
@@ -318,14 +350,44 @@ class FinanceiroContaController {
         }
     }
 
+
     public static function getContaById($id) {
         global $pdo;
 
-        $stmt = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id");
-        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        // 1. Busca a conta solicitada especificamente
+        $stmt = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
+        $conta = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$conta) return null;
+
+        // 2. Verifica se ela pertence a um grupo de Rateio
+        // (rateio = 1 e possui um UUID de rateio_id)
+        if (isset($conta['rateio']) && $conta['rateio'] == 1 && !empty($conta['rateio_id'])) {
+
+            // Busca todos os itens que compartilham o mesmo rateio_id
+            // Ordena por id para manter consistência visual
+            $stRateio = $pdo->prepare("SELECT * FROM financeiro_conta WHERE rateio_id = :rid ORDER BY id ASC");
+            $stRateio->execute([':rid' => $conta['rateio_id']]);
+            $itensRateio = $stRateio->fetchAll(PDO::FETCH_ASSOC);
+
+            // Anexa a lista de itens ao objeto principal
+            $conta['itens_rateio'] = $itensRateio;
+
+            // Opcional: Recalcula o valor total do lote para facilitar o frontend
+            $somaTotal = 0;
+            foreach ($itensRateio as $item) {
+                $somaTotal += $item['valor'];
+            }
+            $conta['valor_total_rateio'] = $somaTotal;
+        } else {
+            // Se não for rateio, a lista é vazia ou null
+            $conta['itens_rateio'] = null;
+            $conta['valor_total_rateio'] = $conta['valor'];
+        }
+
+        return $conta;
     }
 
     public static function deleteConta(int $id, ?int $usuario_id, ?string $motivo): array
@@ -530,160 +592,6 @@ class FinanceiroContaController {
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-
-    public static function importarContaApi($system_unit_id) {
-        global $pdo;
-
-        try {
-            // 1) Pega custom_code do unit
-            $stmt = $pdo->prepare("SELECT custom_code AS estabelecimento FROM system_unit WHERE id = :id");
-            $stmt->bindParam(':id', $system_unit_id, PDO::PARAM_INT);
-            $stmt->execute();
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$result) {
-                throw new Exception("System Unit ID inválido ou não encontrado.");
-            }
-            $estabelecimento = $result['estabelecimento'];
-
-            // 2) Tipos a importar
-            $tipos = ['d', 'c'];
-
-            // 3) Preparar statements (SELECT/INSERT/UPDATE) e iniciar transação
-            $pdo->beginTransaction();
-
-            $selectStmt = $pdo->prepare(
-                "SELECT id FROM financeiro_conta WHERE system_unit_id = ? AND codigo = ? LIMIT 1"
-            );
-
-            $insertStmt = $pdo->prepare(
-                "INSERT INTO financeiro_conta
-            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt, valor,
-             plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
-             VALUES
-            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, :baixa_dt, :valor,
-             :plano_contas, :banco, :obs, :inc_ope, :bax_ope, :comp_dt, :adic, :comissao, :local, :cheque, :dt_cheque, :segmento)"
-            );
-
-            $updateStmt = $pdo->prepare(
-                "UPDATE financeiro_conta SET
-                nome = :nome,
-                entidade = :entidade,
-                cgc = :cgc,
-                tipo = :tipo,
-                doc = :doc,
-                emissao = :emissao,
-                vencimento = :vencimento,
-                baixa_dt = :baixa_dt,
-                valor = :valor,
-                plano_contas = :plano_contas,
-                banco = :banco,
-                obs = :obs,
-                inc_ope = :inc_ope,
-                bax_ope = :bax_ope,
-                comp_dt = :comp_dt,
-                adic = :adic,
-                comissao = :comissao,
-                local = :local,
-                cheque = :cheque,
-                dt_cheque = :dt_cheque,
-                segmento = :segmento
-             WHERE id = :id"
-            );
-
-            $totInseridos = 0;
-            $totAtualizados = 0;
-
-            foreach ($tipos as $tipo) {
-                $contas = FinanceiroApiMenewController::fetchFinanceiroConta($estabelecimento, $tipo);
-
-                if (!$contas['success']) {
-                    throw new Exception("Erro ao buscar contas da API para tipo $tipo: " . $contas['message']);
-                }
-
-                foreach ($contas['contas'] as $conta) {
-                    // Normalizações/Defaults leves
-                    $codigo        = $conta['id']; // mantém a mesma semântica usada antes
-                    $plano_contas  = isset($conta['plano_contas']) ? ('0' . $conta['plano_contas']) : null;
-
-                    // 4) Existe?
-                    $selectStmt->execute([$system_unit_id, $codigo]);
-                    $row = $selectStmt->fetch(PDO::FETCH_ASSOC);
-
-                    if ($row) {
-                        // UPDATE
-                        $updateStmt->execute([
-                            ':nome'         => $conta['nome'],
-                            ':entidade'     => $conta['entidade'],
-                            ':cgc'          => $conta['cgc'] ?? '',
-                            ':tipo'         => $conta['tipo'],
-                            ':doc'          => $conta['doc'],
-                            ':emissao'      => $conta['emissao'],
-                            ':vencimento'   => $conta['vencimento'],
-                            ':baixa_dt'     => $conta['baixa_dt'] ?? null,
-                            ':valor'        => $conta['valor'],
-                            ':plano_contas' => $plano_contas,
-                            ':banco'        => $conta['banco'] ?? null,
-                            ':obs'          => $conta['obs'] ?? null,
-                            ':inc_ope'      => $conta['inc_ope'] ?? null,
-                            ':bax_ope'      => $conta['bax_ope'] ?? null,
-                            ':comp_dt'      => $conta['comp_dt'] ?? null,
-                            ':adic'         => $conta['adic'] ?? 0,
-                            ':comissao'     => $conta['comissao'] ?? 0,
-                            ':local'        => $conta['local'] ?? null,
-                            ':cheque'       => $conta['cheque'] ?? null,
-                            ':dt_cheque'    => $conta['dt_cheque'] ?? null,
-                            ':segmento'     => $conta['segmento'] ?? null,
-                            ':id'           => (int)$row['id'],
-                        ]);
-                        $totAtualizados++;
-                    } else {
-                        // INSERT
-                        $insertStmt->execute([
-                            ':system_unit_id' => $system_unit_id,
-                            ':codigo'         => $codigo,
-                            ':nome'           => $conta['nome'],
-                            ':entidade'       => $conta['entidade'],
-                            ':cgc'            => $conta['cgc'] ?? '',
-                            ':tipo'           => $conta['tipo'],
-                            ':doc'            => $conta['doc'],
-                            ':emissao'        => $conta['emissao'],
-                            ':vencimento'     => $conta['vencimento'],
-                            ':baixa_dt'       => $conta['baixa_dt'] ?? null,
-                            ':valor'          => $conta['valor'],
-                            ':plano_contas'   => $plano_contas,
-                            ':banco'          => $conta['banco'] ?? null,
-                            ':obs'            => $conta['obs'] ?? null,
-                            ':inc_ope'        => $conta['inc_ope'] ?? null,
-                            ':bax_ope'        => $conta['bax_ope'] ?? null,
-                            ':comp_dt'        => $conta['comp_dt'] ?? null,
-                            ':adic'           => $conta['adic'] ?? 0,
-                            ':comissao'       => $conta['comissao'] ?? 0,
-                            ':local'          => $conta['local'] ?? null,
-                            ':cheque'         => $conta['cheque'] ?? null,
-                            ':dt_cheque'      => $conta['dt_cheque'] ?? null,
-                            ':segmento'       => $conta['segmento'] ?? null,
-                        ]);
-                        $totInseridos++;
-                    }
-                }
-            }
-
-            $pdo->commit();
-
-            return [
-                "success"       => true,
-                "message"       => "Contas importadas/atualizadas com sucesso",
-                "inseridos"     => $totInseridos,
-                "atualizados"   => $totAtualizados
-            ];
-
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) { $pdo->rollBack(); }
-            return ["success" => false, "message" => $e->getMessage()];
-        }
     }
 
     public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {

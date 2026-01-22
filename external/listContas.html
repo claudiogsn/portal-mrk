@@ -26,6 +26,9 @@
         .form-control { margin-bottom:10px; }
         .label-success { background-color:#4caf50; }
         .label-danger  { background-color:#f44336; }
+        .label-info    { background-color:#00bcd4; } /* Para Rateio Sim */
+        .label-default { background-color:#9e9e9e; } /* Para Rateio Não */
+
         .modal-iframe { width:100%; height:80vh; border:none; }
 
         /* Cards KPI */
@@ -68,7 +71,6 @@
         </div>
         <div class="body">
 
-            <!-- Filtros (um único row) -->
             <div class="row">
                 <div class="col-md-2">
                     <label>Data Inicial</label>
@@ -85,7 +87,7 @@
                         <option value="vencimento" selected>Vencimento</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label>Tipo</label>
                     <select id="filtroTipo" class="form-control">
                         <option value="">Todas</option>
@@ -94,6 +96,14 @@
                     </select>
                 </div>
                 <div class="col-md-1">
+                    <label>Rateio</label>
+                    <select id="filtroRateio" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="1">Sim</option>
+                        <option value="0">Não</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label>Status</label>
                     <select id="filtroStatus" class="form-control">
                         <option value="">Todos</option>
@@ -111,7 +121,6 @@
                 </div>
             </div>
 
-            <!-- Totalizadores -->
             <div class="row">
                 <div class="col-md-4">
                     <div class="kpi green">
@@ -133,7 +142,6 @@
                 </div>
             </div>
 
-            <!-- BUSCA (entre KPIs e Grid) -->
             <div class="row">
                 <div class="col-md-6">
                     <label>Buscar</label>
@@ -141,21 +149,18 @@
                 </div>
             </div>
 
-            <!-- Grid -->
             <div class="table-responsive mt-3">
                 <table class="table table-striped table-hover" id="tabelaContas">
                     <thead>
                     <tr>
-                        <th style="width:40px;"></th> <!-- ação editar -->
-                        <th style="width:40px;"></th> <!-- outras ações -->
-                        <th style="width:40px;">Tipo</th>
+                        <th style="width:40px;"></th> <th style="width:40px;"></th> <th style="width:40px;">Tipo</th>
                         <th>Entidade</th>
                         <th>Documento</th>
                         <th>Emissão</th>
-                        <th>Data Vencimento</th>
+                        <th>Vencimento</th>
                         <th>Observação</th>
-                        <th>Banco</th>          <!-- NOVO -->
-                        <th>Status</th>
+                        <th>Banco</th>
+                        <th>Rateio</th> <th>Status</th>
                         <th>Data Baixa</th>
                         <th class="text-right">Valor</th>
                     </tr>
@@ -169,7 +174,6 @@
     </div>
 </div>
 
-<!-- Modal (mantido do modelo) -->
 <div class="modal fade" id="modalImportacao" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -184,7 +188,6 @@
     </div>
 </div>
 
-<!-- Modal Exportação F360 -->
 <div class="modal fade" id="modalExportF360" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -233,7 +236,6 @@
         </div>
     </div>
 </div>
-<!-- Modal Nova Conta (fullscreen com iframe) -->
 <div class="modal fade" id="modalNovaConta" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
@@ -246,7 +248,6 @@
         </div>
     </div>
 </div>
-<!-- Modal Nova Conta (fullscreen com iframe) -->
 <div class="modal fade" id="modalEditConta" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
@@ -298,6 +299,7 @@
         $('#filtroTipoData').val('vencimento');
         $('#filtroTipo').val(''); // todas
         $('#filtroStatus').val(''); // todos
+        $('#filtroRateio').val(''); // todos (novo)
     }
 
     let contas = [];
@@ -310,6 +312,7 @@
 
         // filtros locais em tempo real
         $('#filtroStatus').on('change input', aplicarFiltrosLocais);
+        $('#filtroRateio').on('change input', aplicarFiltrosLocais); // novo
         $('#filtroBusca').on('input', aplicarFiltrosLocais);
 
         // busca inicial com os defaults
@@ -368,19 +371,29 @@
             .toLowerCase();
     }
 
-    // Filtros locais combinados: Status + Busca
+    // Filtros locais combinados: Status + Rateio + Busca
     function aplicarFiltrosLocais(){
         const status = $('#filtroStatus').val(); // '' | 'aberto' | 'pago'
+        const rateio = $('#filtroRateio').val(); // '' | '1' | '0'
         const termo  = norm($('#filtroBusca').val());
 
         let lista = contas.slice();
 
+        // Filtro Status
         if (status === 'aberto') {
             lista = lista.filter(n => !n.baixa_dt);
         } else if (status === 'pago') {
             lista = lista.filter(n => !!n.baixa_dt);
         }
 
+        // Filtro Rateio (Novo)
+        if (rateio === '1') {
+            lista = lista.filter(n => String(n.rateio) == '1');
+        } else if (rateio === '0') {
+            lista = lista.filter(n => String(n.rateio) != '1');
+        }
+
+        // Filtro Busca Texto
         if (termo) {
             lista = lista.filter(n => {
                 const nome = norm(n.nome);
@@ -415,7 +428,7 @@
         tbody.empty();
 
         if (!lista || !lista.length){
-            tbody.append('<tr><td colspan="12" class="text-center">Nenhum registro encontrado.</td></tr>');
+            tbody.append('<tr><td colspan="13" class="text-center">Nenhum registro encontrado.</td></tr>');
             return;
         }
 
@@ -429,6 +442,12 @@
             const statusBadge = isQuitado
                 ? '<span class="label label-success">Quitado</span>'
                 : '<span class="label label-danger">Não Quitado</span>';
+
+            // Rateio: Sim / Não
+            const isRateio = String(n.rateio) == '1';
+            const rateioBadge = isRateio
+                ? '<span class="label label-info">Sim</span>'
+                : '<span class="label label-default">Não</span>';
 
             // Ícone de tipo (Crédito / Débito)
             const t = (n.tipo || '').toString().trim().toLowerCase();
@@ -471,8 +490,8 @@
         <td>${emissao}</td>
         <td>${vencimento}</td>
         <td title="${n.obs ?? ''}">${n.obs ? String(n.obs).slice(0, 80) : ''}</td>
-        <td>${bancoTexto}</td>          <!-- NOVO -->
-        <td>${statusBadge}</td>
+        <td>${bancoTexto}</td>
+        <td class="text-center">${rateioBadge}</td> <td>${statusBadge}</td>
         <td>${pagamento}</td>
         <td class="text-right">${toBRL(n.valor)}</td>
       </tr>
@@ -830,7 +849,7 @@
                 token,
                 data: {
                     id: Number(id),
-                    usuario_id: username, // ajuste se seu back espera string
+                    usuario_id: username,
                     motivo: motivo
                 }
             });
@@ -852,11 +871,6 @@
             Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
         }
     }
-
-
-
-
-
 
 </script>
 </body>
