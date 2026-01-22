@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Produções Realizadas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- AdminBSB / Bootstrap -->
+  <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+  <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+  <link href="bsb/css/style.css" rel="stylesheet">
+  <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    .form-control { margin-bottom: 10px; }
+    .muted { color:#777; }
+    .nowrap { white-space: nowrap; }
+    .text-right { text-align:right; }
+    .text-center { text-align:center; }
+
+    @media (max-width: 768px) {
+      body, table, th, td, button { font-size: 12px !important; }
+    }
+  </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+  <br>
+
+  <div class="card">
+    <div class="header">
+      <h2>Produções Realizadas</h2>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="row" style="margin: 15px 0;">
+      <div class="col-md-3">
+        <label class="muted">Data inicial</label>
+        <input type="date" id="dtInicio" class="form-control">
+      </div>
+
+      <div class="col-md-3">
+        <label class="muted">Data final</label>
+        <input type="date" id="dtFim" class="form-control">
+      </div>
+
+      <div class="col-md-3">
+        <label class="muted">Ações</label><br>
+        <button id="btnBuscar" class="btn btn-primary">
+          <i class="fa fa-search"></i> Consultar
+        </button>
+      </div>
+
+      <div class="col-md-3 text-right">
+        <label class="muted">Total de registros</label>
+        <h4 id="totalRegistros">0</h4>
+      </div>
+    </div>
+
+    <!-- TABELA -->
+    <div class="body">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover" id="tabela-producoes">
+          <thead>
+          <tr>
+            <th class="nowrap">Documento</th>
+            <th class="nowrap">Data</th>
+            <th class="nowrap">Código</th>
+            <th>Produto</th>
+            <th class="nowrap">Unid</th>
+            <th class="text-right nowrap">Qtd Produzida</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ================= CONFIG =================
+  const baseUrl = window.location.hostname !== 'localhost'
+          ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+          : 'http://localhost/portal-mrk/api/v1/index.php';
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const system_unit_id = urlParams.get('unit_id');
+
+  // ================= INIT =================
+  $(document).ready(() => {
+    if (!token || !system_unit_id) {
+      Swal.fire('Atenção', 'URL deve conter token e unit_id.', 'warning');
+      return;
+    }
+
+    // datas padrão (últimos 7 dias)
+    const hoje = new Date();
+    const fim = hoje.toISOString().slice(0,10);
+    const ini = new Date(hoje.getTime() - 7*24*60*60*1000).toISOString().slice(0,10);
+
+    $('#dtInicio').val(ini);
+    $('#dtFim').val(fim);
+
+    $('#btnBuscar').on('click', buscarProducoes);
+
+    // primeira carga
+    buscarProducoes();
+  });
+
+  // ================= BACKEND =================
+  async function buscarProducoes() {
+    const data_inicial = $('#dtInicio').val();
+    const data_final   = $('#dtFim').val();
+
+    if (!data_inicial || !data_final) {
+      return Swal.fire('Atenção', 'Informe o período.', 'warning');
+    }
+
+    Swal.fire({
+      title: 'Consultando produções...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: 'listProducoesRealizadasBasico',
+          token: token,
+          data: {
+            system_unit_id: Number(system_unit_id),
+            data_inicial,
+            data_final
+          }
+        })
+      });
+
+      const json = await res.json();
+      Swal.close();
+
+      if (!json.success) {
+        renderTabela([]);
+        $('#totalRegistros').text('0');
+        return Swal.fire('Erro', json.message || 'Falha ao consultar.', 'error');
+      }
+
+      renderTabela(json.producoes || []);
+      $('#totalRegistros').text(json.total || 0);
+
+    } catch (e) {
+      Swal.close();
+      console.error(e);
+      Swal.fire('Erro', 'Erro ao consultar backend.', 'error');
+    }
+  }
+
+  // ================= RENDER =================
+  function renderTabela(lista) {
+    const $tbody = $('#tabela-producoes tbody');
+    $tbody.empty();
+
+    if (!lista || lista.length === 0) {
+      $tbody.append(`
+                <tr>
+                    <td colspan="6" class="text-center muted">
+                        Nenhuma produção encontrada no período.
+                    </td>
+                </tr>
+            `);
+      return;
+    }
+
+    lista.forEach(p => {
+      const prod = p.produto_final || {};
+      $tbody.append(`
+                <tr>
+                    <td class="nowrap">${p.doc}</td>
+                    <td class="nowrap">${formatBRDate(p.data)}</td>
+                    <td class="nowrap">${prod.codigo ?? ''}</td>
+                    <td>${prod.nome ?? ''}</td>
+                    <td class="nowrap">${prod.unidade ?? ''}</td>
+                    <td class="text-right nowrap">
+                        ${formatNumber(prod.quantidade_produzida)}
+                    </td>
+                </tr>
+            `);
+    });
+  }
+
+  // ================= UTILS =================
+  function formatBRDate(dt) {
+    if (!dt) return '';
+    const [y,m,d] = dt.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function formatNumber(v) {
+    const n = Number(v || 0);
+    return n.toLocaleString('pt-BR', {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    });
+  }
+</script>
+
+</body>
+</html>

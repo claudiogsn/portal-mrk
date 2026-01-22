@@ -86,6 +86,10 @@
             <action>ComprasFornecedor</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Produções Realizadas">
+            <action>ProducoesRealizadas</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
 
             <menuitem label="Produtos Comprados">
                 <action>ListCompras</action>
