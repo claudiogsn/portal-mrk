@@ -1,92 +1,171 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <title>Clonador de Dados por Unidade</title>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Migração de Dados entre Estabelecimentos</title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- AdminBSB CSS -->
     <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.css" rel="stylesheet">
     <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="https://portal.mrksolucoes.com.br/external/bsb/css/style.css" rel="stylesheet">
     <link href="https://portal.mrksolucoes.com.br/external/bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <!-- Axios + SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
+
 <body class="theme-blue">
-    <div class="container-fluid">
-        <div class="block-header">
-            <h2></h2>
-        </div>
-        <div class="row clearfix">
-            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-                <div class="card">
-                    <div class="header">
-                        <h2>Configuração da Migração</h2>
-                    </div>
-                    <div class="body">
-                        <form id="migrationForm">
-                            <div class="form-group">
-                                <label for="sourceSystemUnitId">System Unit ID de Origem:</label>
-                                <input type="text" id="sourceSystemUnitId" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="targetSystemUnitId">System Unit ID de Destino:</label>
-                                <input type="text" id="targetSystemUnitId" class="form-control" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary waves-effect">Iniciar Migração</button>
-                        </form>
-                    </div>
+
+<div class="container-fluid">
+    <div class="block-header">
+        <h2>CLONADOR DE DADOS ENTRE ESTABELECIMENTOS</h2>
+    </div>
+
+    <div class="row clearfix">
+        <div class="col-lg-8 col-md-10 col-sm-12 col-xs-12">
+            <div class="card">
+                <div class="header">
+                    <h2>
+                        Configuração da Clonagem
+                        <small>Replica dados cadastrais entre unidades</small>
+                    </h2>
+                </div>
+
+                <div class="body">
+                    <form id="cloneForm">
+
+                        <div class="form-group">
+                            <label>Unidade de Origem</label>
+                            <select id="sourceUnit" class="form-control" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Unidade de Destino</label>
+                            <select id="targetUnit" class="form-control" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <strong>Atenção:</strong><br>
+                            - Os dados da unidade de destino serão <b>APAGADOS</b><br>
+                            - Serão clonadas as tabelas:
+                            <ul>
+                                <li>categorias</li>
+                                <li>products</li>
+                                <li>compositions</li>
+                                <li>productions</li>
+                                <li>modelos_balanco</li>
+                                <li>modelos_balanco_itens</li>
+                            </ul>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary waves-effect">
+                            <i class="material-icons">content_copy</i>
+                            CLONAR DADOS
+                        </button>
+
+                    </form>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.js"></script>
+<!-- AdminBSB JS -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.js"></script>
 
-    <script>
-        document.getElementById('migrationForm').addEventListener('submit', function (event) {
-            event.preventDefault();
+<script>
+    /**
+     * 🔹 Carrega unidades
+     */
+    axios.get('http://localhost/portal-mrk/migrations/api/list-system-units.php')
+        .then(res => {
+            if (!res.data.success) return;
 
-            const sourceSystemUnitId = document.getElementById('sourceSystemUnitId').value;
-            const targetSystemUnitId = document.getElementById('targetSystemUnitId').value;
+            const source = document.getElementById('sourceUnit');
+            const target = document.getElementById('targetUnit');
 
-            migrateTable('products', sourceSystemUnitId, targetSystemUnitId)
-                .then(() => migrateTable('categorias', sourceSystemUnitId, targetSystemUnitId))
-                .then(() => migrateTable('compositions', sourceSystemUnitId, targetSystemUnitId))
-                .then(() => Swal.fire('Sucesso', 'Migração concluída com sucesso!', 'success'))
-                .catch((error) => Swal.fire('Erro', 'Erro durante a migração: ' + error, 'error'));
+            res.data.units.forEach(u => {
+                const label = `${u.name} (ID ${u.id})`;
+                source.add(new Option(label, u.id));
+                target.add(new Option(label, u.id));
+            });
         });
 
-        function migrateTable(tableName, sourceSystemUnitId, targetSystemUnitId) {
-            return new Promise((resolve, reject) => {
-                Swal.fire({
-                    title: `Migrando ${tableName}...`,
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
+    /**
+     * 🔹 Submit
+     */
+    document.getElementById('cloneForm').addEventListener('submit', function (e) {
+        e.preventDefault();
 
-                axios.post('https://portal.mrksolucoes.com.br/migrations/api/migrar-tabela-portal.php', {
-                    table: tableName,
-                    source_system_unit_id: sourceSystemUnitId,
-                    target_system_unit_id: targetSystemUnitId
-                })
-                .then((response) => {
-                    if (response.data.status === 'success') {
-                        Swal.close();
-                        resolve();
+        const source = sourceUnit.value;
+        const target = targetUnit.value;
+
+        if (!source || !target) {
+            Swal.fire('Erro', 'Selecione origem e destino', 'error');
+            return;
+        }
+
+        if (source === target) {
+            Swal.fire('Erro', 'Origem e destino não podem ser iguais', 'error');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Confirmar clonagem?',
+            html: `
+            <b>Origem:</b> ${source}<br>
+            <b>Destino:</b> ${target}<br><br>
+            <span style="color:red">
+                Esta ação apagará os dados do destino.
+            </span>
+        `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, clonar',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Clonando dados...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            axios.post('http://localhost/portal-mrk/migrations/api/clone-unit-data.php', {
+                source_system_unit_id: source,
+                target_system_unit_id: target
+            })
+                .then(res => {
+                    Swal.close();
+
+                    if (res.data.success) {
+                        Swal.fire('Sucesso', res.data.message, 'success');
                     } else {
-                        reject(response.data.message);
+                        Swal.fire('Erro', res.data.message || 'Erro desconhecido', 'error');
                     }
                 })
-                .catch((error) => {
-                    reject(error.message);
+                .catch(err => {
+                    Swal.close();
+                    Swal.fire('Erro', err.message, 'error');
                 });
-            });
-        }
-    </script>
+        });
+    });
+</script>
+
 </body>
 </html>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Previsão de Compras</title>
-    
+
     <!-- Favicon-->
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
@@ -38,6 +38,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
 
     <style>
+        /* Cards KPI */
+        .kpi { text-align:center; padding:12px; border-radius:6px; border:1px solid #eee; }
+        .kpi h4 { margin:4px 0 0 0; font-weight:700; }
+        .kpi small { color:#333; opacity:.9; display:block; }
+        .kpi.green { background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
+        .kpi.red   { background:#ffebee; border-color:#ffcdd2; color:#c62828; }
+        .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
+
+        .table thead th { white-space:nowrap; }
+        .text-right { text-align:right; }
         .form-control {
             margin-bottom: 10px;
         }
@@ -75,7 +85,7 @@
         -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
                 box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
         }
-       
+
 
     </style>
 </head>
@@ -125,6 +135,32 @@
         </div>
     </div>
 
+
+        <div id="kpi-alertas" class="row" style="margin-bottom:15px; display:none;">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="body kpi red" style="text-align:left;">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <small>Itens com falha de configuração</small>
+                                <h4 id="kpi-alertas-qtd">0</h4>
+                            </div>
+                            <div class="col-md-9">
+                                <small>Motivo</small>
+                                <h4 id="kpi-alertas-msg">—</h4>
+
+                                <div id="kpi-alertas-lista" style="margin-top:10px; display:none;">
+                                    <hr style="margin:10px 0;">
+                                    <ul style="margin:0; padding-left:18px;"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
     <!-- Tabela de Itens -->
      <div class="card">
     <div class="row">
@@ -170,9 +206,14 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'https://portal.mrksolucoes.com.br/api/v1/index.php';
+    // const baseUrl = window.location.hostname !== 'localhost' ?
+    //     'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+    //     'https://portal.mrksolucoes.com.br/api/v1/index.php';
+
+
+        const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -254,11 +295,17 @@
                     })
                 });
 
-                const consumos = await response.json();
-                Swal.close(); // fecha o loader
+                const result = await response.json();
+                renderKpiAlertas(result.alertas || null);
 
-                // Agrupar os produtos por categoria
-                const produtosAgrupados = consumos.reduce((acc, produto) => {
+
+                Swal.close();
+
+                document.getElementById('aviso-ficha-producao')?.remove();
+
+                const compras = result.compras || [];
+
+                const produtosAgrupados = compras.reduce((acc, produto) => {
                     if (!acc[produto.categoria]) {
                         acc[produto.categoria] = [];
                     }
@@ -267,6 +314,7 @@
                 }, {});
 
                 renderItensByCategory(produtosAgrupados);
+
 
             } catch (error) {
                 Swal.fire('Erro', 'Falha ao calcular compras.', 'error');
@@ -296,7 +344,34 @@
             }
         }
 
-    // Função para carregar unidades
+        function renderKpiAlertas(alertas) {
+            const container = document.getElementById('kpi-alertas');
+
+            if (!alertas || !alertas.itens || alertas.itens.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            document.getElementById('kpi-alertas-qtd').innerText = alertas.itens.length;
+            document.getElementById('kpi-alertas-msg').innerText = alertas.message;
+
+            const listaContainer = document.getElementById('kpi-alertas-lista');
+            const ul = listaContainer.querySelector('ul');
+            ul.innerHTML = '';
+
+            alertas.itens.forEach(item => {
+                const li = document.createElement('li');
+                li.innerText = `${item.codigo} - ${item.nome}`;
+                ul.appendChild(li);
+            });
+
+            listaContainer.style.display = 'block';
+            container.style.display = 'block';
+        }
+
+
+
+        // Função para carregar unidades
         async function loadUnidades() {
             const response = await fetch(baseUrl, {
                 method: 'POST',
@@ -521,6 +596,7 @@
                 document.head.removeChild(style);
             }, 500);
         }
+
 
         $('#print-button').click(function (event) {
             const columnsToHide = [];

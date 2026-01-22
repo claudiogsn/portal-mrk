@@ -482,236 +482,212 @@ class NecessidadesController
     {
         global $pdo;
 
-        // Descobre se esse ID é uma MATRIZ (tem filiais cadastradas)
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM system_unit_rel WHERE unit_matriz = ?");
+        error_log('[GET_PRODUCTS_TO_BUYS] ===== INICIO =====');
+
+        /**
+         * ======================================================
+         * DESCOBRE SE É MATRIZ
+         * ======================================================
+         */
+        $stmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM system_unit_rel 
+        WHERE unit_matriz = ?
+    ");
         $stmt->execute([$matriz_id]);
         $isMatriz = $stmt->fetchColumn() > 0;
 
-        // Monta um mapa insumo_id => quantidade a comprar (vendas previstas)
+        /**
+         * ======================================================
+         * DESCOBRE MATRIZ BASE
+         * ======================================================
+         */
+        $unitBase = $matriz_id;
+
+        if (!$isMatriz) {
+            $stmt = $pdo->prepare("
+            SELECT unit_matriz 
+            FROM system_unit_rel 
+            WHERE unit_filial = ?
+            LIMIT 1
+        ");
+            $stmt->execute([$matriz_id]);
+            $matrizVinculada = $stmt->fetchColumn();
+            if ($matrizVinculada) {
+                $unitBase = (int)$matrizVinculada;
+            }
+        }
+
+        /**
+         * ======================================================
+         * MONTA MAPA DE VENDAS (>= 10000)
+         * ======================================================
+         */
         $quantidadesPorProduto = [];
         foreach ($vendas as $item) {
-            if (!isset($item['insumo_id'], $item['compras'])) {
+            if (
+                !isset($item['insumo_id'], $item['compras']) ||
+                (int)$item['insumo_id'] < 10000
+            ) {
                 continue;
             }
             $quantidadesPorProduto[$item['insumo_id']] = (float)$item['compras'];
         }
 
         if (empty($quantidadesPorProduto)) {
-            return [];
+            return [
+                'success' => true,
+                'compras' => [],
+                'alertas' => null
+            ];
         }
 
-        $produtosIds = array_keys($quantidadesPorProduto);
-
-        // Busca produtos que são "producao" (código >= 10000) nessa unidade/matriz
+        /**
+         * ======================================================
+         * BUSCA PRODUTOS BASE
+         * ======================================================
+         */
+        $produtosIds  = array_keys($quantidadesPorProduto);
         $placeholders = implode(',', array_fill(0, count($produtosIds), '?'));
+
         $stmt = $pdo->prepare("
-        SELECT codigo, producao 
-        FROM products 
-        WHERE codigo IN ($placeholders) 
-          AND system_unit_id = ? 
+        SELECT codigo, producao, compravel, nome
+        FROM products
+        WHERE codigo IN ($placeholders)
+          AND system_unit_id = ?
           AND codigo >= 10000
     ");
-        $stmt->execute([...$produtosIds, $matriz_id]);
-        $producoes = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $stmt->execute([...$produtosIds, $unitBase]);
+        $produtosBase = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $produtosMap = [];
+        foreach ($produtosBase as $p) {
+            $produtosMap[$p['codigo']] = $p;
+        }
 
         $compras   = [];
         $insumoIds = [];
+        $alertas   = [];
 
-        // Primeira rodada: explode produtos de venda em insumos
+        /**
+         * ======================================================
+         * PRIMEIRA RODADA
+         * ======================================================
+         */
         foreach ($quantidadesPorProduto as $produto => $qtdVenda) {
-            $producao = isset($producoes[$produto]) ? (int)$producoes[$produto] : 0;
 
-            // Se não tem ficha de produção, compra o próprio produto
+            if (!isset($produtosMap[$produto])) {
+                continue;
+            }
+
+            $producao  = (int)$produtosMap[$produto]['producao'];
+            $compravel = (int)$produtosMap[$produto]['compravel'];
+            $nome      = $produtosMap[$produto]['nome'];
+
+            // 👉 COMPRA DIRETA
             if ($producao === 0) {
-                if (!isset($compras[$produto])) {
-                    $compras[$produto] = 0.0;
+
+                if ($compravel === 1) {
+                    $compras[$produto]   = ($compras[$produto] ?? 0) + $qtdVenda;
+                    $insumoIds[$produto] = $produto;
+                } else {
+                    $alertas[$produto] = [
+                        'codigo' => $produto,
+                        'nome'   => $nome,
+                        'motivo' => 'Produto não é comprável e não possui ficha de produção'
+                    ];
                 }
-                $compras[$produto]   += $qtdVenda;
-                $insumoIds[$produto] = $produto;
+
                 continue;
             }
 
-            // Escolhe o método de saldo conforme for matriz ou unidade
-            if ($isMatriz) {
-                $saldoData = MovimentacaoController::getLastBalanceByMatriz($matriz_id, $produto);
-            } else {
-                $saldoData = MovimentacaoController::getLastBalance($matriz_id, $produto);
-            }
-
-            $saldoAtual = (float)($saldoData['quantidade'] ?? 0);
-            $necessario = $qtdVenda - $saldoAtual;
-
-            // Se o saldo já cobre, não precisa comprar/produzir nada
-            if ($necessario <= 0) {
-                continue;
-            }
-
-            // Busca ficha de produção desse produto
+            /**
+             * ===== TEM PRODUÇÃO → EXPLODE =====
+             */
             $stmtFicha = $pdo->prepare("
-            SELECT insumo_id, quantity, rendimento 
-            FROM productions 
-            WHERE system_unit_id = ? AND product_id = ?
+            SELECT insumo_id, quantity, rendimento
+            FROM productions
+            WHERE system_unit_id = ?
+              AND product_id = ?
         ");
-            $stmtFicha->execute([$matriz_id, $produto]);
+            $stmtFicha->execute([$unitBase, $produto]);
             $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($fichas)) {
+                if ($compravel === 0) {
+                    $alertas[$produto] = [
+                        'codigo' => $produto,
+                        'nome'   => $nome,
+                        'motivo' => 'Produto não é comprável e não possui ficha de produção'
+                    ];
+                }
+                continue;
+            }
 
             foreach ($fichas as $ficha) {
                 $insumo_id  = $ficha['insumo_id'];
                 $qtd_ficha  = (float)$ficha['quantity'];
-                $rendimento = (float)$ficha['rendimento'] ?: 1.0;
-                $qtd_compra = ($qtd_ficha * $necessario) / $rendimento;
+                $rendimento = (float)$ficha['rendimento'] ?: 1;
 
-                if (!isset($compras[$insumo_id])) {
-                    $compras[$insumo_id] = 0.0;
-                }
-                $compras[$insumo_id]   += $qtd_compra;
+                $qtd_compra = ($qtd_ficha * $qtdVenda) / $rendimento;
+
+                $compras[$insumo_id]   = ($compras[$insumo_id] ?? 0) + $qtd_compra;
                 $insumoIds[$insumo_id] = $insumo_id;
             }
         }
 
-        if (empty($insumoIds)) {
-            return [];
-        }
+        /**
+         * ======================================================
+         * RESULTADO FINAL (SÓ COMPRÁVEIS)
+         * ======================================================
+         */
+        $resultado = [];
 
-        $resultado    = [];
-        $debugRodadas = [];
-        $maxRodadas   = 10;
-        $rodada       = 0;
-
-        do {
-            $rodada++;
-            if ($rodada > $maxRodadas) {
-                // Proteção contra loop circular de fichas
-                $todos = [];
-                foreach ($debugRodadas as $listaRodada) {
-                    foreach ($listaRodada as $insumoId) {
-                        if (!isset($todos[$insumoId])) {
-                            $todos[$insumoId] = 0;
-                        }
-                        $todos[$insumoId]++;
-                    }
-                }
-
-                arsort($todos);
-                $suspeitos = array_filter($todos, fn($v) => $v > 1);
-                $detalhes  = [];
-
-                if (!empty($suspeitos)) {
-                    $placeholders = implode(',', array_fill(0, count($suspeitos), '?'));
-                    $stmtDebug = $pdo->prepare("
-                    SELECT 
-                        p.codigo, 
-                        p.nome, 
-                        p.compravel, 
-                        COUNT(f.insumo_id) AS tem_ficha
-                    FROM products p
-                    LEFT JOIN productions f 
-                        ON f.product_id     = p.codigo 
-                       AND f.system_unit_id = p.system_unit_id
-                    WHERE p.codigo IN ($placeholders) 
-                      AND p.system_unit_id = ?
-                    GROUP BY p.codigo, p.nome, p.compravel
-                ");
-                    $stmtDebug->execute([...array_keys($suspeitos), $matriz_id]);
-                    $detalhes = $stmtDebug->fetchAll(PDO::FETCH_ASSOC);
-                }
-
-                // Se quiser logar, usa $debugFormatado aqui
-                $debugFormatado = [
-                    'rodadas_executadas'                 => $rodada - 1,
-                    'itens_por_rodada'                   => $debugRodadas,
-                    'repeticoes_detectadas'              => $todos,
-                    'suspeitos_com_mais_de_1_ocorrencia' => $suspeitos,
-                    'detalhes_suspeitos'                 => $detalhes,
-                ];
-
-                return array_values($resultado);
-            }
-
-            $debugRodadas[] = array_keys($insumoIds);
-
-            // ⚠️ se por algum motivo esvaziou, evita montar IN ()
-            if (empty($insumoIds)) {
-                break;
-            }
-
+        if (!empty($insumoIds)) {
             $placeholders = implode(',', array_fill(0, count($insumoIds), '?'));
             $stmt = $pdo->prepare("
             SELECT 
-                p.codigo AS insumo_id, 
-                p.nome, 
-                p.system_unit_id, 
-                cc.nome AS categoria, 
-                p.compravel
+                p.codigo AS insumo_id,
+                p.nome,
+                cc.nome AS categoria
             FROM products p
-            INNER JOIN categorias cc 
-                ON p.categoria      = cc.codigo 
+            INNER JOIN categorias cc
+                ON cc.codigo = p.categoria
                AND cc.system_unit_id = p.system_unit_id
-            WHERE p.codigo IN ($placeholders) 
-              AND p.system_unit_id = ? 
+            WHERE p.codigo IN ($placeholders)
+              AND p.system_unit_id = ?
               AND p.codigo >= 10000
+              AND p.compravel = 1
         ");
-            $stmt->execute([...array_values($insumoIds), $matriz_id]);
+            $stmt->execute([...array_values($insumoIds), $unitBase]);
             $produtosInfo = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $naoCompraveis = [];
 
             foreach ($produtosInfo as $produto) {
                 $id = $produto['insumo_id'];
-
-                // Garante que o índice existe
-                $quantidadeBase = isset($compras[$id]) ? $compras[$id] : 0.0;
-                $quantidade     = round($quantidadeBase, 2);
-
-                if ((int)$produto['compravel'] === 1) {
-                    // Já é item de compra final
-                    $resultado[$id] = [
-                        'insumo_id' => $id,
-                        'nome'      => $produto['nome'],
-                        'categoria' => $produto['categoria'],
-                        'compras'   => $quantidade
-                    ];
-                } else {
-                    // Ainda é item de produção, explode mais uma vez na ficha
-                    $naoCompraveis[$id] = $quantidade;
-                    unset($resultado[$id], $compras[$id], $insumoIds[$id]);
-                }
+                $resultado[$id] = [
+                    'insumo_id' => $id,
+                    'nome'      => $produto['nome'],
+                    'categoria' => $produto['categoria'],
+                    'compras'   => round($compras[$id] ?? 0, 2)
+                ];
             }
+        }
 
-            // Explode os não compráveis em mais insumos, pela ficha
-            foreach ($naoCompraveis as $produto => $quantidadeNecessaria) {
-                $stmtFicha = $pdo->prepare("
-                SELECT insumo_id, quantity, rendimento 
-                FROM productions 
-                WHERE system_unit_id = ? AND product_id = ?
-            ");
-                $stmtFicha->execute([$matriz_id, $produto]);
-                $fichas = $stmtFicha->fetchAll(PDO::FETCH_ASSOC);
+        error_log('[GET_PRODUCTS_TO_BUYS] ===== FIM =====');
 
-                foreach ($fichas as $ficha) {
-                    $insumo_id  = $ficha['insumo_id'];
-                    $qtd_ficha  = (float)$ficha['quantity'];
-                    $rendimento = (float)$ficha['rendimento'] ?: 1.0;
-
-                    $qtd_compra = ($qtd_ficha * $quantidadeNecessaria) / $rendimento;
-
-                    if (!isset($compras[$insumo_id])) {
-                        $compras[$insumo_id] = 0.0;
-                    }
-                    $compras[$insumo_id]   += $qtd_compra;
-                    $insumoIds[$insumo_id] = $insumo_id;
-                }
-            }
-
-        } while (!empty($naoCompraveis));
-
-        return array_values($resultado);
+        return [
+            'success' => true,
+            'compras' => array_values($resultado),
+            'alertas' => !empty($alertas)
+                ? [
+                    'tipo'    => 'falha_configuracao',
+                    'message' => 'Existem itens não compráveis e sem ficha de produção.',
+                    'itens'   => array_values($alertas)
+                ]
+                : null
+        ];
     }
 
-
-    /**
-     * @throws DateMalformedStringException
-     */
     public static function contarDiasSemana($dias): array
     {
         $diasSemana = [
@@ -747,9 +723,6 @@ class NecessidadesController
         return $diasSemana;
     }
 
-    /**
-     * @throws DateMalformedStringException
-     */
     public static function ultimasQuatroDatasPorDiaSemana(): array
     {
         $diasSemana = [

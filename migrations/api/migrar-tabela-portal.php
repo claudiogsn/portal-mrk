@@ -4,9 +4,9 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-$dsnMeraki = 'mysql:host=localhost;dbname=meraki89_portal';
-$usernameMeraki = 'meraki89_portal';
-$passwordMeraki = 'Portal@159';
+$dsnMeraki = 'mysql:host=localhost;dbname=mrk';
+$usernameMeraki = 'mrkuser';
+$passwordMeraki = 'Mrk@159';
 
 try {
     $pdoMeraki = new PDO($dsnMeraki, $usernameMeraki, $passwordMeraki);

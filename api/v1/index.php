@@ -825,6 +825,12 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'executeProductionBatch':
                 $response = ProducaoController::executeProductionBatch($requestData);
                 break;
+            case "listProducoesRealizadasDetalhado":
+                $response = ProducaoController::listProducoesRealizadasDetalhado($requestData);
+                break;
+            case 'listProducoesRealizadasBasico':
+                $response = ProducaoController::listProducoesRealizadasBasico($requestData);
+                break;
             // Métodos para ModeloBalancoController
             case 'createModelo':
                 if (isset($requestData['nome']) && isset($requestData['usuario_id']) && isset($requestData['itens'])) {

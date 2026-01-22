@@ -331,11 +331,7 @@ class MovimentacaoController
         }
     }
 
-    public static function listarMovimentacoesPorData(
-        $systemUnitId,
-        $data_inicial,
-        $data_final
-    ): false|array {
+    public static function listarMovimentacoesPorData($systemUnitId, $data_inicial, $data_final): false|array {
         global $pdo;
 
         $query = "
@@ -393,7 +389,6 @@ class MovimentacaoController
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-
     public static function getLastMov($system_unit_id, $tipo)
     {
         global $pdo;
@@ -419,12 +414,7 @@ class MovimentacaoController
         return $prefixo . "-000001";
     }
 
-    // Métodos Específicos para Balanço
-    public static function listBalance(
-        $system_unit_id,
-        $data_inicial = null,
-        $data_final = null
-    ): array
+    public static function listBalance($system_unit_id, $data_inicial = null, $data_final = null): array
     {
         global $pdo;
 
@@ -840,276 +830,274 @@ class MovimentacaoController
     }
 
     // Métodos Específicos para Transferências
-        public static function createTransferItems($data): array
-        {
-            global $pdo;
+    public static function createTransferItems($data): array
+    {
+        global $pdo;
 
+        // Verifica se todos os campos obrigatórios estão presentes
+        $requiredFields = [
+            "system_unit_id",
+            "system_unit_id_destino",
+            "itens",
+            "usuario_id",
+        ];
 
+        $mobile = isset($data['mobile']) && $data['mobile'] === true;
 
-            // Verifica se todos os campos obrigatórios estão presentes
-            $requiredFields = [
-                "system_unit_id",
-                "system_unit_id_destino",
-                "itens",
-                "usuario_id",
-            ];
-
-            $mobile = isset($data['mobile']) && $data['mobile'] === true;
-
-            foreach ($requiredFields as $field) {
-                if (!isset($data[$field])) {
-                    return [
-                        "success" => false,
-                        "message" => "O campo '$field' é obrigatório.",
-                    ];
-                }
-            }
-
-            // Verifica se 'itens' é um array e possui ao menos um item
-            if (!is_array($data["itens"]) || count($data["itens"]) == 0) {
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
                 return [
                     "success" => false,
-                    "message" => "É necessário incluir ao menos um item.",
-                ];
-            }
-
-            // Extraindo os dados
-            $system_unit_id = $data["system_unit_id"];
-            $system_unit_id_destino = $data["system_unit_id_destino"];
-            $itens = $data["itens"];
-            $usuario_id = $data["usuario_id"];
-            $transferDate = $data["transfer_date"];
-
-            // Gera o valor de 'doc' chamando o metodo getLastMov e incrementa para obter novos valores para entrada e saída
-            $ultimoDocSaida = self::getLastMov($system_unit_id, "ts"); // Tipo para saída
-            $docSaida = self::incrementDoc($ultimoDocSaida, "ts"); // Incrementa para saída
-
-            $ultimoDocEntrada = self::getLastMov($system_unit_id_destino, "te"); // Tipo para entrada
-            $docEntrada = self::incrementDoc($ultimoDocEntrada, "te"); // Incrementa para entrada
-
-            // Definindo valores fixos
-            $tipo_saida = "saida";
-            $tipo_entrada = "entrada";
-            $tipo_saida_doc = "ts"; // Tipo para saída
-            $tipo_entrada_doc = "te"; // Tipo para entrada
-
-            try {
-                // Inicia a transação
-                $pdo->beginTransaction();
-
-                $transferKey = UtilsController::uuidv4();
-
-
-                // Criação dos movimentos de saída
-                foreach ($itens as $item) {
-                    // Verifica se cada item possui os campos obrigatórios
-                    $itemRequiredFields = ["codigo", "seq", "quantidade"];
-                    foreach ($itemRequiredFields as $field) {
-                        if (!isset($item[$field])) {
-                            return [
-                                "success" => false,
-                                "message" => "O campo '$field' é obrigatório para cada item.",
-                            ];
-                        }
-                    }
-
-                    // Extraindo os dados do item
-                    $produto = $item["codigo"];
-                    $seq = $item["seq"];
-                    $quantidade = str_replace(",", ".", $item["quantidade"]);
-
-                    // Inserção no banco de dados para o movimento de saída
-                    $stmt = $pdo->prepare("
-                        INSERT INTO movimentacao (
-                            system_unit_id,
-                            system_unit_id_destino,
-                            system_unit_id_remetente,
-                            doc,
-                            doc_par,
-                            transfer_key,
-                            tipo,
-                            tipo_mov,
-                            produto,
-                            seq,
-                            data,
-                            data_original,
-                            quantidade,
-                            usuario_id
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-
-                    $stmt->execute([
-                        $system_unit_id,             // origem
-                        $system_unit_id_destino,     // destino
-                        $system_unit_id,             // ✅ remetente = a própria origem
-                        $docSaida,                   // doc TS
-                        $docEntrada,                 // ✅ par = doc TE
-                        $transferKey,                // ✅ transfer_key igual
-                        $tipo_saida_doc,             // 'ts'
-                        $tipo_saida,                 // 'saida'
-                        $produto,
-                        $seq,
-                        $transferDate,
-                        $transferDate,
-                        $quantidade,
-                        $usuario_id,
-                    ]);
-
-                }
-
-                // Criação dos movimentos de entrada
-                foreach ($itens as $item) {
-                    // Extraindo os dados do item
-                    $produto = $item["codigo"];
-                    $seq = $item["seq"];
-                    $quantidade = str_replace(",", ".", $item["quantidade"]);
-
-                    $stmt = $pdo->prepare("
-                        INSERT INTO movimentacao (
-                            system_unit_id,
-                            system_unit_id_destino,
-                            system_unit_id_remetente,
-                            doc,
-                            doc_par,
-                            transfer_key,
-                            tipo,
-                            tipo_mov,
-                            produto,
-                            seq,
-                            data,
-                            data_original,
-                            quantidade,
-                            usuario_id
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-
-                    $stmt->execute([
-                        $system_unit_id_destino,     // unit que está recebendo (TE)
-                        $system_unit_id_destino,     // ✅ destino = a própria unit do TE
-                        $system_unit_id,             // remetente = origem
-                        $docEntrada,                 // doc TE
-                        $docSaida,                   // ✅ par = doc TS
-                        $transferKey,                // ✅ transfer_key igual
-                        $tipo_entrada_doc,           // 'te'
-                        $tipo_entrada,               // 'entrada'
-                        $produto,
-                        $seq,
-                        $transferDate,
-                        $transferDate,
-                        $quantidade,
-                        $usuario_id,
-                    ]);
-
-                }
-
-                // Consulta o nome da unidade de destino
-                $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
-                $stmt->execute([$system_unit_id_destino]);
-                $unidade_destino = $stmt->fetch();
-
-                // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
-                if ($unidade_destino) {
-                    $nome_unidade_destino = $unidade_destino["name"];
-                } else {
-                    $pdo->rollBack();
-                    return [
-                        "success" => false,
-                        "message" =>
-                            "Falha ao recuperar o nome da unidade de destino.",
-                    ];
-                }
-
-                $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
-                $stmt->execute([$system_unit_id]);
-                $unidade_origem = $stmt->fetch();
-
-                // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
-                if ($unidade_origem) {
-                    $nome_unidade_origem = $unidade_origem["name"];
-                } else {
-                    $pdo->rollBack();
-                    return [
-                        "success" => false,
-                        "message" =>
-                            "Falha ao recuperar o nome da unidade de destino.",
-                    ];
-                }
-
-                $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
-                $stmt->execute([$usuario_id]);
-                $username = $stmt->fetch();
-
-                // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
-                if ($username) {
-                    $nome_user = $username["name"];
-                } else {
-                    $pdo->rollBack();
-                    return [
-                        "success" => false,
-                        "message" =>
-                            "Falha ao recuperar o nome da unidade de destino.",
-                    ];
-                }
-
-                // Cria a estrutura dos itens com nome do produto
-                $itensComDetalhes = [];
-                foreach ($itens as $item) {
-                    // Obter o nome do produto
-                    $stmt = $pdo->prepare(
-                        "SELECT nome as name FROM products WHERE codigo = ?"
-                    );
-                    $stmt->execute([$item["codigo"]]);
-                    $produtoData = $stmt->fetch();
-                    $nomeProduto = $produtoData
-                        ? $produtoData["name"]
-                        : "Desconhecido";
-
-                    // Adiciona os detalhes do item
-                    $itensComDetalhes[] = [
-                        "seq" => $item["seq"],
-                        "codigo" => $item["codigo"],
-                        "nome_produto" => $nomeProduto,
-                        "quantidade" => $item["quantidade"],
-                    ];
-                }
-
-                // Commit da transação
-                $pdo->commit();
-
-                // ================= NOTIFICAÇÃO MOBILE =================
-                if ($mobile === true) {
-                    try {
-                        self::notifyTransferencia([
-                            'system_unit_id' => $system_unit_id,
-                            'user_id'        => $usuario_id,
-                            'transfer_key'   => $transferKey,
-                        ]);
-                    } catch (Exception $e) {
-                        // Não interrompe o fluxo
-                        // opcional: log interno
-                    }
-                }
-
-                return [
-                    "success" => true,
-                    "message" => "Transferência criada com sucesso",
-                    "transfer_doc" => $docEntrada,
-                    "nome_unidade_destino" => $nome_unidade_destino,
-                    "nome_unidade_origem" => $nome_unidade_origem,
-                    "data_hora" => date("d/m/Y H:i:s"),
-                    "usuario" => $nome_user,
-                    "itens" => $itensComDetalhes,
-                ];
-            } catch (Exception $e) {
-                // Rollback em caso de erro
-                // Rollback em caso de erro
-                $pdo->rollBack();
-                return [
-                    "success" => false,
-                    "message" => "Erro ao criar transferência: " . $e->getMessage(),
+                    "message" => "O campo '$field' é obrigatório.",
                 ];
             }
         }
+
+        // Verifica se 'itens' é um array e possui ao menos um item
+        if (!is_array($data["itens"]) || count($data["itens"]) == 0) {
+            return [
+                "success" => false,
+                "message" => "É necessário incluir ao menos um item.",
+            ];
+        }
+
+        // Extraindo os dados
+        $system_unit_id = $data["system_unit_id"];
+        $system_unit_id_destino = $data["system_unit_id_destino"];
+        $itens = $data["itens"];
+        $usuario_id = $data["usuario_id"];
+        $transferDate = $data["transfer_date"];
+
+        // Gera o valor de 'doc' chamando o metodo getLastMov e incrementa para obter novos valores para entrada e saída
+        $ultimoDocSaida = self::getLastMov($system_unit_id, "ts"); // Tipo para saída
+        $docSaida = self::incrementDoc($ultimoDocSaida, "ts"); // Incrementa para saída
+
+        $ultimoDocEntrada = self::getLastMov($system_unit_id_destino, "te"); // Tipo para entrada
+        $docEntrada = self::incrementDoc($ultimoDocEntrada, "te"); // Incrementa para entrada
+
+        // Definindo valores fixos
+        $tipo_saida = "saida";
+        $tipo_entrada = "entrada";
+        $tipo_saida_doc = "ts"; // Tipo para saída
+        $tipo_entrada_doc = "te"; // Tipo para entrada
+
+        try {
+            // Inicia a transação
+            $pdo->beginTransaction();
+
+            $transferKey = UtilsController::uuidv4();
+
+
+            // Criação dos movimentos de saída
+            foreach ($itens as $item) {
+                // Verifica se cada item possui os campos obrigatórios
+                $itemRequiredFields = ["codigo", "seq", "quantidade"];
+                foreach ($itemRequiredFields as $field) {
+                    if (!isset($item[$field])) {
+                        return [
+                            "success" => false,
+                            "message" => "O campo '$field' é obrigatório para cada item.",
+                        ];
+                    }
+                }
+
+                // Extraindo os dados do item
+                $produto = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = str_replace(",", ".", $item["quantidade"]);
+
+                // Inserção no banco de dados para o movimento de saída
+                $stmt = $pdo->prepare("
+                    INSERT INTO movimentacao (
+                        system_unit_id,
+                        system_unit_id_destino,
+                        system_unit_id_remetente,
+                        doc,
+                        doc_par,
+                        transfer_key,
+                        tipo,
+                        tipo_mov,
+                        produto,
+                        seq,
+                        data,
+                        data_original,
+                        quantidade,
+                        usuario_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+
+                $stmt->execute([
+                    $system_unit_id,             // origem
+                    $system_unit_id_destino,     // destino
+                    $system_unit_id,             // ✅ remetente = a própria origem
+                    $docSaida,                   // doc TS
+                    $docEntrada,                 // ✅ par = doc TE
+                    $transferKey,                // ✅ transfer_key igual
+                    $tipo_saida_doc,             // 'ts'
+                    $tipo_saida,                 // 'saida'
+                    $produto,
+                    $seq,
+                    $transferDate,
+                    $transferDate,
+                    $quantidade,
+                    $usuario_id,
+                ]);
+
+            }
+
+            // Criação dos movimentos de entrada
+            foreach ($itens as $item) {
+                // Extraindo os dados do item
+                $produto = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = str_replace(",", ".", $item["quantidade"]);
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO movimentacao (
+                        system_unit_id,
+                        system_unit_id_destino,
+                        system_unit_id_remetente,
+                        doc,
+                        doc_par,
+                        transfer_key,
+                        tipo,
+                        tipo_mov,
+                        produto,
+                        seq,
+                        data,
+                        data_original,
+                        quantidade,
+                        usuario_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+
+                $stmt->execute([
+                    $system_unit_id_destino,     // unit que está recebendo (TE)
+                    $system_unit_id_destino,     // ✅ destino = a própria unit do TE
+                    $system_unit_id,             // remetente = origem
+                    $docEntrada,                 // doc TE
+                    $docSaida,                   // ✅ par = doc TS
+                    $transferKey,                // ✅ transfer_key igual
+                    $tipo_entrada_doc,           // 'te'
+                    $tipo_entrada,               // 'entrada'
+                    $produto,
+                    $seq,
+                    $transferDate,
+                    $transferDate,
+                    $quantidade,
+                    $usuario_id,
+                ]);
+
+            }
+
+            // Consulta o nome da unidade de destino
+            $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+            $stmt->execute([$system_unit_id_destino]);
+            $unidade_destino = $stmt->fetch();
+
+            // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
+            if ($unidade_destino) {
+                $nome_unidade_destino = $unidade_destino["name"];
+            } else {
+                $pdo->rollBack();
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Falha ao recuperar o nome da unidade de destino.",
+                ];
+            }
+
+            $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+            $stmt->execute([$system_unit_id]);
+            $unidade_origem = $stmt->fetch();
+
+            // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
+            if ($unidade_origem) {
+                $nome_unidade_origem = $unidade_origem["name"];
+            } else {
+                $pdo->rollBack();
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Falha ao recuperar o nome da unidade de destino.",
+                ];
+            }
+
+            $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+            $stmt->execute([$usuario_id]);
+            $username = $stmt->fetch();
+
+            // Se a consulta for bem-sucedida, inclui o nome da unidade de destino na resposta
+            if ($username) {
+                $nome_user = $username["name"];
+            } else {
+                $pdo->rollBack();
+                return [
+                    "success" => false,
+                    "message" =>
+                        "Falha ao recuperar o nome da unidade de destino.",
+                ];
+            }
+
+            // Cria a estrutura dos itens com nome do produto
+            $itensComDetalhes = [];
+            foreach ($itens as $item) {
+                // Obter o nome do produto
+                $stmt = $pdo->prepare(
+                    "SELECT nome as name FROM products WHERE codigo = ?"
+                );
+                $stmt->execute([$item["codigo"]]);
+                $produtoData = $stmt->fetch();
+                $nomeProduto = $produtoData
+                    ? $produtoData["name"]
+                    : "Desconhecido";
+
+                // Adiciona os detalhes do item
+                $itensComDetalhes[] = [
+                    "seq" => $item["seq"],
+                    "codigo" => $item["codigo"],
+                    "nome_produto" => $nomeProduto,
+                    "quantidade" => $item["quantidade"],
+                ];
+            }
+
+            // Commit da transação
+            $pdo->commit();
+
+            // ================= NOTIFICAÇÃO MOBILE =================
+            if ($mobile === true) {
+                try {
+                    self::notifyTransferencia([
+                        'system_unit_id' => $system_unit_id,
+                        'user_id'        => $usuario_id,
+                        'transfer_key'   => $transferKey,
+                    ]);
+                } catch (Exception $e) {
+                    // Não interrompe o fluxo
+                    // opcional: log interno
+                }
+            }
+
+            return [
+                "success" => true,
+                "message" => "Transferência criada com sucesso",
+                "transfer_doc" => $docEntrada,
+                "nome_unidade_destino" => $nome_unidade_destino,
+                "nome_unidade_origem" => $nome_unidade_origem,
+                "data_hora" => date("d/m/Y H:i:s"),
+                "usuario" => $nome_user,
+                "itens" => $itensComDetalhes,
+            ];
+        } catch (Exception $e) {
+            // Rollback em caso de erro
+            // Rollback em caso de erro
+            $pdo->rollBack();
+            return [
+                "success" => false,
+                "message" => "Erro ao criar transferência: " . $e->getMessage(),
+            ];
+        }
+    }
 
     private static function notifyTransferencia(array $payload): void
     {
@@ -1129,7 +1117,6 @@ class MovimentacaoController
         curl_exec($ch);
         curl_close($ch);
     }
-
 
     public static function getTransferenciaByKey(array $data): array
     {
@@ -1231,7 +1218,6 @@ class MovimentacaoController
             'items' => $items
         ];
     }
-
 
     public static function getTransferenciasComCustos(array $data): array
     {
@@ -1701,13 +1687,7 @@ class MovimentacaoController
         }
     }
 
-
-    public static function getDiferencasEstoque(
-        $startDate,
-        $endDate,
-        array $systemUnitIds,
-        $tipo = 'detalhado'
-    ): array
+    public static function getDiferencasEstoque($startDate, $endDate, array $systemUnitIds, $tipo = 'detalhado'): array
     {
         global $pdo;
 

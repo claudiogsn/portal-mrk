@@ -139,7 +139,6 @@ class ProducaoController
         }
     }
 
-
     public static function getProducaoById($product_id, $system_unit_id)
     {
         global $pdo;
@@ -199,7 +198,6 @@ class ProducaoController
             return ['success' => false, 'message' => 'Erro ao buscar ficha de produção: ' . $e->getMessage()];
         }
     }
-
 
     public static function deleteProducao($product_id, $system_unit_id)
     {
@@ -882,6 +880,227 @@ class ProducaoController
             return ["success" => false, "message" => "Erro ao executar produção em massa: " . $e->getMessage()];
         }
     }
+
+    public static function listProducoesRealizadasDetalhado(array $data): array
+    {
+        global $pdo;
+
+        // validações
+        $required = ["system_unit_id", "data_inicial", "data_final"];
+        foreach ($required as $f) {
+            if (empty($data[$f])) {
+                return [
+                    "success" => false,
+                    "message" => "O campo '{$f}' é obrigatório."
+                ];
+            }
+        }
+
+        $system_unit_id = (int)$data["system_unit_id"];
+        $dataInicial    = $data["data_inicial"];
+        $dataFinal      = $data["data_final"];
+
+        if ($system_unit_id <= 0) {
+            return ["success" => false, "message" => "system_unit_id inválido."];
+        }
+
+        try {
+            /**
+             * 1️⃣ BUSCA TODAS AS MOVIMENTAÇÕES DE PRODUÇÃO (ENTRADA + SAÍDA)
+             */
+            $stmt = $pdo->prepare("
+            SELECT
+                m.doc,
+                m.data,
+                m.tipo_mov,
+                m.produto AS produto_codigo,
+                SUM(m.quantidade) AS quantidade,
+
+                p.nome AS produto_nome,
+                p.und  AS produto_unidade,
+
+                m.usuario_id
+            FROM movimentacao m
+            INNER JOIN products p
+                ON p.codigo = m.produto
+               AND p.system_unit_id = m.system_unit_id
+            WHERE m.system_unit_id = :unit
+              AND m.tipo = 'pr'
+              AND DATE(m.data) BETWEEN :dt_ini AND :dt_fim
+            GROUP BY
+                m.doc,
+                m.data,
+                m.tipo_mov,
+                m.produto,
+                p.nome,
+                p.und,
+                m.usuario_id
+            ORDER BY m.data DESC, m.doc DESC
+        ");
+
+            $stmt->execute([
+                ":unit"   => $system_unit_id,
+                ":dt_ini" => $dataInicial,
+                ":dt_fim" => $dataFinal
+            ]);
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!$rows) {
+                return [
+                    "success" => true,
+                    "producoes" => [],
+                    "message" => "Nenhuma produção encontrada no período."
+                ];
+            }
+
+            /**
+             * 2️⃣ MONTA ESTRUTURA POR DOC
+             */
+            $producoes = [];
+
+            foreach ($rows as $row) {
+                $doc = $row["doc"];
+
+                if (!isset($producoes[$doc])) {
+                    $producoes[$doc] = [
+                        "doc" => $doc,
+                        "data" => $row["data"],
+                        "usuario_id" => $row["usuario_id"],
+                        "produto_final" => null,
+                        "insumos" => []
+                    ];
+                }
+
+                if ($row["tipo_mov"] === "entrada") {
+                    // Produto final
+                    $producoes[$doc]["produto_final"] = [
+                        "codigo" => (int)$row["produto_codigo"],
+                        "nome" => $row["produto_nome"],
+                        "unidade" => $row["produto_unidade"],
+                        "quantidade_produzida" => (float)round($row["quantidade"], 4)
+                    ];
+                } else {
+                    // Insumos consumidos
+                    $producoes[$doc]["insumos"][] = [
+                        "codigo" => (int)$row["produto_codigo"],
+                        "nome" => $row["produto_nome"],
+                        "unidade" => $row["produto_unidade"],
+                        "quantidade_consumida" => (float)round($row["quantidade"], 4)
+                    ];
+                }
+            }
+
+            return [
+                "success" => true,
+                "total" => count($producoes),
+                "producoes" => array_values($producoes)
+            ];
+
+        } catch (Exception $e) {
+            return [
+                "success" => false,
+                "message" => "Erro ao listar produções detalhadas",
+                "error" => $e->getMessage()
+            ];
+        }
+    }
+
+    public static function listProducoesRealizadasBasico(array $data): array
+    {
+        global $pdo;
+
+        // validações mínimas
+        if (empty($data["system_unit_id"])) {
+            return [
+                "success" => false,
+                "message" => "O campo 'system_unit_id' é obrigatório."
+            ];
+        }
+
+        $system_unit_id = (int)$data["system_unit_id"];
+        $dataInicial    = $data["data_inicial"] ?? null;
+        $dataFinal      = $data["data_final"] ?? null;
+
+        if ($system_unit_id <= 0) {
+            return ["success" => false, "message" => "system_unit_id inválido."];
+        }
+
+        try {
+            $whereData = "";
+            $params = [
+                ":unit" => $system_unit_id
+            ];
+
+            if ($dataInicial && $dataFinal) {
+                $whereData = " AND DATE(m.data) BETWEEN :dt_ini AND :dt_fim ";
+                $params[":dt_ini"] = $dataInicial;
+                $params[":dt_fim"] = $dataFinal;
+            }
+
+            /**
+             * 🔹 BUSCA SOMENTE ENTRADAS DE PRODUÇÃO
+             */
+            $stmt = $pdo->prepare("
+            SELECT
+                m.doc,
+                m.data,
+                m.usuario_id,
+
+                m.produto AS produto_codigo,
+                SUM(m.quantidade) AS quantidade_produzida,
+
+                p.nome AS produto_nome,
+                p.und  AS produto_unidade
+            FROM movimentacao m
+            INNER JOIN products p
+                ON p.codigo = m.produto
+               AND p.system_unit_id = m.system_unit_id
+            WHERE m.system_unit_id = :unit
+              AND m.tipo = 'pr'
+              AND m.tipo_mov = 'entrada'
+              $whereData
+            GROUP BY
+                m.doc,
+                m.data,
+                m.usuario_id,
+                m.produto,
+                p.nome,
+                p.und
+            ORDER BY m.data DESC, m.doc DESC
+        ");
+
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                "success" => true,
+                "total" => count($rows),
+                "producoes" => array_map(function ($r) {
+                    return [
+                        "doc" => $r["doc"],
+                        "data" => $r["data"],
+                        "usuario_id" => $r["usuario_id"],
+                        "produto_final" => [
+                            "codigo" => (int)$r["produto_codigo"],
+                            "nome" => $r["produto_nome"],
+                            "unidade" => $r["produto_unidade"],
+                            "quantidade_produzida" => (float)round($r["quantidade_produzida"], 4)
+                        ]
+                    ];
+                }, $rows)
+            ];
+
+        } catch (Exception $e) {
+            return [
+                "success" => false,
+                "message" => "Erro ao listar produções (básico)",
+                "error" => $e->getMessage()
+            ];
+        }
+    }
+
+
 
 
 
