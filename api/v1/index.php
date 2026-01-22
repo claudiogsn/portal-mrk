@@ -1722,6 +1722,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+            case 'getProdutoByEan':
+                if (isset($requestData['ean'])) {
+                    $response = ProductController::getProdutoByEan($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro ean ausente'];
+                }
+                break;
             case 'recalcularCustosPorFichas':
                 if (isset($requestData['system_unit_id'])) {
                     $response = ProductController::recalcularCustosPorFichas($requestData['system_unit_id']);

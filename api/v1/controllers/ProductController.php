@@ -406,6 +406,7 @@ class ProductController {
             venda, composicao, insumo, compravel, estoque_minimo, 
             IFNULL(saldo, 0.00) AS saldo,
             status,
+                ean,
             sku_zig AS codigo_pdv
         FROM products
         WHERE system_unit_id = :unit_id
@@ -444,6 +445,50 @@ class ProductController {
         }, $produtos);
 
         return ['success' => true, 'produtos' => $produtosFormatados];
+    }
+
+    public static function getProdutoByEan($data)
+    {
+        global $pdo;
+
+        if (!isset($data['ean'], $data['system_unit_id'])) {
+            return [
+                'success' => false,
+                'message' => 'EAN e system_unit_id são obrigatórios.'
+            ];
+        }
+
+        $ean = trim($data['ean']);
+        $unitId = (int)$data['system_unit_id'];
+
+        $stmt = $pdo->prepare("
+        SELECT *
+        FROM products
+        WHERE system_unit_id = :unit_id
+          AND ean = :ean
+          AND compravel = 1
+          AND status = 1
+        LIMIT 1
+    ");
+
+        $stmt->execute([
+            ':unit_id' => $unitId,
+            ':ean' => $ean
+        ]);
+
+        $produto = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$produto) {
+            return [
+                'success' => false,
+                'message' => 'Produto não encontrado ou não é comprável.'
+            ];
+        }
+
+        return [
+            'success' => true,
+            'data' => $produto
+        ];
     }
 
     public static function getProximoCodigoProduto($unit_id, $is_insumo)
@@ -610,7 +655,6 @@ class ProductController {
         try {
             global $pdo;
 
-            // Consulta SQL para listar produtos agrupados por categoria
             $sql = "
         SELECT 
             c.codigo AS categoria_id,
@@ -1679,8 +1723,6 @@ class ProductController {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-
-
 
 }
 ?>

@@ -42,8 +42,6 @@
             width: 3px;
         }
 
-
-
         .modal-dialog {
             width: 90%;
             margin: 30px auto;
@@ -97,7 +95,7 @@
         </div>
         <div class="row" style="margin: 15px 0;">
             <div class="col-md-4">
-                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome ou código">
+                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome, código ou EAN">
             </div>
             <div class="col-md-3">
                 <select id="filtroStatus" class="form-control">
@@ -133,6 +131,7 @@
                     <th style="width: 28px; padding: 0;" class="text-center"></th>
                     <th style="cursor:pointer" onclick="ordenarPor('codigo')">Código <i id="icon-codigo" class="fa fa-sort"></i></th>
                     <th style="cursor:pointer" onclick="ordenarPor('nome')">Nome <i id="icon-nome" class="fa fa-sort"></i></th>
+                    <th>EAN</th>
                     <th>Tags</th>
                     <th>Und</th>
                     <th>Saldo</th>
@@ -149,7 +148,6 @@
     </div>
 </div>
 
-<!-- Modal Produto -->
 <div class="modal fade" id="modalProduto" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document" style="width: 90%; max-width: 1200px;">
         <div class="modal-content">
@@ -160,7 +158,6 @@
                 <input type="hidden" id="produtoId">
 
                 <div class="row">
-                    <!-- Coluna do formulário -->
                     <div class="col-md-6 col-sm-12">
                         <div class="demo-checkbox">
                             <input type="checkbox" id="venda" class="chk-col-blue" />
@@ -195,6 +192,11 @@
                             <input type="text" id="codigo_pdv" class="form-control" placeholder="Código utilizado no PDV">
                         </div>
 
+                        <div class="form-group">
+                            <label for="ean">EAN (Código de Barras)</label>
+                            <input type="text" id="ean" class="form-control" placeholder="GTIN/EAN">
+                        </div>
+
                         <div class="form-group" style="margin-top: 10px;">
                             <label for="nome">Nome *</label>
                             <input type="text" id="nome" class="form-control" placeholder="Nome do produto">
@@ -226,7 +228,6 @@
 
                     <div class="col-md-1 hidden-sm hidden-xs divider-col">&nbsp;</div>
 
-                    <!-- Coluna das tabs -->
                     <div class="col-md-6 col-sm-12">
                         <ul class="nav nav-tabs" role="tablist">
                             <li class="active"><a href="#composicaoTab" role="tab" data-toggle="tab">Ficha Técnica</a></li>
@@ -261,8 +262,7 @@
                             </div>
                         </div>
                     </div>
-                </div> <!-- fim .row -->
-            </div>
+                </div> </div>
 
             <div class="modal-footer">
                 <button id="salvarProduto" class="btn btn-primary">Salvar</button>
@@ -400,6 +400,7 @@
             const data = {
                 id: $('#produtoId').val(),
                 sku_zig: $('#codigo_pdv').val(),
+                ean: $('#ean').val(), // ALTERAÇÃO 4: Adicionado campo EAN no envio
                 unit_id: system_unit_id,
                 codigo: $('#codigo').val(),
                 nome: $('#nome').val(),
@@ -432,6 +433,7 @@
         $('#modalTituloProduto').text('Novo Produto');
         $('#produtoId').val('');
         $('#codigo_pdv').val('');
+        $('#ean').val(''); // ALTERAÇÃO 5: Limpar campo EAN no novo
         $('#codigo, #nome').val('');
         $('#categoria').val('');
         $('#und').val('UND');
@@ -492,6 +494,7 @@
         $('#modalTituloProduto').text('Editar Produto');
         $('#produtoId').val(produto.id);
         $('#codigo_pdv').val(produto.codigo_pdv || '');
+        $('#ean').val(produto.ean || ''); // ALTERAÇÃO 6: Popular campo EAN ao editar
         $('#codigo').val(produto.codigo).prop('disabled', true);
         $('#nome').val(produto.nome);
         $('#und').val(produto.und);
@@ -671,7 +674,10 @@
             const termo = (nomeFiltro || '').trim();
             const nome = String(p.nome || '').toLowerCase();
             const codigo = String(p.codigo || '').toLowerCase();
-            const nomeCond = termo === '' || nome.includes(termo) || codigo.includes(termo);
+            // ALTERAÇÃO 7: Lógica de filtro por EAN adicionada
+            const ean = String(p.ean || '').toLowerCase();
+
+            const nomeCond = termo === '' || nome.includes(termo) || codigo.includes(termo) || ean.includes(termo);
             const statusCond = statusFiltro === '' || String(p.status) === statusFiltro;
 
             const tagsCond =
@@ -735,7 +741,7 @@
             }
 
 
-
+            // ALTERAÇÃO 8: EAN inserido na linha da tabela
             tbody.append(`
                 <tr>
                     <td class="text-center">
@@ -750,6 +756,7 @@
                     </td>
                     <td>${p.codigo}</td>
                     <td>${p.nome}</td>
+                    <td>${p.ean || '-'}</td>
                     <td>${tags}</td>
                     <td>${p.und || '-'}</td>
                     <td>${p.saldo}</td>
