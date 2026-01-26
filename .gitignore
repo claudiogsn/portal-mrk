@@ -9,3 +9,4 @@ app/config/sample.ini
 
 /logs
 /api/v1/public
+/.idea
