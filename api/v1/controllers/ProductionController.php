@@ -132,7 +132,7 @@ class ProductionController {
             SELECT codigo, nome, compravel 
             FROM products 
             WHERE system_unit_id = :unit_id
-            and codigo >= 10000
+            and insumo = 1
         ");
             $stmt->execute([':unit_id' => $system_unit_id]);
 
