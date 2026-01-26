@@ -5,13 +5,11 @@
     <title>Relatório - Compras por Fornecedor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- AdminBSB / Bootstrap -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
-    <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
@@ -34,6 +32,18 @@
             flex-wrap:wrap;
             margin: 10px 0;
         }
+
+        /* Estilo dos Totalizadores */
+        .totalizer-box {
+            background: #f4f6f9;
+            border-left: 4px solid #2196F3;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .totalizer-title { font-size: 11px; color: #666; text-transform: uppercase; font-weight: bold; }
+        .totalizer-value { font-size: 18px; color: #333; font-weight: bold; margin-top: 2px; }
 
         /* Linha expansível */
         td.cell-toggle {
@@ -61,6 +71,7 @@
         @media (max-width: 768px) {
             body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
             .toolbar { gap:6px; }
+            .totalizer-box { margin-bottom: 10px; }
         }
     </style>
 </head>
@@ -74,7 +85,6 @@
             <h2>Relatório - Compras por Fornecedor</h2>
         </div>
 
-        <!-- LINHA 1: FILTROS QUE DISPARAM REQUEST -->
         <div class="row" style="margin: 15px 0 5px;">
             <div class="col-md-3">
                 <label class="muted">Data inicial</label>
@@ -96,26 +106,47 @@
 
             <div class="col-md-3">
                 <label class="muted">Ações</label><br>
-                <button id="btnAtualizar" class="btn btn-primary">
+                <button id="btnAtualizar" class="btn btn-primary btn-block">
                     <i class="fa fa-sync"></i> Atualizar
                 </button>
             </div>
         </div>
 
-        <!-- LINHA 2: FILTROS EM TEMPO REAL -->
         <div class="row" style="margin: 5px 0 10px;">
             <div class="col-md-6">
-                <label class="muted">Fornecedor</label>
+                <label class="muted">Fornecedor (Filtro local)</label>
                 <select id="filtroFornecedor" class="form-control" multiple="multiple"></select>
             </div>
 
             <div class="col-md-6">
-                <label class="muted">Busca (código/nome, nota, chave, produto)</label>
-                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar...">
+                <label class="muted">Busca Rápida (código/nome, nota, chave, produto)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar instantaneamente...">
             </div>
         </div>
 
-        <!-- TOOLBAR -->
+        <hr style="margin: 5px 0 15px 0;">
+
+        <div class="row" style="margin: 0;">
+            <div class="col-md-4">
+                <div class="totalizer-box">
+                    <div class="totalizer-title">Qtd. Notas</div>
+                    <div class="totalizer-value" id="totQtd">0</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="totalizer-box" style="border-left-color: #4CAF50;">
+                    <div class="totalizer-title">Valor Total (R$)</div>
+                    <div class="totalizer-value" id="totValor">R$ 0,00</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="totalizer-box" style="border-left-color: #FF9800;">
+                    <div class="totalizer-title">Ticket Médio</div>
+                    <div class="totalizer-value" id="totMedia">R$ 0,00</div>
+                </div>
+            </div>
+        </div>
+
         <div class="row" style="margin: 0 0 10px;">
             <div class="col-md-12">
                 <div class="toolbar">
@@ -126,12 +157,11 @@
                         <i class="fa fa-minus-square"></i> Recolher tudo
                     </button>
 
-                    <span class="muted text-small" id="infoStatus"></span>
+                    <span class="muted text-small" id="infoStatus" style="margin-left: 10px;"></span>
                 </div>
             </div>
         </div>
 
-        <!-- TABELA -->
         <div class="body">
             <div class="table-responsive">
                 <table class="table table-striped table-hover" id="tabela-notas">
@@ -167,7 +197,7 @@
     const METHOD_BACKEND = 'getComprasPorPeriodo';
 
     // ================= STATE =================
-    let dadosBrutos = [];      // notas retornadas
+    let dadosBrutos = [];      // notas retornadas do backend
     let notasFiltradas = [];   // após filtros (tempo real)
     let expandedSet = new Set(); // chave única da nota expandida
 
@@ -216,11 +246,20 @@
 
     function lower(s){ return (s || '').toString().toLowerCase(); }
 
+    function debounce(fn, ms){
+        let t;
+        return function(){
+            clearTimeout(t);
+            const args = arguments;
+            t = setTimeout(() => fn.apply(null, args), ms);
+        }
+    }
+
     // ================= INIT =================
     $(document).ready(() => {
         // Select2 fornecedor
         $('#filtroFornecedor').select2({
-            placeholder: 'Selecione um ou mais fornecedores',
+            placeholder: 'Todos os fornecedores',
             width: '100%',
             allowClear: true,
             closeOnSelect: false
@@ -242,10 +281,10 @@
         // handlers
         $('#btnAtualizar').on('click', fetchBackend);
 
-        // ✅ mudança desses 3 => request automática
-        $('#dtInicio').on('change', debounce(fetchBackend, 300));
-        $('#dtFim').on('change', debounce(fetchBackend, 300));
-        $('#tipoData').on('change', debounce(fetchBackend, 300));
+        // REMOVIDO: Carregamento automático nas mudanças de data
+        // $('#dtInicio').on('change', debounce(fetchBackend, 300));
+        // $('#dtFim').on('change', debounce(fetchBackend, 300));
+        // $('#tipoData').on('change', debounce(fetchBackend, 300));
 
         // filtros em tempo real (sem backend)
         $('#filtroFornecedor').on('change', applyFiltrosTempoReal);
@@ -261,18 +300,10 @@
             return;
         }
 
-        // primeira carga
-        fetchBackend();
+        // REMOVIDO: fetchBackend() inicial. O usuário deve clicar em Atualizar.
+        renderTabela([]); // renderiza vazio inicialmente
+        renderTotalizadores([]); // zera totalizadores
     });
-
-    function debounce(fn, ms){
-        let t;
-        return function(){
-            clearTimeout(t);
-            const args = arguments;
-            t = setTimeout(() => fn.apply(null, args), ms);
-        }
-    }
 
     // ================= BACKEND =================
     async function fetchBackend(){
@@ -285,7 +316,8 @@
         }
 
         Swal.fire({
-            title: 'Carregando...',
+            title: 'Consultando...',
+            text: 'Buscando notas fiscais...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
@@ -309,58 +341,63 @@
                 dadosBrutos = [];
                 expandedSet = new Set();
                 buildFiltroFornecedores([]);
-                renderTabela([]);
+                // Aplica filtro vazio para limpar tabela e totais
+                applyFiltrosTempoReal();
                 $('#infoStatus').text('Nenhum dado retornado.');
-                return Swal.fire('Atenção', api && api.message ? api.message : 'Falha ao consultar.', 'warning');
+                return Swal.fire('Atenção', api && api.message ? api.message : 'Falha ao consultar ou nenhum registro encontrado.', 'warning');
             }
 
-            // aqui seu backend retorna "notas"
+            // Backend retorna "notas"
             const notas = Array.isArray(api.notas) ? api.notas : [];
             dadosBrutos = notas;
 
-            // por padrão: tudo recolhido (zera expandidos)
+            // Reset de estado
             expandedSet = new Set();
 
-            // monta select2 com fornecedores disponíveis nesta consulta
+            // Monta select2 e aplica filtros iniciais
             buildFiltroFornecedores(notas);
-
-            // aplica filtros tempo real e renderiza
             applyFiltrosTempoReal();
+
+            if (notas.length === 0) {
+                Swal.fire('Info', 'Nenhuma nota encontrada no período.', 'info');
+            }
 
         } catch (e) {
             Swal.close();
             console.error(e);
-            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+            Swal.fire('Erro', 'Não foi possível consultar os dados (Erro de conexão).', 'error');
         }
     }
 
-    // ================= FILTRO FORNECEDORES (de acordo com retorno) =================
+    // ================= FILTRO FORNECEDORES =================
     function buildFiltroFornecedores(notas){
-        const mapa = {}; // fornecedor_id => fornecedor_nome
+        const mapa = {}; // id => nome
 
         notas.forEach(n => {
             const id = n.fornecedor_id;
             const nome = n.fornecedor_nome || '';
-            if (!id) return;
-            if (!mapa[id]) mapa[id] = nome;
+            if (id && !mapa[id]) mapa[id] = nome;
         });
 
         const $sel = $('#filtroFornecedor');
-        const selecionados = $sel.val() || [];
+        // Salva seleção atual se houver, pra tentar manter
+        // const oldVal = $sel.val();
 
         $sel.empty();
 
         const ids = Object.keys(mapa).sort((a,b) => Number(a) - Number(b));
         ids.forEach(id => {
-            const label = `[${id}] ${mapa[id] || ''}`;
+            // Limita tamanho do nome se for muito grande
+            let nomeF = mapa[id] || '';
+            if(nomeF.length > 50) nomeF = nomeF.substring(0,50) + '...';
+            const label = `${nomeF}`; // Removi o ID do label visual pra ficar mais limpo, mas pode por de volta
             $sel.append(`<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`);
         });
 
-        // reseta seleção quando recarrega dados (mais seguro)
         $sel.val(null).trigger('change');
     }
 
-    // ================= FILTROS TEMPO REAL =================
+    // ================= FILTROS TEMPO REAL & TOTALIZADORES =================
     function applyFiltrosTempoReal(){
         let arr = Array.isArray(dadosBrutos) ? dadosBrutos.slice() : [];
 
@@ -373,7 +410,7 @@
             arr = arr.filter(n => setSel.has(String(n.fornecedor_id || '')));
         }
 
-        // 2) texto: fornecedor, nf, chave, itens (produto codigo/nome)
+        // 2) texto
         if (filtroTxt) {
             arr = arr.filter(n => {
                 const camposNota = [
@@ -401,18 +438,43 @@
 
         notasFiltradas = arr;
 
-        // ao filtrar, mantém expandido apenas os que existem no filtro
-        const keysValidas = new Set(arr.map(makeNotaKey));
-        expandedSet.forEach(k => { if (!keysValidas.has(k)) expandedSet.delete(k); });
-
+        // Atualiza UI
+        renderTotalizadores(arr);
         renderTabela(arr);
         renderInfoStatus();
+    }
+
+    // Função NOVA para calcular totais
+    function renderTotalizadores(notas) {
+        let qtd = notas.length;
+        let totalValor = 0;
+
+        notas.forEach(n => {
+            totalValor += Number(n.valor_total || 0);
+        });
+
+        let media = qtd > 0 ? (totalValor / qtd) : 0;
+
+        // Animação simples ou update direto
+        $('#totQtd').text(qtd);
+        $('#totValor').text(brMoney(totalValor));
+        $('#totMedia').text(brMoney(media));
     }
 
     function renderInfoStatus(){
         const total = (dadosBrutos || []).length;
         const filtrados = (notasFiltradas || []).length;
-        $('#infoStatus').text(` `);
+
+        if (total === 0) {
+            $('#infoStatus').text('');
+            return;
+        }
+
+        if (filtrados !== total) {
+            $('#infoStatus').html(`Exibindo <b>${filtrados}</b> de <b>${total}</b> registros carregados.`);
+        } else {
+            $('#infoStatus').html(`Total de <b>${total}</b> registros.`);
+        }
     }
 
     // ================= RENDER TABELA =================
@@ -422,16 +484,21 @@
 
         if (!Array.isArray(notas) || notas.length === 0) {
             $tbody.append(`
-        <tr>
-          <td colspan="8" class="text-center text-small muted">
-            Nenhum registro para os filtros atuais.
-          </td>
-        </tr>
-      `);
+                <tr>
+                  <td colspan="6" class="text-center text-small muted" style="padding: 20px;">
+                    ${dadosBrutos.length > 0 ? 'Nenhum registro corresponde aos filtros.' : 'Utilize os filtros e clique em Atualizar.'}
+                  </td>
+                </tr>
+            `);
             return;
         }
 
-        notas.forEach(n => {
+        // Limita renderização se for muito grande para não travar o navegador
+        // Se precisar de paginação real, deve ser feita no backend ou usar lib Datatables
+        const limiteRender = 500;
+        const renderList = notas.slice(0, limiteRender);
+
+        renderList.forEach(n => {
             const key = makeNotaKey(n);
             const isExpanded = expandedSet.has(key);
 
@@ -445,34 +512,44 @@
 
             // linha principal
             $tbody.append(`
-        <tr class="nota-row" data-key="${escapeHtml(key)}">
-          <td class="cell-toggle" data-key="${escapeHtml(key)}" title="Expandir/Recolher">
-            <i class="fa ${icon}"></i>
-          </td>
-          <td class="nowrap">${nf}</td>
-          <td>${fornecedor}</td>
-          <td class="nowrap">${escapeHtml(dtEmissao)}</td>
-          <td class="nowrap">${escapeHtml(dtEntrada)}</td>
-          <td class="text-right nowrap"><strong>${escapeHtml(valor)}</strong></td>
-        </tr>
-      `);
+                <tr class="nota-row" data-key="${escapeHtml(key)}">
+                  <td class="cell-toggle" data-key="${escapeHtml(key)}" title="Expandir/Recolher">
+                    <i class="fa ${icon}"></i>
+                  </td>
+                  <td class="nowrap">${nf}</td>
+                  <td>${fornecedor}</td>
+                  <td class="nowrap">${escapeHtml(dtEmissao)}</td>
+                  <td class="nowrap">${escapeHtml(dtEntrada)}</td>
+                  <td class="text-right nowrap"><strong>${escapeHtml(valor)}</strong></td>
+                </tr>
+            `);
 
             // linha itens (expansível)
             const itensHtml = renderSubTabelaItens(n);
+            // Só renderiza o HTML interno se estiver expandido para otimizar performance (opcional)
             $tbody.append(`
-        <tr class="itens-row" data-key="${escapeHtml(key)}" style="${isExpanded ? 'display: table-row;' : 'display:none;'}">
-          <td colspan="8">
-            ${itensHtml}
-          </td>
-        </tr>
-      `);
+                <tr class="itens-row" data-key="${escapeHtml(key)}" style="${isExpanded ? 'display: table-row;' : 'display:none;'}">
+                  <td colspan="6">
+                    ${itensHtml}
+                  </td>
+                </tr>
+            `);
         });
 
-        // IMPORTANTÍSSIMO: expandir só clicando na célula da seta
+        if (notas.length > limiteRender) {
+            $tbody.append(`
+                <tr>
+                  <td colspan="6" class="text-center text-warning">
+                    Exibindo apenas os primeiros ${limiteRender} registros de ${notas.length}. Refine os filtros.
+                  </td>
+                </tr>
+            `);
+        }
+
+        // Evento toggle
         $('.cell-toggle').off('click').on('click', function(e){
             e.preventDefault();
             e.stopPropagation();
-
             const key = $(this).data('key');
             toggleRow(key);
         });
@@ -481,49 +558,54 @@
     function renderSubTabelaItens(nota){
         const itens = Array.isArray(nota.itens) ? nota.itens : [];
         if (itens.length === 0) {
-            return `<div class="muted text-small">Nenhum item de movimentação encontrado para esta nota.</div>`;
+            return `<div class="muted text-small" style="padding:10px;">Nenhum item encontrado.</div>`;
         }
 
         let rows = '';
         itens.forEach(it => {
             rows += `
-        <tr>
-          <td class="nowrap">${escapeHtml(it.seq)}</td>
-          <td class="nowrap">${escapeHtml(it.produto)}</td>
-          <td>${escapeHtml(it.produto_nome || '')}</td>
-          <td class="nowrap">${escapeHtml(it.produto_unidade || '')}</td>
-          <td class="text-right nowrap">${escapeHtml(Number(it.quantidade || 0).toLocaleString('pt-BR', {minimumFractionDigits: 4, maximumFractionDigits: 4}))}</td>
-          <td class="text-right nowrap">${escapeHtml(brMoney(it.valor_unitario || 0))}</td>
-          <td class="text-right nowrap"><strong>${escapeHtml(brMoney(it.valor_total || 0))}</strong></td>
-        </tr>
-      `;
+                <tr>
+                  <td class="nowrap">${escapeHtml(it.seq)}</td>
+                  <td class="nowrap">${escapeHtml(it.produto)}</td>
+                  <td>${escapeHtml(it.produto_nome || '')}</td>
+                  <td class="nowrap">${escapeHtml(it.produto_unidade || '')}</td>
+                  <td class="text-right nowrap">${escapeHtml(Number(it.quantidade || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 4}))}</td>
+                  <td class="text-right nowrap">${escapeHtml(brMoney(it.valor_unitario || 0))}</td>
+                  <td class="text-right nowrap"><strong>${escapeHtml(brMoney(it.valor_total || 0))}</strong></td>
+                </tr>
+            `;
         });
 
         return `
-      <table class="table table-condensed table-bordered subtable">
-        <thead>
-          <tr>
-            <th style="width:60px;" class="nowrap">Seq</th>
-            <th style="width:90px;" class="nowrap">Código</th>
-            <th>Produto</th>
-            <th style="width:70px;" class="nowrap">Unid</th>
-            <th style="width:130px;" class="text-right nowrap">Qtd</th>
-            <th style="width:140px;" class="text-right nowrap">Vlr Unit. (R$)</th>
-            <th style="width:140px;" class="text-right nowrap">Total (R$)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    `;
+            <div style="background: #fff; border:1px solid #ddd; padding:5px; border-radius:4px;">
+              <table class="table table-condensed table-bordered subtable mb-0">
+                <thead>
+                  <tr style="background:#f0f0f0;">
+                    <th style="width:50px;">Seq</th>
+                    <th style="width:90px;">Cód.</th>
+                    <th>Produto</th>
+                    <th style="width:60px;">Unid</th>
+                    <th style="width:100px;" class="text-right">Qtd</th>
+                    <th style="width:120px;" class="text-right">Vlr Unit.</th>
+                    <th style="width:120px;" class="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
+              </table>
+            </div>
+        `;
     }
 
     // ================= EXPAND/COLLAPSE =================
     function toggleRow(key){
-        const $notaRow = $(`tr.nota-row[data-key="${cssEscape(key)}"]`);
-        const $itensRow = $(`tr.itens-row[data-key="${cssEscape(key)}"]`);
-        if ($notaRow.length === 0 || $itensRow.length === 0) return;
+        // Escape characters for jQuery selector
+        const selectorKey = cssEscape(key);
+        const $notaRow = $(`tr.nota-row[data-key="${selectorKey}"]`);
+        const $itensRow = $(`tr.itens-row[data-key="${selectorKey}"]`);
+
+        if ($notaRow.length === 0) return;
 
         const expanded = expandedSet.has(key);
 
@@ -536,23 +618,23 @@
             $itensRow.show();
             $notaRow.find('td.cell-toggle i').removeClass('fa-chevron-right').addClass('fa-chevron-down');
         }
-
-        renderInfoStatus();
     }
 
     function expandCollapseAll(expandir){
         const arr = Array.isArray(notasFiltradas) ? notasFiltradas : [];
         if (expandir) {
+            // Limita expandir tudo para evitar travamento se houver muitas notas
+            if(arr.length > 300) {
+                Swal.fire('Aviso', 'Muitos registros para expandir. Filtre mais dados antes.', 'warning');
+                return;
+            }
             expandedSet = new Set(arr.map(makeNotaKey));
         } else {
             expandedSet = new Set();
         }
-        // re-render pra aplicar estado
         renderTabela(arr);
-        renderInfoStatus();
     }
 
-    // cssEscape básico (pra keys com ':' etc)
     function cssEscape(str){
         return String(str).replace(/(["\\])/g, '\\$1');
     }

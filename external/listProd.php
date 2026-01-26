@@ -1,0 +1,465 @@
+<?php
+// 1. Recupera o Nome e o ID da sessão passados pela URL
+$sys_name = $_GET['sys_session_name'] ?? 'PHPSESSID'; // Pega 'PHPSESSID_MRKSolutions'
+$sys_id   = $_GET['sys_session_id']   ?? null;        // Pega '9db9e9...'
+
+if ($sys_id) {
+    // 2. FORÇA o PHP a usar essa sessão específica
+    session_name($sys_name);
+    session_id($sys_id);
+}
+
+// 3. Inicia a sessão (agora ele vai abrir a gaveta certa!)
+session_start();
+
+// -----------------------------------------------------------
+// TESTE DE DEBUG (Se funcionar, remova depois)
+/*
+if (!isset($_SESSION['MRKSolutions'])) {
+    echo "<h1>ERRO: Sessão vazia!</h1>";
+    echo "Nome usado: " . session_name() . "<br>";
+    echo "ID usado: " . session_id() . "<br>";
+    echo "<pre>"; print_r($_SESSION); echo "</pre>";
+    exit;
+}
+*/
+// -----------------------------------------------------------
+
+// 4. Captura os dados do Adianti
+// Se a sessão foi carregada corretamente, 'MRKSolutions' vai existir aqui.
+$appData = $_SESSION['MRKSolutions'] ?? [];
+
+$token   = $appData['sessionid']    ?? '';
+$unit_id = $appData['userunitid']   ?? '';
+$user_id = $appData['userid']       ?? '';
+
+if (empty($token)) {
+    die("Acesso negado: Sessão encontrada, mas sem token.");
+}
+?>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Relatório - Produções Realizadas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        .muted { color:#777; }
+        .nowrap { white-space: nowrap; }
+        .text-small { font-size: 12px; }
+        .text-right { text-align:right; }
+        .text-center { text-align:center; }
+
+        .toolbar {
+            display:flex;
+            gap:8px;
+            align-items:center;
+            flex-wrap:wrap;
+            margin: 10px 0;
+        }
+
+        /* Estilo dos Totalizadores */
+        .totalizer-box {
+            background: #f4f6f9;
+            border-left: 4px solid #2196F3;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .totalizer-title { font-size: 11px; color: #666; text-transform: uppercase; font-weight: bold; }
+        .totalizer-value { font-size: 18px; color: #333; font-weight: bold; margin-top: 2px; }
+
+        /* Cores específicas */
+        .border-green { border-left-color: #4CAF50 !important; }
+        .border-orange { border-left-color: #FF9800 !important; }
+        .border-red { border-left-color: #F44336 !important; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
+            .toolbar { gap:6px; }
+            .totalizer-box { margin-bottom: 10px; }
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+
+    <div class="card">
+        <div class="header">
+            <h2>Relatório - Produções Realizadas</h2>
+        </div>
+
+        <div class="row" style="margin: 15px 0 5px;">
+            <div class="col-md-4">
+                <label class="muted">Data inicial</label>
+                <input type="date" id="dtInicio" class="form-control">
+            </div>
+
+            <div class="col-md-4">
+                <label class="muted">Data final</label>
+                <input type="date" id="dtFim" class="form-control">
+            </div>
+
+            <div class="col-md-4">
+                <label class="muted">Ações</label><br>
+                <button id="btnAtualizar" class="btn btn-primary btn-block">
+                    <i class="fa fa-sync"></i> Atualizar Dados
+                </button>
+            </div>
+        </div>
+
+        <div class="row" style="margin: 5px 0 10px;">
+            <div class="col-md-12">
+                <label class="muted">Busca Rápida (Documento, Código, Nome do Produto)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar instantaneamente...">
+            </div>
+        </div>
+
+        <hr style="margin: 5px 0 15px 0;">
+
+        <div class="row" style="margin: 0;">
+            <div class="col-md-4">
+                <div class="totalizer-box">
+                    <div class="totalizer-title">Registros Encontrados</div>
+                    <div class="totalizer-value" id="totRegistros">0</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="totalizer-box border-green">
+                    <div class="totalizer-title">Total Produzido</div>
+                    <div class="totalizer-value" id="totProduzido">---</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="totalizer-box border-orange" id="boxUnidade">
+                    <div class="totalizer-title">Unidade de Medida</div>
+                    <div class="totalizer-value" id="totUnidade">---</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="margin: 0 0 10px;">
+            <div class="col-md-12">
+                <div class="toolbar">
+                    <span class="muted text-small" id="infoStatus">Aguardando consulta...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-producoes">
+                    <thead>
+                    <tr>
+                        <th class="nowrap">Documento</th>
+                        <th class="nowrap">Data</th>
+                        <th class="nowrap">Código</th>
+                        <th>Produto</th>
+                        <th class="text-center nowrap">Unid.</th>
+                        <th class="text-right nowrap">Qtd Produzida</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ================= CONFIG =================
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    // ------------------------------------------------------------------
+    // AQUI ESTÁ A MUDANÇA PRINCIPAL:
+    // O PHP escreve o valor das variáveis dentro do JavaScript.
+    // Não usamos mais URLSearchParams.
+    // ------------------------------------------------------------------
+    const token = "<?php echo $token; ?>";
+    const system_unit_id = "<?php echo $unit_id; ?>";
+
+    // Backend method
+    const METHOD_BACKEND = 'listProducoesRealizadasBasico';
+
+    // ================= STATE =================
+    let dadosBrutos = [];      // Dados vindos da API
+    let dadosFiltrados = [];   // Dados após filtro de texto
+
+    // ================= UTILS =================
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatNumber(v) {
+        const n = Number(v || 0);
+        return n.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    }
+
+    function normalizeIsoDate(dt) {
+        if (!dt) return '';
+        const s = String(dt);
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const da = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${da}`;
+    }
+
+    function formatBRDate(dt) {
+        const iso = normalizeIsoDate(dt);
+        if (!iso) return '';
+        const [y,m,d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    function debounce(fn, ms){
+        let t;
+        return function(){
+            clearTimeout(t);
+            const args = arguments;
+            t = setTimeout(() => fn.apply(null, args), ms);
+        }
+    }
+
+    // ================= INIT =================
+    $(document).ready(() => {
+        // Datas padrão: últimos 7 dias
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const d = String(hoje.getDate()).padStart(2, '0');
+        $('#dtFim').val(`${y}-${m}-${d}`);
+
+        const ini = new Date(hoje.getTime() - 7*24*60*60*1000);
+        const y2 = ini.getFullYear();
+        const m2 = String(ini.getMonth() + 1).padStart(2, '0');
+        const d2 = String(ini.getDate()).padStart(2, '0');
+        $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+
+        // Handlers
+        $('#btnAtualizar').on('click', fetchBackend);
+
+        // Filtro em tempo real
+        $('#filtroTexto').on('input', debounce(applyFiltrosTempoReal, 150));
+
+        // Validação
+        if (!token || !system_unit_id) {
+            Swal.fire('Atenção', 'Erro de sessão (Token ou Unit ID vazio). Tente logar novamente.', 'error');
+            return;
+        }
+
+    });
+
+    // ================= BACKEND =================
+    async function fetchBackend(){
+        const dt_inicio = $('#dtInicio').val();
+        const dt_fim    = $('#dtFim').val();
+
+        if (!dt_inicio || !dt_fim) {
+            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+        }
+
+        Swal.fire({
+            title: 'Consultando...',
+            text: 'Buscando produções...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: METHOD_BACKEND,
+                token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    data_inicial: dt_inicio,
+                    data_final: dt_fim
+                }
+            });
+
+            Swal.close();
+            const api = res.data;
+
+            if (!api || api.success === false) {
+                dadosBrutos = [];
+                applyFiltrosTempoReal(); // Limpa tabela
+                return Swal.fire('Atenção', api && api.message ? api.message : 'Nenhum registro encontrado.', 'warning');
+            }
+
+            dadosBrutos = api.producoes || [];
+
+            // Limpa filtro de texto e aplica
+            $('#filtroTexto').val('');
+            applyFiltrosTempoReal();
+
+            if (dadosBrutos.length === 0) {
+                Swal.fire('Info', 'Nenhuma produção encontrada no período.', 'info');
+            }
+
+        } catch (e) {
+            Swal.close();
+            console.error(e);
+            Swal.fire('Erro', 'Não foi possível consultar os dados (Erro de conexão).', 'error');
+        }
+    }
+
+    // ================= FILTROS & TOTALIZADORES =================
+    function applyFiltrosTempoReal(){
+        const termo = ($('#filtroTexto').val() || '').trim().toLowerCase();
+        let arr = Array.isArray(dadosBrutos) ? dadosBrutos.slice() : [];
+
+        if (termo) {
+            arr = arr.filter(p => {
+                const prod = p.produto_final || {};
+
+                // CORREÇÃO: Usamos String(...) para garantir que seja texto
+                const doc   = String(p.doc || '').toLowerCase();
+                const data  = String(formatBRDate(p.data) || '').toLowerCase();
+                const cod   = String(prod.codigo || '').toLowerCase();
+                const nome  = String(prod.nome || '').toLowerCase();
+                const unid  = String(prod.unidade || '').toLowerCase();
+
+                return doc.includes(termo) ||
+                    data.includes(termo) ||
+                    cod.includes(termo) ||
+                    nome.includes(termo) ||
+                    unid.includes(termo);
+            });
+        }
+
+        dadosFiltrados = arr;
+        renderTotalizadores(arr);
+        renderTabela(arr);
+        renderInfoStatus();
+    }
+
+    function renderTotalizadores(lista) {
+        const $qtd = $('#totRegistros');
+        const $prod = $('#totProduzido');
+        const $unid = $('#totUnidade');
+        const $boxUnid = $('#boxUnidade');
+
+        // 1. Qtd Registros
+        $qtd.text(lista.length);
+
+        if (lista.length === 0) {
+            $prod.text('---');
+            $unid.text('---');
+            $boxUnid.removeClass('border-orange border-green border-red').addClass('border-orange');
+            return;
+        }
+
+        // 2. Verifica Unidade
+        const primeiraUnidade = (lista[0].produto_final?.unidade || '').trim().toUpperCase();
+
+        const isTodasIguais = lista.every(item => {
+            const u = (item.produto_final?.unidade || '').trim().toUpperCase();
+            return u === primeiraUnidade;
+        });
+
+        if (isTodasIguais && primeiraUnidade !== '') {
+            // SOMA PERMITIDA
+            const total = lista.reduce((acc, curr) => {
+                return acc + Number(curr.produto_final?.quantidade_produzida || 0);
+            }, 0);
+
+            $prod.text(formatNumber(total));
+            $unid.text(primeiraUnidade);
+
+            // Visual Verde (OK)
+            $boxUnid.removeClass('border-orange border-red').addClass('border-green');
+        } else {
+            // SOMA BLOQUEADA (Múltiplas unidades)
+            $prod.text('---');
+            $unid.text('Múltiplas');
+
+            // Visual Laranja (Alerta)
+            $boxUnid.removeClass('border-green border-red').addClass('border-orange');
+        }
+    }
+
+    function renderInfoStatus(){
+        const total = dadosBrutos.length;
+        const filtrados = dadosFiltrados.length;
+
+        if (total === 0) {
+            $('#infoStatus').text('Nenhum dado carregado.');
+        } else if (filtrados !== total) {
+            $('#infoStatus').html(`Exibindo <b>${filtrados}</b> de <b>${total}</b> produções.`);
+        } else {
+            $('#infoStatus').html(`Total de <b>${total}</b> produções.`);
+        }
+    }
+
+    // ================= RENDER TABELA =================
+    function renderTabela(lista){
+        const $tbody = $('#tabela-producoes tbody');
+        $tbody.empty();
+
+        if (lista.length === 0) {
+            $tbody.append(`
+                <tr>
+                  <td colspan="6" class="text-center muted" style="padding: 20px;">
+                    ${dadosBrutos.length > 0 ? 'Nenhum registro corresponde à busca.' : 'Utilize os filtros e clique em Atualizar.'}
+                  </td>
+                </tr>
+            `);
+            return;
+        }
+
+        // Limite para performance
+        const limiteRender = 500;
+        const renderList = lista.slice(0, limiteRender);
+
+        renderList.forEach(p => {
+            const prod = p.produto_final || {};
+
+            $tbody.append(`
+                <tr>
+                  <td class="nowrap">${escapeHtml(p.doc)}</td>
+                  <td class="nowrap">${formatBRDate(p.data)}</td>
+                  <td class="nowrap">${escapeHtml(prod.codigo)}</td>
+                  <td>${escapeHtml(prod.nome)}</td>
+                  <td class="text-center nowrap">${escapeHtml(prod.unidade)}</td>
+                  <td class="text-right nowrap"><strong>${formatNumber(prod.quantidade_produzida)}</strong></td>
+                </tr>
+            `);
+        });
+
+        if (lista.length > limiteRender) {
+            $tbody.append(`
+                <tr>
+                  <td colspan="6" class="text-center text-warning">
+                    Exibindo apenas os primeiros ${limiteRender} registros. Refine sua busca.
+                  </td>
+                </tr>
+            `);
+        }
+    }
+</script>
+
+</body>
+</html>

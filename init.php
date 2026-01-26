@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL & ~E_DEPRECATED);
+ini_set('display_errors', 0);
 if (version_compare(PHP_VERSION, '7.4.0') == -1)
 {
     die ('The minimum version required for PHP is 7.4.0');
