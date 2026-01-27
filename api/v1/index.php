@@ -1976,6 +1976,9 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 $response = ProductController::getRaioXProduto($requestData['system_unit_id'], $requestData['product_id']);
                 break;
+            case 'updateEanBatch':
+                $response = ProductController::updateEanBatchByUnit($requestData);
+                break;
 
 
             case 'listProductsByCategory':

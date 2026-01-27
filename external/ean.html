@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gerenciador de EAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        .saved-success { border-left: 6px solid #10b981 !important; background-color: #f0fdf4; }
+        .pending-save { border-left: 6px solid #9ca3af; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; display: none; margin-bottom: 1rem; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen pb-20">
+
+<div class="bg-white shadow-sm sticky top-0 z-20 px-4 py-3">
+    <div class="max-w-2xl mx-auto flex justify-between items-center">
+        <h1 class="font-bold text-lg text-blue-800">Vincular EAN</h1>
+        <div class="flex bg-gray-200 rounded-lg p-1">
+            <button onclick="switchMode('lista')" id="btnTabLista" class="px-4 py-1 rounded-md text-sm font-medium transition-all bg-white shadow">Lista</button>
+            <button onclick="switchMode('individual')" id="btnTabIndiv" class="px-4 py-1 rounded-md text-sm font-medium transition-all">Individual</button>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-2xl mx-auto p-4">
+
+    <div id="scannerWrapper" class="hidden bg-black p-2 rounded-xl mb-4 relative">
+        <div id="reader"></div>
+        <button onclick="stopScanner()" class="absolute top-4 right-4 bg-red-600 text-white w-8 h-8 rounded-full z-30">✕</button>
+        <p class="text-white text-center text-xs pb-2">Aponte para o código de barras</p>
+    </div>
+
+    <div id="viewLista" class="space-y-4">
+        <div class="bg-white p-3 rounded-lg shadow-sm border">
+            <input type="text" id="buscaLista" oninput="filtrarLista()" placeholder="Filtrar por nome ou código..." class="w-full border-none focus:ring-0 text-sm">
+        </div>
+
+        <div id="containerLista" class="space-y-3">
+            <div class="text-center py-10 text-gray-400">Carregando produtos...</div>
+        </div>
+    </div>
+
+    <div id="viewIndividual" class="hidden space-y-4">
+        <div class="bg-white p-6 rounded-xl shadow-md border-2 border-blue-100 text-center">
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Código do Produto</label>
+            <input type="number" id="inputCodIndividual" onkeypress="handleEnterIndividual(event)"
+                   class="text-3xl w-full text-center font-bold tracking-widest border-b-2 border-gray-200 focus:border-blue-500 outline-none" placeholder="000">
+            <p class="text-gray-400 text-xs mt-2">Digite e aperte ENTER</p>
+        </div>
+        <div id="cardResultadoIndiv" class="hidden"></div>
+    </div>
+</div>
+
+<div id="actionBar" class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg flex justify-between items-center">
+    <div class="text-xs text-gray-500"><span id="countPendentes">0</span> pendentes</div>
+    <button onclick="salvarPendentesEmLote()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md active:scale-95 transition-all">
+        Salvar Tudo
+    </button>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('unit_id') || 9;
+
+    let todosProdutos = [];
+    let pendentesCodigos = new Set();
+    let html5QrCode = null;
+    let targetInputId = null; // Guarda qual input receberá o valor do scan
+
+    document.addEventListener('DOMContentLoaded', carregarInsumos);
+
+    function switchMode(mode) {
+        stopScanner();
+        document.getElementById('viewLista').classList.toggle('hidden', mode !== 'lista');
+        document.getElementById('viewIndividual').classList.toggle('hidden', mode !== 'individual');
+        document.getElementById('actionBar').classList.toggle('hidden', mode !== 'lista');
+        // Ajuste visual abas...
+    }
+
+    async function carregarInsumos() {
+        try {
+            const r = await axios.post(baseUrl, { method: 'listInsumos', token, data: { unit_id: system_unit_id } });
+            todosProdutos = r.data.insumos || [];
+            renderizarLista(todosProdutos);
+        } catch (e) { Swal.fire('Erro', 'Falha ao carregar itens', 'error'); }
+    }
+
+    function renderizarLista(lista) {
+        const container = document.getElementById('containerLista');
+        container.innerHTML = '';
+        lista.forEach(p => {
+            const div = document.createElement('div');
+            div.id = `card-${p.codigo}`;
+            div.className = `pending-save bg-white p-4 rounded-lg shadow-sm flex flex-col gap-3 transition-all border-l-4`;
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="text-[10px] font-bold text-blue-600">#${p.codigo}</div>
+                        <div class="font-bold text-gray-800 uppercase text-xs">${p.nome}</div>
+                    </div>
+                    <button onclick="salvarUnico(${p.codigo})" class="text-blue-500 p-1"><i class="fa-solid fa-cloud-arrow-up"></i></button>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="ean-${p.codigo}" value="${p.ean || ''}"
+                        oninput="marcarComoPendente(${p.codigo})"
+                        onkeypress="handleEnter(event, ${p.codigo})"
+                        class="flex-1 border rounded px-3 py-2 text-sm outline-none focus:border-blue-500">
+                    <button onclick="startScanner('ean-${p.codigo}', ${p.codigo})" class="bg-gray-100 p-3 rounded text-gray-600 border active:bg-gray-200">
+                        <i class="fa-solid fa-barcode"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // --- LÓGICA SCANNER ---
+    async function startScanner(inputId, autoSaveCode = null) {
+        targetInputId = inputId;
+        const wrapper = document.getElementById('scannerWrapper');
+        const reader = document.getElementById('reader');
+
+        wrapper.classList.remove('hidden');
+        reader.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+        try {
+            await html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+                const input = document.getElementById(targetInputId);
+                if (input) {
+                    input.value = decodedText;
+                    stopScanner();
+                    if (autoSaveCode) {
+                        // Se estiver no modo lista, marca como pendente e tenta salvar
+                        marcarComoPendente(autoSaveCode);
+                        salvarUnico(autoSaveCode);
+                    } else if(targetInputId.includes('Indiv')) {
+                        // Se for modo individual
+                        const code = targetInputId.split('-')[1];
+                        salvarUnicoIndividual(code);
+                    }
+                }
+            });
+        } catch (err) {
+            Swal.fire('Erro', 'Câmera não disponível (Requer HTTPS)', 'error');
+            stopScanner();
+        }
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scannerWrapper').classList.add('hidden');
+            }).catch(() => {
+                document.getElementById('scannerWrapper').classList.add('hidden');
+            });
+        }
+    }
+
+    // --- FUNÇÕES DE SALVAMENTO (IGUAIS ÀS ANTERIORES) ---
+    async function salvarUnico(codigo) {
+        const eanValue = document.getElementById(`ean-${codigo}`).value;
+        try {
+            const r = await axios.post(baseUrl, {
+                method: 'updateEanBatch',
+                token,
+                data: { system_unit_id, itens: [{ codigo, ean: eanValue }] }
+            });
+            if (r.data.success) {
+                const card = document.getElementById(`card-${codigo}`);
+                card.classList.replace('pending-save', 'saved-success');
+                pendentesCodigos.delete(codigo);
+                updateCount();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function marcarComoPendente(codigo) { pendentesCodigos.add(codigo); updateCount(); }
+    function updateCount() { document.getElementById('countPendentes').innerText = pendentesCodigos.size; }
+    function handleEnter(e, cod) { if(e.key==='Enter') salvarUnico(cod); }
+
+    // --- MODO INDIVIDUAL ---
+    function handleEnterIndividual(e) { if(e.key==='Enter') buscarProdutoIndividual(e.target.value); }
+
+    function buscarProdutoIndividual(codigo) {
+        const p = todosProdutos.find(p => p.codigo == codigo);
+        const resDiv = document.getElementById('cardResultadoIndiv');
+        if (!p) { resDiv.innerHTML = `<div class="p-4 text-red-500 font-bold bg-white rounded shadow">Não encontrado</div>`; resDiv.classList.remove('hidden'); return; }
+
+        resDiv.innerHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 border-blue-500 mt-4">
+                <b class="text-lg uppercase block">${p.nome}</b>
+                <div class="flex gap-2 mt-4">
+                    <input type="text" id="eanIndiv-${p.codigo}" value="${p.ean || ''}" class="flex-1 text-xl border rounded px-3 py-3 bg-gray-50">
+                    <button onclick="startScanner('eanIndiv-${p.codigo}')" class="bg-gray-800 text-white px-5 rounded"><i class="fa-solid fa-barcode"></i></button>
+                </div>
+                <button onclick="salvarUnicoIndividual(${p.codigo})" class="w-full bg-green-600 text-white py-4 rounded-lg font-bold mt-4">GRAVAR EAN</button>
+            </div>
+        `;
+        resDiv.classList.remove('hidden');
+    }
+
+    async function salvarUnicoIndividual(codigo) {
+        const eanValue = document.getElementById(`eanIndiv-${codigo}`).value;
+        const r = await axios.post(baseUrl, { method: 'updateEanBatch', token, data: { system_unit_id, itens: [{ codigo, ean: eanValue }] } });
+        if (r.data.success) {
+            Swal.fire({ title: 'Gravado!', icon: 'success', timer: 800, showConfirmButton: false });
+            document.getElementById('inputCodIndividual').value = '';
+            document.getElementById('cardResultadoIndiv').classList.add('hidden');
+            document.getElementById('inputCodIndividual').focus();
+        }
+    }
+</script>
+</body>
+</html>

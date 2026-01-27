@@ -1724,5 +1724,81 @@ class ProductController {
         }
     }
 
+    /**
+     * Atualiza o EAN de produtos em lote para uma unidade específica.
+     * Estrutura esperada:
+     * [
+     * "system_unit_id" => 9,
+     * "itens" => [
+     * ["codigo" => 123, "ean" => "789001"],
+     * ["codigo" => 456, "ean" => "789002"]
+     * ]
+     * ]
+     */
+    public static function updateEanBatchByUnit($data) {
+        global $pdo;
+
+        // Validação da estrutura básica
+        $unitId = $data['system_unit_id'] ?? null;
+        $itens  = $data['itens'] ?? [];
+
+        if (!$unitId || !is_array($itens)) {
+            return [
+                'success' => false,
+                'message' => 'Parâmetros inválidos. Informe system_unit_id e a lista de itens.'
+            ];
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            // Preparamos a query uma única vez
+            $sql = "UPDATE products 
+                    SET ean = :ean, updated_at = NOW() 
+                    WHERE system_unit_id = :unit_id AND codigo = :codigo";
+
+            $stmt = $pdo->prepare($sql);
+            $totalItens = count($itens);
+            $totalAlterados = 0;
+
+            foreach ($itens as $item) {
+                if (!isset($item['codigo'])) continue;
+
+                // Limpeza básica do EAN (vazio vira NULL)
+                $ean = isset($item['ean']) ? trim((string)$item['ean']) : null;
+                if ($ean === '') $ean = null;
+
+                $stmt->execute([
+                    ':ean'     => $ean,
+                    ':unit_id' => (int)$unitId,
+                    ':codigo'  => (int)$item['codigo']
+                ]);
+
+                $totalAlterados += $stmt->rowCount();
+            }
+
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => "Atualização concluída com sucesso.",
+                'detalhes' => [
+                    'unidade' => $unitId,
+                    'recebidos' => $totalItens,
+                    'processados' => $totalAlterados
+                ]
+            ];
+
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return [
+                'success' => false,
+                'message' => 'Erro ao processar lote de EANs: ' . $e->getMessage()
+            ];
+        }
+    }
+
 }
 ?>
