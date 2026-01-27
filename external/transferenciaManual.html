@@ -4,90 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transferência de Itens</title>
-    
-    <!-- Favicon-->
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
 
-    <!-- Bootstrap Core Css -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
-    <!-- Waves Effect Css -->
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
-    <!-- Animation Css -->
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-
-    <!-- JQuery DataTable Css -->
     <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
 
-    <!-- SweetAlert Css -->
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-theme/0.1.0-beta.10/select2-bootstrap.min.css">
 
-    <!-- Custom Css -->
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
 
-    <!-- JQuery Steps CSS (para o Wizard) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.css">
-
-    <!-- MultiSelect CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
-
     <style>
-        .form-control {
-            margin-bottom: 10px;
+        .form-control { margin-bottom: 10px; }
+        table { margin-top: 20px; }
+        .select2-container--bootstrap .select2-selection {
+            border-radius: 0;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            box-shadow: none;
         }
-        table {
-            margin-top: 20px;
-        }
-        th, td {
-            text-align: left;
-        }
-        .modal-body {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        .form-control {
-        display: block;
-        width: 100%;
-        height: 34px;
-        padding: 6px 12px;
-        font-size: 14px;
-        line-height: 1.42857143;
-        color: #555;
-        background-color: #fff;
-        background-image: none;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-                box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-        -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
-            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-                transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-        }
-        .form-control:focus {
-        border-color: #66afe9;
-        outline: 0;
-        -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-                box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-        }
-       
-
+        .card { padding: 20px; }
+        #transfer-button { margin-top: 20px; padding: 10px 30px; }
     </style>
 </head>
+
 <body class="theme-blue">
 
 <div class="container-fluid">
     <div class="block-header">
-        <h2> </h2>
         <br>
     </div>
 
-    <!-- Formulário de Transferência -->
     <div class="row">
         <div class="col-md-12">
             <div class="card">
@@ -104,323 +58,247 @@
                             <div class="col-md-5">
                                 <label for="origin-unit">Unidade de Origem</label>
                                 <select id="origin-unit" class="form-control" required>
-                                    <option value="">Selecione</option>
-                                    <!-- Opções carregadas dinamicamente -->
+                                    <option value="">Selecione a Origem</option>
                                 </select>
                             </div>
                             <div class="col-md-5">
                                 <label for="destination-unit">Unidade de Destino</label>
                                 <select id="destination-unit" class="form-control" required>
-                                    <option value="">Selecione</option>
-                                    <!-- Opções carregadas dinamicamente -->
+                                    <option value="">Selecione o Destino</option>
                                 </select>
                             </div>
                         </div>
                         <div class="row">
-
-                            <div class="col-md-5">
-                                <label for="item-description">Produto</label>
-                                <input type="hidden" id="item-codigo" class="form-control" readonly>
-                                <input type="hidden" id="item-unit" class="form-control" readonly>
-                                <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um produto" data-toggle="modal" data-target="#itemModal">
+                            <div class="col-md-8">
+                                <label for="item-select">Produto (Código, Nome ou EAN)</label>
+                                <select id="item-select" class="form-control select2">
+                                    <option value="">Selecione a Unidade de Origem primeiro</option>
+                                </select>
+                                <input type="hidden" id="item-codigo">
+                                <input type="hidden" id="item-unit">
+                                <input type="hidden" id="item-nome">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label for="item-quantity">Quantidade</label>
-                                <input type="text" inputmode="numeric" id="item-quantity" class="form-control quantidade" placeholder="Digite a quantidade">
+                                <input type="text" inputmode="numeric" id="item-quantity" class="form-control" placeholder="0,000">
                             </div>
-                            <div class="col-md-1">
-                                <label for="add-item">&nbsp;</label>
-                                <input type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF " value="Adicionar"></input>
+                            <div class="col-md-2">
+                                <label>&nbsp;</label>
+                                <button type="button" id="add-item" class="btn btn-primary btn-block waves-effect">ADICIONAR</button>
                             </div>
                         </div>
-
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabela de Itens -->
-     <div class="card">
-    <div class="row">
-        <div class="col-md-12">
-            <table id="result-table" class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Cod.</th>
-                        <th>Descrição</th>
-                        <th>Quant</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-    <center><button type="button" id="transfer-button" class="btn btn-success waves-effect">Realizar Transferência</button></center>
-</div>
-<div>
-   <br><br>
-</div>
-
-<!-- Modal para Seleção de Itens -->
-<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title">Selecionar Item</h4>
-            </div>
-            <div class="modal-body">
-                <!-- Campo de busca -->
-                <div>
-                    <input 
-                        type="text" 
-                        id="item-search" 
-                        class="form-control search-input" 
-                        placeholder="Buscar por código ou descrição"
-                    />
-                </div>
-                <!-- Tabela de itens -->
-                <table id="item-table" class="table table-striped table-hover">
+    <div class="card">
+        <div class="row">
+            <div class="col-md-12">
+                <table id="result-table" class="table table-striped table-hover">
                     <thead>
-                        <tr>
-                            <th>Cod.</th>
-                            <th>Descrição</th>
-                            <th>Ações</th>
-                        </tr>
+                    <tr>
+                        <th width="15%">Cod.</th>
+                        <th>Descrição</th>
+                        <th width="15%">Quant</th>
+                        <th width="10%">Ações</th>
+                    </tr>
                     </thead>
-                    <tbody>
-                        <!-- Dados carregados dinamicamente -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </div>
     </div>
+
+    <center>
+        <button type="button" id="transfer-button" class="btn btn-success btn-lg waves-effect">REALIZAR TRANSFERÊNCIA</button>
+    </center>
 </div>
 
-
- <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
- <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
- <!-- Bootstrap Core Js -->
- <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
- <!-- Waves Effect Plugin Js -->
- <script src="bsb/plugins/node-waves/waves.js"></script>
- <!-- SweetAlert Plugin Js -->
- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
- <!-- jQuery Steps JS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
- <!-- jQuery Validation JS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
- <!-- jQuery Multi-Select -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
-
-<!-- Adicionar Axios e SweetAlert -->
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
+        const baseUrl = window.location.hostname !== 'localhost' ?
+            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+            'http://localhost/portal-mrk/api/v1/index.php';
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const username = urlParams.get('username');
-    const transferDateInput = document.getElementById('transfer-date');
-
-    // Função para carregar unidades
-async function loadUnidades() {
-    try {
-        const response = await fetch(baseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                method: 'getFiliaisByMatriz',
-                token: token,
-                data: { unit_matriz_id: username }
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Erro ao carregar unidades');
-        }
-
-        const filiais = await response.json();
-        const originSelect = document.getElementById('origin-unit');
-        const destinationSelect = document.getElementById('destination-unit');
-
-        // Limpar as opções anteriores
-        originSelect.innerHTML = '<option value="">Selecione</option>';
-        destinationSelect.innerHTML = '<option value="">Selecione</option>';
-
-        // Adicionar opção manualmente
-        const manualOptionOrigin = new Option('RED Burguer - Produção', '10');
-        originSelect.appendChild(manualOptionOrigin);
-
-        // Adicionar as unidades carregadas da API
-        filiais.forEach(filial => {
-            const option = new Option(filial.filial_nome, filial.filial_id);
-            originSelect.appendChild(option);
-            destinationSelect.appendChild(option.cloneNode(true));
-        });
-    } catch (error) {
-        swal.fire('Erro', error.message, 'error');
-    }
-}
-
-
-    // Função para carregar itens
-async function loadItems(unitId) {
-    if (!unitId) {
-        swal.fire('Atenção', 'Selecione a unidade de origem antes de buscar itens.', 'warning');
-        return;
-    }
-
-    try {
-            const response = await axios.post(baseUrl, {
-                method: 'listInsumos',
-                token: token,
-                data: { unit_id: unitId }
-            });
-
-        if (response.data.success) {
-            const items = response.data.insumos;
-            const tbody = $('#item-table tbody');
-            tbody.empty();
-
-            // Renderizar as linhas da tabela
-            items.forEach(item => {
-                const row = `
-                    <tr>
-                        <td>${item.codigo}</td>
-                        <td>${item.nome}</td>
-                        <td>
-                            <button 
-                                class="btn btn-primary select-item" 
-                                data-codigo="${item.codigo}" 
-                                data-nome="${item.nome}"
-                                data-und="${item.und}">
-                                Inserir
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tbody.append(row);
-            });
-
-            // Configurar filtro de busca
-            $('#item-search').off('input').on('input', function () {
-                const searchValue = $(this).val().toLowerCase();
-                $('#item-table tbody tr').each(function () {
-                    const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
-                    const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
-
-                    // Exibir linha se corresponder ao filtro
-                    if (codigo.includes(searchValue) || nome.includes(searchValue)) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            });
-
-            // Configurar botão para selecionar item
-            $('.select-item').click(function () {
-                const codigo = $(this).data('codigo');
-                const nome = $(this).data('nome');
-                const und = $(this).data('und');
-
-                $('#item-codigo').val(codigo);
-                $('#item-description').val(nome);
-                $('#item-unit').val(und);
-                $('#itemModal').modal('hide');
-            });
-        } else {
-            swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
-        }
-    } catch (error) {
-        console.error(error);
-        swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
-    }
-}
-    
-// Definir data mínima e máxima para o campo
-        const today = new Date().toISOString().split('T')[0];
-        transferDateInput.setAttribute('max', today);
-        transferDateInput.setAttribute('value', today);
-
-
-
-
-    // Função para enviar os itens de transferência para o backend
-    async function sendTransferItems() {
-        const transferDate = $('#transfer-date').val();
-        const originUnit = $('#origin-unit').val();
-        const destinationUnit = $('#destination-unit').val();
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
         const username = urlParams.get('username');
 
-         // Verificar se a data está preenchida
-         if (!transferDate) {
-            swal.fire('Erro', 'Selecione uma data válida para a transferência.', 'error');
-            return;
-        }
+        // Inicializar Select2
+        $('#item-select').select2({
+            theme: "bootstrap",
+            placeholder: "Busque por código, nome ou EAN",
+            allowClear: true,
+            width: '100%'
+        });
 
-        // Verificar se as unidades de origem e destino foram selecionadas
-        if (!originUnit || !destinationUnit) {
-            swal.fire('Erro', 'Selecione a unidade de origem e destino.', 'error');
-            return;
-        }
+        // Configurar data de hoje
+        const today = new Date().toISOString().split('T')[0];
+        $('#transfer-date').val(today).attr('max', today);
 
-        if (originUnit == destinationUnit) {
-            swal.fire('Erro', 'A unidade de Origem não pode ser igual a unidade de destino', 'error');
-            return;
-        }
-
-        // Obter os itens da tabela
-        const items = [];
-        $('#result-table tbody tr').each(function(index, row) {
-            const codigo = $(row).find('td:eq(0)').text();
-            const quantidade = $(row).find('td:eq(2)').text();
-
-            if (codigo && quantidade) {
-                items.push({
-                    codigo: codigo,
-                    seq: index + 1,  // Sequência começa de 1
-                    quantidade: quantidade
+        // Carregar Unidades
+        async function loadUnidades() {
+            try {
+                const response = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: 'getFiliaisByMatriz',
+                        token: token,
+                        data: { unit_matriz_id: username }
+                    })
                 });
+                const filiais = await response.json();
+                const originSelect = $('#origin-unit');
+                const destinationSelect = $('#destination-unit');
+
+                originSelect.append(new Option('RED Burguer - Produção', '10'));
+
+                filiais.forEach(filial => {
+                    originSelect.append(new Option(filial.filial_nome, filial.filial_id));
+                    destinationSelect.append(new Option(filial.filial_nome, filial.filial_id));
+                });
+            } catch (error) {
+                Swal.fire('Erro', 'Erro ao carregar unidades', 'error');
+            }
+        }
+
+        // Carregar Itens no Select2 quando mudar origem
+        $('#origin-unit').on('change', async function() {
+            const unitId = $(this).val();
+            if (!unitId) return;
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'listInsumos',
+                    token: token,
+                    data: { unit_id: unitId }
+                });
+
+                if (response.data.success) {
+                    const select = $('#item-select');
+                    select.empty().append('<option value="">Selecione um produto</option>');
+
+                    response.data.insumos.forEach(item => {
+                        // Criamos o texto que permite busca por código, nome ou ean
+                        const text = `${item.codigo} - ${item.nome} ${item.ean ? '['+item.ean+']' : ''}`;
+                        const newOption = new Option(text, item.codigo, false, false);
+
+                        // Guardamos os dados úteis no elemento
+                        $(newOption).data('und', item.und);
+                        $(newOption).data('nome', item.nome);
+
+                        select.append(newOption);
+                    });
+                    select.trigger('change');
+                }
+            } catch (error) {
+                Swal.fire('Erro', 'Não foi possível carregar os itens desta unidade.', 'error');
             }
         });
 
-        // Verificar se há itens a enviar
-        if (items.length === 0) {
-            swal.fire('Erro', 'Adicione ao menos um item para transferência.', 'error');
-            return;
-        }
+        // Ao selecionar item no Select2, atualizar campos ocultos
+        $('#item-select').on('select2:select', function (e) {
+            const data = $(e.params.data.element);
+            $('#item-codigo').val(e.params.data.id);
+            $('#item-unit').val(data.data('und'));
+            $('#item-nome').val(data.data('nome'));
+        });
 
-        // Solicitar confirmação antes de enviar
-        swal.fire({
-            title: 'Confirmar Transferência?',
-            text: 'Você está prestes a realizar a transferência de itens.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, Realizar',
-            cancelButtonText: 'Cancelar'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
+        // Máscara básica para quantidade (KG/LT)
+        $('#item-quantity').on('input', function () {
+            const unidade = $('#item-unit').val();
+            if (['KG', 'LT', 'L'].includes(unidade)) {
+                let valor = $(this).val().replace(/[^\d]/g, '');
+                valor = (valor / 1000).toFixed(3);
+                $(this).val(valor.replace('.', ','));
+            } else {
+                $(this).val($(this).val().replace(/[^\d]/g, ''));
+            }
+        });
 
-                swal.fire({
-                    title: 'Processando transferência...',
-                    text: 'Por favor, aguarde enquanto os dados estão sendo enviados.',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        swal.showLoading();
-                    }
+        // Adicionar Item à Tabela
+        $('#add-item').click(function () {
+            const codigo = $('#item-codigo').val();
+            const nome = $('#item-nome').val();
+            const quantidade = $('#item-quantity').val();
+
+            if (!codigo || !quantidade || quantidade === "0,000") {
+                Swal.fire('Atenção', 'Selecione o produto e informe a quantidade.', 'warning');
+                return;
+            }
+
+            const row = `
+            <tr>
+                <td>${codigo}</td>
+                <td>${nome}</td>
+                <td>${quantidade}</td>
+                <td><button type="button" class="btn btn-danger btn-xs remove-item">Remover</button></td>
+            </tr>
+        `;
+
+            $('#result-table tbody').append(row);
+
+            // Limpar campos e resetar Select2
+            $('#item-select').val(null).trigger('change');
+            $('#item-codigo').val('');
+            $('#item-nome').val('');
+            $('#item-unit').val('');
+            $('#item-quantity').val('');
+
+            // Focar no Select2 novamente para facilitar a próxima busca
+            $('#item-select').select2('open');
+        });
+
+        // Remover item da tabela
+        $(document).on('click', '.remove-item', function () {
+            $(this).closest('tr').remove();
+        });
+
+        // Finalizar Transferência
+        $('#transfer-button').click(async function () {
+            const transferDate = $('#transfer-date').val();
+            const originUnit = $('#origin-unit').val();
+            const destinationUnit = $('#destination-unit').val();
+            const items = [];
+
+            $('#result-table tbody tr').each(function(index, row) {
+                items.push({
+                    codigo: $(row).find('td:eq(0)').text(),
+                    seq: index + 1,
+                    quantidade: $(row).find('td:eq(2)').text()
                 });
+            });
 
+            if (!originUnit || !destinationUnit || items.length === 0) {
+                Swal.fire('Erro', 'Preencha as unidades e adicione ao menos um item.', 'error');
+                return;
+            }
 
+            if (originUnit === destinationUnit) {
+                Swal.fire('Erro', 'Origem e destino não podem ser iguais.', 'error');
+                return;
+            }
+
+            const confirm = await Swal.fire({
+                title: 'Confirmar Transferência?',
+                text: `Total de ${items.length} itens serão transferidos.`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (confirm.isConfirmed) {
+                Swal.showLoading();
                 try {
                     const response = await axios.post(baseUrl, {
                         method: 'createTransferItems',
@@ -434,130 +312,21 @@ async function loadItems(unitId) {
                         }
                     });
 
-                    swal.close();
-
                     if (response.data.success) {
-                        const transferDoc = response.data.transfer_doc;
-                        const nomeUnidadeDestino = response.data.nome_unidade_destino;
-                        const nomeUnidadeOrigem = response.data.nome_unidade_origem;
-                        const dataHora = response.data.data_hora;
-                        const itens = response.data.itens;
-                        const usuario = response.data.usuario;
-
-                        // Exibir confirmação de sucesso antes de abrir a nova aba
-                        swal.fire({
-                            title: 'Transferência realizada com sucesso!',
-                            text: `Número do documento: ${transferDoc}`,
-                            icon: 'success',
-                            confirmButtonText: 'OK'
-                        }).then(async () => {
-                            // Após o usuário clicar em "OK", abrir a nova aba
-                            const externalHtmlResponse = await fetch('./reports/transferencia.html');
-                            let htmlContent = await externalHtmlResponse.text();
-
-                            const itemRows = itens
-                                .map(
-                                    (item) =>
-                                        `<tr><td>${item.codigo}</td><td>${item.nome_produto}</td><td>${item.quantidade}</td></tr>`
-                                )
-                                .join('');
-
-                            htmlContent = htmlContent
-                                .replace('{{ESTABELECIMENTO_ORIGEM}}', nomeUnidadeOrigem)
-                                .replace('{{ESTABELECIMENTO_DESTINO}}', nomeUnidadeDestino)
-                                .replace('{{TIPO_MOV}}', 'Transferência')
-                                .replace('{{DOC_NUMBER}}', transferDoc)
-                                .replace('{{DATA}}', dataHora)
-                                .replace('{{USUARIO}}', usuario)
-                                .replace('{{DATA_ITENS}}', itemRows);
-
-                            const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-                            newWindow.document.open();
-                            newWindow.document.write(htmlContent);
-                            newWindow.document.close();
-
-                            $('#origin-unit').val('');
-                            $('#destination-unit').val('');
-                            $('#transfer-date').val('');
-                            $('#result-table tbody').empty();
+                        Swal.fire('Sucesso!', 'Transferência concluída.', 'success').then(() => {
+                            location.reload();
                         });
                     } else {
-                        swal.fire('Erro', response.data.message, 'error');
+                        Swal.fire('Erro', response.data.message, 'error');
                     }
                 } catch (error) {
-                    swal.close();
-                    console.error(error);
-                    swal.fire('Erro', 'Ocorreu um erro ao enviar os dados para o backend.', 'error');
+                    Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
                 }
             }
         });
 
-    }
-
-    // Configurar o evento para o botão de realizar a transferência
-    $('#transfer-button').click(function () {
-        sendTransferItems();
+        loadUnidades();
     });
-
-    // Carregar as unidades
-    loadUnidades();
-
-    // Configurar evento para abrir o modal de itens
-    $('#item-description').click(function () {
-        const unitId = $('#origin-unit').val();
-        loadItems(unitId);
-    });
-
-    $('#item-quantity').on('input', function () {
-        const unidade = $('#item-unit').val();
-        if (['KG', 'LT', 'L'].includes(unidade)) {
-            let valor = $(this).val().replace(/[^\d]/g, '');
-            valor = (valor / 1000).toFixed(3);
-            $(this).val(valor.replace('.', ','));
-        } else {
-            // Permitir apenas números inteiros
-            $(this).val($(this).val().replace(/[^\d]/g, ''));
-        }
-    });
-
-
-    // Adicionar item à tabela de transferência
-    $('#add-item').click(function () {
-        const codigo = $('#item-codigo').val();
-        const descricao = $('#item-description').val();
-        const quantidade = $('#item-quantity').val();
-
-        if (!descricao || !quantidade) {
-            swal.fire('Erro', 'Preencha todos os campos antes de adicionar.', 'error');
-            return;
-        }
-
-        const row = `
-            <tr>
-                <td>${codigo}</td>
-                <td>${descricao}</td>
-                <td>${quantidade}</td>
-                <td><button class="btn btn-danger remove-item">X</button></td>
-            </tr>
-        `;
-
-        $('#result-table tbody').append(row);
-
-
-         // Limpar os campos após adicionar ao grid
-        $('#item-codigo').val('');
-        $('#item-description').val('');
-        $('#item-unit').val('');
-        $('#item-quantity').val('');
-
-
-        // Remover item
-        $('.remove-item').click(function () {
-            $(this).closest('tr').remove();
-        });
-    });
-});
-
 </script>
 
 </body>
