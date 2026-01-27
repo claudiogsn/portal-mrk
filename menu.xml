@@ -132,6 +132,10 @@
             <action>ProductsList</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Gravar EAN em Lote">
+            <action>GravarEan</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Importar Produtos">
             <action>ImportarProdutos</action>
             <icon>fas:circle fa-fw</icon>
