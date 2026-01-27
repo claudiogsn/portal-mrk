@@ -25,7 +25,7 @@ require_once 'controllers/FinanceiroContaController.php';
 require_once 'controllers/FinanceiroFornecedorController.php';
 require_once 'controllers/FinanceiroClienteController.php';
 require_once 'controllers/FinanceiroBancoController.php';
-
+require_once 'controllers/ConferenciaCaixaController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -74,7 +74,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-
             case 'createBanco':
                 if (
                     isset($requestData['system_unit_id']) &&
@@ -91,7 +90,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-
             case 'updateBanco':
                 if (isset($requestData['id'])) {
                     // Passa o payload inteiro, o controller filtra os campos permitidos
@@ -104,7 +102,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-
             case 'deleteBanco':
                 if (isset($requestData['id'])) {
                     $response = FinanceiroBancoController::deleteBanco($requestData['id']);
@@ -116,7 +113,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-
             case 'getBancoById':
                 if (isset($requestData['system_unit_id']) && isset($requestData['id'])) {
                     $response = FinanceiroBancoController::getBancoById(
@@ -145,8 +141,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-
-
             case 'fetchFinanceiroConta':
                 $response = FinanceiroApiMenewController::fetchFinanceiroConta($requestData['estabelecimento'], $requestData['tipo']);
                 break;
@@ -177,7 +171,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'importarPlanosApiDesativado':
                 $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
                 break;
-
+            case 'ApiMenewAuthenticate':
+                $response = FinanceiroApiMenewController::authenticate();
+                break;
 
 
             case 'listPlanos':
@@ -188,7 +184,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['success' => false, 'message' => 'ID do estabelecimento (system_unit_id) não informado'];
                 }
                 break;
-            // CRIAR PLANO
             case 'createPlano':
                 if (
                     isset($requestData['system_unit_id']) &&
@@ -209,7 +204,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            // ATUALIZAR PLANO (só descricao, via ID)
             case 'updatePlano':
                 if (isset($requestData['id']) && isset($requestData['descricao'])) {
                     $data = [
@@ -224,7 +218,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            // EXCLUIR PLANO (recebe system_unit_id + codigo)
             case 'deletePlano':
                 if (isset($requestData['system_unit_id']) && isset($requestData['codigo'])) {
                     $response = FinanceiroPlanoController::deletePlano(
@@ -239,7 +232,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            // INATIVAR PLANO (recebe system_unit_id + codigo)
             case 'inativarPlano':
                 if (isset($requestData['system_unit_id']) && isset($requestData['codigo'])) {
                     $response = FinanceiroPlanoController::inativarPlano(
@@ -254,7 +246,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            // BUSCAR PLANO POR CODIGO + UNIDADE
             case 'getPlanoByCodigo':
                 if (isset($requestData['system_unit_id']) && isset($requestData['codigo'])) {
                     $response = FinanceiroPlanoController::getPlanoByCodigo(
@@ -269,7 +260,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-            // IMPORTAR PLANOS DA API (Menew)
             case 'importarPlanosApi':
                 if (isset($requestData['system_unit_id'])) {
                     $response = FinanceiroPlanoController::importarPlanosApi($requestData['system_unit_id']);
@@ -282,9 +272,6 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
-            case 'ApiMenewAuthenticate':
-                $response = FinanceiroApiMenewController::authenticate();
-                break;
 
             case 'getDreGerencial':
                if(isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])){
@@ -294,7 +281,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros inválidos'];
                 }
                break;
-
             case 'listContas':
                 if (
                     isset($requestData['system_unit_id']) &&
@@ -341,7 +327,6 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = FinanceiroContaController::baixarConta($requestData);
                 break;
 
-
             case 'lancarNotaNoFinanceiroConta':
                 $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);
                 break;
@@ -364,7 +349,6 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
-
             case 'listFornecedores':
                 $response = FinanceiroFornecedorController::listFornecedores($requestData['system_unit_id']);
                 break;
@@ -381,7 +365,6 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = FinanceiroFornecedorController::listItensFornecedor($requestData['system_unit_id'], $requestData['fornecedor_id']);
                 break;
 
-
             case 'getExtratoBancario':
                 $response = FinanceiroContaController::getExtratoBancario($requestData);
                 break;
@@ -390,6 +373,36 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getMapaDeContas':
                 $response = FinanceiroContaController::getMapaDeContas($requestData);
+                break;
+
+            case 'getResumoConferencia':
+                $response = ConferenciaCaixaController::getResumoGeral(
+                    $requestData['system_unit_id'] ?? null,
+                    $requestData['data'] ?? null
+                );
+                break;
+            case 'getDetalhamentoConferencia':
+                $response = ConferenciaCaixaController::getDetalhamentoPorFormaPagamento(
+                    $requestData['system_unit_id'] ?? null,
+                    $requestData['data'] ?? null
+                );
+                break;
+            case 'getAuditoriaConferencia':
+                $response = ConferenciaCaixaController::getAuditoriaMovimentos(
+                    $requestData['system_unit_id'] ?? null,
+                    $requestData['data'] ?? null,
+                    $requestData['forma_pagamento'] ?? null
+                );
+                break;
+            case 'saveConferenciaCaixa':
+                $response = ConferenciaCaixaController::saveConferencia($requestData);
+                break;
+            case 'getDetalhePagamentosPorFormaPagamento':
+                $response = ConferenciaCaixaController::getDetalhePagamentosPorFormaPagamento(
+                    $requestData['system_unit_id'] ?? null,
+                    $requestData['data'] ?? null,
+                    $requestData['forma_pagamento'] ?? null
+                );
                 break;
 
 

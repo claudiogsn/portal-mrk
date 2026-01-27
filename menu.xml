@@ -20,6 +20,10 @@
   <menuitem label="Financeiro">
     <icon>fas:dollar-sign fa-fw</icon>
     <menu>
+      <menuitem label="Conferencia de Caixa">
+        <action>ConferenciaCaixa</action>
+        <icon>fas:circle fa-fw</icon>
+      </menuitem>
       <menuitem label="Relatórios Financeiro">
             <icon>fas:circle fa-fw</icon>
           <menu>

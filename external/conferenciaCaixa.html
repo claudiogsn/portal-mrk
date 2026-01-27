@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Conferência de Caixa</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .audit-info {
+            font-size: 11px;
+            color: #777;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-top: 1px solid #f5f5f5;
+            padding-top: 5px;
+            width: 100%;
+        }
+        .status-badge {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        .status-conferido { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .status-pendente { background: #fafafa; color: #999; border: 1px solid #eee; }
+
+        .header-flex { display:flex; align-items:center; justify-content: space-between; }
+        .kpi { text-align:center; padding:12px; border-radius:6px; border:1px solid #eee; margin-bottom: 20px;}
+        .kpi h4 { margin:4px 0 0 0; font-weight:700; }
+        .kpi.green { background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
+        .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
+        .kpi.orange { background:#fff3e0; border-color:#ffe0b2; color:#ef6c00; }
+
+        /* Ajuste dos Cards */
+        .list-container { margin-top: 20px; }
+        .item-card {
+            background: #fff; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 5px solid #2196F3;
+            display: flex; align-items: center; gap: 15px;
+        }
+
+        .col-info { flex: 1.5; min-width: 180px; }
+        .col-values { flex: 4; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+
+        /* Colunas individuais de valores para não grudar */
+        .val-block { min-width: 110px; }
+
+        .item-input-group { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+        .item-actions { width: 40px; text-align: right; font-size: 18px; color: #999; cursor: pointer; }
+        .item-actions:hover { color: #2196F3; }
+
+        .btn-copy-val {
+            background: #f5f5f5; border: 1px solid #2196f33d; border-radius: 4px;
+            padding: 4px 8px; cursor: pointer; color: #2196F3; transition: 0.2s;
+        }
+        .btn-copy-val:hover { background: #2196F3; color: #fff; }
+
+        .label-custom { display: block; font-size: 10px; color: #999; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px;}
+        .val-bold { font-weight: bold; font-size: 14px; color: #333; }
+        .diff-danger { color: #f44336; }
+        .diff-success { color: #4caf50; }
+
+        @media (max-width: 992px) {
+            .item-card { flex-direction: column; align-items: flex-start; }
+            .col-values { width: 100%; flex-wrap: wrap; margin-top: 10px; }
+            .item-input-group { width: 100%; margin: 10px 0; }
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header header-flex">
+            <h2>Conferência de Caixa</h2>
+            <button class="btn btn-success waves-effect" id="btnSalvarTudo">
+                <i class="fa fa-save"></i> SALVAR CONFERÊNCIA
+            </button>
+        </div>
+        <div class="body">
+
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Data Contábil</label>
+                    <input type="date" id="data_conferencia" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label>&nbsp;</label><br>
+                    <button class="btn btn-primary waves-effect" id="btnBuscar">
+                        <i class="fa fa-search"></i> BUSCAR
+                    </button>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4"><div class="kpi green"><small>Total Adquirente (Digitado)</small><h4 id="kpiAdquirente">R$ 0,00</h4></div></div>
+                <div class="col-md-4"><div class="kpi blue"><small>Total Comprovantes NF</small><h4 id="kpiNF">R$ 0,00</h4></div></div>
+                <div class="col-md-4"><div class="kpi orange"><small>Diferença Total</small><h4 id="kpiDiferenca">R$ 0,00</h4></div></div>
+            </div>
+
+            <div id="containerCards" class="list-container">
+                <div class="text-center text-muted">Carregue uma data para iniciar a conferência.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #f5f5f5; border-bottom: 1px solid #ddd;">
+                <div class="pull-right">
+                    <button class="btn btn-default btn-xs waves-effect" id="btnExportExcel">
+                        <i class="fa fa-file-excel text-success"></i> EXPORTAR EXCEL
+                    </button>
+                    <button type="button" class="close" data-dismiss="modal" style="margin-left: 15px;">&times;</button>
+                </div>
+                <h4 class="modal-title" id="modalTitle">Detalhes</h4>
+                <div style="margin-top: 10px;">
+                    <span class="label label-info" id="totalDetalhe" style="font-size: 14px;">Total: R$ 0,00</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="conteudoDetalhe" class="table-responsive"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token     = urlParams.get('token');
+    const unit_id   = urlParams.get('system_unit_id') || urlParams.get('unit_id');
+    const user_id   = urlParams.get('user_id');
+
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    function toBRL(v){ return Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+
+    function formatDateBR(ymd) {
+        if(!ymd) return '';
+        const [y, m, d] = ymd.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    $(document).ready(function(){
+        const ontem = new Date();
+        ontem.setDate(ontem.getDate() - 1);
+        document.getElementById('data_conferencia').value = ontem.toISOString().split('T')[0];
+
+        $('#btnBuscar').on('click', carregarConferencia);
+        $('#btnSalvarTudo').on('click', salvarConferencia);
+        $('#btnExportExcel').on('click', exportarExcel);
+    });
+
+    async function carregarConferencia(){
+        const data = $('#data_conferencia').val();
+        Swal.fire({ title: 'Carregando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getDetalhamentoConferencia',
+                token,
+                data: { system_unit_id: unit_id, data: data }
+            });
+            Swal.close();
+            if(res.data.success) {
+                renderCards(res.data.data);
+                atualizarKPIsGerais();
+            }
+        } catch (e) { Swal.fire('Error', 'Erro ao carregar dados', 'error'); }
+    }
+
+    function renderCards(lista) {
+        const container = $('#containerCards').empty();
+
+        lista.forEach((item, idx) => {
+            const diff = item.venda_pdv - item.valor_adquirente;
+            const diffClass = diff === 0 ? 'diff-success' : 'diff-danger';
+
+            // Lógica de status
+            const isConferido = item.ultimo_usuario_id !== null;
+            const statusHtml = isConferido
+                ? `<span class="status-badge status-conferido"><i class="fa fa-check"></i> Conferido</span>`
+                : `<span class="status-badge status-pendente">Pendente</span>`;
+
+            const auditText = isConferido
+                ? `Por: <strong>${item.nome_usuario_alteracao}</strong> em ${item.data_ultima_alteracao}`
+                : `Aguardando conferência`;
+
+            container.append(`
+            <div class="item-card" style="flex-wrap: wrap;">
+                <div style="display: flex; width: 100%; align-items: center; gap: 15px;">
+                    <div class="col-info">
+                        <span class="label-custom">Forma de Pagto</span>
+                        <span class="val-bold">${item.forma_pagamento}</span>
+                    </div>
+
+                    <div class="col-values">
+                        <div class="val-block">
+                            <span class="label-custom">Venda PDV</span>
+                            <span class="val-bold">${toBRL(item.venda_pdv)}</span>
+                        </div>
+
+                        <div class="val-block">
+                            <span class="label-custom">Comprovantes NF</span>
+                            <span class="val-bold text-primary">${toBRL(item.processado_pagos)}</span>
+                        </div>
+
+                        <div class="item-input-group">
+                            <button class="btn-copy-val waves-effect" title="Copiar NF"
+                                    onclick="copiarValorNF(this, ${item.processado_pagos}, ${item.venda_pdv})">
+                                <i class="fa fa-chevron-right"></i>
+                            </button>
+                            <div style="flex:1">
+                                <span class="label-custom">Adquirente</span>
+                                <input type="number" step="0.01" class="form-control input-adquirente"
+                                       value="${item.valor_adquirente}"
+                                       oninput="recalcularDiferenca(this, ${item.venda_pdv})">
+                            </div>
+                        </div>
+
+                        <div class="val-block text-right">
+                            <span class="label-custom">Diferença</span>
+                            <span class="val-bold ${diffClass} row-diff">${toBRL(diff)}</span>
+                        </div>
+                    </div>
+
+                    <div class="item-actions" onclick="verDetalhesAPI('${item.forma_pagamento}')">
+                        <i class="fa fa-external-link-alt"></i>
+                    </div>
+                </div>
+
+                <div class="audit-info">
+                    ${statusHtml}
+                    <span>${auditText}</span>
+                </div>
+            </div>
+        `);
+        });
+    }
+    function copiarValorNF(btn, valorNF, valorPDV){
+        const input = $(btn).parent().find('.input-adquirente');
+        input.val(valorNF.toFixed(2));
+        recalcularDiferenca(input[0], valorPDV);
+    }
+
+    function recalcularDiferenca(el, valorPDV){
+        const valAdq = parseFloat($(el).val()) || 0;
+        const diff = valorPDV - valAdq;
+        const displayDiff = $(el).closest('.item-card').find('.row-diff');
+        displayDiff.text(toBRL(diff));
+        displayDiff.removeClass('diff-success diff-danger').addClass(diff === 0 ? 'diff-success' : 'diff-danger');
+        atualizarKPIsGerais();
+    }
+
+    function atualizarKPIsGerais(){
+        let totalAdq = 0, totalNF = 0;
+        $('.item-card').each(function(){
+            totalAdq += parseFloat($(this).find('.input-adquirente').val()) || 0;
+            const txtNF = $(this).find('.text-primary').text();
+            totalNF += Number(txtNF.replace(/[^0-9,-]+/g,"").replace(",", "."));
+        });
+        $('#kpiAdquirente').text(toBRL(totalAdq));
+        $('#kpiNF').text(toBRL(totalNF));
+        $('#kpiDiferenca').text(toBRL(totalNF - totalAdq));
+    }
+
+    async function verDetalhesAPI(forma){
+        const data = $('#data_conferencia').val();
+        $('#modalTitle').text(`Detalhes: ${forma} | Data: ${formatDateBR(data)}`);
+        $('#modalDetalhes').modal('show');
+        $('#conteudoDetalhe').html('<div class="text-center">Carregando...</div>');
+
+        const res = await axios.post(baseUrl, {
+            method: 'getDetalhePagamentosPorFormaPagamento',
+            token,
+            data: { system_unit_id: unit_id, data: data, forma_pagamento: forma }
+        });
+
+        if(res.data.success){
+            let total = 0;
+            let html = `<table class="table table-striped" id="tabelaExport">
+                <thead><tr><th>Hora</th><th>NSU</th><th>Adquirente</th><th class="text-right">Valor</th></tr></thead>
+                <tbody>`;
+            res.data.data.forEach(d => {
+                total += parseFloat(d.valor_bruto);
+                html += `<tr><td>${d.hora}</td><td>${d.nsu}</td><td>${d.adquirente}</td><td class="text-right">${toBRL(d.valor_bruto)}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+            $('#totalDetalhe').text(`Total Acumulado: ${toBRL(total)}`);
+            $('#conteudoDetalhe').html(html);
+        }
+    }
+
+    function exportarExcel(){
+        const table = document.getElementById("tabelaExport");
+        if(!table) return;
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Detalhes" });
+        XLSX.writeFile(wb, `Conferencia_${$('#modalTitle').text().replace(/[^a-z0-9]/gi, '_')}.xlsx`);
+    }
+
+    async function salvarConferencia(){
+        const data = $('#data_conferencia').val();
+        const items = [];
+        $('.item-card').each(function(){
+            items.push({
+                forma_pagamento: $(this).find('.col-info .val-bold').text(),
+                venda_pdv: Number($(this).find('.val-block:first .val-bold').text().replace(/[^0-9,-]+/g,"").replace(",", ".")),
+                processado_pagos: Number($(this).find('.text-primary').text().replace(/[^0-9,-]+/g,"").replace(",", ".")),
+                valor_adquirente: parseFloat($(this).find('.input-adquirente').val()) || 0
+            });
+        });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'saveConferenciaCaixa',
+                token,
+                data: { system_unit_id: unit_id, data: data, user_id: user_id, items: items }
+            });
+            if(res.data.success) Swal.fire('Sucesso', 'Salvo com sucesso!', 'success');
+        } catch (e) { Swal.fire('Erro', 'Falha ao salvar', 'error'); }
+    }
+</script>
+</body>
+</html>
