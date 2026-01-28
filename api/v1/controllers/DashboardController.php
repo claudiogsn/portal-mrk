@@ -1868,64 +1868,70 @@ class DashboardController
             $resumo = [];
 
             foreach ($lojas as $loja) {
+                // Usando o id_loja conforme a nova estrutura
                 $lojaId = $loja['custom_code'];
 
-                $sqlTotal = "SELECT SUM(valorRecebido) as total 
-                         FROM meios_pagamento 
-                         WHERE lojaId = :lojaId 
-                           AND data_pagamento BETWEEN :dt_inicio AND :dt_fim";
+                // 1. Busca o total geral da loja no período para calcular o percentual depois
+                $sqlTotal = "SELECT SUM(valor) as total 
+                         FROM api_pagamentos 
+                         WHERE id_loja = :id_loja 
+                           AND data_contabil BETWEEN :dt_inicio AND :dt_fim";
+
                 $stmtTotal = $pdo->prepare($sqlTotal);
                 $stmtTotal->execute([
-                    ':lojaId' => $lojaId,
+                    ':id_loja'  => $lojaId,
                     ':dt_inicio' => $dt_inicio,
-                    ':dt_fim' => $dt_fim
+                    ':dt_fim'    => $dt_fim
                 ]);
 
                 $total = $stmtTotal->fetchColumn();
 
+                // Se não houver vendas, retorna estrutura vazia para a loja
                 if (!$total || $total == 0) {
                     $resumo[] = [
-                        'lojaId' => $lojaId,
+                        'lojaId'   => $lojaId,
                         'nomeLoja' => $loja['name'],
-                        'total' => 0,
-                        'data' => []
+                        'total'    => 0,
+                        'data'     => []
                     ];
                     continue;
                 }
 
+                // 2. Busca o resumo agrupado por meio de pagamento (tipo_pagamento)
+                // Usei 'tipo_pagamento' como nome e 'id_tipo' como código
                 $sqlResumo = "SELECT 
-                            codigo,
-                            nome,
-                            SUM(valorRecebido) as valor,
-                            ROUND(SUM(valorRecebido) / :total * 100, 2) as percentual
-                          FROM meios_pagamento
-                          WHERE lojaId = :lojaId
-                            AND data_pagamento BETWEEN :dt_inicio AND :dt_fim
-                          GROUP BY codigo, nome
+                            id_tipo as codigo,
+                            tipo_pagamento as nome,
+                            SUM(valor) as valor,
+                            ROUND(SUM(valor) / :total * 100, 2) as percentual
+                          FROM api_pagamentos
+                          WHERE id_loja = :id_loja
+                            AND data_contabil BETWEEN :dt_inicio AND :dt_fim
+                          GROUP BY id_tipo, tipo_pagamento
                           ORDER BY valor DESC";
 
                 $stmtResumo = $pdo->prepare($sqlResumo);
                 $stmtResumo->execute([
-                    ':lojaId' => $lojaId,
+                    ':id_loja'  => $lojaId,
                     ':dt_inicio' => $dt_inicio,
-                    ':dt_fim' => $dt_fim,
-                    ':total' => $total
+                    ':dt_fim'    => $dt_fim,
+                    ':total'     => $total
                 ]);
 
                 $resumo[] = [
-                    'lojaId' => $lojaId,
+                    'lojaId'   => $lojaId,
                     'nomeLoja' => $loja['name'],
-                    'total' => round($total, 2),
-                    'data' => $stmtResumo->fetchAll(PDO::FETCH_ASSOC)
+                    'total'    => round($total, 2),
+                    'data'     => $stmtResumo->fetchAll(PDO::FETCH_ASSOC)
                 ];
             }
 
             return ['success' => true, 'data' => $resumo];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao consultar resumo por meios de pagamento: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'Erro ao consultar resumo: ' . $e->getMessage()];
         }
     }
-
+    
     public static function getRankingVendasProdutosPorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
         global $pdo;
