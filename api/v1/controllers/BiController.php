@@ -643,12 +643,6 @@ class BiController {
                 dataContabil = VALUES(dataContabil)
         ");
 
-            $stmtDeleteMeios = $pdo->prepare("DELETE FROM meios_pagamento WHERE num_controle = :num_controle AND lojaId = :lojaId");
-            $stmtInsertMeios = $pdo->prepare("
-            INSERT INTO meios_pagamento (id, num_controle, lojaId, codigo, nome, valor, troco, valorRecebido)
-            VALUES (:id, :num_controle, :lojaId, :codigo, :nome, :valor, :troco, :valorRecebido)
-        ");
-
             $stmtDeleteConsumidores = $pdo->prepare("DELETE FROM consumidores WHERE num_controle = :num_controle AND lojaId = :lojaId");
             $stmtInsertConsumidor = $pdo->prepare("
             INSERT INTO consumidores (num_controle, lojaId, documento, tipo, nome)
@@ -692,24 +686,7 @@ class BiController {
                     ':dataFechamento' => $mov['dataFechamento'],
                     ':dataContabil' => $mov['dataContabil']
                 ]);
-
-                // Meios de pagamento
-                $stmtDeleteMeios->execute([
-                    ':num_controle' => $mov['num_controle'],
-                    ':lojaId' => $mov['lojaId']
-                ]);
-                foreach ($mov['meiosPagamento'] as $mp) {
-                    $stmtInsertMeios->execute([
-                        ':id' => $mp['id'],
-                        ':num_controle' => $mov['num_controle'],
-                        ':lojaId' => $mov['lojaId'],
-                        ':codigo' => $mp['codigo'],
-                        ':nome' => $mp['nome'],
-                        ':valor' => $mp['valor'],
-                        ':troco' => $mp['troco'],
-                        ':valorRecebido' => $mp['valorRecebido']
-                    ]);
-                }
+                
 
                 // Consumidores
                 $stmtDeleteConsumidores->execute([
