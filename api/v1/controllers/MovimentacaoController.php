@@ -1115,7 +1115,7 @@ class MovimentacaoController
         ]);
 
         curl_exec($ch);
-        curl_close($ch);
+        //curl_close($ch);
     }
 
     public static function getTransferenciaByKey(array $data): array

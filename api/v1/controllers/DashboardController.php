@@ -27,7 +27,6 @@ class DashboardController
         return number_format((float)$value, $decimals, ',', '.');
     }
 
-
     private static function gerarGraficoBase64(array $labels, array $fats, array $compras): string
     {
 
@@ -94,14 +93,14 @@ class DashboardController
             error_log('Erro ao gerar imagem do gráfico com QuickChart: ' . curl_error($ch));
             error_log('Resposta recebida: ' . substr($imageData ?? '', 0, 500));
             error_log('Payload enviado (JSON): ' . $payload);
-            curl_close($ch);
+            //curl_close($ch);
             return '';
         } else {
             error_log('Imagem do gráfico gerada com sucesso.');
             error_log('Payload enviado (JSON): ' . $payload);
         }
 
-        curl_close($ch);
+        //curl_close($ch);
         return 'data:image/png;base64,' . base64_encode($imageData);
     }
 
@@ -124,7 +123,6 @@ class DashboardController
         ];
     }
 
-
     public static function getIntervalosMensais(): array
     {
         $tz = new DateTimeZone('America/Sao_Paulo');
@@ -145,9 +143,6 @@ class DashboardController
             'dt_fim_anterior' => $fimAnterior->format('Y-m-d 23:59:59'),
         ];
     }
-
-
-
 
     public static function getIntervalosDiarios(): array
     {
@@ -171,7 +166,6 @@ class DashboardController
             'dt_fim_anterior' => $fimSemanaPassada->format('Y-m-d H:i:s'),
         ];
     }
-
 
     private static function gerarHtmlComparativoComprasPorLoja(
         DateTimeInterface $inicioAtual,
@@ -525,8 +519,6 @@ class DashboardController
         return $html;
     }
 
-
-
     private static function gerarHtmlConsolidadoGrupo(
         DateTimeInterface $inicioAtual,
         DateTimeInterface $fimAtual,
@@ -792,7 +784,6 @@ class DashboardController
 
         return $html;
     }
-
 
     public static function gerarPdfSemanalFaturamento($grupoId): array
     {
@@ -1060,8 +1051,6 @@ class DashboardController
         ];
     }
 
-
-
     public static function gerarPdfFaturamento($grupoId, $periodo = 'semanal'): array
     {
         $hoje = new DateTimeImmutable('now', new DateTimeZone('America/Sao_Paulo'));
@@ -1193,7 +1182,6 @@ class DashboardController
             'url' => $publicUrl
         ];
     }
-
 
     public static function getLojaIdBySystemUnitId($systemUnitId): array
     {
@@ -1931,7 +1919,7 @@ class DashboardController
             return ['success' => false, 'message' => 'Erro ao consultar resumo: ' . $e->getMessage()];
         }
     }
-    
+
     public static function getRankingVendasProdutosPorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {
         global $pdo;
@@ -2797,7 +2785,6 @@ class DashboardController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-
 
     public static function generateSomaNotasPorGrupo($grupoId, $dt_inicio, $dt_fim): array
     {

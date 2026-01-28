@@ -754,7 +754,6 @@ class MdeController
             $data_inicial = $dtIni->format('Y-m-d');
             $data_final   = $dtFim->format('Y-m-d');
 
-            // Reaproveita o método existente que já consulta a Plug e o estoque_nota
             $resp = self::listarChavesNfeComStatusImportacao($system_unit_id, $data_inicial, $data_final);
 
             if (empty($resp['success'])) {

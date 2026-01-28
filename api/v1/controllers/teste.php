@@ -87,11 +87,11 @@ function apiRequest($url, $data) {
 
     if (curl_errno($ch)) {
         $errorMessage = "Erro de cURL: " . curl_error($ch);
-        curl_close($ch);
+        //curl_close($ch);
         throw new Exception($errorMessage);
     }
 
-    curl_close($ch);
+    //curl_close($ch);
 
     // Imprimir a resposta bruta para depuração
     echo "Resposta da API ({$url}): " . $response . "\n";

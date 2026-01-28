@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $curlResponse = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    curl_close($ch);
+    //curl_close($ch);
 
     header('Content-Type: application/json');
 

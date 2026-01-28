@@ -34,7 +34,7 @@ class FinanceiroApiMenewController {
 
         $response = curl_exec($ch);
         $error = curl_error($ch);
-        curl_close($ch);
+        //curl_close($ch);
 
         if ($error) {
             throw new Exception("Erro na requisição: $error");

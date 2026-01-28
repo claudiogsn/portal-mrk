@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard de Estoque</title>
+    <title>Dashboard de Estoque & Financeiro</title>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,7 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <style>
@@ -20,20 +19,15 @@
             --mrk-green: #08A794;
             --mrk-gray: #EBEBEB;
             --mrk-black: #191F2A;
+            --mrk-amber: #f59e0b;
         }
-
         .animate-number { transition: all 1s ease-in-out; }
-        .loader { border-top-color: var(--mrk-blue); }
-
-        /* botões padrão */
         .btn-mrk {
             background: color-mix(in srgb, var(--mrk-blue) 12%, white);
             color: var(--mrk-blue);
             border: 1px solid color-mix(in srgb, var(--mrk-blue) 25%, white);
         }
-        .btn-mrk:hover {
-            background: color-mix(in srgb, var(--mrk-blue) 20%, white);
-        }
+        .btn-mrk:hover { background: color-mix(in srgb, var(--mrk-blue) 20%, white); }
     </style>
 </head>
 
@@ -60,76 +54,63 @@
         </div>
     </div>
 
-    <!-- ✅ CARDS NA PALETA -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-
-        <!-- Faturamento -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
-             style="border-color: var(--mrk-blue);">
-            <div class="text-4xl" style="color: var(--mrk-blue);">
-                <i class="fas fa-dollar-sign"></i>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-blue);">
+            <div class="text-4xl" style="color: var(--mrk-blue);"><i class="fas fa-dollar-sign"></i></div>
             <div>
-                <div class="text-sm font-semibold" style="color: var(--mrk-black);">Faturamento</div>
-                <div class="text-3xl font-extrabold animate-number" id="faturamentoBruto"
-                     style="color: var(--mrk-black);">R$ 0,00</div>
+                <div class="text-sm font-semibold">Faturamento</div>
+                <div class="text-2xl font-extrabold animate-number" id="faturamentoBruto">R$ 0,00</div>
             </div>
         </div>
 
-        <!-- Compras -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
-             style="border-color: var(--mrk-green);">
-            <div class="text-4xl" style="color: var(--mrk-green);">
-                <i class="fas fa-shopping-cart"></i>
-            </div>
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-green);">
+            <div class="text-4xl" style="color: var(--mrk-green);"><i class="fas fa-shopping-cart"></i></div>
             <div>
-                <div class="text-sm font-semibold" style="color: var(--mrk-black);">Compras</div>
-                <div class="text-3xl font-extrabold animate-number" id="totalCompras"
-                     style="color: var(--mrk-black);">R$ 0,00</div>
+                <div class="text-sm font-semibold">Compras</div>
+                <div class="text-2xl font-extrabold animate-number" id="totalCompras">R$ 0,00</div>
             </div>
         </div>
 
-        <!-- % Compras x Faturamento -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
-             style="border-color: var(--mrk-black);">
-            <div class="text-4xl" style="color: var(--mrk-black);">
-                <i class="fas fa-percent"></i>
-            </div>
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-black);">
+            <div class="text-4xl" style="color: var(--mrk-black);"><i class="fas fa-percent"></i></div>
             <div>
-                <div class="text-sm font-semibold" style="color: var(--mrk-black);">% Compras x Faturamento</div>
-                <div class="text-3xl font-extrabold animate-number" id="percentualCompras"
-                     style="color: var(--mrk-black);">0%</div>
+                <div class="text-sm font-semibold">% Compras x Fat.</div>
+                <div class="text-2xl font-extrabold animate-number" id="percentualCompras">0%</div>
             </div>
         </div>
 
+        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-amber);">
+            <div class="text-4xl" style="color: var(--mrk-amber);"><i class="fas fa-file-invoice"></i></div>
+            <div class="flex-1">
+                <div class="text-sm font-semibold">Notas Pendentes</div>
+                <div class="flex items-center justify-between">
+                    <div class="text-2xl font-extrabold" id="qtdNotasPendentes">0</div>
+                    <button onclick="verDetalhesNotasPendentes()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2 py-1 rounded border border-amber-200 transition-all">
+                        Ver mais
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- ✅ Evolução: 2 gráficos de barras verticais -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="w-full bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">
-                Evolução do Faturamento
-            </h2>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-4">Evolução do Faturamento</h2>
             <div id="chartFaturamentoDiario" style="width:100%; height:320px;"></div>
         </div>
-
-        <div class="w-full bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">
-                Evolução das Compras
-            </h2>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-lg font-semibold mb-4">Evolução das Compras</h2>
             <div id="chartComprasDiario" style="width:100%; height:320px;"></div>
         </div>
     </div>
 
-    <!-- ✅ Top 5 Produtos + Fornecedores -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="bg-white p-6 h-[350px] rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">TOP 5 - COMPRAS POR PRODUTO</h2>
+            <h2 class="text-lg font-semibold mb-4">TOP 5 - COMPRAS POR PRODUTO</h2>
             <div id="chartTopProdutos" class="w-full h-full"></div>
         </div>
-
         <div class="bg-white p-6 h-[350px] rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">TOP 5 - COMPRAS POR FORNECEDOR</h2>
+            <h2 class="text-lg font-semibold mb-4">TOP 5 - COMPRAS POR FORNECEDOR</h2>
             <div id="chartTopFornecedores" class="w-full h-full"></div>
         </div>
     </div>
@@ -145,40 +126,29 @@
     const user_id = parseInt(urlParams.get('user_id'));
     const token = urlParams.get('token');
 
-    // 🎨 PALETA MRK
     const MRK = {
         blue:  '#0B46AC',
         green: '#08A794',
         gray:  '#EBEBEB',
         black: '#191F2A',
-        series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480'] // opacidade ainda na paleta
+        amber: '#f59e0b',
+        series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480']
     };
 
     let grupoId = null;
+    let resumoEstoqueGrupo = [], evolucaoCmvGrupo = [], datasEvolucao = [], cmvProdutosGrupo = [], topFornecedoresGrupo = [], listaNotasPendentes = [];
+    let gruposDisponiveis = {}, lojasPorGrupo = {};
 
-    let lojasGrupo = [];
-    let resumoEstoqueGrupo = [];
-    let evolucaoCmvGrupo = [];
-    let datasEvolucao = [];
-    let cmvProdutosGrupo = [];
-    let topFornecedoresGrupo = [];
-
+    // --- FUNÇÕES DE APOIO ---
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
         const element = document.getElementById(id);
         if (!element) return;
-
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             const value = start + progress * (end - start);
-
-            element.textContent = isCurrency
-                ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                : isPercentage
-                    ? value.toFixed(2) + '%'
-                    : Math.floor(value);
-
+            element.textContent = isCurrency ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : isPercentage ? value.toFixed(2) + '%' : Math.floor(value);
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
@@ -187,12 +157,7 @@
     function parseBRL(v) {
         if (v == null) return 0;
         if (typeof v === 'number') return v;
-        return Number(
-            String(v)
-                .replace(/[^\d,-]/g, '')
-                .replace(/\./g, '')
-                .replace(',', '.')
-        ) || 0;
+        return Number(String(v).replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
     }
 
     function setRange(tipo) {
@@ -201,69 +166,41 @@
         if (tipo === 'ontem') start.setDate(now.getDate() - 1);
         else if (tipo === '7dias') start.setDate(now.getDate() - 7);
         else if (tipo === 'mes') start.setMonth(now.getMonth() - 1);
-
         document.getElementById('endDate').value = now.toISOString().split('T')[0];
         document.getElementById('startDate').value = start.toISOString().split('T')[0];
         fetchData();
     }
 
-    let gruposDisponiveis = {};
-    let lojasPorGrupo = {};
-
+    // --- CARREGAMENTO DE DADOS ---
     async function carregarGrupoInicial() {
-        const res = await axios.post(baseUrl, {
-            method: 'getGroupByUnit',
-            token,
-            data: { system_unit_id }
-        });
-
-        if (res.data?.length > 0) {
-            grupoId = res.data[0].id;
-        }
-
+        const res = await axios.post(baseUrl, { method: 'getGroupByUnit', token, data: { system_unit_id } });
+        if (res.data?.length > 0) grupoId = res.data[0].id;
         await carregarGruposUsuario();
     }
 
     async function carregarGruposUsuario() {
-        const res = await axios.post(baseUrl, {
-            method: 'getGroupByUser',
-            token,
-            data: { user_id }
-        });
-
+        const res = await axios.post(baseUrl, { method: 'getGroupByUser', token, data: { user_id } });
         const { grupos, lojas_por_grupo } = res.data;
-        gruposDisponiveis = grupos;
-        lojasPorGrupo = lojas_por_grupo;
-
+        gruposDisponiveis = grupos; lojasPorGrupo = lojas_por_grupo;
         const grupoSelect = document.getElementById('filtroGrupo');
         grupoSelect.innerHTML = '';
-
         grupos.forEach(grupo => {
             grupoSelect.innerHTML += `<option value="${grupo.id}" ${grupo.id == grupoId ? 'selected' : ''}>${grupo.nome}</option>`;
         });
-
         grupoSelect.addEventListener('change', () => {
             grupoId = parseInt(grupoSelect.value);
-
-            resetarEstadoDashboard();
-            limparCharts();
-            atualizarFiltroLoja();
-
+            resetarEstadoDashboard(); limparCharts(); atualizarFiltroLoja();
             document.getElementById('filtroLoja').value = "";
             fetchData();
         });
-
         atualizarFiltroLoja();
     }
 
     function atualizarFiltroLoja() {
         const lojas = lojasPorGrupo[grupoId] || [];
         const filtro = document.getElementById('filtroLoja');
-
         filtro.innerHTML = '<option value="">Todas as lojas</option>';
-        lojas.forEach(loja => {
-            filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`;
-        });
+        lojas.forEach(loja => { filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`; });
     }
 
     async function fetchData() {
@@ -272,21 +209,17 @@
         const dt_inicio = startDate + ' 00:00:00';
         const dt_fim = endDate + ' 23:59:59';
 
-        Swal.fire({
-            title: 'Carregando...',
-            html: 'Buscando dados atualizados.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.fire({ title: 'Carregando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
-            await carregarLojasGrupo();
-            await carregarResumoEstoquePorGrupo(dt_inicio, dt_fim);
-            await carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim);
-            await carregarCmvProdutosPorGrupo(dt_inicio, dt_fim);
-            await carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim);
-
+            // Paralelizando chamadas para performance
+            await Promise.all([
+                carregarResumoEstoquePorGrupo(dt_inicio, dt_fim),
+                carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim),
+                carregarCmvProdutosPorGrupo(dt_inicio, dt_fim),
+                carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim),
+                carregarNotasPendentes()
+            ]);
             aplicarFiltroLoja();
         } catch (err) {
             Swal.fire('Erro ao carregar', err.message, 'error');
@@ -295,92 +228,105 @@
         }
     }
 
-    function resetarEstadoDashboard() {
-        resumoEstoqueGrupo = [];
-        evolucaoCmvGrupo = [];
-        datasEvolucao = [];
-        cmvProdutosGrupo = [];
-        topFornecedoresGrupo = [];
-    }
-
-    function limparCharts() {
-        const ids = ['chartFaturamentoDiario','chartComprasDiario','chartTopProdutos','chartTopFornecedores'];
-        ids.forEach(id => {
-            const dom = document.getElementById(id);
-            if (!dom) return;
-            const inst = echarts.getInstanceByDom(dom);
-            if (inst) inst.dispose();
-        });
-    }
-
-    async function carregarLojasGrupo() {
-        const res = await axios.post(baseUrl, {
-            method: 'getUnitsByGroup',
-            token,
-            data: { group_id: grupoId }
-        });
-        lojasGrupo = res.data || [];
-    }
-
     async function carregarResumoEstoquePorGrupo(dt_inicio, dt_fim) {
-        const resumo = await axios.post(baseUrl, {
-            method: 'generateResumoEstoquePorGrupo',
-            token,
-            data: { grupoId, dt_inicio, dt_fim }
-        });
-        resumoEstoqueGrupo = resumo.data.data || [];
+        const res = await axios.post(baseUrl, { method: 'generateResumoEstoquePorGrupo', token, data: { grupoId, dt_inicio, dt_fim } });
+        resumoEstoqueGrupo = res.data.data || [];
     }
 
     async function carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim) {
-        const response = await axios.post(baseUrl, {
-            method: 'generateCmvEvolucao',
-            token,
-            data: { grupoId, dt_inicio, dt_fim }
-        });
-
-        evolucaoCmvGrupo = response.data.data || [];
-        datasEvolucao = response.data.labels || [];
+        const res = await axios.post(baseUrl, { method: 'generateCmvEvolucao', token, data: { grupoId, dt_inicio, dt_fim } });
+        evolucaoCmvGrupo = res.data.data || []; datasEvolucao = res.data.labels || [];
     }
 
     async function carregarCmvProdutosPorGrupo(dt_inicio, dt_fim) {
-        const response = await axios.post(baseUrl, {
-            method: 'generateCmvPorProduto',
-            token,
-            data: { grupoId, dt_inicio, dt_fim }
-        });
-        cmvProdutosGrupo = response.data.data || [];
+        const res = await axios.post(baseUrl, { method: 'generateCmvPorProduto', token, data: { grupoId, dt_inicio, dt_fim } });
+        cmvProdutosGrupo = res.data.data || [];
     }
 
     async function carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim) {
-        const response = await axios.post(baseUrl, {
-            method: 'generateTopComprasPorFornecedor',
-            token,
-            data: { grupoId, dt_inicio, dt_fim }
+        const res = await axios.post(baseUrl, { method: 'generateTopComprasPorFornecedor', token, data: { grupoId, dt_inicio, dt_fim } });
+        topFornecedoresGrupo = res.data.data || [];
+    }
+
+    async function carregarNotasPendentes() {
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        // Prioriza a loja selecionada no combo, se não houver, usa a da URL
+        const selectedLoja = parseInt(filtroLojaEl.value) || system_unit_id;
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listarNotasNaoImportadasUltimos30Dias',
+                token,
+                data: { system_unit_id: selectedLoja }
+            });
+
+            // Correção aqui: acessamos res.data.data.notas_pendentes
+            if (res.data.success && res.data.data && res.data.data.notas_pendentes) {
+                listaNotasPendentes = res.data.data.notas_pendentes;
+                // Atualiza o contador com o total_pendentes do seu JSON
+                document.getElementById('qtdNotasPendentes').textContent = res.data.data.total_pendentes || listaNotasPendentes.length;
+            } else {
+                listaNotasPendentes = [];
+                document.getElementById('qtdNotasPendentes').textContent = "0";
+            }
+        } catch (e) {
+            console.error("Erro na API de Notas:", e);
+            listaNotasPendentes = [];
+            document.getElementById('qtdNotasPendentes').textContent = "0";
+        }
+    }
+
+    function verDetalhesNotasPendentes() {
+        // Agora listaNotasPendentes é garantido ser um Array
+        if (!Array.isArray(listaNotasPendentes) || listaNotasPendentes.length === 0) {
+            return Swal.fire('Tudo em dia!', 'Nenhuma nota pendente nos últimos 30 dias.', 'success');
+        }
+
+        let html = `
+        <div class="max-h-[60vh] overflow-y-auto">
+            <table class="w-full text-xs text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 sticky top-0 shadow-sm">
+                        <th class="p-2 border">Emissão</th>
+                        <th class="p-2 border">NF / Série</th>
+                        <th class="p-2 border">Fornecedor</th>
+                        <th class="p-2 border text-right">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${listaNotasPendentes.map(n => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-2 border">${new Date(n.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                            <td class="p-2 border">${n.numero_nf} / ${n.serie}</td>
+                            <td class="p-2 border uppercase">${n.emitente_razao}</td>
+                            <td class="p-2 border text-right font-bold text-blue-700">
+                                R$ ${Number(n.valor_total).toLocaleString('pt-BR', {minimumFractionDigits:2})}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>`;
+
+        Swal.fire({
+            title: '<i class="fas fa-exclamation-circle text-amber-500"></i> Notas Não Importadas',
+            html,
+            width: '850px',
+            confirmButtonColor: MRK.blue,
+            confirmButtonText: 'Fechar'
         });
-        topFornecedoresGrupo = response.data.data || [];
     }
 
-    function getNomeLojaById(lojaId) {
-        const lojas = lojasPorGrupo[grupoId] || [];
-        const l = lojas.find(x => parseInt(x.id) === parseInt(lojaId));
-        return l ? l.name : null;
-    }
-
+    // --- RENDERIZAÇÃO ---
     function aplicarFiltroLoja() {
         const filtroLojaEl = document.getElementById('filtroLoja');
         let selectedLoja = parseInt(filtroLojaEl.value) || null;
-
-        const lojasValidas = (lojasPorGrupo[grupoId] || []).map(l => parseInt(l.id));
-        if (selectedLoja && !lojasValidas.includes(selectedLoja)) {
-            selectedLoja = null;
-            filtroLojaEl.value = "";
-        }
 
         const filtradoResumo = resumoEstoqueGrupo.filter(l => !selectedLoja || l.lojaId === selectedLoja);
         const filtradoCmvProdutos = cmvProdutosGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
         const filtradoFornecedores = topFornecedoresGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
 
-        const nomeSelecionado = selectedLoja ? getNomeLojaById(selectedLoja) : null;
+        const nomeSelecionado = selectedLoja ? (lojasPorGrupo[grupoId].find(x => parseInt(x.id) === selectedLoja)?.name) : null;
         const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
 
         renderResumo(filtradoResumo);
@@ -389,212 +335,85 @@
         renderChartTopFornecedores(agregarFornecedores(filtradoFornecedores));
     }
 
+    function renderResumo(data) {
+        let fat = 0, comp = 0;
+        data.forEach(l => { fat += parseBRL(l.faturamento_bruto); comp += parseBRL(l.total_compras); });
+        animateValue('faturamentoBruto', 0, fat, 1000, true);
+        animateValue('totalCompras', 0, comp, 1000, true);
+        animateValue('percentualCompras', 0, fat > 0 ? (comp / fat) * 100 : 0, 1000, false, true);
+    }
+
     function renderEvolucaoBarras(lojas, labels) {
-        const domFat = document.getElementById('chartFaturamentoDiario');
-        const domComp = document.getElementById('chartComprasDiario');
-        if (!domFat || !domComp) return;
-
-        const oldFat = echarts.getInstanceByDom(domFat);
-        const oldComp = echarts.getInstanceByDom(domComp);
-        if (oldFat) oldFat.dispose();
-        if (oldComp) oldComp.dispose();
-
-        const chartFat = echarts.init(domFat);
-        const chartComp = echarts.init(domComp);
-
-        const seriesFat = lojas.map((loja, idx) => ({
-            name: loja.nome,
-            type: 'bar',
-            stack: lojas.length > 1 ? 'total' : undefined,
-            data: loja.faturamento || [],
-            itemStyle: { color: MRK.series[idx % MRK.series.length] }
-        }));
-
-        const seriesComp = lojas.map((loja, idx) => ({
-            name: loja.nome,
-            type: 'bar',
-            stack: lojas.length > 1 ? 'total' : undefined,
-            data: loja.compras || [],
-            itemStyle: { color: MRK.series[idx % MRK.series.length] }
-        }));
-
-        const baseOption = (series) => ({
-            color: MRK.series,
-            legend: { top: 0, textStyle:{ color: MRK.black } },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                formatter: (params) => {
-                    let html = `<b>${params[0].axisValue}</b><br/>`;
-                    params.forEach(p => {
-                        html += `
-                            <span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:4px;border-radius:50%"></span>
-                            ${p.seriesName}: <b>R$ ${Number(p.value || 0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</b><br/>
-                        `;
-                    });
-                    return html;
-                }
-            },
-            grid: { left: '3%', right: '4%', bottom: '8%', top: 40, containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: labels,
-                axisLabel: { fontSize: 11, rotate: labels.length > 10 ? 35 : 0, color: MRK.black },
-                axisLine: { lineStyle: { color: MRK.black } }
-            },
-            yAxis: {
-                type: 'value',
-                axisLabel: { formatter: v => `R$ ${Number(v).toLocaleString('pt-BR')}`, color: MRK.black },
-                splitLine: { lineStyle: { color: MRK.gray } }
-            },
-            series
-        });
-
-        chartFat.setOption(baseOption(seriesFat));
-        chartComp.setOption(baseOption(seriesComp));
+        const config = (id, tipo) => {
+            const chart = echarts.init(document.getElementById(id));
+            const series = lojas.map((l, i) => ({
+                name: l.nome, type: 'bar', stack: 'total',
+                data: tipo === 'fat' ? l.faturamento : l.compras,
+                itemStyle: { color: MRK.series[i % MRK.series.length] }
+            }));
+            chart.setOption({
+                legend: { top: 0 }, tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: labels },
+                yAxis: { type: 'value' },
+                series
+            });
+        };
+        config('chartFaturamentoDiario', 'fat');
+        config('chartComprasDiario', 'comp');
     }
 
     function agregarProdutos(data) {
-        const agregados = {};
-        data.forEach(loja => {
-            (loja.produtos || []).forEach(prod => {
-                const nome = prod.name.trim();
-                if (!agregados[nome]) agregados[nome] = { nome, valor: 0 };
-                agregados[nome].valor += parseFloat(prod.value);
-            });
-        });
-        return Object.values(agregados)
-            .sort((a, b) => b.valor - a.valor)
-            .slice(0, 5);
+        const res = {};
+        data.forEach(l => (l.produtos || []).forEach(p => { res[p.name] = (res[p.name] || 0) + parseFloat(p.value); }));
+        return Object.entries(res).map(([nome, valor]) => ({nome, valor})).sort((a,b) => b.valor - a.valor).slice(0,5);
     }
 
     function agregarFornecedores(data) {
-        const agregados = {};
-        data.forEach(loja => {
-            (loja.fornecedores || []).forEach(f => {
-                const nome = (f.fornecedor || '').trim();
-                if (!agregados[nome]) agregados[nome] = { nome, valor: 0, qtd_notas: 0 };
-                agregados[nome].valor += parseFloat(f.valor_total || 0);
-                agregados[nome].qtd_notas += parseInt(f.qtd_notas || 0);
-            });
-        });
-        return Object.values(agregados)
-            .sort((a, b) => b.valor - a.valor)
-            .slice(0, 5);
+        const res = {};
+        data.forEach(l => (l.fornecedores || []).forEach(f => {
+            if(!res[f.fornecedor]) res[f.fornecedor] = {nome: f.fornecedor, valor: 0, qtd: 0};
+            res[f.fornecedor].valor += parseFloat(f.valor_total);
+            res[f.fornecedor].qtd += parseInt(f.qtd_notas);
+        }));
+        return Object.values(res).sort((a,b) => b.valor - a.valor).slice(0,5);
     }
 
     function renderChartTopProdutos(data) {
-        const chartDom = document.getElementById('chartTopProdutos');
-        if (!chartDom) return;
-
-        const old = echarts.getInstanceByDom(chartDom);
-        if (old) old.dispose();
-
-        const myChart = echarts.init(chartDom);
-
-        const nomes = data.map(item => item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome);
-        const valores = data.map(item => item.valor);
-
-        const option = {
-            color: MRK.series,
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                formatter: (params) => {
-                    const item = data[params[0].dataIndex];
-                    return `<b>${item.nome}</b><br>Compras: R$ ${item.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-                }
-            },
-            grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
-            xAxis: { type: 'value', axisLabel:{ color: MRK.black }, axisLine:{ lineStyle:{ color: MRK.black }} },
-            yAxis: {
-                type: 'category',
-                data: nomes,
-                axisLabel: { fontSize: 10, color: MRK.black },
-                inverse: true
-            },
-            series: [
-                {
-                    name: 'Compras',
-                    type: 'bar',
-                    data: valores,
-                    itemStyle: {
-                        borderRadius: [4, 4, 4, 4],
-                        color: (params) => MRK.series[params.dataIndex % MRK.series.length]
-                    }
-                }
-            ]
-        };
-
-        myChart.setOption(option);
+        const chart = echarts.init(document.getElementById('chartTopProdutos'));
+        chart.setOption({
+            tooltip: { trigger: 'axis' },
+            yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
+            xAxis: { type: 'value' },
+            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.blue } }]
+        });
     }
 
     function renderChartTopFornecedores(data) {
-        const chartDom = document.getElementById('chartTopFornecedores');
-        if (!chartDom) return;
-
-        const old = echarts.getInstanceByDom(chartDom);
-        if (old) old.dispose();
-
-        const myChart = echarts.init(chartDom);
-
-        const nomes = data.map(item => item.nome.length > 18 ? item.nome.slice(0, 18) + '...' : item.nome);
-        const valores = data.map(item => item.valor);
-
-        const option = {
-            color: MRK.series,
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                formatter: (params) => {
-                    const item = data[params[0].dataIndex];
-                    return `<b>${item.nome}</b><br>
-                            Total Comprado: R$ ${item.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})}<br>
-                            Qtd Notas: ${item.qtd_notas}`;
-                }
-            },
-            grid: { top: 10, bottom: 10, left: '3%', right: '4%', containLabel: true },
-            xAxis: { type: 'value', axisLabel:{ color: MRK.black }, axisLine:{ lineStyle:{ color: MRK.black }} },
-            yAxis: {
-                type: 'category',
-                data: nomes,
-                axisLabel: { fontSize: 10, color: MRK.black },
-                inverse: true
-            },
-            series: [
-                {
-                    name: 'Compras',
-                    type: 'bar',
-                    data: valores,
-                    itemStyle: {
-                        borderRadius: [4, 4, 4, 4],
-                        color: (params) => MRK.series[params.dataIndex % MRK.series.length]
-                    }
-                }
-            ]
-        };
-
-        myChart.setOption(option);
+        const chart = echarts.init(document.getElementById('chartTopFornecedores'));
+        chart.setOption({
+            tooltip: { trigger: 'axis' },
+            yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
+            xAxis: { type: 'value' },
+            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.green } }]
+        });
     }
 
-    function renderResumo(data) {
-        let totalFaturamento = 0;
-        let totalCompras = 0;
+    function resetarEstadoDashboard() {
+        resumoEstoqueGrupo = []; evolucaoCmvGrupo = []; cmvProdutosGrupo = []; topFornecedoresGrupo = [];
+    }
 
-        data.forEach(loja => {
-            totalFaturamento += parseBRL(loja.faturamento_bruto);
-            totalCompras += parseBRL(loja.total_compras);
+    function limparCharts() {
+        ['chartFaturamentoDiario','chartComprasDiario','chartTopProdutos','chartTopFornecedores'].forEach(id => {
+            const inst = echarts.getInstanceByDom(document.getElementById(id));
+            if (inst) inst.dispose();
         });
-
-        const percCompras = totalFaturamento > 0 ? (totalCompras / totalFaturamento) * 100 : 0;
-
-        animateValue('faturamentoBruto', 0, totalFaturamento, 1000, true);
-        animateValue('totalCompras', 0, totalCompras, 1000, true);
-        animateValue('percentualCompras', 0, percCompras, 1000, false, true);
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
-        document.getElementById('filtroLoja').addEventListener('change', aplicarFiltroLoja);
+        document.getElementById('filtroLoja').addEventListener('change', async () => {
+            await carregarNotasPendentes(); // Recarrega as notas da unidade específica
+            aplicarFiltroLoja();
+        });
         await carregarGrupoInicial();
         setRange('7dias');
     });

@@ -14,7 +14,7 @@ class UtilsController
         $body = curl_exec($ch);
         $err  = $body === false ? curl_error($ch) : null;
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        //curl_close($ch);
         return [$code ?: 0, $body ?: '', $err];
     }
 
