@@ -686,7 +686,7 @@ class BiController {
                     ':dataFechamento' => $mov['dataFechamento'],
                     ':dataContabil' => $mov['dataContabil']
                 ]);
-                
+
 
                 // Consumidores
                 $stmtDeleteConsumidores->execute([

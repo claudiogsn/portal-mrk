@@ -7,7 +7,7 @@
         <action>DashboardFaturamento</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>
-      <menuitem label="Estoque">
+      <menuitem label="Compras">
         <action>DashboardEstoque</action>
         <icon>fas:circle fa-fw</icon>
       </menuitem>
