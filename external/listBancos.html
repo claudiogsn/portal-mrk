@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Bancos / Formas de Pagamento</title>
+    <title>Gestão de Formas de Pagamento</title>
 
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
@@ -65,7 +65,7 @@
     <br>
     <div class="card">
         <div class="header">
-            <h2>Bancos / Formas de Pagamento</h2>
+            <h2>Formas de Pagamento</h2>
         </div>
         <div class="body">
 
@@ -78,10 +78,10 @@
                 </div>
                 <div class="col-md-4 text-right">
                     <button class="btn btn-info" id="btnImportarPadrao">
-                        <i class="fa fa-download"></i> Importar Bancos Padrão
+                        <i class="fa fa-download"></i> Importar Padrão
                     </button>
                     <button class="btn btn-success" id="btnNovoBanco">
-                        <i class="fa fa-plus"></i> Novo Banco
+                        <i class="fa fa-plus"></i> Novo
                     </button>
                 </div>
             </div>
@@ -111,7 +111,7 @@
         <div class="modal-content">
 
             <div class="modal-header">
-                <h4 class="modal-title">Cadastrar Banco / Forma de Pagamento</h4>
+                <h4 class="modal-title">Cadastrar Forma de Pagamento</h4>
             </div>
 
             <div class="modal-body">
@@ -156,7 +156,7 @@
         <div class="modal-content">
 
             <div class="modal-header">
-                <h4 class="modal-title">Editar Banco / Forma de Pagamento</h4>
+                <h4 class="modal-title">Editar Forma de Pagamento</h4>
             </div>
 
             <div class="modal-body">
@@ -251,7 +251,7 @@
                 tbody.append(`
                     <tr>
                         <td colspan="5" class="text-center">
-                            Nenhum banco/forma de pagamento cadastrado.<br>
+                            Nenhuma forma de pagamento cadastrado.<br>
                             <button class="btn btn-info btn-sm" id="btnImportarPadraoInline" style="margin-top:8px;">
                                 <i class="fa fa-download"></i> Importar Bancos Padrão
                             </button>
@@ -414,7 +414,7 @@
 
         const confirmacao = await Swal.fire({
             title: 'Confirmar alteração?',
-            text: 'Deseja salvar as alterações deste banco?',
+            text: 'Deseja salvar as alterações?',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sim, salvar',
@@ -444,10 +444,10 @@
             Swal.close();
 
             if (res.data && res.data.success === false) {
-                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar banco.', 'error');
+                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar.', 'error');
             }
 
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Banco atualizado com sucesso.', 'success');
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Atualizado com sucesso.', 'success');
             $('#modalEditarBanco').modal('hide');
             listarBancos();
         } catch (err) {
@@ -472,7 +472,7 @@
 
         const confirmacao = await Swal.fire({
             title: `Confirmar ${acaoTexto}?`,
-            text: `Deseja ${acaoTexto} o banco "${banco.nome}"?`,
+            text: `Deseja ${acaoTexto} - "${banco.nome}"?`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: `Sim, ${acaoTexto}`,
@@ -521,7 +521,7 @@
 
         const confirmacao = await Swal.fire({
             title: 'Excluir banco?',
-            text: `Deseja excluir definitivamente o banco "${nomeBanco}"? Esta ação não poderá ser desfeita.`,
+            text: `Deseja excluir definitivamente "${nomeBanco}"? Esta ação não poderá ser desfeita.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Sim, excluir',
@@ -545,10 +545,10 @@
             Swal.close();
 
             if (res.data && res.data.success === false) {
-                return Swal.fire('Atenção', res.data.message || 'Não foi possível excluir o banco.', 'warning');
+                return Swal.fire('Atenção', res.data.message || 'Não foi possível excluir ', 'warning');
             }
 
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Banco excluído com sucesso.', 'success');
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Excluído com sucesso.', 'success');
             listarBancos();
         } catch (err) {
             console.error(err);
@@ -559,7 +559,7 @@
     // Importar bancos padrão
     async function importarBancosPadrao() {
         const confirmacao = await Swal.fire({
-            title: 'Importar bancos padrão?',
+            title: 'Importar pagamentos padrão?',
             text: 'Isso irá criar (ou atualizar) as formas de pagamento padrão para esta unidade.',
             icon: 'question',
             showCancelButton: true,
@@ -584,14 +584,14 @@
             Swal.close();
 
             if (res.data && res.data.success === false) {
-                return Swal.fire('Erro', res.data.message || 'Erro ao importar bancos padrão.', 'error');
+                return Swal.fire('Erro', res.data.message || 'Erro ao importar padrão.', 'error');
             }
 
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Bancos padrão importados com sucesso.', 'success');
+            Swal.fire('Sucesso', (res.data && res.data.message) || 'Padrão importados com sucesso.', 'success');
             listarBancos();
         } catch (err) {
             console.error(err);
-            Swal.fire('Erro', 'Erro ao importar bancos padrão.', 'error');
+            Swal.fire('Erro', 'Erro ao importar padrão.', 'error');
         }
     }
 </script>

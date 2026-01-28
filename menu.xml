@@ -41,7 +41,7 @@
               </menuitem>
           </menu>
         </menuitem>
-        <menuitem label="Bancos">
+        <menuitem label="Formas de Pagamento">
             <action>ListarBancos</action>
             <icon>fas:circle fa-fw</icon>
         </menuitem>
