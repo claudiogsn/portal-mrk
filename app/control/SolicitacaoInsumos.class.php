@@ -8,12 +8,13 @@ class SolicitacaoInsumos extends TPage
 
         $username = TSession::getValue('userid');
         $token = TSession::getValue('sessionid');
+        $unit_id = TSession::getValue('userunitid');
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/solicitacaoInsumos.html?username={$username}&token={$token}";
+            $link = "http://localhost/portal-mrk/external/solicitacaoInsumos.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/solicitacaoInsumos.html?username={$username}&token={$token}";
+            $link = "https://portal.mrksolucoes.com.br/external/solicitacaoInsumos.html?username={$username}&token={$token}&unit_id={$unit_id}";
         }
 
                // ---- CONTAINER PRINCIPAL (TVBox) ----

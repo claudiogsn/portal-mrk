@@ -213,6 +213,7 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
+        const unit_id = urlParams.get('unit_id');
 
         // Função para carregar itens
         async function loadItems() {
@@ -335,7 +336,7 @@
                             method: 'calculateInsumosByItens',
                             token: token,
                             data: {
-                                system_unit_id: 9,
+                                system_unit_id: unit_id,
                                 itens: items,
                             }
                         });
