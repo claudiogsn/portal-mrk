@@ -221,7 +221,7 @@
                 const response = await axios.post(baseUrl, {
                     method: 'listItemVenda',
                     token: token,
-                    data: { unit_id: 9 }
+                    data: { unit_id: unit_id }
                 });
 
                 if (response.data.success) {
