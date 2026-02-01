@@ -5,18 +5,18 @@ require_once __DIR__ . '/../database/db.php';
 class FinanceiroPlanoController
 {
     /**
-     * Cria um plano de contas para uma unidade específica.
+     * Cria um plano de contas para uma unidade específica.
      * Espera em $data: system_unit_id, codigo, descricao
      */
     public static function createPlano($data): array
     {
         global $pdo;
 
-        // Validação básica
+        // Validação básica
         if (empty($data['system_unit_id']) || empty($data['codigo']) || empty($data['descricao'])) {
             return [
                 'success' => false,
-                'message' => 'Parâmetros obrigatórios: system_unit_id, codigo, descricao'
+                'message' => 'Parâmetros obrigatórios: system_unit_id, codigo, descricao'
             ];
         }
 
@@ -25,7 +25,7 @@ class FinanceiroPlanoController
         $descricao      = trim($data['descricao']);
 
         try {
-            // Verifica se já existe plano com esse código para a unidade
+            // Verifica se já existe plano com esse código para a unidade
             $check = $pdo->prepare("
                 SELECT id 
                 FROM financeiro_plano
@@ -41,11 +41,11 @@ class FinanceiroPlanoController
             if ($check->fetch()) {
                 return [
                     'success' => false,
-                    'message' => 'Já existe um plano com este código para esta unidade.'
+                    'message' => 'Já existe um plano com este código para esta unidade.'
                 ];
             }
 
-            // Insere novo plano (ativo = 1 por padrão no banco)
+            // Insere novo plano (ativo = 1 por padrão no banco)
             $stmt = $pdo->prepare("
                 INSERT INTO financeiro_plano (system_unit_id, codigo, descricao)
                 VALUES (:unit, :codigo, :descricao)
@@ -78,7 +78,7 @@ class FinanceiroPlanoController
     }
 
     /**
-     * Atualiza somente a descrição de um plano (não altera código nem unidade).
+     * Atualiza somente a descrição de um plano (não altera código nem unidade).
      */
     public static function updatePlano($id, $data): array
     {
@@ -87,7 +87,7 @@ class FinanceiroPlanoController
         if (!isset($data['descricao']) || trim($data['descricao']) === '') {
             return [
                 'success' => false,
-                'message' => 'Campo descricao é obrigatório para atualização.'
+                'message' => 'Campo descricao é obrigatório para atualização.'
             ];
         }
 
@@ -112,10 +112,10 @@ class FinanceiroPlanoController
                 ];
             }
 
-            // Nenhuma linha alterada — pode ser porque a descrição é igual à anterior
+            // Nenhuma linha alterada — pode ser porque a descrição é igual à anterior
             return [
                 'success' => true,
-                'message' => 'Nenhuma alteração realizada (descrição igual à atual).'
+                'message' => 'Nenhuma alteração realizada (descrição igual à atual).'
             ];
         } catch (Exception $e) {
             return [
@@ -155,7 +155,7 @@ class FinanceiroPlanoController
 
             return [
                 'success' => false,
-                'message' => 'Nenhuma alteração realizada (plano já pode estar inativo ou não existe).'
+                'message' => 'Nenhuma alteração realizada (plano já pode estar inativo ou não existe).'
             ];
         } catch (Exception $e) {
             return [
@@ -189,7 +189,7 @@ class FinanceiroPlanoController
     }
 
     /**
-     * Mantido só por compatibilidade, se ainda existir código chamando por ID.
+     * Mantido só por compatibilidade, se ainda existir código chamando por ID.
      */
     public static function getPlanoById($id)
     {
@@ -203,7 +203,7 @@ class FinanceiroPlanoController
     }
 
     /**
-     * Exclui plano definitivamente, mas só se nunca foi usado em nenhuma conta.
+     * Exclui plano definitivamente, mas só se nunca foi usado em nenhuma conta.
      */
     public static function deletePlano($system_unit_id, $codigo): array
     {
@@ -213,83 +213,100 @@ class FinanceiroPlanoController
             $system_unit_id = (int)$system_unit_id;
             $codigo = trim($codigo);
 
-            // 1) Busca dados do plano pelo system_unit_id + codigo
-            $stmtPlano = $pdo->prepare("
-            SELECT id, system_unit_id, codigo
-            FROM financeiro_plano
-            WHERE system_unit_id = :unit
-              AND codigo = :codigo
+            // Define o padrão de busca hierárquica (Ex: '0101%')
+            $pattern = $codigo . '%';
+
+            // Iniciamos uma transação para garantir integridade
+            $pdo->beginTransaction();
+
+            // 1) Verifica se o plano "raiz" da exclusão existe (opcional, mas bom para UX)
+            $stmtExist = $pdo->prepare("
+            SELECT id 
+            FROM financeiro_plano 
+            WHERE system_unit_id = :unit 
+              AND codigo = :codigo 
             LIMIT 1
         ");
-            $stmtPlano->execute([
-                ':unit'   => $system_unit_id,
-                ':codigo' => $codigo
-            ]);
-            $plano = $stmtPlano->fetch(PDO::FETCH_ASSOC);
+            $stmtExist->execute([':unit' => $system_unit_id, ':codigo' => $codigo]);
 
-            if (!$plano) {
+            if ($stmtExist->rowCount() === 0) {
+                $pdo->rollBack();
                 return [
                     'success' => false,
-                    'message' => 'Plano não encontrado para esta unidade e código.'
+                    'message' => 'Plano de contas não encontrado.'
                 ];
             }
 
-            // 2) Verifica se existe alguma conta usando esse plano
-            // Ajuste o nome da tabela/campo se forem diferentes
+            // 2) Verifica se existe alguma conta usando este plano OU seus descendentes
+            // Selecionamos DISTINCT para saber exatamente quais códigos estão travando a exclusão
             $stmtCheck = $pdo->prepare("
-            SELECT COUNT(*) AS total
+            SELECT DISTINCT plano_contas
             FROM financeiro_conta
             WHERE system_unit_id = :unit
-              AND plano_contas = :codigo
+              AND plano_contas LIKE :pattern
         ");
-            $stmtCheck->execute([
-                ':unit'   => $system_unit_id,
-                ':codigo' => $codigo
-            ]);
-            $row = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-            $totalUsos = (int)($row['total'] ?? 0);
 
-            if ($totalUsos > 0) {
+            $stmtCheck->execute([
+                ':unit'    => $system_unit_id,
+                ':pattern' => $pattern
+            ]);
+
+            $planosEmUso = $stmtCheck->fetchAll(PDO::FETCH_COLUMN);
+
+            // Se houver qualquer resultado, significa que a hierarquia tem movimentação
+            if (count($planosEmUso) > 0) {
+                $pdo->rollBack();
+
+                // Formata a lista de planos para mostrar na mensagem
+                $listaPlanos = implode(', ', $planosEmUso);
+
                 return [
                     'success' => false,
-                    'message' => 'Este plano já foi utilizado em lançamentos. Não é possível excluir. Inative o plano em vez disso.'
+                    'message' => "Não é possível excluir. Os seguintes planos (ou descendentes) possuem movimentação financeira: [ $listaPlanos ]. Inative-os se necessário."
                 ];
             }
 
-            // 3) Se não tem uso, pode excluir
+            // 3) Se não tem uso na hierarquia, exclui TUDO (o pai e todos os filhos/netos)
             $stmtDel = $pdo->prepare("
             DELETE FROM financeiro_plano
             WHERE system_unit_id = :unit
-              AND codigo = :codigo
-            LIMIT 1
+              AND codigo LIKE :pattern
         ");
 
             $stmtDel->execute([
-                ':unit'   => $system_unit_id,
-                ':codigo' => $codigo
+                ':unit'    => $system_unit_id,
+                ':pattern' => $pattern
             ]);
 
-            if ($stmtDel->rowCount() > 0) {
+            $deletedCount = $stmtDel->rowCount();
+
+            // Confirma a exclusão
+            $pdo->commit();
+
+            if ($deletedCount > 0) {
                 return [
                     'success' => true,
-                    'message' => 'Plano excluído com sucesso.'
+                    'message' => "Sucesso! Foram excluídos $deletedCount plano(s) de contas (hierarquia completa)."
                 ];
             }
 
             return [
                 'success' => false,
-                'message' => 'Falha ao excluir plano.'
+                'message' => 'Nenhum plano foi excluído (erro inesperado).'
             ];
+
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             return [
                 'success' => false,
                 'message' => 'Erro ao excluir plano: ' . $e->getMessage()
             ];
         }
     }
-
     /**
-     * Lista os planos de uma unidade, apenas ativos, ordenados por código ASC.
+     * Lista os planos de uma unidade, apenas ativos, ordenados por código ASC.
      */
     public static function listPlanos($system_unit_id): array
     {
@@ -313,19 +330,19 @@ class FinanceiroPlanoController
         global $pdo;
 
         try {
-            // Obtém o custom_code a partir do system_unit_id
+            // Obtém o custom_code a partir do system_unit_id
             $stmt = $pdo->prepare("SELECT custom_code AS estabelecimento FROM system_unit WHERE id = :id");
             $stmt->bindParam(':id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$result) {
-                throw new Exception("System Unit ID inválido ou não encontrado.");
+                throw new Exception("System Unit ID inválido ou não encontrado.");
             }
 
             $estabelecimento = $result['estabelecimento'];
 
-            // Chama o método da API para buscar os planos
+            // Chama o método da API para buscar os planos
             $planos = FinanceiroApiMenewController::fetchFinanceiroPlano($estabelecimento);
 
             if (!$planos['success']) {
@@ -341,7 +358,7 @@ class FinanceiroPlanoController
                         ativo     = 1
                 ");
 
-                // Exemplo: prefixo 0 no código vindo da API (mantido do seu código original)
+                // Exemplo: prefixo 0 no código vindo da API (mantido do seu código original)
                 $plano_contas = '0' . $plano['codigo'];
 
                 $stmt->execute([
