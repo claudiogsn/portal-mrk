@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Inclusão Financeiro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        body { background: #fff; padding: 15px; overflow-x: hidden; }
+        .select2-container { width: 100% !important; }
+        .text-right { text-align: right; }
+        .label-danger { background-color: #f44336; color: white; padding: 2px 5px; border-radius: 3px; }
+        hr { margin-top: 15px; margin-bottom: 15px; border-top: 1px solid #eee; }
+        .form-control { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <input type="hidden" id="finFornecedorId">
+    <input type="hidden" id="finChaveAcesso">
+
+    <div class="row">
+        <div class="col-md-12">
+            <label>Fornecedor</label>
+            <input type="text" id="finFornecedorNome" class="form-control" readonly>
+        </div>
+        <div class="col-md-4">
+            <label>Documento</label>
+            <input type="text" id="finDocumento" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label>Emissão</label>
+            <input type="date" id="finEmissao" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label>Vencimento Inicial</label>
+            <input type="date" id="finVencimento" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label>Valor Total</label>
+            <input type="text" id="finValor" class="form-control">
+        </div>
+        <div class="col-md-4">
+            <label>Parcelas</label>
+            <input type="number" id="finParcelas" class="form-control" min="1" value="1">
+        </div>
+        <div class="col-md-6">
+            <label>Forma de Pagamento</label>
+            <select id="finForma" class="form-control"></select>
+        </div>
+        <div class="col-md-6">
+            <label>Plano de Contas</label>
+            <select id="finPlano" class="form-control"></select>
+        </div>
+        <div class="col-md-12" style="margin-top:10px;">
+            <label>Observação</label>
+            <textarea id="finObs" class="form-control" rows="2"></textarea>
+        </div>
+    </div>
+
+    <hr>
+    <div class="table-responsive">
+        <table class="table table-striped" id="tblParcelas">
+            <thead>
+            <tr>
+                <th style="width: 90px;">Parcela</th>
+                <th>Vencimento</th>
+                <th>Valor</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <small id="avisoParcelas" class="text-danger" style="display:none;">A soma das parcelas difere do valor total da nota.</small>
+        </div>
+        <div class="col-md-6 text-right">
+            <strong>Total das parcelas: <span id="finTotalParcelas">R$ 0,00</span></strong>
+        </div>
+    </div>
+
+    <div class="row" style="margin-top: 25px; margin-bottom: 20px;">
+        <div class="col-md-12 text-right">
+            <button type="button" class="btn btn-primary btn-lg" id="btnGravarFinanceiro">
+                <i class="fa fa-save"></i> Gravar Lançamentos
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unit_id = urlParams.get('unit_id');
+    const chave_url = urlParams.get('chave_acesso');
+    const id_url = urlParams.get('id');
+    const fornecedor_url = decodeURIComponent(urlParams.get('fornecedor') || '');
+
+    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+    const baseUrlFinanceiro = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    $(document).ready(function() {
+        if(fornecedor_url) {
+            $('#finFornecedorNome').val(fornecedor_url);
+        }
+        init();
+
+        // Listeners originais
+        $('#finParcelas, #finVencimento').on('input change', function() {
+            rebuildParcelasGrid($('#finParcelas').val(), $('#finVencimento').val());
+        });
+
+        $(document).on('input', '.parc-valor', recalcTotaisParcelas);
+
+        $('#btnGravarFinanceiro').click(gravarFinanceiro);
+    });
+
+    async function init() {
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+        await carregarPlanosFinanceiro();
+        await carregarDadosNota();
+        Swal.close();
+    }
+
+    // --- LÓGICA DE NEGÓCIO ORIGINAL ---
+
+    function toNumberBR(v) {
+        if (v === null || v === undefined) return 0;
+        if (typeof v === 'number') return v;
+        let s = String(v).trim().replace(/[^\d.,-]/g, '');
+        if (s.indexOf(',') >= 0) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        }
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function toBRL(n) {
+        return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function addDaysISO(dateStr, days) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr.replace(' ', 'T'));
+        if (isNaN(d)) return '';
+        d.setDate(d.getDate() + days);
+        return d.toISOString().substr(0,10);
+    }
+
+    function sortPlanosHierarquico(lista) {
+        const planos = lista.slice();
+        const grupos = {};
+        planos.forEach(p => {
+            const codigo = String(p.codigo || '');
+            if (!codigo) return;
+            const raiz = codigo.substring(0, 2);
+            if (!grupos[raiz]) grupos[raiz] = [];
+            grupos[raiz].push(p);
+        });
+        const raizesOrdenadas = Object.keys(grupos).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const ordenado = [];
+        raizesOrdenadas.forEach(raiz => {
+            const arr = grupos[raiz];
+            arr.sort((a, b) => {
+                const ca = String(a.codigo || '');
+                const cb = String(b.codigo || '');
+                if (ca.length !== cb.length) return ca.length - cb.length;
+                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
+            });
+            ordenado.push(...arr);
+        });
+        return ordenado;
+    }
+
+    async function carregarPlanosFinanceiro() {
+        try {
+            const res = await axios.post(baseUrlFinanceiro, {
+                method: 'listPlanos',
+                token,
+                data: { system_unit_id: Number(unit_id) }
+            });
+            let lista = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+            lista = sortPlanosHierarquico(lista);
+            const $sel = $('#finPlano').empty().append('<option value="">Selecione...</option>');
+            lista.forEach(p => {
+                const nivel = Math.floor((String(p.codigo).length - 2) / 2);
+                const indent = '\u00A0'.repeat(Math.max(0, nivel) * 4);
+                $sel.append(new Option(`${indent}${p.codigo} - ${p.descricao || p.nome || ''}`, p.codigo));
+            });
+            $sel.select2({ placeholder: 'Selecione...' });
+        } catch (e) { console.error(e); }
+    }
+
+    async function carregarDadosNota() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getNotaFinanceiroPayload',
+                token,
+                data: { system_unit_id: Number(unit_id), chave_acesso: chave_url, id: id_url }
+            });
+
+            if (res.data.success) {
+                const d = res.data.data;
+                $('#finFornecedorId').val(d.fornecedor_id);
+                $('#finChaveAcesso').val(chave_url);
+                // $('#finFornecedorNome').val(d.fornecedor_razao || '');
+                $('#finDocumento').val(d.documento || '');
+                $('#finEmissao').val(d.emissao || '');
+                $('#finValor').val(Number(d.valor_total || 0).toFixed(2).replace('.', ','));
+
+                const $forma = $('#finForma').empty().append('<option value="">Selecione...</option>');
+                const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (d.formas_de_pagamento || []);
+                formas.forEach(f => $forma.append(new Option(f.descricao || f.nome, f.id)));
+                $forma.select2();
+
+                let qtd = 1, v0 = '';
+                if(d.duplicatas?.length > 0) {
+                    qtd = d.duplicatas.length;
+                    v0 = (d.duplicatas[0].vencimento || '').substring(0, 10);
+                }
+                $('#finParcelas').val(qtd);
+                $('#finVencimento').val(v0);
+                rebuildParcelasGrid(qtd, v0);
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function rebuildParcelasGrid(qtd, vencIni) {
+        const $tb = $('#tblParcelas tbody').empty();
+        const n = Math.max(1, parseInt(qtd || 1));
+        const total = toNumberBR($('#finValor').val());
+
+        // Cálculo de distribuição de centavos original
+        const cents = Math.round(total * 100);
+        const baseCents = Math.floor(cents / n);
+        let restoCents = cents - (baseCents * n);
+
+        for (let i = 0; i < n; i++) {
+            let valorCents = baseCents;
+            if (restoCents > 0) {
+                valorCents += 1;
+                restoCents--;
+            }
+            const valorFinal = valorCents / 100;
+            const venc = vencIni ? addDaysISO(vencIni, i * 30) : '';
+
+            $tb.append(`<tr>
+                <td class="text-center">${i + 1}/${n}</td>
+                <td><input type="date" class="form-control parc-venc" value="${venc}"></td>
+                <td><input type="text" class="form-control parc-valor" value="${toBRL(valorFinal).replace('R$','').trim()}"></td>
+            </tr>`);
+        }
+        recalcTotaisParcelas();
+    }
+
+    function recalcTotaisParcelas() {
+        let soma = 0;
+        $('.parc-valor').each(function() {
+            const $inp = $(this);
+            const num = toNumberBR($inp.val());
+            $inp.off('blur').on('blur', function(){
+                $(this).val( toBRL(toNumberBR($(this).val())).replace('R$','').trim() );
+            });
+            soma += num;
+        });
+        $('#finTotalParcelas').text(toBRL(soma));
+        const totalNota = toNumberBR($('#finValor').val());
+        Math.abs(soma - totalNota) >= 0.01 ? $('#avisoParcelas').show() : $('#avisoParcelas').hide();
+    }
+
+    async function gravarFinanceiro() {
+        try {
+            const linhas = [];
+            $('#tblParcelas tbody tr').each(function(i) {
+                linhas.push({
+                    indice: i + 1,
+                    vencimento: $(this).find('.parc-venc').val(),
+                    valor: toNumberBR($(this).find('.parc-valor').val())
+                });
+            });
+
+            if(!$('#finPlano').val() || !$('#finForma').val()) {
+                return Swal.fire('Atenção', 'Selecione o Plano e a Forma de Pagamento.', 'warning');
+            }
+
+            Swal.fire({ title: 'Gravando...', didOpen: () => Swal.showLoading() });
+
+            const contas = linhas.map(ln => ({
+                fornecedor_id: $('#finFornecedorId').val(),
+                documento: `${$('#finDocumento').val()}-${String(ln.indice).padStart(2,'0')}`,
+                emissao: $('#finEmissao').val(),
+                vencimento: ln.vencimento,
+                valor: ln.valor.toFixed(2).replace('.', ','),
+                plano_contas: $('#finPlano').val(),
+                forma_pagamento_id: $('#finForma').val(),
+                obs_extra: $('#finObs').val(),
+                chave_acesso: $('#finChaveAcesso').val()
+            }));
+
+            const res = await axios.post(baseUrlFinanceiro, {
+                method: 'lancarNotaNoFinanceiroContaLote',
+                token,
+                data: { system_unit_id: Number(unit_id), contas }
+            });
+
+            if(res.data.success) {
+                Swal.fire('Sucesso', 'Lançamentos realizados!', 'success').then(() => {
+                    window.parent.$('#modalFinanceiroIframe').modal('hide');
+                });
+            } else {
+                Swal.fire('Erro', res.data.error || 'Erro ao gravar', 'error');
+            }
+        } catch (e) { Swal.fire('Erro', 'Falha na comunicação', 'error'); }
+    }
+</script>
+</body>
+</html>

@@ -202,8 +202,8 @@ class NotaFiscalEntradaController {
 
             // === Formas de pagamento (bancos) da unidade ===
             $sqlBancos = "
-            SELECT id, codigo, nome, descricao, ativos
-            FROM financeiro_banco
+            SELECT id, codigo, nome, ativos
+            FROM financeiro_forma_pagamento
             WHERE system_unit_id = :unit
               AND ativos = 1
             ORDER BY codigo, nome

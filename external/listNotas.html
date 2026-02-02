@@ -15,269 +15,48 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
-
-        /* Botões do header (Importar / Entrada Avulsa) maiores e centralizados */
-        .btn-header-right .btn-header-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px 18px;       /* aumenta altura */
-            font-size: 14px;          /* texto um pouco maior */
-            line-height: 1.2;
-        }
-
-        /* Ícone um tiquinho maior */
-        .btn-header-right .btn-header-icon i {
-            font-size: 15px;
-        }
-
-
-
-        /* Wrapper para campo Chave + botão Listar, com espaçamento entre eles */
-        .chave-wrapper {
-            display: flex;
-            align-items: flex-end; /* alinha pela base do input */
-            gap: 10px;             /* espaço entre input e botão */
-        }
-
-        /* No mobile, empilha um embaixo do outro */
-        @media (max-width: 768px) {
-            .chave-wrapper {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .btn-header-right .btn-header-icon {
-                width: 100%;       /* botões do header ocupam a largura toda se quiser */
-            }
-        }
-
-
-        /* Deixar o modal de Importação mais largo no desktop */
-        #modalImportacao .modal-dialog {
-            width: 95% !important;     /* ocupa 95% da largura da tela */
-            max-width: 1400px;         /* limite opcional */
-            margin: 30px auto;         /* centralizado */
-        }
-
-        /* Em telas menores continua ocupando praticamente tudo */
-        @media (max-width: 768px) {
-            #modalImportacao .modal-dialog {
-                width: 100% !important;
-                margin: 10px;
-            }
-        }
-
-        /* fullscreen já existe, complemento para garantir 100vh do iframe */
+        /* Seus estilos originais mantidos */
+        .btn-header-right .btn-header-icon { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 18px; font-size: 14px; line-height: 1.2; }
+        .btn-header-right .btn-header-icon i { font-size: 15px; }
+        .chave-wrapper { display: flex; align-items: flex-end; gap: 10px; }
+        @media (max-width: 768px) { .chave-wrapper { flex-direction: column; align-items: stretch; } .btn-header-right .btn-header-icon { width: 100%; } }
+        #modalImportacao .modal-dialog { width: 95% !important; max-width: 1400px; margin: 30px auto; }
+        @media (max-width: 768px) { #modalImportacao .modal-dialog { width: 100% !important; margin: 10px; } }
         .modal-iframe-full { width:100%; height:calc(100vh - 56px); border:0; }
-        /* (fallback para headers maiores/menores) */
-        @media (max-width: 768px){
-            .modal-iframe-full { height:calc(100vh - 52px); }
-        }
-
+        @media (max-width: 768px){ .modal-iframe-full { height:calc(100vh - 52px); } }
         .select2-container { width: 100% !important; }
         .select2-dropdown { z-index: 9999; }
-
         .label-success { background-color: #4caf50; }
         .orange { color: orange; font-size: 16px; }
-
-        /* Animação de sino */
-        @keyframes swing {
-            0% { transform: rotate(0deg); }
-            25% { transform: rotate(10deg); }
-            50% { transform: rotate(-10deg); }
-            75% { transform: rotate(6deg); }
-            100% { transform: rotate(0deg); }
-        }
+        @keyframes swing { 0% { transform: rotate(0deg); } 25% { transform: rotate(10deg); } 50% { transform: rotate(-10deg); } 75% { transform: rotate(6deg); } 100% { transform: rotate(0deg); } }
         .sino-animado { display: inline-block; animation: swing 1s infinite; }
-
-        /* Cards KPI */
-        .kpi-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 16px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .kpi-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .kpi-value {
-            font-size: 22px;
-            font-weight: 700;
-        }
-
-        .kpi-label {
-            color: #666;
-            margin-bottom: 6px;
-        }
-
-        /* Temas */
-        .kpi.orange {
-            background: #fff3e0;
-            border-color: #ffe0b2;
-            color: #ef6c00;
-        }
-
-        .kpi.blue {
-            background: #e3f2fd;
-            border-color: #bbdefb;
-            color: #1565c0;
-        }
-
-        /* Botões dentro do card seguem cor do tema */
-        .kpi.orange .btn {
-            background-color: #ef6c00;
-            border-color: #ef6c00;
-            color: #fff;
-        }
-
-        .kpi.blue .btn {
-            background-color: #1565c0;
-            border-color: #1565c0;
-            color: #fff;
-        }
-
-        /* Modal Fullscreen */
-        .modal-fullscreen {
-            max-width: 100% !important;
-            width: 100% !important;
-            height: 100% !important;
-            margin: 0 !important;
-        }
-
-        .modal-fullscreen .modal-content {
-            height: 100%;
-            border: 0;
-            border-radius: 0;
-        }
-
-        .modal-fullscreen .modal-body {
-            overflow-y: auto;
-        }
+        .kpi-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+        .kpi-row { display: flex; align-items: center; justify-content: space-between; }
+        .kpi-value { font-size: 22px; font-weight: 700; }
+        .kpi-label { color: #666; margin-bottom: 6px; }
+        .kpi.orange { background: #fff3e0; border-color: #ffe0b2; color: #ef6c00; }
+        .kpi.blue { background: #e3f2fd; border-color: #bbdefb; color: #1565c0; }
+        .kpi.orange .btn { background-color: #ef6c00; border-color: #ef6c00; color: #fff; }
+        .kpi.blue .btn { background-color: #1565c0; border-color: #1565c0; color: #fff; }
+        .modal-fullscreen { max-width: 100% !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
+        .modal-fullscreen .modal-content { height: 100%; border: 0; border-radius: 0; }
+        .modal-fullscreen .modal-body { overflow-y: auto; }
         .form-control { margin-bottom: 10px; }
-        .label-success { background-color: #4caf50; }
         .label-danger { background-color: #f44336; }
-        .modal-iframe {
-            width: 100%;
-            height: 80vh;
-            border: none;
-        }
-
-        /* Escopo só para este modal */
-        #modalEntradaEstoque .modal-dialog {
-            max-width: 100% !important;
-            width: 100% !important;
-            height: 100%;
-            margin: 0;
-        }
-        #modalEntradaEstoque .modal-content {
-            height: 100vh;              /* ocupa a viewport inteira */
-            display: flex;              /* para o body crescer corretamente */
-            flex-direction: column;
-            border: 0;
-            border-radius: 0;
-        }
-        #modalEntradaEstoque .modal-header,
-        #modalEntradaEstoque .modal-footer {
-            flex: 0 0 auto;             /* tamanhos naturais */
-        }
-        #modalEntradaEstoque .modal-body {
-            flex: 1 1 auto;             /* ocupa o restante */
-            padding: 0;                 /* sem padding pra não dar barra extra */
-            overflow: hidden;           /* scroll fica dentro do iframe */
-        }
-        #modalEntradaEstoque .modal-iframe-full {
-            width: 100%;
-            height: 100%;               /* preenche o body inteiro */
-            border: 0;
-            display: block;
-        }
-
-        /* X do modal sem borda/círculo, apenas o glifo com brilho */
-        #modalEntradaEstoque .modal-header .close.close-x-red {
-            opacity: 1;                    /* ignora fade padrão */
-            background: transparent;       /* sem fundo */
-            border: none;                  /* sem contorno */
-            border-radius: 0;              /* nada de bola */
-            box-shadow: none;              /* sem sombra de caixa */
-
-            color: #e53935;                /* vermelho do X */
-            font-size: 28px;               /* maior */
-            line-height: 1;                /* compacta */
-            padding: 6px;                  /* área de clique confortável */
-            width: auto;
-            height: auto;
-            text-shadow:
-                    0 0 6px rgba(229, 57, 53, .6),
-                    0 0 12px rgba(229, 57, 53, .4);  /* glow só no X */
-
-            transition: transform .15s ease, text-shadow .15s ease;
-            cursor: pointer;
-        }
-
-        /* hover: cresce um pouco e intensifica o brilho (sem círculo) */
-        #modalEntradaEstoque .modal-header .close.close-x-red:hover,
-        #modalEntradaEstoque .modal-header .close.close-x-red:focus {
-            transform: scale(1.12);
-            text-shadow:
-                    0 0 8px rgba(229, 57, 53, .8),
-                    0 0 18px rgba(229, 57, 53, .55);
-            outline: none;
-        }
-
-        /* Header flex: título à esquerda, ações à direita */
-        .header-flex {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        @media (max-width: 768px) {
-            .header-flex {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-        /* Faz as colunas da linha de filtros terem a mesma altura
-   e alinha o conteúdo na base */
-        #rowFiltros2 .col-md-4,
-        #rowFiltros2 .col-md-5,
-        #rowFiltros2 .col-md-3 {
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* A coluna do botão empurra o botão pra baixo */
-        #rowFiltros2 .col-md-3 {
-            justify-content: flex-end;
-        }
-
-        /* Botão Listar Notas: altura/centralização e ajuste fino vertical */
-        .btn-listar-notas {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 10px 18px;
-            font-size: 14px;
-            line-height: 1.2;
-
-            margin-top: 12px; /* <- ajusta a “descida” do botão */
-        }
-
-        .btn-listar-notas i {
-            font-size: 15px;
-        }
-
-
+        .modal-iframe { width: 100%; height: 80vh; border: none; }
+        #modalEntradaEstoque .modal-dialog { max-width: 100% !important; width: 100% !important; height: 100%; margin: 0; }
+        #modalEntradaEstoque .modal-content { height: 100vh; display: flex; flex-direction: column; border: 0; border-radius: 0; }
+        #modalEntradaEstoque .modal-header, #modalEntradaEstoque .modal-footer { flex: 0 0 auto; }
+        #modalEntradaEstoque .modal-body { flex: 1 1 auto; padding: 0; overflow: hidden; }
+        #modalEntradaEstoque .modal-iframe-full { width: 100%; height: 100%; border: 0; display: block; }
+        #modalEntradaEstoque .modal-header .close.close-x-red { opacity: 1; background: transparent; border: none; border-radius: 0; box-shadow: none; color: #e53935; font-size: 28px; line-height: 1; padding: 6px; width: auto; height: auto; text-shadow: 0 0 6px rgba(229, 57, 53, .6), 0 0 12px rgba(229, 57, 53, .4); transition: transform .15s ease, text-shadow .15s ease; cursor: pointer; }
+        #modalEntradaEstoque .modal-header .close.close-x-red:hover { transform: scale(1.12); text-shadow: 0 0 8px rgba(229, 57, 53, .8), 0 0 18px rgba(229, 57, 53, .55); outline: none; }
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        @media (max-width: 768px) { .header-flex { flex-direction: column; align-items: flex-start; } }
+        #rowFiltros2 .col-md-4, #rowFiltros2 .col-md-5, #rowFiltros2 .col-md-3 { display: flex; flex-direction: column; }
+        #rowFiltros2 .col-md-3 { justify-content: flex-end; }
+        .btn-listar-notas { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; font-size: 14px; line-height: 1.2; margin-top: 12px; }
+        .btn-listar-notas i { font-size: 15px; }
     </style>
 </head>
 <body class="theme-blue">
@@ -285,12 +64,7 @@
     <br>
     <div class="card">
         <div class="header header-flex">
-            <!-- Esquerda: título -->
-            <h2 style="margin: 0;">
-                Notas de Entrada
-            </h2>
-
-            <!-- Direita: botões separados -->
+            <h2 style="margin: 0;">Notas de Entrada</h2>
             <div class="btn-header-right">
                 <button type="button" class="btn btn-primary btn-header-icon" id="btnAbrirImportacao">
                     <i class="fa fa-file-import"></i> Importar Notas
@@ -302,7 +76,6 @@
         </div>
 
         <div class="body">
-            <!-- Filtros -->
             <div class="row">
                 <div class="col-md-2">
                     <label>Data Inicial</label>
@@ -356,8 +129,6 @@
                 </div>
             </div>
 
-
-
             <div class="row" id="rowKpis" style="margin-top:10px;">
                 <div class="col-md-4">
                     <div class="kpi-card kpi orange">
@@ -387,7 +158,6 @@
                 </div>
             </div>
 
-            <!-- Grid -->
             <div class="table-responsive mt-3">
                 <table class="table table-striped table-hover" id="tabelaNotas">
                     <thead>
@@ -399,7 +169,7 @@
                         <th>Chave de Acesso</th>
                         <th>CPF/CNPJ</th>
                         <th>Valor Nota</th>
-                        <th>Tipo</th> <!-- NOVO -->
+                        <th>Tipo</th>
                         <th>Estoque</th>
                         <th>Financeiro</th>
                         <th>Data Entrada</th>
@@ -412,7 +182,6 @@
     </div>
 </div>
 
-<!-- Modal de Importação -->
 <div class="modal fade" id="modalImportacao" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -427,101 +196,20 @@
     </div>
 </div>
 
-<!-- Modal Inclusão no Contas a Pagar -->
-<div class="modal fade" id="modalFinanceiro" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="modalFinanceiroIframe" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
-            <div class="modal-header" style="border-bottom: 1px solid #eee;">
+            <div class="modal-header">
                 <h4 class="modal-title">Inclusão no Contas a Pagar</h4>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-
-            <div class="modal-body">
-                <input type="hidden" id="finFornecedorId">
-                <input type="hidden" id="finChaveAcesso">
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <label>Fornecedor</label>
-                        <input type="text" id="finFornecedorNome" class="form-control" readonly>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label>Documento</label>
-                        <input type="text" id="finDocumento" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                        <label>Emissão</label>
-                        <input type="date" id="finEmissao" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                        <label>Vencimento Inicial</label>
-                        <input type="date" id="finVencimento" class="form-control">
-                    </div>
-
-                    <div class="col-md-4">
-                        <label>Valor Total</label>
-                        <input type="text" id="finValor" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                        <label>Parcelas</label>
-                        <input type="number" id="finParcelas" class="form-control" min="1" step="1" value="1">
-                    </div>
-
-                    <div class="col-md-6">
-                        <label>Forma de Pagamento</label>
-                        <select id="finForma" class="form-control"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label>Classificação Contábil (Plano de Contas)</label>
-                        <select id="finPlano" class="form-control"></select>
-                    </div>
-
-                    <div class="col-md-12" id="grupoObservacao" style="margin-top:18px;">
-                        <label>Observação</label>
-                        <textarea id="finObs" class="form-control" rows="2"></textarea>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div class="table-responsive">
-                    <table class="table table-striped" id="tblParcelas">
-                        <thead>
-                        <tr>
-                            <th style="width: 90px;">Parcela</th>
-                            <th style="width: 200px;">Vencimento</th>
-                            <th style="width: 220px;">Valor</th>
-                        </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <br>
-                <div class="row" style="margin-top:8px;">
-                    <div class="col-md-6">
-                        <small id="avisoParcelas" class="text-danger" style="display:none;">
-                            A soma das parcelas difere do valor total da nota.
-                        </small>
-                    </div>
-                    <div class="col-md-6 text-right">
-                        <strong>Total das parcelas: <span id="finTotalParcelas">R$ 0,00</span></strong>
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="modal-footer" style="border-top: 1px solid #eee;">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" id="btnGravarFinanceiro">
-                    <i class="fa fa-save"></i> Gravar
-                </button>
+            <div class="modal-body p-0">
+                <iframe id="iframeFinanceiro" style="width:100%; height:85vh; border:none; display:block;"></iframe>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Entrada no Estoque (FULLSCREEN) -->
 <div class="modal fade" id="modalEntradaEstoque" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
@@ -542,10 +230,6 @@
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    const baseUrlFinanceiro = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
-        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
-
     const baseUrlRedirect = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br'
         : 'http://localhost/portal-mrk';
@@ -554,12 +238,9 @@
     const token = urlParams.get('token');
     const unit_id = urlParams.get('unit_id');
     const username = urlParams.get('username') || '';
-    const modelo = { tag: 'nfe' }; // pode vir de algum lugar dinâmico
+    const modelo = { tag: 'nfe' };
 
     let notasOriginais = [];
-
-    let planosContabeisCache = null;
-    let cachePlanosFinanceiro = null;
 
     $(document).ready(function () {
         $('#btnListarNotas').click(listarNotas);
@@ -573,7 +254,6 @@
             $('#modalImportacao').modal('show');
         });
 
-        // NOVO: botão Entrada Avulsa (nova nota avulsa)
         $('#btnEntradaAvulsa').click(() => {
             const usuario_id = urlParams.get('username') || '';
             const qs = [
@@ -587,57 +267,60 @@
             $('#modalEntradaEstoque').modal('show');
         });
 
-        // KPIs -> "Ver mais"
-        $('#btnVerMaisFin').on('click', function() {
-            $('#filtroStatus').val('pend_fin');
-            aplicarFiltros();
-        });
-        $('#btnVerMaisEst').on('click', function() {
-            $('#filtroStatus').val('pend_est');
-            aplicarFiltros();
-        });
+        // KPIs
+        $('#btnVerMaisFin').on('click', function() { $('#filtroStatus').val('pend_fin'); aplicarFiltros(); });
+        $('#btnVerMaisEst').on('click', function() { $('#filtroStatus').val('pend_est'); aplicarFiltros(); });
 
-        $('#modalImportacao').on('hidden.bs.modal', function () {
-            listarNotas();
-        });
-
-        carregarPlanosFinanceiro();
+        $('#modalImportacao').on('hidden.bs.modal', function () { listarNotas(); });
     });
 
-    // abre a tela de entrada/edição no estoque em fullscreen
+    // --- LÓGICA DO FINANCEIRO (NOVA) ---
+    $(document).on('click', 'a.abrir-financeiro', function (e) {
+        e.preventDefault();
+        const chave = $(this).data('chave') || '';
+        const id    = $(this).data('id') || '';
+        const fornecedor = $(this).data('fornecedor') || '';
+
+        // Abre o arquivo externo no iframe
+        const urlIframe = `${baseUrlRedirect}/external/financeiroNota.html?token=${encodeURIComponent(token)}&unit_id=${unit_id}&chave_acesso=${chave}&id=${id}&fornecedor=${encodeURIComponent(fornecedor)}`;
+
+        $('#iframeFinanceiro').attr('src', urlIframe);
+        $('#modalFinanceiroIframe').modal('show');
+    });
+
+    $('#modalFinanceiroIframe').on('hidden.bs.modal', function () {
+        $('#iframeFinanceiro').attr('src', 'about:blank');
+        listarNotas(); // Atualiza a lista para remover o ícone de alerta se foi gravado
+    });
+    // -----------------------------------
+
+    // Lógica do Estoque (Mantida)
     $(document).on('click', 'a.abrir-estoque', function (e) {
         e.preventDefault();
-
-        const tipoRaw     = ($(this).data('tipo') || 'i').toString().toLowerCase(); // 'i' ou 'a'
+        const tipoRaw     = ($(this).data('tipo') || 'i').toString().toLowerCase();
         const usuario_id  = urlParams.get('username') || '';
         const baseRedirect = baseUrlRedirect;
 
-        // Se for nota AVULSA (tipo 'a') -> entradaNotaAvulsa.html com nota_id
         if (tipoRaw === 'a') {
             const notaId = $(this).data('notaId') || $(this).data('id');
             if (!notaId) {
                 Swal.fire('Atenção', 'Não foi possível identificar a nota avulsa.', 'warning');
                 return;
             }
-
             const qs = [
                 `system_unit_id=${encodeURIComponent(unit_id)}`,
                 `token=${encodeURIComponent(token || '')}`,
                 usuario_id ? `usuario_id=${encodeURIComponent(usuario_id)}` : null,
                 `nota_id=${encodeURIComponent(notaId)}`
             ].filter(Boolean).join('&');
-
             const urlIframe = `${baseRedirect}/external/entradaNotaAvulsa.html?${qs}`;
-
             $('#iframeEntradaEstoque').attr('src', urlIframe);
             $('#modalEntradaEstoque').modal('show');
             return;
         }
 
-        // Caso contrário (tipo 'i' = importada) segue fluxo antigo
         const chave       = $(this).data('chave');
         const fornecedor  = $(this).data('fornecedor') || '';
-
         const qs = [
             `system_unit_id=${encodeURIComponent(unit_id)}`,
             `chave_acesso=${encodeURIComponent(chave || '')}`,
@@ -645,19 +328,17 @@
             `token=${encodeURIComponent(token || '')}`,
             usuario_id ? `usuario_id=${encodeURIComponent(usuario_id)}` : null
         ].filter(Boolean).join('&');
-
         const urlIframe = `${baseRedirect}/external/entradaNotaEstoque.html?${qs}`;
-
         $('#iframeEntradaEstoque').attr('src', urlIframe);
         $('#modalEntradaEstoque').modal('show');
     });
 
-    // sempre que fechar o modal, recarrega a lista
     $('#modalEntradaEstoque').on('hidden.bs.modal', function () {
-        $('#iframeEntradaEstoque').attr('src', 'about:blank'); // limpa
-        listarNotas(); // atualiza o grid
+        $('#iframeEntradaEstoque').attr('src', 'about:blank');
+        listarNotas();
     });
 
+    // Funções Gerais
     async function listarNotas() {
         Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
         try {
@@ -694,68 +375,28 @@
 
     function aplicarFiltros() {
         let dataFiltrada = [...notasOriginais];
-
         const dataIni   = $('#filtroDataInicial').val();
         const dataFim   = $('#filtroDataFinal').val();
-        const tipoData  = $('#filtroTipoData').val() || 'emissao'; // emissao | entrada
+        const tipoData  = $('#filtroTipoData').val() || 'emissao';
         const cnpj      = ($('#filtroCnpj').val() || '').replace(/\D/g, '');
         const status    = $('#filtroStatus').val();
-
-        // campo que será usado no filtro de data
         const campoData = (tipoData === 'entrada') ? 'data_entrada' : 'data_emissao';
-
-        // NOVOS
         const numeroNF  = ($('#filtroNumeroNF').val() || '').trim().toLowerCase();
-        const chave     = ($('#filtroChave').val() || '').replace(/\s/g, ''); // tira espaços
-        const chaveNums = chave.replace(/\D/g, ''); // só dígitos para comparar
+        const chave     = ($('#filtroChave').val() || '').replace(/\s/g, '');
+        const chaveNums = chave.replace(/\D/g, '');
 
-        if (dataIni) {
-            dataFiltrada = dataFiltrada.filter(n =>
-                n[campoData] && n[campoData].substr(0, 10) >= dataIni
-            );
-        }
+        if (dataIni) dataFiltrada = dataFiltrada.filter(n => n[campoData] && n[campoData].substr(0, 10) >= dataIni);
+        if (dataFim) dataFiltrada = dataFiltrada.filter(n => n[campoData] && n[campoData].substr(0, 10) <= dataFim);
+        if (cnpj) dataFiltrada = dataFiltrada.filter(n => (n.fornecedor_cnpj || '').replace(/\D/g, '').includes(cnpj));
+        if (numeroNF) dataFiltrada = dataFiltrada.filter(n => String(n.numero_nf || '').toLowerCase().includes(numeroNF));
+        if (chaveNums) dataFiltrada = dataFiltrada.filter(n => String(n.chave_acesso || '').replace(/\D/g, '').includes(chaveNums));
 
-        if (dataFim) {
-            dataFiltrada = dataFiltrada.filter(n =>
-                n[campoData] && n[campoData].substr(0, 10) <= dataFim
-            );
-        }
-
-        if (cnpj) {
-            dataFiltrada = dataFiltrada.filter(n =>
-                (n.fornecedor_cnpj || '').replace(/\D/g, '').includes(cnpj)
-            );
-        }
-
-        // 🔎 filtro por número da NF (parcial, case-insensitive)
-        if (numeroNF) {
-            dataFiltrada = dataFiltrada.filter(n =>
-                String(n.numero_nf || '').toLowerCase().includes(numeroNF)
-            );
-        }
-
-        // 🔎 filtro por chave de acesso (parcial; ignora separadores)
-        if (chaveNums) {
-            dataFiltrada = dataFiltrada.filter(n =>
-                String(n.chave_acesso || '').replace(/\D/g, '').includes(chaveNums)
-            );
-        }
-
-        // status combinado (como já estava)
         if (status) {
-            if (status === 'sem_pendencia') {
-                dataFiltrada = dataFiltrada.filter(n =>
-                    Number(n.incluida_estoque) === 1 && Number(n.incluida_financeiro) === 1
-                );
-            } else if (status === 'incluida_fin') {
-                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_financeiro) === 1);
-            } else if (status === 'incluida_est') {
-                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) === 1);
-            } else if (status === 'pend_est') {
-                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) !== 1);
-            } else if (status === 'pend_fin') {
-                dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_financeiro) !== 1);
-            }
+            if (status === 'sem_pendencia') dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) === 1 && Number(n.incluida_financeiro) === 1);
+            else if (status === 'incluida_fin') dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_financeiro) === 1);
+            else if (status === 'incluida_est') dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) === 1);
+            else if (status === 'pend_est') dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_estoque) !== 1);
+            else if (status === 'pend_fin') dataFiltrada = dataFiltrada.filter(n => Number(n.incluida_financeiro) !== 1);
         }
 
         recalcKpis(dataFiltrada);
@@ -763,28 +404,23 @@
     }
 
     function escapeHtml(s) {
-        return String(s ?? '')
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function truncateWithTooltip(text, max = 30) {
         const full = (text || '').trim();
         const truncated = full.length > max ? (full.slice(0, max - 1).trimEnd() + '…') : full;
-        // tooltip do Bootstrap (v3) usa data-toggle="tooltip"
         return `<span title="${escapeHtml(full)}" data-toggle="tooltip" data-placement="top">${escapeHtml(truncated)}</span>`;
     }
 
     function formatDateBR(s) {
         if (!s) return '';
-        const t = String(s).replace(' ', 'T'); // cobre 'YYYY-MM-DD HH:mm:ss'
+        const t = String(s).replace(' ', 'T');
         const d = new Date(t);
         if (!isNaN(d)) {
             const [y, m, da] = d.toISOString().substr(0, 10).split('-');
             return `${da}/${m}/${y}`;
         }
-        // fallback rápido pra 'YYYY-MM-DD...'
         if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
             const [y, m, da] = s.substr(0, 10).split('-');
             return `${da}/${m}/${y}`;
@@ -797,104 +433,6 @@
         if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
         if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         return v || '';
-    }
-
-    // ===== Helpers de parcelas ===== //
-    function addDays(dateStr, days) {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        if (isNaN(d)) return '';
-        d.setDate(d.getDate() + days);
-        return d.toISOString().substr(0,10);
-    }
-    function addDaysISO(dateStr, days) {
-        if (!dateStr) return '';
-        const d = new Date(dateStr.replace(' ', 'T'));
-        if (isNaN(d)) return '';
-        d.setDate(d.getDate() + days);
-        return d.toISOString().substr(0,10);
-    }
-    function getValorFinalParaParcelas() {
-        const total = toNumberBR($('#finValor').val());
-        const adic  = toNumberBR($('#finAdicional').val());
-        const desc  = toNumberBR($('#finDesconto').val());
-        // nunca negativo
-        return Math.max(0, +(total + adic - desc).toFixed(2));
-    }
-    function splitIgual(total, n) {
-        const cents = Math.round((Number(total)||0) * 100);
-        const base = Math.floor(cents / n);
-        const resto = cents - base * n;
-        const out = Array(n).fill(base);
-        for (let i=0; i<resto; i++) out[i] += 1; // distribui 1 cent nas primeiras
-        // volta para reais com 2 casas
-        return out.map(c => (c/100));
-    }
-    function renderTabelaParcelas(linhas) {
-        const $tb = $('#tblParcelas tbody');
-        $tb.empty();
-        linhas.forEach((parc, idx) => {
-            const i = idx + 1;
-            const v = toBRL(parc.valor);
-            $tb.append(`
-      <tr data-i="${i}">
-        <td>${i}/${linhas.length}</td>
-        <td><input type="date" class="form-control parc-venc" value="${(parc.vencimento||'')}" /></td>
-        <td><input type="text" class="form-control parc-valor" value="${v.replace('R$','').trim()}" /></td>
-      </tr>
-    `);
-        });
-        recalcTotaisParcelas();
-    }
-    function gerarParcelasAuto(qtd, total, vencInicial) {
-        const valores = splitIgual(total, qtd);
-        const linhas = [];
-        for (let i=0; i<qtd; i++) {
-            const venc = vencInicial ? addDays(vencInicial, 30*i) : '';
-            linhas.push({ vencimento: venc, valor: valores[i] });
-        }
-        // Ajuste de arredondamento: soma das linhas = total
-        const soma = valores.reduce((a,b)=>a+b,0);
-        const diff = Number((total - soma).toFixed(2));
-        if (Math.abs(diff) >= 0.01 && linhas.length > 0) {
-            linhas[linhas.length-1].valor = Number((linhas[linhas.length-1].valor + diff).toFixed(2));
-        }
-        return linhas;
-    }
-    function recalcTotaisParcelas() {
-        // normaliza valores editados pelo usuário e atualiza total
-        let soma = 0;
-        $('#tblParcelas tbody tr').each(function () {
-            const $inp = $(this).find('.parc-valor');
-            const num = toNumberBR($inp.val());
-            // re-formata no blur para manter padrão
-            $inp.off('blur').on('blur', function(){
-                $(this).val( toBRL(toNumberBR($(this).val())).replace('R$','').trim() );
-            });
-            soma += num;
-        });
-        $('#somaParcelas').text( toBRL(soma) );
-        $('#finTotalParcelas').text( toBRL(soma) );
-    }
-    function lerParcelasDoGrid() {
-        const $rows = $('#tblParcelas tbody tr');
-        const total = $rows.length;
-        const out = [];
-
-        $rows.each(function(i) {
-            const venc = $(this).find('.parc-venc').val() || '';
-            const valStr = $(this).find('.parc-valor').val() || '0';
-            const valor = toNumberBR(valStr);  // agora entende "R$ 235,20"
-
-            out.push({
-                indice: i + 1,
-                total_parcelas: total,
-                vencimento: venc,  // "YYYY-MM-DD"
-                valor: valor       // number
-            });
-        });
-
-        return out;
     }
 
     function renderTabela(lista) {
@@ -914,516 +452,74 @@
                 : '<i class="fas fa-exclamation-triangle orange sino-animado" title="Não incluída no estoque"></i>';
 
             const estoqueBadge = `
-      <a href="#" class="abrir-estoque"
-         title="Abrir Entrada no Estoque"
-         data-chave="${n.chave_acesso || ''}"
-         data-fornecedor="${n.fornecedor_id || ''}"
-         data-tipo="${tipoChar.toLowerCase()}"
-         data-nota-id="${n.id || ''}">
-         ${estoqueBadgeConteudo}
-      </a>`;
+              <a href="#" class="abrir-estoque"
+                 title="Abrir Entrada no Estoque"
+                 data-chave="${n.chave_acesso || ''}"
+                 data-fornecedor="${n.fornecedor_id || ''}"
+                 data-tipo="${tipoChar.toLowerCase()}"
+                 data-nota-id="${n.id || ''}">
+                 ${estoqueBadgeConteudo}
+              </a>`;
 
             const financeiroBadge = Number(n.incluida_financeiro) === 1
                 ? '<span class="label label-success">Sim</span>'
                 : `<a href="#" class="abrir-financeiro"
-          data-chave="${n.chave_acesso || ''}"
-          data-id="${n.id || ''}"
-          data-fornecedor="${escapeHtml(n.fornecedor_razao || '')}"
-          data-doc="${n.numero_nf || ''}"
-          data-emissao="${n.data_emissao ? n.data_emissao.substr(0,10) : ''}"
-          data-valor="${n.valor_total || 0}"
-          title="Incluir no Financeiro">
-          <i class="fas fa-exclamation-triangle orange sino-animado"></i>
-       </a>`;
-
-            const razaoHtml      = truncateWithTooltip(n.fornecedor_razao || '', 30);
-            const chaveHtml      = truncateWithTooltip(n.chave_acesso || '', 44);
-            const dataEmissaoBR  = formatDateBR(n.data_emissao);
-            const dataEntradaBR  = formatDateBR(n.data_entrada);
-            const docFmt         = formatCnpjCpf(n.fornecedor_cnpj);
-            const valorFmt       = (parseFloat(n.valor_total) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
+                      data-chave="${n.chave_acesso || ''}"
+                      data-id="${n.id || ''}"
+                      data-fornecedor="${escapeHtml(n.fornecedor_razao || '')}">
+                      <i class="fas fa-exclamation-triangle orange sino-animado"></i>
+                   </a>`;
             tbody.append(`
-      <tr>
-        <td>
-          <a href="#" class="btn-download" title="Baixar NF-e" data-chave="${n.chave_acesso || ''}">
-            <i class="fa fa-download green"></i>
-          </a>
-        </td>
-        <td>${escapeHtml(n.numero_nf ?? '')}</td>
-        <td>${escapeHtml(dataEmissaoBR)}</td>
-        <td>${razaoHtml}</td>
-        <td>${chaveHtml}</td>
-        <td>${escapeHtml(docFmt)}</td>
-        <td>${escapeHtml(valorFmt)}</td>
-        <td>${escapeHtml(tipoChar)}</td>
-        <td>${estoqueBadge}</td>
-        <td>${financeiroBadge}</td>
-        <td>${escapeHtml(dataEntradaBR)}</td>
-      </tr>
-    `);
+              <tr>
+                <td><a href="#" class="btn-download" title="Baixar NF-e" data-chave="${n.chave_acesso || ''}"><i class="fa fa-download green"></i></a></td>
+                <td>${escapeHtml(n.numero_nf ?? '')}</td>
+                <td>${formatDateBR(n.data_emissao)}</td>
+                <td>${truncateWithTooltip(n.fornecedor_razao)}</td>
+                <td>${truncateWithTooltip(n.chave_acesso, 44)}</td>
+                <td>${formatCnpjCpf(n.fornecedor_cnpj)}</td>
+                <td>${(parseFloat(n.valor_total) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td>${escapeHtml(tipoChar)}</td>
+                <td>${estoqueBadge}</td>
+                <td>${financeiroBadge}</td>
+                <td>${formatDateBR(n.data_entrada)}</td>
+              </tr>
+            `);
         });
 
-        $('[data-toggle="tooltip"]').tooltip({ container: 'body' }); // mantém o tooltip funcionando
+        $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
     }
 
-    function toNumberBR(v) {
-        if (v === null || v === undefined) return 0;
-        if (typeof v === 'number') return v;
-
-        let s = String(v).trim();
-        // mantém apenas dígitos, vírgula, ponto e sinal
-        s = s.replace(/[^\d.,-]/g, '');
-
-        // se tiver vírgula, assumimos que a vírgula é decimal (pt-BR)
-        if (s.indexOf(',') >= 0) {
-            s = s.replace(/\./g, '');   // remove separadores de milhar
-            s = s.replace(',', '.');    // vírgula -> ponto decimal
-        }
-
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-    function toBRL(n) {
-        return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    // ======================== MODAL FINANCEIRO ======================== //
-
-    async function abrirModalFinanceiro({ chave_acesso, id, fornecedor_nome, documento_hint, emissao_hint, valor_hint }) {
-        try {
-            if (!chave_acesso && !id) {
-                Swal.fire('Atenção', 'Não foi possível identificar a chave de acesso da nota.', 'warning');
-                return;
-            }
-
-            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
-
-            const payloadReq = {
-                method: 'getNotaFinanceiroPayload',
-                token,
-                data: {
-                    system_unit_id: Number(unit_id),
-                    ...(chave_acesso ? { chave_acesso } : {}),
-                    ...(id ? { id } : {})
-                }
-            };
-
-            const res = await axios.post(baseUrl, payloadReq);
-
-            if (!res.data || !res.data.success || !res.data.data) {
-                Swal.close();
-                Swal.fire('Erro', res.data?.error || 'Não foi possível obter os dados da nota.', 'error');
-                return;
-            }
-
-            const d = res.data.data;
-
-            // 🔹 carrega/garante a lista de planos (via financeiro.php)
-            await carregarPlanosFinanceiro();
-
-            // ===== Preenche campos principais =====
-            $('#finFornecedorId').val(d.fornecedor_id || '');
-            $('#finChaveAcesso').val(chave_acesso || '');
-            $('#finFornecedorNome').val(fornecedor_nome || '');
-            $('#finDocumento').val(d.documento || documento_hint || '');
-            $('#finEmissao').val(d.emissao || emissao_hint || '');
-            $('#finVencimento').val('');
-
-            $('#finValor').val(
-                d.valor_total != null
-                    ? Number(d.valor_total).toFixed(2).replace('.', ',')
-                    : valor_hint
-                        ? Number(valor_hint).toFixed(2).replace('.', ',')
-                        : '0,00'
-            );
-
-            $('#finAdicional').val('0');
-            $('#finDesconto').val('0');
-
-            // limpa seleção atual de plano, mas NÃO mexe nas opções (já carregadas)
-            $('#finPlano').val('').trigger('change');
-
-            // ===== Formas de pagamento (veio do payload da nota) =====
-            const formas = Array.isArray(d.formas_pagamento)
-                ? d.formas_pagamento
-                : (Array.isArray(d.formas_de_pagamento) ? d.formas_de_pagamento : []);
-
-            const $forma = $('#finForma');
-            $forma.empty().append('<option value="">Selecione...</option>');
-            formas.forEach(f => {
-                $forma.append(new Option(f.descricao || f.nome || f.codigo, f.id, false, false));
-            });
-
-            // ===== Ativa Select2 (sem recriar se já tiver) =====
-            const $modal = $('#modalFinanceiro');
-            const $plano = $('#finPlano');
-
-            if (!$plano.hasClass('select2-hidden-accessible')) {
-                $plano.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
-            }
-            if (!$forma.hasClass('select2-hidden-accessible')) {
-                $forma.select2({ dropdownParent: $modal, placeholder: 'Selecione...', width: 'resolve' });
-            }
-
-            // ===== Duplicatas =====
-            let qtdParcelas = 1;
-            let vencIni = '';
-
-            if (Array.isArray(d.duplicatas) && d.duplicatas.length > 0) {
-                qtdParcelas = d.duplicatas.length;
-                vencIni = (d.duplicatas[0].vencimento || '').substring(0, 10);
-            }
-
-            $('#finParcelas').val(qtdParcelas);
-            $('#finVencimento').val(vencIni);
-
-            rebuildParcelasGrid(qtdParcelas, vencIni);
-
-            Swal.close();
-            $modal.modal('show');
-
-        } catch (err) {
-            console.error(err);
-            Swal.close();
-            Swal.fire('Erro', 'Falha ao carregar dados para o financeiro.', 'error');
-        }
-    }
-
-    function sortPlanosHierarquico(lista) {
-        // Clona o array pra não mexer no original
-        const planos = lista.slice();
-
-        // Agrupa por raiz de 2 dígitos (01, 02, 03...)
-        const grupos = {};
-        planos.forEach(p => {
-            const codigo = String(p.codigo || '');
-            if (!codigo) return;
-
-            const raiz = codigo.substring(0, 2); // "01", "02"...
-            if (!grupos[raiz]) grupos[raiz] = [];
-            grupos[raiz].push(p);
-        });
-
-        // Ordena as raízes
-        const raizesOrdenadas = Object.keys(grupos).sort((a, b) => {
-            return parseInt(a, 10) - parseInt(b, 10);
-        });
-
-        const ordenado = [];
-
-        raizesOrdenadas.forEach(raiz => {
-            const arr = grupos[raiz];
-
-            arr.sort((a, b) => {
-                const ca = String(a.codigo || '');
-                const cb = String(b.codigo || '');
-
-                // Primeiro quem tem código menor (pai antes de filho)
-                if (ca.length !== cb.length) {
-                    return ca.length - cb.length;
-                }
-
-                // Se tiverem o mesmo tamanho, ordena lexicograficamente
-                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
-            });
-
-            ordenado.push(...arr);
-        });
-
-        return ordenado;
-    }
-
-    // Carrega planos de contas pelo financeiro.php (listPlanos) e monta #finPlano
-    async function carregarPlanosFinanceiro() {
-        // se já carregou uma vez, só reaproveita
-        if (Array.isArray(cachePlanosFinanceiro) && cachePlanosFinanceiro.length) {
-            return cachePlanosFinanceiro;
-        }
-
-        try {
-            const res = await axios.post(baseUrlFinanceiro, {
-                method: 'listPlanos',
-                token,
-                data: { system_unit_id: Number(unit_id) }
-            });
-
-            let lista = Array.isArray(res.data) ? res.data : (res.data?.data || res.data || []);
-            lista = sortPlanosHierarquico(lista);
-
-            const $sel = $('#finPlano');
-            $sel.empty().append('<option value="">Selecione...</option>');
-
-            lista.forEach(p => {
-                const codigo = String(p.codigo || '');
-                const nivel  = Math.floor((codigo.length - 2) / 2);
-                const indent = '\u00A0'.repeat(Math.max(0, nivel) * 4);
-
-                $sel.append(
-                    new Option(`${indent}${codigo} - ${p.descricao || p.nome || ''}`, codigo, false, false)
-                );
-            });
-
-            cachePlanosFinanceiro = lista;
-            return lista;
-
-        } catch (e) {
-            console.error(e);
-            Swal.fire('Erro', 'Falha ao carregar planos de conta.', 'error');
-            return [];
-        }
-    }
-
-    // ======= Funções auxiliares do parcelamento (copiadas 1:1 da tela Editar Conta) ======= //
-
-    function rebuildParcelasGrid(qtd, vencIni) {
-        const $tb = $('#tblParcelas tbody');
-        $tb.empty();
-
-        const n = Math.max(1, parseInt(qtd || 1, 10));
-
-        const total = toNumberBR($('#finValor').val());
-        const base = Math.floor((total / n) * 100) / 100;
-        let resto = +(total - (base * n)).toFixed(2);
-
-        for (let i = 0; i < n; i++) {
-            const ajuste = (resto > 0) ? Math.min(resto, 0.01) : 0;
-            const valorParc = +(base + ajuste).toFixed(2);
-            resto = +(resto - ajuste).toFixed(2);
-
-            let venc = '';
-            if (vencIni) {
-                venc = addDaysISO(vencIni, i * 30);
-            }
-
-            $tb.append(`
-        <tr>
-            <td class="text-center">${i + 1}/${n}</td>
-            <td><input type="date" class="form-control parc-venc" value="${venc}"></td>
-            <td><input type="text" class="form-control parc-valor" value="${toBRL(valorParc).replace('R$','').trim()}"></td>
-        </tr>
-        `);
-        }
-
-        recalcTotaisParcelas();
-    }
-
-    function recalcTotaisParcelas() {
-        let soma = 0;
-        $('#tblParcelas tbody tr').each(function () {
-            const $inp = $(this).find('.parc-valor');
-            const num = toNumberBR($inp.val());
-
-            // re-formata no blur para manter padrão "1.234,56"
-            $inp.off('blur').on('blur', function(){
-                $(this).val( toBRL(toNumberBR($(this).val())).replace('R$','').trim() );
-            });
-
-            soma += num;
-        });
-
-        // Atualiza o total exibido
-        $('#finTotalParcelas').text( toBRL(soma) );
-
-        // Aviso visual se soma != total da nota (tolerância de 1 centavo)
-        const totalNota = toNumberBR($('#finValor').val());
-        const dif = Math.abs(soma - totalNota);
-        if (dif >= 0.01) {
-            $('#avisoParcelas').show();
-        } else {
-            $('#avisoParcelas').hide();
-        }
-    }
-
-    function recalcValoresParcelas() {
-        // só recalcula os valores, NÃO mexe nas datas (permite ajuste manual das datas)
-        const $rows = $('#tblParcelas tbody tr');
-        if ($rows.length === 0) return;
-
-        const n = $rows.length;
-        const total = getValorFinalParaParcelas();
-        const base = Math.floor((total / n) * 100) / 100;
-        let resto = +(total - (base * n)).toFixed(2);
-
-        $rows.each(function(idx) {
-            const ajuste = (resto > 0) ? Math.min(resto, 0.01) : 0;
-            const valorParc = +(base + ajuste).toFixed(2);
-            resto = +(resto - ajuste).toFixed(2);
-            $(this).find('.parc-valor').val(toBRL(valorParc));
-        });
-    }
-
-    async function gravarFinanceiro() {
-        try {
-            const fornecedor_id = Number($('#finFornecedorId').val());
-            const chave_acesso  = $('#finChaveAcesso').val();
-            const documento     = ($('#finDocumento').val() || '').trim();
-            const emissao       = $('#finEmissao').val();
-            const plano_contas  = $('#finPlano').val();      // código
-            const forma_id      = $('#finForma').val();
-            const obs_base      = ($('#finObs').val() || '').trim();
-            const totalNota     = toNumberBR($('#finValor').val());
-
-            if (!fornecedor_id) return Swal.fire('Atenção', 'Fornecedor inválido.', 'warning');
-            if (!documento)     return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
-            if (!emissao)       return Swal.fire('Atenção', 'Informe a Emissão.', 'warning');
-            if (!plano_contas)  return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
-            if (!forma_id)      return Swal.fire('Atenção', 'Selecione a Forma de Pagamento.', 'warning');
-
-            // Lê as parcelas da grade
-            const linhas = lerParcelasDoGrid();
-            if (linhas.length === 0) {
-                return Swal.fire('Atenção', 'Informe ao menos 1 parcela.', 'warning');
-            }
-            // valida vencimentos e valores
-            for (const ln of linhas) {
-                if (!ln.vencimento) {
-                    return Swal.fire('Atenção', `Parcela ${ln.indice}/${ln.total_parcelas} sem vencimento.`, 'warning');
-                }
-            }
-            // checa soma == total (tolerância de 1 cent)
-            const soma = linhas.reduce((a,b)=>a + (b.valor||0), 0);
-            if (Math.abs(soma - totalNota) >= 0.01) {
-                return Swal.fire('Atenção', `A soma das parcelas (${toBRL(soma)}) difere do valor total (${toBRL(totalNota)}). Ajuste os valores.`, 'warning');
-            }
-
-            Swal.fire({ title: 'Gravando...', didOpen: () => Swal.showLoading() });
-
-            // monta array de contas
-            const contas = linhas.map(ln => {
-                return {
-                    fornecedor_id: fornecedor_id,
-                    documento: `${documento}-${String(ln.indice).padStart(2,'0')}`,
-                    emissao: emissao,                // YYYY-MM-DD
-                    vencimento: ln.vencimento,       // YYYY-MM-DD
-                    valor: ln.valor.toFixed(2).replace('.', ','), // "123,45"
-                    plano_contas: plano_contas,      // código
-                    forma_pagamento_id: Number(forma_id),
-                    obs_extra: obs_base,
-                    chave_acesso: chave_acesso
-                };
-            });
-
-            const req = {
-                method: 'lancarNotaNoFinanceiroContaLote',
-                token,
-                data: {
-                    system_unit_id: Number(unit_id),
-                    contas: contas
-                }
-            };
-
-            const res = await axios.post(baseUrlFinanceiro, req);
-            Swal.close();
-
-            if (!res.data || !res.data.success) {
-                return Swal.fire('Erro', res.data?.error || 'Falha ao gravar lançamentos.', 'error');
-            }
-
-            $('#modalFinanceiro').modal('hide');
-            Swal.fire('Sucesso', 'Lançamentos criados com sucesso.', 'success');
-            await listarNotas();
-
-        } catch (e) {
-            console.error(e);
-            Swal.close();
-            Swal.fire('Erro', 'Falha ao gravar lançamentos.', 'error');
-        }
-    }
-
-    $(document).on('click', '#btnGravarFinanceiro', gravarFinanceiro);
-
-    // abre o modal ao clicar no ícone de exclamação
-    $(document).on('click', 'a.abrir-financeiro', function (e) {
-        e.preventDefault();
-        const chave = $(this).data('chave');
-        const id    = $(this).data('id');
-        const fornecedor = $(this).data('fornecedor');
-        const doc   = $(this).data('doc');
-        const em    = $(this).data('emissao');
-        const val   = $(this).data('valor');
-        abrirModalFinanceiro({
-            chave_acesso: chave,
-            id,
-            fornecedor_nome: fornecedor,
-            documento_hint: doc,
-            emissao_hint: em,
-            valor_hint: val
-        });
-    });
-
-    $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
-        recalcTotaisParcelas();
-    });
-
-    // quando usuário muda quantidade de parcelas -> reconstrói grade (datas em 30/30)
-    $(document).on('input change', '#finParcelas', function() {
-        const qtd = parseInt($(this).val() || '1', 10);
-        const vencIni = $('#finVencimento').val() || '';
-        rebuildParcelasGrid(qtd, vencIni);
-    });
-    // quando muda o vencimento inicial -> refaz as datas 30/30 (mantém divisão)
-    $(document).on('change', '#finVencimento', function() {
-        const qtd = parseInt($('#finParcelas').val() || '1', 10);
-        const vencIni = $(this).val() || '';
-        rebuildParcelasGrid(qtd, vencIni);
-    });
-    // quando muda adicional/desconto/valor total -> só recalcula valores (não altera datas)
-    $(document).on('input', '#finAdicional, #finDesconto', function() {
-        recalcValoresParcelas();
-    });
-    $(document).off('input.parc', '.parc-valor').on('input.parc', '.parc-valor', function() {
-        recalcTotaisParcelas();
-    });
-
-    // Clique no botão de download da linha (3 botões: PDF / XML / Cancelar)
+    // Download XML/PDF
     $(document).on('click', 'a.btn-download', async function (e) {
         e.preventDefault();
         const chave = $(this).data('chave');
         if (!chave) {
-            await Swal.fire('Atenção', 'Chave de acesso não encontrada para esta nota.', 'warning');
+            await Swal.fire('Atenção', 'Chave de acesso não encontrada.', 'warning');
             return;
         }
-
         const result = await Swal.fire({
             title: 'Baixar arquivo',
             text: 'Escolha o formato desejado:',
             icon: 'question',
-            showConfirmButton: true,
-            confirmButtonText: 'PDF',
-            showDenyButton: true,
-            denyButtonText: 'XML',
-            showCancelButton: true,
-            cancelButtonText: 'Cancelar',
-            reverseButtons: true,
-            allowOutsideClick: false
+            showConfirmButton: true, confirmButtonText: 'PDF',
+            showDenyButton: true, denyButtonText: 'XML',
+            showCancelButton: true, cancelButtonText: 'Cancelar',
+            reverseButtons: true, allowOutsideClick: false
         });
-
         if (result.isDismissed) return;
         const tipo = result.isConfirmed ? 'pdf' : (result.isDenied ? 'xml' : null);
         if (!tipo) return;
-
         try {
             Swal.fire({ title: 'Gerando arquivo...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-
             const { data: resp } = await axios.post(baseUrl, {
                 method: 'baixarArquivo',
                 token,
-                data: {
-                    system_unit_id: Number(unit_id),
-                    chave: String(chave),
-                    tipo
-                }
+                data: { system_unit_id: Number(unit_id), chave: String(chave), tipo }
             });
-
-            if (!resp?.success || !resp?.content) {
-                throw new Error(resp?.message || 'Falha ao obter arquivo.');
-            }
-
+            if (!resp?.success || !resp?.content) throw new Error(resp?.message || 'Falha ao obter arquivo.');
             const fileName = `${String(chave)}.${tipo}`;
             const mime = (tipo === 'pdf') ? 'application/pdf' : 'application/xml';
             downloadBase64(resp.content, fileName, mime);
-
             Swal.close();
         } catch (err) {
             console.error(err);
@@ -1432,14 +528,12 @@
         }
     });
 
-    // Converte base64 -> Blob e dispara download (mantém igual)
     function downloadBase64(b64, filename, mimeType) {
         const byteChars = atob(b64.replace(/\s/g, ''));
         const byteNumbers = new Array(byteChars.length);
         for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: mimeType || 'application/octet-stream' });
-
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
