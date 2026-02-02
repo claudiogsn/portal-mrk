@@ -633,7 +633,7 @@
     function fecharModalParent() {
         const $p = (window.parent && window.parent.$) ? window.parent.$ : null;
         if (!$p) return;
-        const ids = ['#modalNovaConta', '#modalImportacao', '#modalFinanceiro'];
+        const ids = ['#modalEditConta', '#modalImportacao', '#modalFinanceiro'];
         let fechou = false;
         for (const sel of ids) {
             if ($p(sel).length) { $p(sel).modal('hide'); fechou = true; }
