@@ -2092,7 +2092,7 @@ class DashboardController
                     COALESCE(SUM(COALESCE(n.valor_total, n.valor_produtos, 0)), 0) AS total_compras
                 FROM estoque_nota n
                 WHERE n.system_unit_id = :unit
-                  AND n.data_entrada BETWEEN :dt_inicio AND :dt_fim
+                  AND n.data_emissao BETWEEN :dt_inicio AND :dt_fim
                   -- AND n.incluida_estoque = 1
             ");
                 $stmtCompras->execute([
@@ -2181,7 +2181,7 @@ class DashboardController
                   ON eni.nota_id = en.id 
                  AND eni.system_unit_id = en.system_unit_id
                 WHERE en.system_unit_id = :unit
-                  AND en.data_entrada BETWEEN :dt_inicio AND :dt_fim
+                  AND en.data_emissao BETWEEN :dt_inicio AND :dt_fim
             ");
                 $stmtCompras->execute([
                     ':unit'      => $unitId,
@@ -2364,7 +2364,7 @@ class DashboardController
                     FROM estoque_nota en
                     JOIN estoque_nota_item eni ON eni.nota_id=en.id AND eni.system_unit_id=en.system_unit_id
                     WHERE en.system_unit_id=:unit
-                    AND DATE(data_entrada) = :data                
+                    AND DATE(data_emissao) = :data                
                       -- AND incluida_estoque = 1
                 ");
                     $stmtComp->execute([':unit' => $unitId, ':data' => $data]);
@@ -2448,7 +2448,7 @@ class DashboardController
                     SELECT COALESCE(SUM(COALESCE(valor_total, valor_produtos, 0)),0)
                     FROM estoque_nota
                     WHERE system_unit_id = :unit
-                      AND DATE(data_entrada) = :data
+                      AND DATE(data_emissao) = :data
                       -- AND incluida_estoque = 1
                 ");
                     $stmtComp->execute([':unit' => $unitId, ':data' => $data]);
@@ -2513,7 +2513,7 @@ class DashboardController
                     ON f.id = n.fornecedor_id
                    AND f.system_unit_id = n.system_unit_id
                 WHERE n.system_unit_id = :unitId
-                  AND n.data_entrada BETWEEN :inicio AND :fim
+                  AND n.data_emissao BETWEEN :inicio AND :fim
                   -- se tiver campo de status/cancelada, filtra aqui:
                   -- AND (n.cancelada IS NULL OR n.cancelada = 0)
                 GROUP BY fornecedor_id
@@ -2576,7 +2576,7 @@ class DashboardController
                    AND p.codigo         = ifo.produto_codigo
 
                 WHERE en.system_unit_id = :unitId
-                  AND en.data_entrada BETWEEN :inicio AND :fim
+                  AND en.data_emissao BETWEEN :inicio AND :fim
                   -- se quiser garantir só notas já lançadas:
                   -- AND en.incluida_estoque = 1
 
@@ -2674,7 +2674,7 @@ class DashboardController
                 FROM estoque_nota en
                 LEFT JOIN financeiro_fornecedor f ON f.id = en.fornecedor_id
                 WHERE en.system_unit_id = :unitId
-                  AND DATE(en.data_entrada) BETWEEN :inicio AND :fim
+                  AND DATE(en.data_emissao) BETWEEN :inicio AND :fim
                 ORDER BY fornecedor DESC
             ");
 

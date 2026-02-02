@@ -201,6 +201,14 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ausente'];
                 }
                 break;
+            case 'listarNotasNaoImportadasUltimos30DiasCached':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = MdeController::listarNotasNaoImportadasUltimos30DiasCached($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id ausente'];
+                }
+                break;
             case 'listarChavesNfeComStatusImportacao':
                 if (isset($requestData['system_unit_id']) && isset($requestData['data_inicial']) && isset($requestData['data_final'])) {
                     $response = MdeController::listarChavesNfeComStatusImportacao($requestData['system_unit_id'], $requestData['data_inicial'], $requestData['data_final']);

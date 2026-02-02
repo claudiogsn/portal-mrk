@@ -21,99 +21,132 @@
             --mrk-black: #191F2A;
             --mrk-amber: #f59e0b;
         }
-        .animate-number { transition: all 1s ease-in-out; }
         .btn-mrk {
             background: color-mix(in srgb, var(--mrk-blue) 12%, white);
             color: var(--mrk-blue);
             border: 1px solid color-mix(in srgb, var(--mrk-blue) 25%, white);
+            transition: all 0.2s;
         }
         .btn-mrk:hover { background: color-mix(in srgb, var(--mrk-blue) 20%, white); }
+
+        /* CORREÇÃO DO SKELETON */
+        .skeleton {
+            background-color: #e2e8f0;
+            background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px);
+            background-size: 600px;
+            animation: shine-lines 1.6s infinite linear;
+            border-radius: 6px;
+            color: transparent !important; /* Torna o texto invisível */
+            pointer-events: none;
+            min-height: 2rem; /* Garante altura mínima se estiver vazio */
+            display: inline-block;
+            width: 100%;
+        }
+
+        @keyframes shine-lines {
+            0% { background-position: -100px; }
+            40%, 100% { background-position: 140px; }
+        }
     </style>
 </head>
 
 <body class="text-gray-800" style="background: var(--mrk-gray);">
 
 <div class="p-6">
-    <div class="mb-6">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-4 flex-wrap">
-            <button onclick="setRange('hoje')" class="btn-mrk px-3 py-1 rounded shadow">Hoje</button>
-            <button onclick="setRange('ontem')" class="btn-mrk px-3 py-1 rounded shadow">Ontem</button>
-            <button onclick="setRange('7dias')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 7 dias</button>
-            <button onclick="setRange('mes')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 30 dias</button>
+            <button onclick="setRange('hoje')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Hoje</button>
+            <button onclick="setRange('ontem')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Ontem</button>
+            <button onclick="setRange('7dias')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Últimos 7 dias</button>
+            <button onclick="setRange('mes')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Últimos 30 dias</button>
 
-            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
-            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
+            <input type="date" id="startDate" class="filter-input border p-2 rounded-md shadow bg-white text-sm" />
+            <input type="date" id="endDate" class="filter-input border p-2 rounded-md shadow bg-white text-sm" />
 
-            <select id="filtroGrupo" class="border p-2 rounded-md shadow bg-white">
+            <select id="filtroGrupo" class="filter-input border p-2 rounded-md shadow bg-white text-sm min-w-[150px]">
                 <option value="">Todos os Grupos</option>
             </select>
 
-            <select id="filtroLoja" class="border p-2 rounded-md shadow bg-white">
+            <select id="filtroLoja" class="filter-input border p-2 rounded-md shadow bg-white text-sm min-w-[150px]">
                 <option value="">Todas as lojas</option>
             </select>
         </div>
+
+        <button id="btnAplicar" onclick="fetchData()" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-lg transform transition hover:scale-105 flex items-center gap-2">
+            <i class="fas fa-check"></i> Aplicar Filtros
+        </button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-blue);">
             <div class="text-4xl" style="color: var(--mrk-blue);"><i class="fas fa-dollar-sign"></i></div>
-            <div>
+            <div class="w-full">
                 <div class="text-sm font-semibold">Faturamento</div>
-                <div class="text-2xl font-extrabold animate-number" id="faturamentoBruto">R$ 0,00</div>
+                <div class="text-2xl font-extrabold kpi-value" id="faturamentoBruto">R$ 0,00</div>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-green);">
             <div class="text-4xl" style="color: var(--mrk-green);"><i class="fas fa-shopping-cart"></i></div>
-            <div>
+            <div class="w-full">
                 <div class="text-sm font-semibold">Compras</div>
-                <div class="text-2xl font-extrabold animate-number" id="totalCompras">R$ 0,00</div>
+                <div class="text-2xl font-extrabold kpi-value" id="totalCompras">R$ 0,00</div>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-black);">
             <div class="text-4xl" style="color: var(--mrk-black);"><i class="fas fa-percent"></i></div>
-            <div>
+            <div class="w-full">
                 <div class="text-sm font-semibold">% Compras x Fat.</div>
-                <div class="text-2xl font-extrabold animate-number" id="percentualCompras">0%</div>
+                <div class="text-2xl font-extrabold kpi-value" id="percentualCompras">0%</div>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-amber);">
             <div class="text-4xl" style="color: var(--mrk-amber);"><i class="fas fa-file-invoice"></i></div>
-            <div class="flex-1">
+            <div class="flex-1 w-full">
                 <div class="text-sm font-semibold">Notas Pendentes</div>
-                <div class="flex items-center justify-between">
-                    <div class="text-2xl font-extrabold" id="qtdNotasPendentes">0</div>
-                    <small>Ultimos 30 dias</small>
+                <div class="flex items-center justify-between mt-1">
+                    <div class="flex flex-col">
+                        <div class="text-2xl font-extrabold kpi-value" id="qtdNotasPendentes">0</div>
+                        <small class="text-xs text-gray-500">Últimos 30 dias</small>
+                    </div>
 
-                    <button onclick="verDetalhesNotasPendentes()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-2 py-1 rounded border border-amber-200 transition-all">
-                        Ver mais
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <a href="javascript:void(0)" onclick="atualizarNotasPendentesForce(this)" class="text-amber-500 hover:text-amber-700 transition-colors p-2">
+                            <i class="fas fa-sync-alt"></i>
+                        </a>
+                        <button onclick="verDetalhesNotasPendentes()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-3 py-1.5 rounded border border-amber-200 transition-all">Ver mais</button>
+                    </div>
                 </div>
+                <div id="msgCache" class="text-[10px] text-gray-400 text-right mt-1 hidden"></div>
             </div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white p-6 rounded-lg shadow">
+        <div class="bg-white p-6 rounded-lg shadow relative group">
             <h2 class="text-lg font-semibold mb-4">Evolução do Faturamento</h2>
             <div id="chartFaturamentoDiario" style="width:100%; height:320px;"></div>
+            <div id="skel-chartFaturamentoDiario" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/3 bg-gray-200 rounded animate-pulse mb-4"></div><div class="flex-1 bg-gray-100 rounded animate-pulse"></div></div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow">
+        <div class="bg-white p-6 rounded-lg shadow relative group">
             <h2 class="text-lg font-semibold mb-4">Evolução das Compras</h2>
             <div id="chartComprasDiario" style="width:100%; height:320px;"></div>
+            <div id="skel-chartComprasDiario" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/3 bg-gray-200 rounded animate-pulse mb-4"></div><div class="flex-1 bg-gray-100 rounded animate-pulse"></div></div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white p-6 h-[350px] rounded-lg shadow">
+        <div class="bg-white p-6 h-[350px] rounded-lg shadow relative">
             <h2 class="text-lg font-semibold mb-4">TOP 5 - COMPRAS POR PRODUTO</h2>
             <div id="chartTopProdutos" class="w-full h-full"></div>
+            <div id="skel-chartTopProdutos" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/2 bg-gray-200 rounded animate-pulse mb-4"></div><div class="h-full bg-gray-100 rounded animate-pulse"></div></div>
         </div>
-        <div class="bg-white p-6 h-[350px] rounded-lg shadow">
+        <div class="bg-white p-6 h-[350px] rounded-lg shadow relative">
             <h2 class="text-lg font-semibold mb-4">TOP 5 - COMPRAS POR FORNECEDOR</h2>
             <div id="chartTopFornecedores" class="w-full h-full"></div>
+            <div id="skel-chartTopFornecedores" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/2 bg-gray-200 rounded animate-pulse mb-4"></div><div class="h-full bg-gray-100 rounded animate-pulse"></div></div>
         </div>
     </div>
 </div>
@@ -141,25 +174,20 @@
     let resumoEstoqueGrupo = [], evolucaoCmvGrupo = [], datasEvolucao = [], cmvProdutosGrupo = [], topFornecedoresGrupo = [], listaNotasPendentes = [];
     let gruposDisponiveis = {}, lojasPorGrupo = {};
 
-    // --- FUNÇÕES DE APOIO ---
-    function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
-        const element = document.getElementById(id);
-        if (!element) return;
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = start + progress * (end - start);
-            element.textContent = isCurrency ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : isPercentage ? value.toFixed(2) + '%' : Math.floor(value);
-            if (progress < 1) window.requestAnimationFrame(step);
-        };
-        window.requestAnimationFrame(step);
+    function showApplyButton() {
+        const btn = document.getElementById('btnAplicar');
+        btn.classList.remove('hidden');
+        btn.classList.add('animate-bounce');
+        setTimeout(() => btn.classList.remove('animate-bounce'), 1000);
     }
 
-    function parseBRL(v) {
-        if (v == null) return 0;
-        if (typeof v === 'number') return v;
-        return Number(String(v).replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    function hideApplyButton() { document.getElementById('btnAplicar').classList.add('hidden'); }
+
+    function setupFilterListeners() {
+        document.querySelectorAll('.filter-input').forEach(input => {
+            input.addEventListener('change', showApplyButton);
+            input.addEventListener('keyup', showApplyButton);
+        });
     }
 
     function setRange(tipo) {
@@ -168,12 +196,106 @@
         if (tipo === 'ontem') start.setDate(now.getDate() - 1);
         else if (tipo === '7dias') start.setDate(now.getDate() - 7);
         else if (tipo === 'mes') start.setMonth(now.getMonth() - 1);
+
         document.getElementById('endDate').value = now.toISOString().split('T')[0];
         document.getElementById('startDate').value = start.toISOString().split('T')[0];
-        fetchData();
+        showApplyButton();
     }
 
-    // --- CARREGAMENTO DE DADOS ---
+    // --- CORREÇÃO DA LÓGICA DO SKELETON ---
+    function toggleSkeleton(type, isLoading) {
+        // Controle dos KPIs (Cards)
+        if (type === 'kpi' || type === 'all') {
+            const kpis = document.querySelectorAll('.kpi-value');
+            kpis.forEach(el => {
+                if (isLoading) {
+                    el.classList.add('skeleton');
+                    // Não mudamos o textContent para '.' pois isso pode quebrar o layout
+                    // A classe skeleton já tem color: transparent
+                } else {
+                    el.classList.remove('skeleton');
+                }
+            });
+        }
+
+        // Controle dos Gráficos (Overlays)
+        if (type === 'charts' || type === 'all') {
+            const ids = ['skel-chartFaturamentoDiario', 'skel-chartComprasDiario', 'skel-chartTopProdutos', 'skel-chartTopFornecedores'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    if (isLoading) el.classList.remove('hidden');
+                    else el.classList.add('hidden');
+                }
+            });
+        }
+    }
+
+    // --- CORREÇÃO DA ANIMAÇÃO DE VALOR ---
+    function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
+        const element = document.getElementById(id);
+        if (!element) return;
+
+        // FORÇA a remoção do skeleton antes de começar a escrever
+        element.classList.remove('skeleton');
+
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const value = start + progress * (end - start);
+
+            let formatted;
+            if (isCurrency) {
+                formatted = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else if (isPercentage) {
+                formatted = value.toFixed(2) + '%';
+            } else {
+                formatted = Math.floor(value);
+            }
+
+            element.textContent = formatted;
+
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    async function fetchData() {
+        hideApplyButton();
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const dt_inicio = startDate + ' 00:00:00';
+        const dt_fim = endDate + ' 23:59:59';
+
+        toggleSkeleton('all', true);
+
+        try {
+            await Promise.all([
+                carregarResumoEstoquePorGrupo(dt_inicio, dt_fim),
+                carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim),
+                carregarCmvProdutosPorGrupo(dt_inicio, dt_fim),
+                carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim),
+                carregarNotasPendentes()
+            ]);
+            aplicarFiltroLoja();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao carregar dados.', 'error');
+        } finally {
+            // Removemos o skeleton dos gráficos, mas os KPIs são removidos individualmente pelo animateValue
+            toggleSkeleton('charts', false);
+            // Garante que os kpis apareçam mesmo se a animação falhar
+            setTimeout(() => toggleSkeleton('kpi', false), 100);
+        }
+    }
+
+    function parseBRL(v) {
+        if (v == null) return 0;
+        if (typeof v === 'number') return v;
+        return Number(String(v).replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
     async function carregarGrupoInicial() {
         const res = await axios.post(baseUrl, { method: 'getGroupByUnit', token, data: { system_unit_id } });
         if (res.data?.length > 0) grupoId = res.data[0].id;
@@ -189,11 +311,12 @@
         grupos.forEach(grupo => {
             grupoSelect.innerHTML += `<option value="${grupo.id}" ${grupo.id == grupoId ? 'selected' : ''}>${grupo.nome}</option>`;
         });
+
         grupoSelect.addEventListener('change', () => {
             grupoId = parseInt(grupoSelect.value);
-            resetarEstadoDashboard(); limparCharts(); atualizarFiltroLoja();
+            atualizarFiltroLoja();
             document.getElementById('filtroLoja').value = "";
-            fetchData();
+            showApplyButton();
         });
         atualizarFiltroLoja();
     }
@@ -203,48 +326,22 @@
         const filtro = document.getElementById('filtroLoja');
         filtro.innerHTML = '<option value="">Todas as lojas</option>';
         lojas.forEach(loja => { filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`; });
+        filtro.addEventListener('change', showApplyButton);
     }
 
-    async function fetchData() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const dt_inicio = startDate + ' 00:00:00';
-        const dt_fim = endDate + ' 23:59:59';
-
-        Swal.fire({ title: 'Carregando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        try {
-            // Paralelizando chamadas para performance
-            await Promise.all([
-                carregarResumoEstoquePorGrupo(dt_inicio, dt_fim),
-                carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim),
-                carregarCmvProdutosPorGrupo(dt_inicio, dt_fim),
-                carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim),
-                carregarNotasPendentes()
-            ]);
-            aplicarFiltroLoja();
-        } catch (err) {
-            Swal.fire('Erro ao carregar', err.message, 'error');
-        } finally {
-            Swal.close();
-        }
-    }
-
+    // --- CHAMADAS AXIOS ---
     async function carregarResumoEstoquePorGrupo(dt_inicio, dt_fim) {
         const res = await axios.post(baseUrl, { method: 'generateResumoEstoquePorGrupo', token, data: { grupoId, dt_inicio, dt_fim } });
         resumoEstoqueGrupo = res.data.data || [];
     }
-
     async function carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim) {
         const res = await axios.post(baseUrl, { method: 'generateCmvEvolucao', token, data: { grupoId, dt_inicio, dt_fim } });
         evolucaoCmvGrupo = res.data.data || []; datasEvolucao = res.data.labels || [];
     }
-
     async function carregarCmvProdutosPorGrupo(dt_inicio, dt_fim) {
         const res = await axios.post(baseUrl, { method: 'generateCmvPorProduto', token, data: { grupoId, dt_inicio, dt_fim } });
         cmvProdutosGrupo = res.data.data || [];
     }
-
     async function carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim) {
         const res = await axios.post(baseUrl, { method: 'generateTopComprasPorFornecedor', token, data: { grupoId, dt_inicio, dt_fim } });
         topFornecedoresGrupo = res.data.data || [];
@@ -252,8 +349,30 @@
 
     async function carregarNotasPendentes() {
         const filtroLojaEl = document.getElementById('filtroLoja');
-        // Prioriza a loja selecionada no combo, se não houver, usa a da URL
         const selectedLoja = parseInt(filtroLojaEl.value) || system_unit_id;
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listarNotasNaoImportadasUltimos30DiasCached',
+                token,
+                data: { system_unit_id: selectedLoja }
+            });
+            processarRespostaNotas(res.data);
+        } catch (e) {
+            console.error(e);
+            listaNotasPendentes = [];
+            document.getElementById('qtdNotasPendentes').textContent = "0";
+        }
+    }
+
+    async function atualizarNotasPendentesForce(element) {
+        const elQtd = document.getElementById('qtdNotasPendentes');
+        elQtd.classList.add('skeleton'); // Ativa skeleton só nesse campo
+
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        const selectedLoja = parseInt(filtroLojaEl.value) || system_unit_id;
+
+        const icon = element.querySelector('i');
+        if(icon) icon.classList.add('fa-spin');
 
         try {
             const res = await axios.post(baseUrl, {
@@ -261,84 +380,67 @@
                 token,
                 data: { system_unit_id: selectedLoja }
             });
-
-            // Correção aqui: acessamos res.data.data.notas_pendentes
-            if (res.data.success && res.data.data && res.data.data.notas_pendentes) {
-                listaNotasPendentes = res.data.data.notas_pendentes;
-                // Atualiza o contador com o total_pendentes do seu JSON
-                document.getElementById('qtdNotasPendentes').textContent = res.data.data.total_pendentes || listaNotasPendentes.length;
-            } else {
-                listaNotasPendentes = [];
-                document.getElementById('qtdNotasPendentes').textContent = "0";
-            }
+            processarRespostaNotas(res.data);
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+            Toast.fire({ icon: 'success', title: 'Notas sincronizadas!' });
         } catch (e) {
-            console.error("Erro na API de Notas:", e);
+            console.error(e);
+        } finally {
+            if(icon) icon.classList.remove('fa-spin');
+            elQtd.classList.remove('skeleton'); // Remove skeleton
+        }
+    }
+
+    function processarRespostaNotas(data) {
+        const msgCache = document.getElementById('msgCache');
+        if (data.success && data.data && data.data.notas_pendentes) {
+            listaNotasPendentes = data.data.notas_pendentes;
+            // Atualiza direto sem animação complexa para evitar bugs no force refresh
+            const el = document.getElementById('qtdNotasPendentes');
+            el.textContent = data.data.total_pendentes || listaNotasPendentes.length;
+            el.classList.remove('skeleton');
+
+            if (data.data.cached && data.data.last_update) {
+                const date = new Date(data.data.last_update);
+                msgCache.textContent = `Atualizado às ${date.getHours()}:${date.getMinutes().toString().padStart(2,'0')}`;
+                msgCache.classList.remove('hidden');
+            } else {
+                msgCache.classList.add('hidden');
+            }
+        } else {
             listaNotasPendentes = [];
             document.getElementById('qtdNotasPendentes').textContent = "0";
+            document.getElementById('qtdNotasPendentes').classList.remove('skeleton');
+            msgCache.classList.add('hidden');
         }
     }
 
     function verDetalhesNotasPendentes() {
         if (!Array.isArray(listaNotasPendentes) || listaNotasPendentes.length === 0) {
-            return Swal.fire('Tudo em dia!', 'Nenhuma nota pendente nos últimos 30 dias.', 'success');
+            return Swal.fire('Tudo em dia!', 'Nenhuma nota pendente.', 'success');
         }
-
-        // Calcula o valor total das notas pendentes
         const valorTotalGeral = listaNotasPendentes.reduce((acc, n) => acc + Number(n.valor_total), 0);
-
         let html = `
         <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-lg mb-4 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="text-3xl text-amber-600"><i class="fas fa-file-invoice-dollar"></i></div>
-                <div>
-                    <div class="text-xs font-bold text-amber-800 uppercase tracking-wider">Total Pendente (30 dias)</div>
-                    <div class="text-2xl font-black text-amber-900">
-                        R$ ${valorTotalGeral.toLocaleString('pt-BR', {minimumFractionDigits:2})}
-                    </div>
-                </div>
+                <div><div class="text-xs font-bold text-amber-800 uppercase">Total Pendente</div>
+                <div class="text-2xl font-black text-amber-900">R$ ${valorTotalGeral.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div></div>
             </div>
-            <div class="text-right">
-                <div class="text-xs font-bold text-amber-800 uppercase tracking-wider">Quantidade</div>
-                <div class="text-2xl font-black text-amber-900">${listaNotasPendentes.length}</div>
-            </div>
+            <div class="text-right"><div class="text-xs font-bold text-amber-800 uppercase">Qtd</div>
+            <div class="text-2xl font-black text-amber-900">${listaNotasPendentes.length}</div></div>
         </div>
-
         <div class="max-h-[50vh] overflow-y-auto border rounded-lg">
             <table class="w-full text-xs text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-100 sticky top-0 shadow-sm z-10">
-                        <th class="p-3 border-b">Emissão</th>
-                        <th class="p-3 border-b">NF / Série</th>
-                        <th class="p-3 border-b">Fornecedor</th>
-                        <th class="p-3 border-b text-right">Valor</th>
-                    </tr>
-                </thead>
+                <thead><tr class="bg-gray-100 sticky top-0 shadow-sm z-10"><th class="p-3 border-b">Emissão</th><th class="p-3 border-b">NF / Série</th><th class="p-3 border-b">Fornecedor</th><th class="p-3 border-b text-right">Valor</th></tr></thead>
                 <tbody class="divide-y divide-gray-200">
-                    ${listaNotasPendentes.map(n => `
-                        <tr class="hover:bg-blue-50 transition-colors">
-                            <td class="p-3">${new Date(n.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                            <td class="p-3 font-medium text-gray-600">${n.numero_nf} / ${n.serie}</td>
-                            <td class="p-3 uppercase text-gray-700 font-semibold">${n.emitente_razao}</td>
-                            <td class="p-3 text-right font-bold text-blue-700">
-                                R$ ${Number(n.valor_total).toLocaleString('pt-BR', {minimumFractionDigits:2})}
-                            </td>
-                        </tr>
-                    `).join('')}
+                    ${listaNotasPendentes.map(n => `<tr class="hover:bg-blue-50"><td class="p-3">${new Date(n.data_emissao+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="p-3">${n.numero_nf}/${n.serie}</td><td class="p-3 uppercase">${n.emitente_razao.slice(0,25)}</td><td class="p-3 text-right font-bold text-blue-700">R$ ${Number(n.valor_total).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`).join('')}
                 </tbody>
             </table>
         </div>`;
-
-        Swal.fire({
-            title: 'Detalhamento de Notas Pendentes',
-            html,
-            width: '850px',
-            confirmButtonColor: MRK.blue,
-            confirmButtonText: 'Fechar Janela',
-            showCloseButton: true
-        });
+        Swal.fire({ title: 'Notas Pendentes', html, width: '850px', confirmButtonColor: MRK.blue, confirmButtonText: 'Fechar' });
     }
 
-    // --- RENDERIZAÇÃO ---
     function aplicarFiltroLoja() {
         const filtroLojaEl = document.getElementById('filtroLoja');
         let selectedLoja = parseInt(filtroLojaEl.value) || null;
@@ -346,7 +448,6 @@
         const filtradoResumo = resumoEstoqueGrupo.filter(l => !selectedLoja || l.lojaId === selectedLoja);
         const filtradoCmvProdutos = cmvProdutosGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
         const filtradoFornecedores = topFornecedoresGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-
         const nomeSelecionado = selectedLoja ? (lojasPorGrupo[grupoId].find(x => parseInt(x.id) === selectedLoja)?.name) : null;
         const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
 
@@ -366,7 +467,9 @@
 
     function renderEvolucaoBarras(lojas, labels) {
         const config = (id, tipo) => {
-            const chart = echarts.init(document.getElementById(id));
+            const chartDom = document.getElementById(id);
+            if(!chartDom) return;
+            const chart = echarts.init(chartDom);
             const series = lojas.map((l, i) => ({
                 name: l.nome, type: 'bar', stack: 'total',
                 data: tipo === 'fat' ? l.faturamento : l.compras,
@@ -376,6 +479,7 @@
                 legend: { top: 0 }, tooltip: { trigger: 'axis' },
                 xAxis: { type: 'category', data: labels },
                 yAxis: { type: 'value' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
                 series
             });
         };
@@ -405,6 +509,7 @@
             tooltip: { trigger: 'axis' },
             yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
             xAxis: { type: 'value' },
+            grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
             series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.blue } }]
         });
     }
@@ -415,28 +520,21 @@
             tooltip: { trigger: 'axis' },
             yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
             xAxis: { type: 'value' },
+            grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
             series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.green } }]
         });
     }
 
-    function resetarEstadoDashboard() {
-        resumoEstoqueGrupo = []; evolucaoCmvGrupo = []; cmvProdutosGrupo = []; topFornecedoresGrupo = [];
-    }
-
-    function limparCharts() {
-        ['chartFaturamentoDiario','chartComprasDiario','chartTopProdutos','chartTopFornecedores'].forEach(id => {
-            const inst = echarts.getInstanceByDom(document.getElementById(id));
-            if (inst) inst.dispose();
-        });
-    }
-
     window.addEventListener('DOMContentLoaded', async () => {
-        document.getElementById('filtroLoja').addEventListener('change', async () => {
-            await carregarNotasPendentes(); // Recarrega as notas da unidade específica
-            aplicarFiltroLoja();
-        });
+        setupFilterListeners();
+        const now = new Date();
+        const start = new Date();
+        start.setDate(now.getDate() - 7);
+        document.getElementById('endDate').value = now.toISOString().split('T')[0];
+        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+
         await carregarGrupoInicial();
-        setRange('7dias');
+        fetchData();
     });
 </script>
 

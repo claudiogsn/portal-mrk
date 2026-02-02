@@ -744,16 +744,61 @@ class MdeController
             ];
         }
     }
+    /**
+     * MÉTOD 1: LEITURA RÁPIDA (Cached)
+     * Apenas lê do banco. Retorna instantaneamente.
+     */
+    public static function listarNotasNaoImportadasUltimos30DiasCached(int $system_unit_id): array
+    {
+        global $pdo;
+
+        try {
+            // 1. Tenta buscar no cache
+            $stmt = $pdo->prepare("
+            SELECT response_json, updated_at 
+            FROM financeiro_nfe_cache 
+            WHERE system_unit_id = :unit
+        ");
+            $stmt->execute([':unit' => $system_unit_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // 2. Se encontrou e tem conteúdo válido
+            if ($row && !empty($row['response_json'])) {
+                $data = json_decode($row['response_json'], true);
+
+                // Se o JSON for válido, retorna ele
+                if (is_array($data)) {
+                    $data['cached']      = true;
+                    $data['last_update'] = $row['updated_at'];
+                    return $data;
+                }
+            }
+
+            // 3. Se chegou aqui, é porque NÃO tem cache (ou estava inválido/vazio).
+            // Chama o método original que:
+            // a) Vai na API externa
+            // b) Salva no banco (cache)
+            // c) Retorna os dados
+            return self::listarNotasNaoImportadasUltimos30Dias($system_unit_id);
+
+        } catch (Exception $e) {
+            // Opcional: Se der erro de leitura no banco (ex: tabela corrompida),
+            // tentamos buscar direto na API para não deixar o usuário na mão.
+            return self::listarNotasNaoImportadasUltimos30Dias($system_unit_id);
+        }
+    }
     public static function listarNotasNaoImportadasUltimos30Dias(int $system_unit_id): array
     {
+        global $pdo;
+
         try {
-            // Período: últimos 30 dias (hoje + 29 dias atrás)
+            // --- LÓGICA ORIGINAL (Busca na API) ---
             $dtFim = new DateTime('today');
             $dtIni = (clone $dtFim)->modify('-29 days');
-
             $data_inicial = $dtIni->format('Y-m-d');
             $data_final   = $dtFim->format('Y-m-d');
 
+            // Chama sua função interna que vai na API externa
             $resp = self::listarChavesNfeComStatusImportacao($system_unit_id, $data_inicial, $data_final);
 
             if (empty($resp['success'])) {
@@ -763,12 +808,12 @@ class MdeController
             $dataOriginal = $resp['data'] ?? [];
             $notas        = $dataOriginal['notas'] ?? [];
 
-            // Filtra apenas as NÃO importadas
+            // Filtra NÃO importadas
             $pendentesRaw = array_filter($notas, function ($n) {
                 return strtolower($n['status'] ?? '') !== 'importada';
             });
 
-            // Mapeia e JÁ REINDEXA para não vir 0,1,2,... como chaves
+            // Formata o Array
             $pendentes = array_values(array_map(function ($n) {
                 return [
                     'chave_acesso'    => $n['chave_acesso'] ?? null,
@@ -777,9 +822,7 @@ class MdeController
                     'data_emissao'    => $n['data_emissao'] ?? null,
                     'valor_total'     => $n['valor_total'] ?? null,
                     'emitente_cnpj'   => $n['emitente_cnpj'] ?? null,
-                    'emitente_razao'  => $n['emitente_razao']
-                        ?? $n['emitente_fantasia']
-                            ?? null,
+                    'emitente_razao'  => $n['emitente_razao'] ?? $n['emitente_fantasia'] ?? null,
                 ];
             }, $pendentesRaw));
 
@@ -790,21 +833,37 @@ class MdeController
                 ? 'Notas não importadas encontradas nos últimos 30 dias.'
                 : 'Nenhuma nota pendente de importação nos últimos 30 dias.';
 
-            return [
+            // Monta o array final de resposta
+            $resultadoFinal = [
                 'success' => true,
                 'message' => $mensagem,
                 'data'    => [
                     'system_unit_id'   => $system_unit_id,
-                    'cnpj'             => $dataOriginal['cnpj']      ?? null,
-                    'periodo'          => $dataOriginal['periodo']   ?? [
-                            'inicio' => $data_inicial,
-                            'fim'    => $data_final,
-                        ],
+                    'cnpj'             => $dataOriginal['cnpj'] ?? null,
+                    'periodo'          => [
+                        'inicio' => $data_inicial,
+                        'fim'    => $data_final,
+                    ],
                     'total_api'        => $totalApi,
                     'total_pendentes'  => $totalPendentes,
-                    'notas_pendentes'  => $pendentes, // aqui já vem como array sequencial
+                    'notas_pendentes'  => $pendentes,
                 ]
             ];
+
+            // --- NOVA PARTE: GRAVAR NO BANCO ---
+            // Usamos REPLACE INTO (MySQL) ou DELETE+INSERT para garantir atualização
+            // Se for MySQL, REPLACE INTO funciona como "Insert or Update" baseado na Primary Key
+            $stmtSave = $pdo->prepare("
+                REPLACE INTO financeiro_nfe_cache (system_unit_id, response_json, updated_at)
+                VALUES (:unit, :json, NOW())
+            ");
+
+            $stmtSave->execute([
+                ':unit' => $system_unit_id,
+                ':json' => json_encode($resultadoFinal)
+            ]);
+
+            return $resultadoFinal;
 
         } catch (Throwable $e) {
             return [
