@@ -201,10 +201,7 @@
                     </div>
 
                     <div class="text-right" style="margin-top:18px;">
-                        <button type="button" class="btn btn-warning" id="btnBaixar" style="margin-right:8px;">
-                            <i class="fa fa-check"></i> Baixar Conta
-                        </button>
-
+                       
                         <button type="button" class="btn btn-success" id="btnSalvar">
                             <i class="fa fa-save"></i> Salvar
                         </button>
@@ -313,7 +310,7 @@
         $(document).on('input change', '.valorParcela', atualizarTotalParcelas);
 
         $('#btnSalvar').on('click', salvar);
-        $('#btnBaixar').on('click', baixarContaHandler);
+
 
         // ESC fecha
         (function enableEscClose(){
@@ -637,7 +634,6 @@
         }
     }
 
-    async function baixarContaHandler(){ /* Mantido igual ao seu */ }
     function fecharModalParent() { /* Mantido igual ao seu */ }
 </script>
 </body>
