@@ -26,6 +26,7 @@ require_once 'controllers/FinanceiroFornecedorController.php';
 require_once 'controllers/FinanceiroClienteController.php';
 require_once 'controllers/FinanceiroBancoController.php';
 require_once 'controllers/ConferenciaCaixaController.php';
+require_once 'controllers/FinanceiroFormaPagamentoController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -127,7 +128,6 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
-
             case 'importarBancosPadrao':
                 if (isset($requestData['system_unit_id'])) {
                     $response = FinanceiroBancoController::importarBancosPadrao(
@@ -141,6 +141,91 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+
+            case 'listFormasPagamento':
+                if (isset($requestData['system_unit_id'])) {
+                    $apenasAtivos = isset($requestData['apenas_ativos']) && (bool)$requestData['apenas_ativos'];
+
+                    $response = FinanceiroFormaPagamentoController::listFormasPagamento(
+                        $requestData['system_unit_id'],
+                        $apenasAtivos
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'ID do estabelecimento (system_unit_id) não informado'
+                    ];
+                }
+                break;
+
+            case 'createFormaPagamento':
+                if (
+                    isset($requestData['system_unit_id']) &&
+                    isset($requestData['codigo'])
+                ) {
+                    // Passa o payload inteiro (nome, banco_padrao_id, etc)
+                    $response = FinanceiroFormaPagamentoController::createFormaPagamento($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id, codigo'
+                    ];
+                }
+                break;
+
+            case 'updateFormaPagamento':
+                if (isset($requestData['id'])) {
+                    $response = FinanceiroFormaPagamentoController::updateFormaPagamento($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'deleteFormaPagamento':
+                if (isset($requestData['id'])) {
+                    $response = FinanceiroFormaPagamentoController::deleteFormaPagamento($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'getFormaPagamentoById':
+                if (isset($requestData['id'])) {
+                    // O novo controller só precisa do ID
+                    $response = FinanceiroFormaPagamentoController::getFormaPagamentoById($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'importarFormasPadrao':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroFormaPagamentoController::importarFormasPadrao(
+                        $requestData['system_unit_id']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: system_unit_id'
+                    ];
+                }
+                break;
+
             case 'fetchFinanceiroConta':
                 $response = FinanceiroApiMenewController::fetchFinanceiroConta($requestData['estabelecimento'], $requestData['tipo']);
                 break;

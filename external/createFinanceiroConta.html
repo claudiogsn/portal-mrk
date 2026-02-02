@@ -363,7 +363,7 @@
 
     async function carregarBancos(){
         try {
-            const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+            const res = await axios.post(baseUrl, { method: 'listForma', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
             BANCOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
             BANCOS_CACHE.forEach(b => {
                 $('#forma_pagamento_id').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome||b.descricao), b.codigo));

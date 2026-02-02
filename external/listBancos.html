@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Formas de Pagamento</title>
+    <title>Gestão de Contas Bancárias</title>
 
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
@@ -13,7 +13,6 @@
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
 
-    <!-- FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
@@ -51,11 +50,13 @@
             font-size: 11px;
             color: #fff;
         }
-        .status-ativo {
-            background-color: #4CAF50;
-        }
-        .status-inativo {
-            background-color: #F44336;
+        .status-ativo { background-color: #4CAF50; }
+        .status-inativo { background-color: #F44336; }
+
+        .info-banco {
+            font-size: 11px;
+            color: #666;
+            display: block;
         }
     </style>
 </head>
@@ -65,7 +66,8 @@
     <br>
     <div class="card">
         <div class="header">
-            <h2>Formas de Pagamento</h2>
+            <h2>Contas Bancárias</h2>
+            <small>Cadastre as contas onde o dinheiro é movimentado (Itaú, Bradesco, Caixa Interno, etc).</small>
         </div>
         <div class="body">
 
@@ -73,15 +75,12 @@
                 <div class="col-md-3">
                     <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
                 </div>
-                <div class="col-md-5">
-                    <input type="text" id="filtroNomeDescricao" class="form-control" placeholder="Filtrar por nome ou descrição">
+                <div class="col-md-6">
+                    <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome do banco">
                 </div>
-                <div class="col-md-4 text-right">
-                    <button class="btn btn-info" id="btnImportarPadrao">
-                        <i class="fa fa-download"></i> Importar Padrão
-                    </button>
+                <div class="col-md-3 text-right">
                     <button class="btn btn-success" id="btnNovoBanco">
-                        <i class="fa fa-plus"></i> Novo
+                        <i class="fa fa-plus"></i> Nova Conta
                     </button>
                 </div>
             </div>
@@ -90,9 +89,10 @@
                 <table class="table table-striped table-hover" id="tabela-bancos">
                     <thead>
                     <tr>
-                        <th style="width:90px;">Código</th>
-                        <th>Nome</th>
-                        <th>Descrição</th>
+                        <th style="width:80px;">Código</th>
+                        <th>Instituição / Nome</th>
+                        <th>Agência / Conta</th>
+                        <th>Carteira</th>
                         <th style="width:100px;">Status</th>
                         <th style="width:120px;">Ações</th>
                     </tr>
@@ -105,30 +105,55 @@
     </div>
 </div>
 
-<!-- Modal Novo Banco -->
 <div class="modal fade" id="modalBanco" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
 
             <div class="modal-header">
-                <h4 class="modal-title">Cadastrar Forma de Pagamento</h4>
+                <h4 class="modal-title">Cadastrar Conta Bancária</h4>
             </div>
 
             <div class="modal-body">
                 <form id="formBanco">
-                    <div class="form-group">
-                        <label for="codigo">Código *</label>
-                        <input type="number" class="form-control" id="codigo" placeholder="Ex: 1" required>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="codigo">Código*</label>
+                                <input type="number" class="form-control" id="codigo" placeholder="Ex: 341" required>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <label for="nome">Nome do Banco *</label>
+                                <input type="text" class="form-control" id="nome" placeholder="Ex: Itaú Movimento" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="agencia">Agência</label>
+                                <input type="text" class="form-control" id="agencia" placeholder="Ex: 1234">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label for="conta">Conta</label>
+                                <input type="text" class="form-control" id="conta" placeholder="Ex: 12345-6">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="carteira">Carteira</label>
+                                <input type="text" class="form-control" id="carteira" placeholder="Ex: 109">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="nome">Nome *</label>
-                        <input type="text" class="form-control" id="nome" placeholder="Ex: Dinheiro" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="descricao">Descrição</label>
-                        <input type="text" class="form-control" id="descricao" placeholder="Ex: Pagamentos em espécie">
+                        <label for="descricao">Descrição / Obs</label>
+                        <input type="text" class="form-control" id="descricao" placeholder="Opcional">
                     </div>
 
                     <div class="form-group">
@@ -150,31 +175,56 @@
     </div>
 </div>
 
-<!-- Modal Editar Banco -->
 <div class="modal fade" id="modalEditarBanco" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
 
             <div class="modal-header">
-                <h4 class="modal-title">Editar Forma de Pagamento</h4>
+                <h4 class="modal-title">Editar Conta Bancária</h4>
             </div>
 
             <div class="modal-body">
                 <form id="formEditarBanco">
                     <input type="hidden" id="editarBancoId">
 
-                    <div class="form-group">
-                        <label for="editarCodigo">Código *</label>
-                        <input type="number" class="form-control" id="editarCodigo" required>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="editarCodigo">Código *</label>
+                                <input type="text" class="form-control" id="editarCodigo" required>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <label for="editarNome">Nome do Banco *</label>
+                                <input type="text" class="form-control" id="editarNome" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="editarAgencia">Agência</label>
+                                <input type="text" class="form-control" id="editarAgencia">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label for="editarConta">Conta</label>
+                                <input type="text" class="form-control" id="editarConta">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="editarCarteira">Carteira</label>
+                                <input type="text" class="form-control" id="editarCarteira">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="editarNome">Nome *</label>
-                        <input type="text" class="form-control" id="editarNome" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="editarDescricao">Descrição</label>
+                        <label for="editarDescricao">Descrição / Obs</label>
                         <input type="text" class="form-control" id="editarDescricao">
                     </div>
 
@@ -216,7 +266,7 @@
 
         listarBancos();
 
-        $('#filtroCodigo, #filtroNomeDescricao').on('input', filtrarTabela);
+        $('#filtroCodigo, #filtroNome').on('input', filtrarTabela);
 
         $('#btnNovoBanco').click(() => {
             $('#formBanco')[0].reset();
@@ -226,13 +276,12 @@
 
         $('#salvarBanco').click(salvarBanco);
         $('#salvarEdicaoBanco').click(salvarEdicaoBanco);
-        $('#btnImportarPadrao').click(importarBancosPadrao);
     });
 
     async function listarBancos() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'listBancos',
+                method: 'listBancos', // Chama o controller de BANCOS reais
                 token,
                 data: {
                     system_unit_id,
@@ -247,48 +296,44 @@
             tbody.empty();
 
             if (!bancosCache.length) {
-                // Nenhum banco -> mostra mensagem + botão para importar
                 tbody.append(`
                     <tr>
-                        <td colspan="5" class="text-center">
-                            Nenhuma forma de pagamento cadastrado.<br>
-                            <button class="btn btn-info btn-sm" id="btnImportarPadraoInline" style="margin-top:8px;">
-                                <i class="fa fa-download"></i> Importar Bancos Padrão
-                            </button>
+                        <td colspan="6" class="text-center text-muted">
+                            Nenhuma conta bancária cadastrada.<br>
+                            Clique em "Nova Conta" para começar.
                         </td>
                     </tr>
                 `);
-
-                $('#btnImportarPadraoInline').off('click').on('click', importarBancosPadrao);
                 return;
             }
 
             // Ordena por código
-            bancosCache.sort((a, b) => {
-                const ca = String(a.codigo || '');
-                const cb = String(b.codigo || '');
-                return ca.localeCompare(cb, 'pt-BR', {numeric: true});
-            });
+            bancosCache.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
             bancosCache.forEach(b => {
                 const codigo    = b.codigo ?? '';
                 const nome      = (b.nome || '').trim();
-                const descricao = (b.descricao || '').trim();
+                const agencia   = (b.agencia || '').trim();
+                const conta     = (b.conta || '').trim();
+                const carteira  = (b.carteira || '').trim();
                 const ativos    = Number(b.ativos ?? 1);
 
                 const statusClass = ativos ? 'status-ativo' : 'status-inativo';
                 const statusText  = ativos ? 'Ativo' : 'Inativo';
 
+                // Formata Agência e Conta
+                let infoAgenciaConta = '-';
+                if(agencia || conta) {
+                    infoAgenciaConta = `<span class="info-banco">Ag: ${agencia || 'N/A'} | Cc: ${conta || 'N/A'}</span>`;
+                }
+
                 tbody.append(`
                     <tr data-id="${b.id}">
-                        <td>${codigo}</td>
+                        <td><strong>${codigo}</strong></td>
                         <td>${nome}</td>
-                        <td>${descricao}</td>
-                        <td>
-                            <span class="status-label ${statusClass}">
-                                ${statusText}
-                            </span>
-                        </td>
+                        <td>${infoAgenciaConta}</td>
+                        <td>${carteira || '-'}</td>
+                        <td><span class="status-label ${statusClass}">${statusText}</span></td>
                         <td>
                             <a href="#" class="editar-banco" title="Editar">
                                 <i class="fa fa-edit blue"></i>
@@ -309,28 +354,24 @@
             filtrarTabela();
         } catch (err) {
             console.error(err);
-            Swal.fire('Erro', 'Falha ao listar bancos.', 'error');
+            Swal.fire('Erro', 'Falha ao listar contas bancárias.', 'error');
         }
     }
 
     function filtrarTabela() {
         const codigoFiltro = $('#filtroCodigo').val().toLowerCase();
-        const textoFiltro  = $('#filtroNomeDescricao').val().toLowerCase();
+        const textoFiltro  = $('#filtroNome').val().toLowerCase();
 
         $('#tabela-bancos tbody tr').each(function () {
             const $tr = $(this);
-
-            // linha especial de "Nenhum banco" não deve ser filtrada
-            if ($tr.find('#btnImportarPadraoInline').length) {
-                return;
-            }
+            // Se for a linha de "nenhum registro", não filtra
+            if ($tr.text().includes('Nenhuma conta bancária')) return;
 
             const textoCodigo = $tr.find('td:nth-child(1)').text().toLowerCase();
             const textoNome   = $tr.find('td:nth-child(2)').text().toLowerCase();
-            const textoDesc   = $tr.find('td:nth-child(3)').text().toLowerCase();
 
             const matchCodigo = !codigoFiltro || textoCodigo.startsWith(codigoFiltro);
-            const matchTexto  = !textoFiltro || (textoNome.includes(textoFiltro) || textoDesc.includes(textoFiltro));
+            const matchTexto  = !textoFiltro || textoNome.includes(textoFiltro);
 
             $tr.toggle(matchCodigo && matchTexto);
         });
@@ -339,18 +380,17 @@
     async function salvarBanco() {
         const codigo    = $('#codigo').val().trim();
         const nome      = $('#nome').val().trim();
+        const agencia   = $('#agencia').val().trim();
+        const conta     = $('#conta').val().trim();
+        const carteira  = $('#carteira').val().trim();
         const descricao = $('#descricao').val().trim();
         const ativos    = $('#ativos').val();
 
         if (!codigo || !nome) {
-            return Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
+            return Swal.fire('Atenção', 'Código e Nome são obrigatórios.', 'warning');
         }
 
-        Swal.fire({
-            title: 'Salvando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await axios.post(baseUrl, {
@@ -360,6 +400,9 @@
                     system_unit_id,
                     codigo,
                     nome,
+                    agencia,
+                    conta,
+                    carteira,
                     descricao,
                     ativos
                 }
@@ -368,33 +411,33 @@
             Swal.close();
 
             if (res.data && res.data.success === false) {
-                return Swal.fire('Atenção', res.data.message || 'Não foi possível criar o banco.', 'warning');
+                return Swal.fire('Atenção', res.data.message || 'Erro ao criar conta.', 'warning');
             }
 
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Banco criado com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Conta bancária criada com sucesso.', 'success');
             $('#modalBanco').modal('hide');
-            $('#formBanco')[0].reset();
             listarBancos();
         } catch (err) {
             console.error(err);
-            Swal.fire('Erro', 'Erro ao criar banco.', 'error');
+            Swal.fire('Erro', 'Erro ao criar conta.', 'error');
         }
     }
 
-    // Abrir modal editar banco
+    // Abrir modal editar
     $(document).on('click', '.editar-banco', function (e) {
         e.preventDefault();
         const $tr = $(this).closest('tr');
         const id  = $tr.data('id');
         const banco = bancosCache.find(b => String(b.id) === String(id));
 
-        if (!banco) {
-            return Swal.fire('Erro', 'Banco não encontrado no cache.', 'error');
-        }
+        if (!banco) return Swal.fire('Erro', 'Banco não encontrado.', 'error');
 
         $('#editarBancoId').val(banco.id);
         $('#editarCodigo').val(banco.codigo);
         $('#editarNome').val(banco.nome || '');
+        $('#editarAgencia').val(banco.agencia || '');
+        $('#editarConta').val(banco.conta || '');
+        $('#editarCarteira').val(banco.carteira || '');
         $('#editarDescricao').val(banco.descricao || '');
         $('#editarAtivos').val(banco.ativos ?? 1);
 
@@ -405,6 +448,9 @@
         const id        = $('#editarBancoId').val();
         const codigo    = $('#editarCodigo').val().trim();
         const nome      = $('#editarNome').val().trim();
+        const agencia   = $('#editarAgencia').val().trim();
+        const conta     = $('#editarConta').val().trim();
+        const carteira  = $('#editarCarteira').val().trim();
         const descricao = $('#editarDescricao').val().trim();
         const ativos    = $('#editarAtivos').val();
 
@@ -413,20 +459,15 @@
         }
 
         const confirmacao = await Swal.fire({
-            title: 'Confirmar alteração?',
-            text: 'Deseja salvar as alterações?',
+            title: 'Salvar alterações?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Sim, salvar',
+            confirmButtonText: 'Sim',
             cancelButtonText: 'Cancelar'
         });
         if (!confirmacao.isConfirmed) return;
 
-        Swal.fire({
-            title: 'Salvando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await axios.post(baseUrl, {
@@ -436,6 +477,9 @@
                     id,
                     codigo,
                     nome,
+                    agencia,
+                    conta,
+                    carteira,
                     descricao,
                     ativos
                 }
@@ -447,93 +491,67 @@
                 return Swal.fire('Erro', res.data.message || 'Erro ao atualizar.', 'error');
             }
 
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Atualizado com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Atualizado com sucesso.', 'success');
             $('#modalEditarBanco').modal('hide');
             listarBancos();
         } catch (err) {
             console.error(err);
-            Swal.fire('Erro', 'Erro ao atualizar banco.', 'error');
+            Swal.fire('Erro', 'Erro ao atualizar conta.', 'error');
         }
     }
 
-    // Ativar / Inativar banco (toggle)
+    // Toggle Ativo
     $(document).on('click', '.toggle-ativo-banco', async function (e) {
         e.preventDefault();
-        const $tr = $(this).closest('tr');
-        const id  = $tr.data('id');
+        const id = $(this).closest('tr').data('id');
         const banco = bancosCache.find(b => String(b.id) === String(id));
-
-        if (!banco) {
-            return Swal.fire('Erro', 'Banco não encontrado.', 'error');
-        }
-
         const novoStatus = banco.ativos ? 0 : 1;
-        const acaoTexto = novoStatus ? 'ativar' : 'inativar';
+        const acao = novoStatus ? 'ativar' : 'inativar';
 
-        const confirmacao = await Swal.fire({
-            title: `Confirmar ${acaoTexto}?`,
-            text: `Deseja ${acaoTexto} - "${banco.nome}"?`,
+        const conf = await Swal.fire({
+            title: `Confirmar ${acao}?`,
+            text: `Deseja ${acao} "${banco.nome}"?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: `Sim, ${acaoTexto}`,
-            cancelButtonText: 'Cancelar'
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Não'
         });
-        if (!confirmacao.isConfirmed) return;
+        if (!conf.isConfirmed) return;
 
-        Swal.fire({
-            title: 'Atualizando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.showLoading();
 
         try {
             const res = await axios.post(baseUrl, {
                 method: 'updateBanco',
                 token,
-                data: {
-                    id,
-                    ativos: novoStatus
-                }
+                data: { id, ativos: novoStatus }
             });
-
             Swal.close();
+            if(!res.data.success) return Swal.fire('Erro', res.data.message, 'error');
 
-            if (res.data && res.data.success === false) {
-                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar status.', 'error');
-            }
-
-            Swal.fire('Sucesso', 'Status atualizado com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Status atualizado.', 'success');
             listarBancos();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao atualizar status do banco.', 'error');
+        } catch (e) {
+            Swal.fire('Erro', 'Falha na requisição.', 'error');
         }
     });
 
-    // Excluir banco
+    // Excluir
     $(document).on('click', '.excluir-banco', async function (e) {
         e.preventDefault();
-        const $tr = $(this).closest('tr');
-        const id  = $tr.data('id');
+        const id = $(this).closest('tr').data('id');
         const banco = bancosCache.find(b => String(b.id) === String(id));
 
-        const nomeBanco = banco ? banco.nome : id;
-
-        const confirmacao = await Swal.fire({
-            title: 'Excluir banco?',
-            text: `Deseja excluir definitivamente "${nomeBanco}"? Esta ação não poderá ser desfeita.`,
+        const conf = await Swal.fire({
+            title: 'Excluir conta?',
+            text: `Excluir "${banco.nome}"?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sim, excluir',
-            cancelButtonText: 'Cancelar'
+            confirmButtonText: 'Sim, excluir'
         });
-        if (!confirmacao.isConfirmed) return;
+        if (!conf.isConfirmed) return;
 
-        Swal.fire({
-            title: 'Excluindo...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.showLoading();
 
         try {
             const res = await axios.post(baseUrl, {
@@ -541,59 +559,15 @@
                 token,
                 data: { id }
             });
-
             Swal.close();
+            if(!res.data.success) return Swal.fire('Atenção', res.data.message, 'warning');
 
-            if (res.data && res.data.success === false) {
-                return Swal.fire('Atenção', res.data.message || 'Não foi possível excluir ', 'warning');
-            }
-
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Excluído com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Excluído com sucesso.', 'success');
             listarBancos();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao excluir banco.', 'error');
+        } catch (e) {
+            Swal.fire('Erro', 'Falha ao excluir.', 'error');
         }
     });
-
-    // Importar bancos padrão
-    async function importarBancosPadrao() {
-        const confirmacao = await Swal.fire({
-            title: 'Importar pagamentos padrão?',
-            text: 'Isso irá criar (ou atualizar) as formas de pagamento padrão para esta unidade.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, importar',
-            cancelButtonText: 'Cancelar'
-        });
-        if (!confirmacao.isConfirmed) return;
-
-        Swal.fire({
-            title: 'Importando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-
-        try {
-            const res = await axios.post(baseUrl, {
-                method: 'importarBancosPadrao',
-                token,
-                data: { system_unit_id }
-            });
-
-            Swal.close();
-
-            if (res.data && res.data.success === false) {
-                return Swal.fire('Erro', res.data.message || 'Erro ao importar padrão.', 'error');
-            }
-
-            Swal.fire('Sucesso', (res.data && res.data.message) || 'Padrão importados com sucesso.', 'success');
-            listarBancos();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao importar padrão.', 'error');
-        }
-    }
 </script>
 
 </body>

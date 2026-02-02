@@ -416,7 +416,7 @@
 
     async function carregarFormasPagamento(){
         try{
-            const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id: Number(unit_id), apenasAtivos: true } });
+            const res = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id), apenasAtivos: true } });
             const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
             list.forEach(b => $('#forma_pagamento_id').append(new Option(`${b.codigo} - ${b.nome}`, b.codigo)));
         }catch(e){}

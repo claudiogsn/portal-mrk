@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Formas de Pagamento</title>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        th, td { vertical-align: middle !important; }
+
+        @media (max-width: 768px) {
+            body, .form-control, .modal-content, table, th, td, button {
+                font-size: 12px !important;
+            }
+            h2, .modal-title { font-size: 16px !important; }
+            .btn { padding: 6px 10px !important; font-size: 12px !important; }
+            .table-responsive { overflow-x: auto; }
+            .modal-dialog { margin: 10px; }
+            .row > div[class*="col-"] { margin-bottom: 10px; }
+            .form-control { height: 30px; padding: 4px 8px; }
+
+            #tabela-formas td,
+            #tabela-formas th { white-space: nowrap; }
+        }
+
+        i.blue { color: #2196F3; cursor: pointer; }
+        i.orange { color: #FF9800; cursor: pointer; }
+        i.red { color: #F44336; cursor: pointer; }
+
+        .status-label {
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #fff;
+        }
+        .status-ativo { background-color: #4CAF50; }
+        .status-inativo { background-color: #F44336; }
+
+        .badge-banco {
+            background-color: #607D8B;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Formas de Pagamento</h2>
+            <small>Defina como sua empresa recebe e pague, e onde o dinheiro entra.</small>
+        </div>
+        <div class="body">
+
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+                </div>
+                <div class="col-md-4 text-right">
+                    <button class="btn btn-info" id="btnImportarPadrao">
+                        <i class="fa fa-download"></i> Importar Padrão
+                    </button>
+                    <button class="btn btn-success" id="btnNovaForma">
+                        <i class="fa fa-plus"></i> Nova Forma
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabela-formas">
+                    <thead>
+                    <tr>
+                        <th style="width:90px;">Código</th>
+                        <th>Nome</th>
+                        <th>Banco Vinculado</th>
+                        <th style="width:100px;">Status</th>
+                        <th style="width:120px;">Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalForma" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h4 class="modal-title">Cadastrar Forma de Pagamento</h4>
+            </div>
+
+            <div class="modal-body">
+                <form id="formForma">
+                    <div class="form-group">
+                        <label for="codigo">Código *</label>
+                        <input inputmode="numeric" type="number" class="form-control" id="codigo" placeholder="" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nome">Nome *</label>
+                        <input type="text" class="form-control" id="nome" placeholder="Ex: Dinheiro" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="banco_padrao_id">Vincular a Banco</label>
+                        <select id="banco_padrao_id" class="form-control select-bancos">
+                            <option value="">Sem vínculo</option>
+                        </select>
+                        <small class="text-muted">Selecione onde o dinheiro cairá automaticamente.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ativos">Status</label>
+                        <select id="ativos" class="form-control">
+                            <option value="1">Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarForma">Salvar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarForma" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h4 class="modal-title">Editar Forma de Pagamento</h4>
+            </div>
+
+            <div class="modal-body">
+                <form id="formEditarForma">
+                    <input type="hidden" id="editarId">
+
+                    <div class="form-group">
+                        <label for="editarCodigo">Código *</label>
+                        <input type="text" class="form-control" id="editarCodigo" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarNome">Nome *</label>
+                        <input type="text" class="form-control" id="editarNome" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarBancoPadraoId">Vincular a Banco</label>
+                        <select id="editarBancoPadraoId" class="form-control select-bancos">
+                            <option value="">Sem vínculo/option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editarAtivos">Status</label>
+                        <select id="editarAtivos" class="form-control">
+                            <option value="1">Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="salvarEdicaoForma">Salvar Alterações</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('system_unit_id');
+
+    let formasCache = [];
+    let bancosDisponiveis = []; // Cache para o combo de bancos
+
+    $(document).ready(() => {
+        if (!token || !system_unit_id) {
+            Swal.fire('Erro', 'Token ou system_unit_id não informado na URL.', 'error');
+            return;
+        }
+
+        // Carrega os combos e a lista principal
+        carregarComboBancos();
+        listarFormas();
+
+        $('#filtroCodigo, #filtroNome').on('input', filtrarTabela);
+
+        $('#btnNovaForma').click(() => {
+            $('#formForma')[0].reset();
+            $('#ativos').val('1');
+            $('#banco_padrao_id').val(''); // Reseta o combo
+            $('#modalForma').modal('show');
+        });
+
+        $('#salvarForma').click(salvarForma);
+        $('#salvarEdicaoForma').click(salvarEdicaoForma);
+        $('#btnImportarPadrao').click(importarPadrao);
+    });
+
+    // 1. Carrega a lista de BANCOS REAIS para preencher o <select>
+    async function carregarComboBancos() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listBancos', // Esse método ainda existe no FinanceiroBancoController para listar bancos reais
+                token,
+                data: { system_unit_id, apenas_ativos: true }
+            });
+
+            const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            bancosDisponiveis = dados;
+
+            const options = '<option value="">Sem vínculo</option>' +
+                bancosDisponiveis.map(b => `<option value="${b.codigo}">${b.nome}</option>`).join('');
+
+            $('.select-bancos').html(options);
+
+        } catch (err) {
+            console.error("Erro ao carregar bancos para combo:", err);
+        }
+    }
+
+    // 2. Carrega a lista de FORMAS DE PAGAMENTO
+    async function listarFormas() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listFormasPagamento', // Novo método
+                token,
+                data: {
+                    system_unit_id,
+                    apenas_ativos: false
+                }
+            });
+
+            const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
+            formasCache = dados.slice();
+
+            const tbody = $('#tabela-formas tbody');
+            tbody.empty();
+
+            if (!formasCache.length) {
+                tbody.append(`
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            Nenhuma forma de pagamento cadastrada.<br>
+                            <button class="btn btn-info btn-sm" id="btnImportarPadraoInline" style="margin-top:8px;">
+                                <i class="fa fa-download"></i> Importar Padrão
+                            </button>
+                        </td>
+                    </tr>
+                `);
+                $('#btnImportarPadraoInline').off('click').on('click', importarPadrao);
+                return;
+            }
+
+            // Ordena por código
+            formasCache.sort((a, b) => {
+                return String(a.nome).localeCompare(String(b.nome));
+            });
+
+            formasCache.forEach(f => {
+                const codigo    = f.codigo ?? '';
+                const nome      = (f.nome || '').trim();
+                const ativos    = Number(f.ativos ?? 1);
+                // Campo trazido pelo JOIN no controller
+                const nomeBanco = f.nome_banco_padrao ? `<span class="badge-banco"><i class="fa fa-university"></i> ${f.nome_banco_padrao}</span>` : '<span class="text-muted">-</span>';
+
+                const statusClass = ativos ? 'status-ativo' : 'status-inativo';
+                const statusText  = ativos ? 'Ativo' : 'Inativo';
+
+                tbody.append(`
+                    <tr data-id="${f.id}">
+                        <td><strong>${codigo}</strong></td>
+                        <td>${nome}</td>
+                        <td>${nomeBanco}</td>
+                        <td><span class="status-label ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <a href="#" class="editar-forma" title="Editar">
+                                <i class="fa fa-edit blue"></i>
+                            </a>
+                            &nbsp;
+                            <a href="#" class="toggle-ativo-forma" title="${ativos ? 'Inativar' : 'Ativar'}">
+                                <i class="fa fa-power-off orange"></i>
+                            </a>
+                            &nbsp;
+                            <a href="#" class="excluir-forma" title="Excluir">
+                                <i class="fa fa-trash red"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+
+            filtrarTabela();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao listar formas de pagamento.', 'error');
+        }
+    }
+
+    function filtrarTabela() {
+        const codigoFiltro = $('#filtroCodigo').val().toLowerCase();
+        const textoFiltro  = $('#filtroNome').val().toLowerCase();
+
+        $('#tabela-formas tbody tr').each(function () {
+            const $tr = $(this);
+            if ($tr.find('#btnImportarPadraoInline').length) return;
+
+            const textoCodigo = $tr.find('td:nth-child(1)').text().toLowerCase();
+            const textoNome   = $tr.find('td:nth-child(2)').text().toLowerCase();
+
+            const matchCodigo = !codigoFiltro || textoCodigo.includes(codigoFiltro);
+            const matchTexto  = !textoFiltro || textoNome.includes(textoFiltro);
+
+            $tr.toggle(matchCodigo && matchTexto);
+        });
+    }
+
+    async function salvarForma() {
+        const codigo          = $('#codigo').val().trim();
+        const nome            = $('#nome').val().trim();
+        const banco_padrao_id = $('#banco_padrao_id').val();
+        const ativos          = $('#ativos').val();
+
+        if (!codigo || !nome) {
+            return Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
+        }
+
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'createFormaPagamento', // Método novo
+                token,
+                data: {
+                    system_unit_id,
+                    codigo,
+                    nome,
+                    banco_padrao_id, // Enviando o vínculo
+                    ativos
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Atenção', res.data.message || 'Erro ao criar.', 'warning');
+            }
+
+            Swal.fire('Sucesso', 'Forma de pagamento criada com sucesso.', 'success');
+            $('#modalForma').modal('hide');
+            listarFormas();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao criar.', 'error');
+        }
+    }
+
+    // Abrir modal editar
+    $(document).on('click', '.editar-forma', function (e) {
+        e.preventDefault();
+        const $tr = $(this).closest('tr');
+        const id  = $tr.data('id');
+        const forma = formasCache.find(f => String(f.id) === String(id));
+
+        if (!forma) return Swal.fire('Erro', 'Registro não encontrado.', 'error');
+
+        $('#editarId').val(forma.id);
+        $('#editarCodigo').val(forma.codigo);
+        $('#editarNome').val(forma.nome || '');
+        // Preenche o combo com o ID do banco salvo
+        $('#editarBancoPadraoId').val(forma.banco_padrao_id || '');
+        $('#editarAtivos').val(forma.ativos ?? 1);
+
+        $('#modalEditarForma').modal('show');
+    });
+
+    async function salvarEdicaoForma() {
+        const id              = $('#editarId').val();
+        const codigo          = $('#editarCodigo').val().trim();
+        const nome            = $('#editarNome').val().trim();
+        const banco_padrao_id = $('#editarBancoPadraoId').val();
+        const ativos          = $('#editarAtivos').val();
+
+        if (!codigo || !nome) {
+            return Swal.fire('Atenção', 'Código e Nome obrigatórios.', 'warning');
+        }
+
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'updateFormaPagamento', // Método novo
+                token,
+                data: {
+                    id,
+                    codigo,
+                    nome,
+                    banco_padrao_id,
+                    ativos
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.success === false) {
+                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar.', 'error');
+            }
+
+            Swal.fire('Sucesso', 'Atualizado com sucesso.', 'success');
+            $('#modalEditarForma').modal('hide');
+            listarFormas();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Erro ao atualizar.', 'error');
+        }
+    }
+
+    // Toggle Status
+    $(document).on('click', '.toggle-ativo-forma', async function (e) {
+        e.preventDefault();
+        const id = $(this).closest('tr').data('id');
+        const forma = formasCache.find(f => String(f.id) === String(id));
+        const novoStatus = forma.ativos ? 0 : 1;
+        const acao = novoStatus ? 'ativar' : 'inativar';
+
+        const conf = await Swal.fire({
+            title: `Confirmar ${acao}?`,
+            text: `Deseja ${acao} "${forma.nome}"?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim',
+            cancelButtonText: 'Não'
+        });
+        if (!conf.isConfirmed) return;
+
+        Swal.showLoading();
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'updateFormaPagamento',
+                token,
+                data: { id, ativos: novoStatus }
+            });
+            Swal.close();
+            if(!res.data.success) return Swal.fire('Erro', res.data.message, 'error');
+
+            Swal.fire('Sucesso', 'Status atualizado.', 'success');
+            listarFormas();
+        } catch (e) {
+            Swal.fire('Erro', 'Falha na requisição.', 'error');
+        }
+    });
+
+    // Excluir
+    $(document).on('click', '.excluir-forma', async function (e) {
+        e.preventDefault();
+        const id = $(this).closest('tr').data('id');
+        const forma = formasCache.find(f => String(f.id) === String(id));
+
+        const conf = await Swal.fire({
+            title: 'Excluir?',
+            text: `Excluir "${forma.nome}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir'
+        });
+        if (!conf.isConfirmed) return;
+
+        Swal.showLoading();
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'deleteFormaPagamento',
+                token,
+                data: { id }
+            });
+            Swal.close();
+            if(!res.data.success) return Swal.fire('Atenção', res.data.message, 'warning');
+
+            Swal.fire('Sucesso', 'Excluído.', 'success');
+            listarFormas();
+        } catch (e) {
+            Swal.fire('Erro', 'Falha ao excluir.', 'error');
+        }
+    });
+
+    // Importar Padrão
+    async function importarPadrao() {
+        const conf = await Swal.fire({
+            title: 'Importar Padrão?',
+            text: 'Isso criará formas de pagamento padrão (Dinheiro, PIX, etc) vinculadas ao Banco Principal (ID 1).',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Importar'
+        });
+        if (!conf.isConfirmed) return;
+
+        Swal.showLoading();
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'importarFormasPadrao', // Método novo
+                token,
+                data: { system_unit_id }
+            });
+            Swal.close();
+            if(!res.data.success) return Swal.fire('Erro', res.data.message, 'error');
+
+            Swal.fire('Sucesso', 'Importado com sucesso.', 'success');
+            listarFormas();
+        } catch (e) {
+            Swal.fire('Erro', 'Falha ao importar.', 'error');
+        }
+    }
+</script>
+
+</body>
+</html>

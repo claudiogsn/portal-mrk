@@ -1486,33 +1486,22 @@ class FinanceiroContaController {
             if (empty($data['system_unit_id'])) {
                 throw new Exception("Campo obrigatório ausente: system_unit_id");
             }
-            if (empty($data['banco'])) {
-                throw new Exception("Campo obrigatório ausente: banco");
+            if (!isset($data['banco']) || $data['banco'] === '') {
+                throw new Exception("Campo obrigatório ausente: banco (Código da conta)");
             }
             if (empty($data['data_inicial']) || empty($data['data_final'])) {
                 throw new Exception("Campos obrigatórios ausentes: data_inicial e data_final");
             }
 
-            $unitId = (int)$data['system_unit_id'];
-            $banco  = (string)$data['banco'];
+            $unitId      = (int)$data['system_unit_id'];
+            $bancoCodigo = $data['banco']; // Código (ex: '341', '1', '001')
 
-            // ===== Helper para datas (aceita dd/mm/yyyy ou yyyy-mm-dd) =====
+            // ===== Helper para datas =====
             $parseDate = function (string $s): string {
                 $s = trim($s);
-                if ($s === '') {
-                    throw new Exception("Data inválida (vazia).");
-                }
-
-                // yyyy-mm-dd
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-                    return $s;
-                }
-
-                // dd/mm/yyyy
-                if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $s, $m)) {
-                    return "{$m[3]}-{$m[2]}-{$m[1]}";
-                }
-
+                if ($s === '') throw new Exception("Data inválida.");
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;
+                if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $s, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
                 throw new Exception("Data inválida: {$s}");
             };
 
@@ -1523,48 +1512,72 @@ class FinanceiroContaController {
                 throw new Exception("Data final não pode ser menor que a data inicial.");
             }
 
-            // ===== Consulta principal =====
+            // ===== Consulta Principal Ajustada =====
             $sql = "
-            SELECT
-                fc.id,
-                fc.baixa_dt,
-                fc.doc,
-                fc.nome,
-                fc.tipo,
-                fc.valor,
-                fc.plano_contas,
-                fc.obs,
-                fc.banco,
+        SELECT
+            fc.id,
+            fc.baixa_dt,
+            fc.doc,
+            fc.nome,
+            fc.tipo,
+            fc.valor,
+            fc.obs,
+            
+            -- Informações Visuais
+            fp.nome      AS forma_pagamento_nome,
+            
+            -- COALESCE: Se achar o nome pelo vínculo da forma, usa ele. Senão, usa o direto.
+            COALESCE(fb_fp.nome, fb_dir.nome) AS banco_nome,
+            
+            pl.descricao AS plano_descricao,
+            pl.codigo    AS plano_codigo
 
-                fp.descricao AS plano_descricao,
-                fb.nome      AS banco_nome
+        FROM financeiro_conta fc
+        
+        -- 1. Dados da Forma de Pagamento
+        LEFT JOIN financeiro_forma_pagamento fp 
+               ON fp.id = fc.forma_pagamento
+        
+        -- 2. Join Banco via Forma de Pagamento (Pelo CÓDIGO + UNIDADE)
+        LEFT JOIN financeiro_banco fb_fp 
+               ON fb_fp.codigo = fp.banco_padrao_id 
+              AND fb_fp.system_unit_id = fc.system_unit_id
+        
+        -- 3. Join Banco Direto (Pelo CÓDIGO + UNIDADE)
+        LEFT JOIN financeiro_banco fb_dir 
+               ON fb_dir.codigo = fc.banco 
+              AND fb_dir.system_unit_id = fc.system_unit_id
 
-            FROM financeiro_conta fc
-            LEFT JOIN financeiro_plano fp
-                   ON fp.system_unit_id = fc.system_unit_id
-                  AND fp.codigo = fc.plano_contas
-            LEFT JOIN financeiro_banco fb
-                   ON fb.system_unit_id = fc.system_unit_id
-                  AND fb.codigo = fc.banco
-            WHERE fc.system_unit_id = :unit
-              AND fc.banco = :banco
-              AND fc.baixa_dt IS NOT NULL
-              AND fc.baixa_dt <> '0000-00-00'
-              AND fc.baixa_dt BETWEEN :dtIni AND :dtFim
-            ORDER BY fc.baixa_dt ASC, fc.id ASC
+        -- 4. Dados do Plano de Contas
+        LEFT JOIN financeiro_plano pl 
+               ON pl.system_unit_id = fc.system_unit_id 
+              AND pl.codigo = fc.plano_contas
+
+        WHERE fc.system_unit_id = :unit
+          AND fc.baixa_dt IS NOT NULL
+          AND fc.baixa_dt BETWEEN :dtIni AND :dtFim
+          
+          -- LÓGICA DE FILTRO PELO CÓDIGO
+          AND (
+              fp.banco_padrao_id = :bancoCodigo  -- O código na forma de pagamento bate com o filtro
+              OR 
+              fc.banco = :bancoCodigo            -- O código na conta bate com o filtro
+          )
+
+        ORDER BY fc.baixa_dt ASC, fc.id ASC
         ";
 
             $st = $pdo->prepare($sql);
             $st->execute([
-                ':unit' => $unitId,
-                ':banco' => $banco,
-                ':dtIni' => $dtIni,
-                ':dtFim' => $dtFim,
+                ':unit'        => $unitId,
+                ':bancoCodigo' => $bancoCodigo,
+                ':dtIni'       => $dtIni,
+                ':dtFim'       => $dtFim,
             ]);
 
             $rows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-            // ===== Totais (débito x crédito) =====
+            // ===== Totais =====
             $totalDebitos  = 0.0;
             $totalCreditos = 0.0;
 
@@ -1578,20 +1591,20 @@ class FinanceiroContaController {
                 }
             }
 
-            $saldo = $totalCreditos - $totalDebitos;
+            $saldoPeriodo = $totalCreditos - $totalDebitos;
 
             return [
                 'success' => true,
                 'filters' => [
                     'system_unit_id' => $unitId,
-                    'banco'          => $banco,
+                    'banco_codigo'   => $bancoCodigo,
                     'data_inicial'   => $dtIni,
                     'data_final'     => $dtFim,
                 ],
                 'totals'  => [
                     'total_debitos'  => $totalDebitos,
                     'total_creditos' => $totalCreditos,
-                    'saldo'          => $saldo,
+                    'saldo_periodo'  => $saldoPeriodo,
                 ],
                 'rows'    => $rows,
                 'count'   => count($rows),
@@ -1600,12 +1613,10 @@ class FinanceiroContaController {
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'error'   => $e->getMessage()
+                'error'   => 'Erro ao gerar extrato: ' . $e->getMessage()
             ];
         }
-    }
-
-    public static function getDashboardFinanceiroPorGrupo(array $data): array
+    }    public static function getDashboardFinanceiroPorGrupo(array $data): array
     {
         global $pdo;
 

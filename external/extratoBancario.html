@@ -341,7 +341,7 @@
                 tipoIcon = `<span class="icon-circle red"><i class="fa fa-arrow-down"></i></span>`;
             }
 
-            const plano = (r.plano_contas ? r.plano_contas : '') +
+            const plano = (r.plano_codigo ? r.plano_codigo : '') +
                 (r.plano_descricao ? ' - ' + r.plano_descricao : '');
             const valorNum = Number(r.valor || 0);
             const signed   = (r.tipo === 'd') ? -valorNum : valorNum;
