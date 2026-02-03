@@ -214,6 +214,7 @@ class BiController {
         grupo_estabelecimento AS ge ON rel.grupo_id = ge.id 
     WHERE 
         rel.system_unit_id = :system_unit_id
+and ge.ativo = 1
     ");
 
         $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
@@ -240,6 +241,7 @@ class BiController {
         INNER JOIN grupo_estabelecimento ge ON ger.grupo_id = ge.id
         INNER JOIN system_unit su ON su.id = ger.system_unit_id
         WHERE suu.system_user_id = :user_id
+        and ge.ativo = 1
     ");
 
         $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
