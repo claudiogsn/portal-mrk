@@ -7,7 +7,6 @@ class ConferenciaCaixaController
     private static function getLojaIdBySystemUnit($systemUnitId)
     {
         global $pdo;
-        // ... (mesmo código anterior) ...
         $stmt = $pdo->prepare("SELECT custom_code FROM system_unit WHERE id = :id LIMIT 1");
         $stmt->bindValue(':id', $systemUnitId, PDO::PARAM_INT);
         $stmt->execute();
@@ -15,14 +14,6 @@ class ConferenciaCaixaController
         if (!$result) throw new Exception("Unidade não encontrada.");
         return $result['custom_code'];
     }
-
-    /**
-     * Salva ou Atualiza a conferência realizada pelo usuário.
-     * Espera um array de itens.
-     */
-    /**
-     * Salva ou Atualiza a conferência com Auditoria.
-     */
     public static function saveConferencia($data)
     {
         global $pdo;
@@ -39,49 +30,73 @@ class ConferenciaCaixaController
         try {
             $pdo->beginTransaction();
 
-            // Preparando as queries fora do loop para performance
+            // --- 1. Busca dados da Empresa e do Usuário para a Mensagem ---
 
-            // 1. Busca registro existente
+            // Busca Nome da Empresa
+            $stmtUnit = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+            $stmtUnit->execute([$systemUnitId]);
+            $unitData = $stmtUnit->fetch(PDO::FETCH_ASSOC);
+            $nomeEmpresa = $unitData['name'] ?? 'Empresa Desconhecida';
+
+            // Busca Nome e Telefone do Usuário
+            $stmtUser = $pdo->prepare("SELECT name, phone FROM system_users WHERE id = ?");
+            $stmtUser->execute([$userId]);
+            $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            $nomeUsuario = $userData['name'] ?? 'Usuário';
+            $telefoneUsuario = $userData['phone'] ?? null;
+
+            // --- Montagem da Mensagem com as Duas Datas ---
+
+            $dataCaixaFormatada = date('d/m/Y', strtotime($dataContabil)); // Data do movimento
+            $dataRealizacao     = date('d/m/Y H:i'); // Data e hora de "agora"
+
+            $resumoMsg = "🏢 *Conferência de Caixa*\n\n";
+            $resumoMsg .= "🏪 *Empresa:* {$nomeEmpresa}\n";
+            $resumoMsg .= "👤 *Responsável:* {$nomeUsuario}\n";
+            $resumoMsg .= "📅 *Data do Caixa:* {$dataCaixaFormatada}\n";
+            $resumoMsg .= "🕒 *Realizado em:* {$dataRealizacao}\n";
+            $resumoMsg .= "--------------------------------\n";
+
+            // --- Fim da preparação da mensagem ---
+
+            // Preparando as queries (mantido igual)
             $stmtCheck = $pdo->prepare("
-                SELECT id, valor_adquirente 
-                FROM conferencia_caixa 
-                WHERE system_unit_id = :system_unit_id 
-                  AND data_contabil = :data_contabil 
-                  AND forma_pagamento = :forma_pagamento
-                LIMIT 1
-            ");
+            SELECT id, valor_adquirente 
+            FROM conferencia_caixa 
+            WHERE system_unit_id = :system_unit_id 
+              AND data_contabil = :data_contabil 
+              AND forma_pagamento = :forma_pagamento
+            LIMIT 1
+        ");
 
-            // 2. Insert (Caso novo)
             $stmtInsert = $pdo->prepare("
-                INSERT INTO conferencia_caixa (
-                    system_unit_id, data_contabil, forma_pagamento, 
-                    valor_venda, valor_processado, valor_adquirente, diferenca, user_id
-                ) VALUES (
-                    :system_unit_id, :data_contabil, :forma_pagamento,
-                    :valor_venda, :valor_processado, :valor_adquirente, :diferenca, :user_id
-                )
-            ");
+            INSERT INTO conferencia_caixa (
+                system_unit_id, data_contabil, forma_pagamento, 
+                valor_venda, valor_processado, valor_adquirente, diferenca, user_id
+            ) VALUES (
+                :system_unit_id, :data_contabil, :forma_pagamento,
+                :valor_venda, :valor_processado, :valor_adquirente, :diferenca, :user_id
+            )
+        ");
 
-            // 3. Update (Caso existente)
             $stmtUpdate = $pdo->prepare("
-                UPDATE conferencia_caixa SET
-                    valor_venda = :valor_venda,
-                    valor_processado = :valor_processado,
-                    valor_adquirente = :valor_adquirente,
-                    diferenca = :diferenca,
-                    user_id = :user_id,
-                    updated_at = NOW()
-                WHERE id = :id
-            ");
+            UPDATE conferencia_caixa SET
+                valor_venda = :valor_venda,
+                valor_processado = :valor_processado,
+                valor_adquirente = :valor_adquirente,
+                diferenca = :diferenca,
+                user_id = :user_id,
+                updated_at = NOW()
+            WHERE id = :id
+        ");
 
-            // 4. Auditoria (Histórico)
             $stmtAudit = $pdo->prepare("
-                INSERT INTO conferencia_caixa_auditoria (
-                    conferencia_id, user_id, valor_anterior, valor_novo, motivo
-                ) VALUES (
-                    :conferencia_id, :user_id, :valor_anterior, :valor_novo, :motivo
-                )
-            ");
+            INSERT INTO conferencia_caixa_auditoria (
+                conferencia_id, user_id, valor_anterior, valor_novo, motivo
+            ) VALUES (
+                :conferencia_id, :user_id, :valor_anterior, :valor_novo, :motivo
+            )
+        ");
 
             foreach ($items as $item) {
                 $formaPagamento = strtoupper(trim($item['forma_pagamento']));
@@ -91,14 +106,22 @@ class ConferenciaCaixaController
                 $processado  = (float) ($item['processado_pagos'] ?? 0);
                 $adquirente  = (float) ($item['valor_adquirente'] ?? 0);
                 $diferenca   = $venda - $adquirente;
+                $motivo      = $item['motivo'] ?? null;
 
-                // O motivo vem de cada item editado na grid, ou um geral do payload
-                // Assumindo que vem no item: $item['motivo']
-                $motivo = $item['motivo'] ?? null;
+                // --- Adiciona item ao texto da mensagem ---
+                $icone = abs($diferenca) > 0.01 ? '⚠️' : '✅';
+                $resumoMsg .= "💳 *{$formaPagamento}* {$icone}\n";
+                $resumoMsg .= "   Venda: R$ " . number_format($venda, 2, ',', '.') . "\n";
+                $resumoMsg .= "   Informado: R$ " . number_format($adquirente, 2, ',', '.') . "\n";
 
-                // --- Lógica de Auditoria ---
+                // Opcional: Mostrar a diferença apenas se houver
+                if (abs($diferenca) > 0.01) {
+                    $resumoMsg .= "   Diferença: R$ " . number_format($diferenca, 2, ',', '.') . "\n";
+                }
+                $resumoMsg .= "\n";
+                // ------------------------------------------
 
-                // 1. Verifica se já existe
+                // Lógica de Banco de Dados (Mantida igual)
                 $stmtCheck->execute([
                     ':system_unit_id'  => $systemUnitId,
                     ':data_contabil'   => $dataContabil,
@@ -107,23 +130,10 @@ class ConferenciaCaixaController
                 $existente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
                 if ($existente) {
-                    // --- CENÁRIO DE UPDATE ---
-
                     $idConferencia = $existente['id'];
                     $valorAnterior = (float) $existente['valor_adquirente'];
 
-                    // Só audita se o valor mudou significativamente
-                    // Usa abs() para evitar problemas com ponto flutuante
                     if (abs($valorAnterior - $adquirente) > 0.001) {
-
-                        // Se quiser forçar erro caso não tenha motivo no backend também:
-                        /*
-                        if (empty($motivo)) {
-                           throw new Exception("É necessário informar o motivo para alterar '{$formaPagamento}' de R$ {$valorAnterior} para R$ {$adquirente}.");
-                        }
-                        */
-
-                        // Grava Auditoria
                         $stmtAudit->execute([
                             ':conferencia_id' => $idConferencia,
                             ':user_id'        => $userId,
@@ -133,7 +143,6 @@ class ConferenciaCaixaController
                         ]);
                     }
 
-                    // Atualiza o registro principal
                     $stmtUpdate->execute([
                         ':valor_venda'      => $venda,
                         ':valor_processado' => $processado,
@@ -144,8 +153,6 @@ class ConferenciaCaixaController
                     ]);
 
                 } else {
-                    // --- CENÁRIO DE INSERT (NOVO) ---
-                    // Não precisa de auditoria (ou pode criar um log de criação se quiser)
                     $stmtInsert->execute([
                         ':system_unit_id'   => $systemUnitId,
                         ':data_contabil'    => $dataContabil,
@@ -160,16 +167,22 @@ class ConferenciaCaixaController
             }
 
             $pdo->commit();
-            return ['success' => true, 'message' => 'Conferência salva com sucesso!'];
+
+            // --- ENVIO DA MENSAGEM ---
+            if (!empty($telefoneUsuario)) {
+                // Envia para o WhatsApp
+                UtilsController::sendWhatsapp($telefoneUsuario, $resumoMsg);
+            }
+
+            return ['success' => true, 'message' => 'Conferência salva e notificação enviada!'];
 
         } catch (Exception $e) {
-            $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             return ['success' => false, 'message' => 'Erro ao salvar: ' . $e->getMessage()];
         }
     }
-    /**
-     * Retorna o detalhamento UNIFICADO com o que já foi salvo no banco.
-     */
     public static function getDetalhamentoPorFormaPagamento($systemUnitId, $dataAnalise)
     {
         global $pdo;
@@ -254,10 +267,6 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    /**
-     * Retorna o detalhe financeiro (API Pagamentos) para uma forma de pagamento.
-     * Exibe NSU, Adquirente, Taxas e Valor Líquido.
-     */
     public static function getDetalhePagamentosPorFormaPagamento($systemUnitId, $dataAnalise, $formaPagamento)
     {
         global $pdo;
@@ -317,7 +326,6 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => 'Erro ao buscar detalhes financeiros: ' . $e->getMessage()];
         }
     }
-
     public static function getHistoricoAuditoria($conferenciaId)
     {
         global $pdo;
@@ -335,5 +343,83 @@ class ConferenciaCaixaController
         ");
         $stmt->execute([':id' => $conferenciaId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public static function sendConferenciaWpp(int $systemUnitId, string $dataContabil, int $userId): array
+    {
+        global $pdo;
+
+        // 1. Verifica se existem itens conferidos para essa data e unidade
+        $stmtItems = $pdo->prepare("
+            SELECT forma_pagamento, valor_venda, valor_adquirente, diferenca
+            FROM conferencia_caixa
+            WHERE system_unit_id = :unit_id 
+              AND data_contabil = :data
+        ");
+        $stmtItems->execute([
+            ':unit_id' => $systemUnitId,
+            ':data'    => $dataContabil
+        ]);
+        $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+        // REGRA: Se não tem conferência, devolve erro.
+        if (empty($items)) {
+            return ['success' => false, 'message' => 'Nenhuma conferência encontrada para esta data nesta unidade.'];
+        }
+
+        // 2. Busca Dados da Empresa (Para o cabeçalho da mensagem)
+        $stmtUnit = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+        $stmtUnit->execute([$systemUnitId]);
+        $nomeEmpresa = $stmtUnit->fetchColumn() ?: 'Empresa Desconhecida';
+
+        // 3. Busca Dados do Usuário (Para pegar o telefone de destino)
+        $stmtUser = $pdo->prepare("SELECT name, phone FROM system_users WHERE id = ?");
+        $stmtUser->execute([$userId]);
+        $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+        if (!$userData || empty($userData['phone'])) {
+            return ['success' => false, 'message' => 'Usuário não encontrado ou sem telefone cadastrado.'];
+        }
+
+        // 4. Monta a Mensagem
+        $dataCaixaFmt = date('d/m/Y', strtotime($dataContabil));
+        $dataEnvio    = date('d/m/Y H:i');
+
+        $msg  = "🏢 *Resumo de Conferência* (Reenvio)\n\n";
+        $msg .= "🏪 *Empresa:* {$nomeEmpresa}\n";
+        $msg .= "👤 *Solicitante:* {$userData['name']}\n";
+        $msg .= "📅 *Data do Caixa:* {$dataCaixaFmt}\n";
+        $msg .= "🕒 *Enviado em:* {$dataEnvio}\n";
+        $msg .= "--------------------------------\n";
+
+        foreach ($items as $item) {
+            $fp          = strtoupper($item['forma_pagamento']);
+            $venda       = (float) $item['valor_venda'];
+            $adquirente  = (float) $item['valor_adquirente'];
+            $diferenca   = (float) $item['diferenca'];
+
+            // Ícone visual
+            $icone = abs($diferenca) > 0.01 ? '⚠️' : '✅';
+
+            $msg .= "💳 *{$fp}* {$icone}\n";
+            $msg .= "   Venda: R$ " . number_format($venda, 2, ',', '.') . "\n";
+            $msg .= "   Informado: R$ " . number_format($adquirente, 2, ',', '.') . "\n";
+
+            // Mostra diferença apenas se existir
+            if (abs($diferenca) > 0.01) {
+                $msg .= "   Dif: R$ " . number_format($diferenca, 2, ',', '.') . "\n";
+            }
+            $msg .= "\n";
+        }
+
+        // 5. Realiza o envio
+        // O retorno do sendWhatsapp é [http_code, body, err]
+        $resultado = UtilsController::sendWhatsapp($userData['phone'], $msg);
+        $httpCode  = $resultado[0];
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return ['success' => true, 'message' => 'Resumo enviado para o WhatsApp com sucesso!'];
+        } else {
+            return ['success' => false, 'message' => 'Erro ao enviar mensagem. Código: ' . $httpCode];
+        }
     }
 }

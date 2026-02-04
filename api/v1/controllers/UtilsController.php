@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set("America/Recife");
+
 class UtilsController
 {
     public static function httpGet(string $url, array $headers = ['Accept: application/json']): array
@@ -121,6 +123,50 @@ class UtilsController
             random_int(0, 0xffff),
             random_int(0, 0xffff)
         );
+    }
+
+    /**
+     * Envia a mensagem para o WhatsApp (WPP)
+     */
+    public static function sendWhatsapp(string $telefone, string $mensagem): array
+    {
+        $url = 'https://portal.mrksolucoes.com.br/jobs/run/send-mensage';
+
+        $payload = [
+            'mensagem' => $mensagem,
+            'telefone' => self::somenteNumeros($telefone) // Remove formatação se houver
+        ];
+
+        return self::httpPost($url, $payload);
+    }
+
+    /**
+     * Helper para requisições POST com JSON
+     */
+    public static function httpPost(string $url, array $data): array
+    {
+        $ch = curl_init($url);
+        $payload = json_encode($data);
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($payload)
+            ]
+        ]);
+
+        $body = curl_exec($ch);
+        $err  = $body === false ? curl_error($ch) : null;
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        // curl_close($ch);
+        return [$code ?: 0, $body ?: '', $err];
     }
 
 

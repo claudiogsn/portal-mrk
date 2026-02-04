@@ -489,6 +489,13 @@ if (isset($data['method']) && isset($data['data'])) {
                     $requestData['forma_pagamento'] ?? null
                 );
                 break;
+            case 'sendConferenciaWpp':
+                $response = ConferenciaCaixaController::sendConferenciaWpp(
+                    $requestData['system_unit_id'] ?? null,
+                    $requestData['data'] ?? null,
+                    $requestData['user_id'] ?? $_SESSION['user_id'] ?? null
+                );
+                break;
 
 
 

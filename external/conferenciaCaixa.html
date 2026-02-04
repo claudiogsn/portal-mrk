@@ -15,23 +15,12 @@
 
     <style>
         .audit-info {
-            font-size: 11px;
-            color: #777;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            border-top: 1px solid #f5f5f5;
-            padding-top: 5px;
-            width: 100%;
+            font-size: 11px; color: #777; margin-top: 8px; display: flex; align-items: center;
+            gap: 5px; border-top: 1px solid #f5f5f5; padding-top: 5px; width: 100%;
         }
         .status-badge {
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 9px;
-            padding: 2px 5px;
-            border-radius: 3px;
-            margin-right: 5px;
+            font-weight: bold; text-transform: uppercase; font-size: 9px; padding: 2px 5px;
+            border-radius: 3px; margin-right: 5px;
         }
         .status-conferido { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
         .status-pendente { background: #fafafa; color: #999; border: 1px solid #eee; }
@@ -43,7 +32,6 @@
         .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
         .kpi.orange { background:#fff3e0; border-color:#ffe0b2; color:#ef6c00; }
 
-        /* Ajuste dos Cards */
         .list-container { margin-top: 20px; }
         .item-card {
             background: #fff; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px;
@@ -51,19 +39,19 @@
             display: flex; align-items: center; gap: 15px;
         }
 
-        .col-info { flex: 1.5; min-width: 180px; }
-        .col-values { flex: 4; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-
-        /* Colunas individuais de valores para não grudar */
+        .col-info { flex: 1; min-width: 150px; }
+        .col-values { flex: 3; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
         .val-block { min-width: 110px; }
 
-        .item-input-group { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+        .item-input-group { display: flex; align-items: center; gap: 10px; min-width: 180px; flex: 1; }
         .item-actions { width: 40px; text-align: right; font-size: 18px; color: #999; cursor: pointer; }
         .item-actions:hover { color: #2196F3; }
 
+        /* Estilo do botão de copiar */
         .btn-copy-val {
             background: #f5f5f5; border: 1px solid #2196f33d; border-radius: 4px;
-            padding: 4px 8px; cursor: pointer; color: #2196F3; transition: 0.2s;
+            padding: 6px 10px; cursor: pointer; color: #2196F3; transition: 0.2s;
+            margin-top: 14px; /* Alinhamento visual com o input */
         }
         .btn-copy-val:hover { background: #2196F3; color: #fff; }
 
@@ -86,9 +74,14 @@
     <div class="card">
         <div class="header header-flex">
             <h2>Conferência de Caixa</h2>
-            <button class="btn btn-success waves-effect" id="btnSalvarTudo">
-                <i class="fa fa-save"></i> SALVAR CONFERÊNCIA
-            </button>
+            <div>
+                <button class="btn btn-info waves-effect" id="btnEnviarWpp" style="margin-right: 10px;">
+                    <i class="fab fa-whatsapp"></i> ENVIAR RESUMO
+                </button>
+                <button class="btn btn-success waves-effect" id="btnSalvarTudo">
+                    <i class="fa fa-save"></i> SALVAR CONFERÊNCIA
+                </button>
+            </div>
         </div>
         <div class="body">
 
@@ -106,8 +99,8 @@
             </div>
 
             <div class="row">
-                <div class="col-md-4"><div class="kpi green"><small>Total Adquirente (Digitado)</small><h4 id="kpiAdquirente">R$ 0,00</h4></div></div>
-                <div class="col-md-4"><div class="kpi blue"><small>Total Comprovantes NF</small><h4 id="kpiNF">R$ 0,00</h4></div></div>
+                <div class="col-md-4"><div class="kpi blue"><small>Total Venda PDV</small><h4 id="kpiPDV">R$ 0,00</h4></div></div>
+                <div class="col-md-4"><div class="kpi green"><small>Total Conferência</small><h4 id="kpiConferencia">R$ 0,00</h4></div></div>
                 <div class="col-md-4"><div class="kpi orange"><small>Diferença Total</small><h4 id="kpiDiferenca">R$ 0,00</h4></div></div>
             </div>
 
@@ -172,6 +165,7 @@
         $('#btnBuscar').on('click', carregarConferencia);
         $('#btnSalvarTudo').on('click', salvarConferencia);
         $('#btnExportExcel').on('click', exportarExcel);
+        $('#btnEnviarWpp').on('click', enviarResumoWpp);
     });
 
     async function carregarConferencia(){
@@ -195,11 +189,15 @@
     function renderCards(lista) {
         const container = $('#containerCards').empty();
 
+        if(!lista || lista.length === 0) {
+            container.html('<div class="text-center text-muted">Nenhum dado encontrado.</div>');
+            return;
+        }
+
         lista.forEach((item, idx) => {
             const diff = item.venda_pdv - item.valor_adquirente;
             const diffClass = diff === 0 ? 'diff-success' : 'diff-danger';
 
-            // Lógica de status
             const isConferido = item.ultimo_usuario_id !== null;
             const statusHtml = isConferido
                 ? `<span class="status-badge status-conferido"><i class="fa fa-check"></i> Conferido</span>`
@@ -220,24 +218,21 @@
                     <div class="col-values">
                         <div class="val-block">
                             <span class="label-custom">Venda PDV</span>
-                            <span class="val-bold">${toBRL(item.venda_pdv)}</span>
-                        </div>
-
-                        <div class="val-block">
-                            <span class="label-custom">Comprovantes NF</span>
-                            <span class="val-bold text-primary">${toBRL(item.processado_pagos)}</span>
+                            <span class="val-bold val-pdv">${toBRL(item.venda_pdv)}</span>
+                            <span class="val-pdv-raw" style="display:none">${item.venda_pdv}</span>
                         </div>
 
                         <div class="item-input-group">
-                            <button class="btn-copy-val waves-effect" title="Copiar NF"
-                                    onclick="copiarValorNF(this, ${item.processado_pagos}, ${item.venda_pdv})">
+                            <button class="btn-copy-val waves-effect" title="Copiar Venda PDV"
+                                    onclick="copiarValorPDV(this, ${item.venda_pdv})">
                                 <i class="fa fa-chevron-right"></i>
                             </button>
+
                             <div style="flex:1">
-                                <span class="label-custom">Adquirente</span>
+                                <span class="label-custom">Conferência</span>
                                 <input type="number" step="0.01" class="form-control input-adquirente"
                                        value="${item.valor_adquirente}"
-                                       oninput="recalcularDiferenca(this, ${item.venda_pdv})">
+                                       oninput="recalcularDiferenca(this)">
                             </div>
                         </div>
 
@@ -260,31 +255,39 @@
         `);
         });
     }
-    function copiarValorNF(btn, valorNF, valorPDV){
-        const input = $(btn).parent().find('.input-adquirente');
-        input.val(valorNF.toFixed(2));
-        recalcularDiferenca(input[0], valorPDV);
+
+    // --- NOVA FUNÇÃO DE COPIAR ---
+    function copiarValorPDV(btn, valorPDV){
+        // Encontra o input vizinho do botão
+        const input = $(btn).closest('.item-input-group').find('.input-adquirente');
+        // Define o valor e recalcula
+        input.val(parseFloat(valorPDV).toFixed(2));
+        recalcularDiferenca(input[0]);
     }
 
-    function recalcularDiferenca(el, valorPDV){
-        const valAdq = parseFloat($(el).val()) || 0;
-        const diff = valorPDV - valAdq;
-        const displayDiff = $(el).closest('.item-card').find('.row-diff');
+    function recalcularDiferenca(el){
+        const card = $(el).closest('.item-card');
+        const valPDV = parseFloat(card.find('.val-pdv-raw').text()) || 0;
+        const valConf = parseFloat($(el).val()) || 0;
+
+        const diff = valPDV - valConf;
+
+        const displayDiff = card.find('.row-diff');
         displayDiff.text(toBRL(diff));
         displayDiff.removeClass('diff-success diff-danger').addClass(diff === 0 ? 'diff-success' : 'diff-danger');
+
         atualizarKPIsGerais();
     }
 
     function atualizarKPIsGerais(){
-        let totalAdq = 0, totalNF = 0;
+        let totalConf = 0, totalPDV = 0;
         $('.item-card').each(function(){
-            totalAdq += parseFloat($(this).find('.input-adquirente').val()) || 0;
-            const txtNF = $(this).find('.text-primary').text();
-            totalNF += Number(txtNF.replace(/[^0-9,-]+/g,"").replace(",", "."));
+            totalConf += parseFloat($(this).find('.input-adquirente').val()) || 0;
+            totalPDV += parseFloat($(this).find('.val-pdv-raw').text()) || 0;
         });
-        $('#kpiAdquirente').text(toBRL(totalAdq));
-        $('#kpiNF').text(toBRL(totalNF));
-        $('#kpiDiferenca').text(toBRL(totalNF - totalAdq));
+        $('#kpiPDV').text(toBRL(totalPDV));
+        $('#kpiConferencia').text(toBRL(totalConf));
+        $('#kpiDiferenca').text(toBRL(totalPDV - totalConf));
     }
 
     async function verDetalhesAPI(forma){
@@ -327,8 +330,8 @@
         $('.item-card').each(function(){
             items.push({
                 forma_pagamento: $(this).find('.col-info .val-bold').text(),
-                venda_pdv: Number($(this).find('.val-block:first .val-bold').text().replace(/[^0-9,-]+/g,"").replace(",", ".")),
-                processado_pagos: Number($(this).find('.text-primary').text().replace(/[^0-9,-]+/g,"").replace(",", ".")),
+                venda_pdv: parseFloat($(this).find('.val-pdv-raw').text()) || 0,
+                processado_pagos: 0,
                 valor_adquirente: parseFloat($(this).find('.input-adquirente').val()) || 0
             });
         });
@@ -339,8 +342,28 @@
                 token,
                 data: { system_unit_id: unit_id, data: data, user_id: user_id, items: items }
             });
-            if(res.data.success) Swal.fire('Sucesso', 'Salvo com sucesso!', 'success');
+            if(res.data.success) {
+                Swal.fire('Sucesso', 'Salvo com sucesso!', 'success');
+            }
         } catch (e) { Swal.fire('Erro', 'Falha ao salvar', 'error'); }
+    }
+
+    async function enviarResumoWpp() {
+        const data = $('#data_conferencia').val();
+        if (!data) { Swal.fire('Atenção', 'Selecione uma data.', 'warning'); return; }
+
+        Swal.fire({ title: 'Enviando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'sendConferenciaWpp',
+                token,
+                data: { system_unit_id: unit_id, data: data, user_id: user_id }
+            });
+            Swal.close();
+            if (res.data.success) Swal.fire('Sucesso', res.data.message, 'success');
+            else Swal.fire('Atenção', res.data.message, 'warning');
+        } catch (e) { Swal.fire('Erro', 'Falha ao conectar.', 'error'); }
     }
 </script>
 </body>

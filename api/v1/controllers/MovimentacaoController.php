@@ -1111,11 +1111,10 @@ class MovimentacaoController
                 'Content-Type: application/json'
             ],
             CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_TIMEOUT => 5, // não travar request
+            CURLOPT_TIMEOUT => 5,
         ]);
 
         curl_exec($ch);
-        //curl_close($ch);
     }
 
     public static function getTransferenciaByKey(array $data): array
