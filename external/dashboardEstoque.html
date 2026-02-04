@@ -29,16 +29,15 @@
         }
         .btn-mrk:hover { background: color-mix(in srgb, var(--mrk-blue) 20%, white); }
 
-        /* CORREÇÃO DO SKELETON */
         .skeleton {
             background-color: #e2e8f0;
             background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px);
             background-size: 600px;
             animation: shine-lines 1.6s infinite linear;
             border-radius: 6px;
-            color: transparent !important; /* Torna o texto invisível */
+            color: transparent !important;
             pointer-events: none;
-            min-height: 2rem; /* Garante altura mínima se estiver vazio */
+            min-height: 2rem;
             display: inline-block;
             width: 100%;
         }
@@ -109,6 +108,7 @@
                 <div class="flex items-center justify-between mt-1">
                     <div class="flex flex-col">
                         <div class="text-2xl font-extrabold kpi-value" id="qtdNotasPendentes">0</div>
+                        <div id="nomeLojaPendente" class="text-[10px] font-bold text-amber-600  max-w-[100px] uppercase">Todas as lojas</div>
                         <small class="text-xs text-gray-500">Últimos 30 dias</small>
                     </div>
 
@@ -170,6 +170,11 @@
         series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480']
     };
 
+    // Helper para formatar moeda nos gráficos
+    const formatCurrency = (val) => {
+        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+
     let grupoId = null;
     let resumoEstoqueGrupo = [], evolucaoCmvGrupo = [], datasEvolucao = [], cmvProdutosGrupo = [], topFornecedoresGrupo = [], listaNotasPendentes = [];
     let gruposDisponiveis = {}, lojasPorGrupo = {};
@@ -202,23 +207,14 @@
         showApplyButton();
     }
 
-    // --- CORREÇÃO DA LÓGICA DO SKELETON ---
     function toggleSkeleton(type, isLoading) {
-        // Controle dos KPIs (Cards)
         if (type === 'kpi' || type === 'all') {
             const kpis = document.querySelectorAll('.kpi-value');
             kpis.forEach(el => {
-                if (isLoading) {
-                    el.classList.add('skeleton');
-                    // Não mudamos o textContent para '.' pois isso pode quebrar o layout
-                    // A classe skeleton já tem color: transparent
-                } else {
-                    el.classList.remove('skeleton');
-                }
+                if (isLoading) el.classList.add('skeleton');
+                else el.classList.remove('skeleton');
             });
         }
-
-        // Controle dos Gráficos (Overlays)
         if (type === 'charts' || type === 'all') {
             const ids = ['skel-chartFaturamentoDiario', 'skel-chartComprasDiario', 'skel-chartTopProdutos', 'skel-chartTopFornecedores'];
             ids.forEach(id => {
@@ -231,20 +227,15 @@
         }
     }
 
-    // --- CORREÇÃO DA ANIMAÇÃO DE VALOR ---
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
         const element = document.getElementById(id);
         if (!element) return;
-
-        // FORÇA a remoção do skeleton antes de começar a escrever
         element.classList.remove('skeleton');
-
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             const value = start + progress * (end - start);
-
             let formatted;
             if (isCurrency) {
                 formatted = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -253,9 +244,7 @@
             } else {
                 formatted = Math.floor(value);
             }
-
             element.textContent = formatted;
-
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
@@ -283,9 +272,7 @@
             console.error(err);
             Swal.fire('Erro', 'Falha ao carregar dados.', 'error');
         } finally {
-            // Removemos o skeleton dos gráficos, mas os KPIs são removidos individualmente pelo animateValue
             toggleSkeleton('charts', false);
-            // Garante que os kpis apareçam mesmo se a animação falhar
             setTimeout(() => toggleSkeleton('kpi', false), 100);
         }
     }
@@ -329,7 +316,6 @@
         filtro.addEventListener('change', showApplyButton);
     }
 
-    // --- CHAMADAS AXIOS ---
     async function carregarResumoEstoquePorGrupo(dt_inicio, dt_fim) {
         const res = await axios.post(baseUrl, { method: 'generateResumoEstoquePorGrupo', token, data: { grupoId, dt_inicio, dt_fim } });
         resumoEstoqueGrupo = res.data.data || [];
@@ -366,14 +352,11 @@
 
     async function atualizarNotasPendentesForce(element) {
         const elQtd = document.getElementById('qtdNotasPendentes');
-        elQtd.classList.add('skeleton'); // Ativa skeleton só nesse campo
-
+        elQtd.classList.add('skeleton');
         const filtroLojaEl = document.getElementById('filtroLoja');
         const selectedLoja = parseInt(filtroLojaEl.value) || system_unit_id;
-
         const icon = element.querySelector('i');
         if(icon) icon.classList.add('fa-spin');
-
         try {
             const res = await axios.post(baseUrl, {
                 method: 'listarNotasNaoImportadasUltimos30Dias',
@@ -381,13 +364,11 @@
                 data: { system_unit_id: selectedLoja }
             });
             processarRespostaNotas(res.data);
-            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
-            Toast.fire({ icon: 'success', title: 'Notas sincronizadas!' });
-        } catch (e) {
-            console.error(e);
-        } finally {
+            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }).fire({ icon: 'success', title: 'Notas sincronizadas!' });
+        } catch (e) { console.error(e); }
+        finally {
             if(icon) icon.classList.remove('fa-spin');
-            elQtd.classList.remove('skeleton'); // Remove skeleton
+            elQtd.classList.remove('skeleton');
         }
     }
 
@@ -395,18 +376,14 @@
         const msgCache = document.getElementById('msgCache');
         if (data.success && data.data && data.data.notas_pendentes) {
             listaNotasPendentes = data.data.notas_pendentes;
-            // Atualiza direto sem animação complexa para evitar bugs no force refresh
             const el = document.getElementById('qtdNotasPendentes');
             el.textContent = data.data.total_pendentes || listaNotasPendentes.length;
             el.classList.remove('skeleton');
-
             if (data.data.cached && data.data.last_update) {
                 const date = new Date(data.data.last_update);
                 msgCache.textContent = `Atualizado às ${date.getHours()}:${date.getMinutes().toString().padStart(2,'0')}`;
                 msgCache.classList.remove('hidden');
-            } else {
-                msgCache.classList.add('hidden');
-            }
+            } else { msgCache.classList.add('hidden'); }
         } else {
             listaNotasPendentes = [];
             document.getElementById('qtdNotasPendentes').textContent = "0";
@@ -448,7 +425,13 @@
         const filtradoResumo = resumoEstoqueGrupo.filter(l => !selectedLoja || l.lojaId === selectedLoja);
         const filtradoCmvProdutos = cmvProdutosGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
         const filtradoFornecedores = topFornecedoresGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-        const nomeSelecionado = selectedLoja ? (lojasPorGrupo[grupoId].find(x => parseInt(x.id) === selectedLoja)?.name) : null;
+
+        const lojaObj = selectedLoja ? (lojasPorGrupo[grupoId].find(x => parseInt(x.id) === selectedLoja)) : null;
+        const nomeSelecionado = lojaObj ? lojaObj.name : null;
+
+        // ATUALIZAÇÃO DO NOME DA LOJA NO CARD DE NOTAS
+        document.getElementById('nomeLojaPendente').textContent = nomeSelecionado || "Todas as lojas";
+
         const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
 
         renderResumo(filtradoResumo);
@@ -476,12 +459,22 @@
                 itemStyle: { color: MRK.series[i % MRK.series.length] }
             }));
             chart.setOption({
-                legend: { top: 0 }, tooltip: { trigger: 'axis' },
+                legend: { top: 0 },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        let res = `${params[0].name}<br/>`;
+                        params.forEach(p => {
+                            res += `${p.marker} ${p.seriesName}: <b>${formatCurrency(p.value)}</b><br/>`;
+                        });
+                        return res;
+                    }
+                },
                 xAxis: { type: 'category', data: labels },
-                yAxis: { type: 'value' },
+                yAxis: { type: 'value', axisLabel: { formatter: (v) => 'R$ ' + v.toLocaleString('pt-BR') } },
                 grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
                 series
-            });
+            }, true);
         };
         config('chartFaturamentoDiario', 'fat');
         config('chartComprasDiario', 'comp');
@@ -506,23 +499,61 @@
     function renderChartTopProdutos(data) {
         const chart = echarts.init(document.getElementById('chartTopProdutos'));
         chart.setOption({
-            tooltip: { trigger: 'axis' },
+            tooltip: {
+                trigger: 'axis',
+                formatter: (params) => `${params[0].name}: <b>${formatCurrency(params[0].value)}</b>`
+            },
             yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
-            xAxis: { type: 'value' },
-            grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.blue } }]
-        });
+            xAxis: { type: 'value', axisLabel: { show: false } },
+            grid: { left: '3%', right: '12%', bottom: '10%', containLabel: true },
+            series: [{
+                type: 'bar',
+                data: data.map(d => d.valor),
+                itemStyle: { color: MRK.blue },
+                label: {
+                    show: true,
+                    position: 'right',
+                    formatter: (p) => formatCurrency(p.value),
+                    fontSize: 10,
+                    fontWeight: 'bold'
+                }
+            }]
+        }, true);
     }
 
     function renderChartTopFornecedores(data) {
         const chart = echarts.init(document.getElementById('chartTopFornecedores'));
         chart.setOption({
-            tooltip: { trigger: 'axis' },
-            yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
-            xAxis: { type: 'value' },
-            grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
-            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.green } }]
-        });
+            tooltip: {
+                trigger: 'axis',
+                // Atualizado para mostrar Valor e Quantidade
+                formatter: (params) => {
+                    const item = data[params[0].dataIndex];
+                    return `<b>${item.nome}</b><br/>` +
+                        `<i class="fas fa-money-bill-wave"></i> Valor: <b>${formatCurrency(item.valor)}</b><br/>` +
+                        `<i class="fas fa-file-invoice"></i> Qtd Notas: <b>${item.qtd}</b>`;
+                }
+            },
+            yAxis: {
+                type: 'category',
+                data: data.map(d => d.nome.slice(0,15)),
+                inverse: true
+            },
+            xAxis: { type: 'value', axisLabel: { show: false } },
+            grid: { left: '3%', right: '15%', bottom: '10%', containLabel: true },
+            series: [{
+                type: 'bar',
+                data: data.map(d => d.valor),
+                itemStyle: { color: MRK.green },
+                label: {
+                    show: true,
+                    position: 'right',
+                    formatter: (p) => formatCurrency(p.value),
+                    fontSize: 10,
+                    fontWeight: 'bold'
+                }
+            }]
+        }, true);
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -532,7 +563,6 @@
         start.setDate(now.getDate() - 7);
         document.getElementById('endDate').value = now.toISOString().split('T')[0];
         document.getElementById('startDate').value = start.toISOString().split('T')[0];
-
         await carregarGrupoInicial();
         fetchData();
     });

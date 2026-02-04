@@ -204,7 +204,7 @@
             <action>PrevisaoDemanda</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-          <menuitem label="Previsão de Demanda - Extra">
+          <menuitem label="Demanda Extra - Vendas">
             <action>SolicitacaoInsumos</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>

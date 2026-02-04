@@ -744,10 +744,6 @@ class MdeController
             ];
         }
     }
-    /**
-     * MÉTOD 1: LEITURA RÁPIDA (Cached)
-     * Apenas lê do banco. Retorna instantaneamente.
-     */
     public static function listarNotasNaoImportadasUltimos30DiasCached(int $system_unit_id): array
     {
         global $pdo;
@@ -1518,7 +1514,6 @@ class MdeController
             ];
         }
     }
-
     public static function marcarNotaComoDevolvida(array $data): array
     {
         global $pdo;
@@ -1574,8 +1569,6 @@ class MdeController
             ];
         }
     }
-
-
     private static function xmlDateOrNull($value): ?string
     {
         if (!$value) {
