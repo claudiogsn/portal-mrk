@@ -46,6 +46,28 @@
 
     </style>
 </head>
+<script>
+    // --- LÓGICA PARA MODO IFRAME (EMBED) ---
+    $(document).ready(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isIframe = urlParams.get('mode') === 'iframe';
+
+        if (isIframe) {
+            // Esconde elementos desnecessários do template BSB/Admin
+            $('body').addClass('iframe-mode'); // Classe auxiliar
+            $('.navbar, .sidebar, .search-bar, footer').hide(); // Esconde barras do template
+            $('section.content').css('margin', '0').css('padding', '10px'); // Remove margens laterais
+
+            // Ajusta o card para ocupar 100% sem bordas extras
+            $('.card').css('box-shadow', 'none').css('margin-bottom', '0');
+
+            // Se quiser abrir o modal de cadastro automaticamente ao carregar
+            if(urlParams.get('action') === 'new') {
+                setTimeout(abrirModalNovo, 500);
+            }
+        }
+    });
+</script>
 
 <body class="theme-blue">
 <div class="container-fluid">

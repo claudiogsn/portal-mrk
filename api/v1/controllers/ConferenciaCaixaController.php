@@ -14,6 +14,7 @@ class ConferenciaCaixaController
         if (!$result) throw new Exception("Unidade não encontrada.");
         return $result['custom_code'];
     }
+
     public static function saveConferencia($data): array
     {
         global $pdo;
@@ -52,8 +53,6 @@ class ConferenciaCaixaController
             $resumoMsg .= "--------------------------------\n";
 
             // --- 2. Queries Preparadas ---
-
-            // Busca pelo CÓDIGO DA OPÇÃO
             $stmtCheck = $pdo->prepare("
                 SELECT id, valor_adquirente 
                 FROM conferencia_caixa 
@@ -93,12 +92,10 @@ class ConferenciaCaixaController
             ");
 
             foreach ($items as $item) {
-                // Front deve enviar 'codigo_opcao' e 'forma_pagamento' (nome amigável)
                 $codigoOpcao = $item['codigo_opcao'] ?? null;
                 $nomeOpcao   = strtoupper(trim($item['forma_pagamento']));
 
                 // SE NÃO TIVER CÓDIGO (Item Órfão), IGNORA O SALVAMENTO NO BANCO
-                // (O usuário deve vincular primeiro na config)
                 if (empty($codigoOpcao)) {
                     continue;
                 }
@@ -109,7 +106,7 @@ class ConferenciaCaixaController
                 $diferenca   = $venda - $adquirente;
                 $motivo      = $item['motivo'] ?? null;
 
-                // Mensagem WPP (Usa o nome amigável)
+                // Mensagem WPP
                 $icone = abs($diferenca) > 0.01 ? '⚠️' : '✅';
                 $resumoMsg .= "💳 *{$nomeOpcao}* {$icone}\n";
                 $resumoMsg .= "   Venda: R$ " . number_format($venda, 2, ',', '.') . "\n";
@@ -119,11 +116,11 @@ class ConferenciaCaixaController
                 }
                 $resumoMsg .= "\n";
 
-                // --- Operação Banco de Dados ---
+                // DB Operations
                 $stmtCheck->execute([
                     ':system_unit_id' => $systemUnitId,
                     ':data_contabil'  => $dataContabil,
-                    ':codigo_opcao'   => $codigoOpcao // Busca pela chave correta
+                    ':codigo_opcao'   => $codigoOpcao
                 ]);
                 $existente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
@@ -155,7 +152,7 @@ class ConferenciaCaixaController
                         ':system_unit_id'   => $systemUnitId,
                         ':data_contabil'    => $dataContabil,
                         ':codigo_opcao'     => $codigoOpcao,
-                        ':nome_opcao'       => $nomeOpcao, // Salva o nome para facilitar leitura no banco
+                        ':nome_opcao'       => $nomeOpcao,
                         ':valor_venda'      => $venda,
                         ':valor_processado' => $processado,
                         ':valor_adquirente' => $adquirente,
@@ -180,31 +177,21 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => 'Erro ao salvar: ' . $e->getMessage()];
         }
     }
+
     public static function getPayloadConferencia($systemUnitId, $dataAnalise): array
     {
         global $pdo;
 
         try {
-            // 1. Resolve o ID da Loja
             $lojaId = self::getLojaIdBySystemUnit($systemUnitId);
-
-            // --- DEBUG TEMPORÁRIO (Descomente se continuar vazio) ---
-            // Se isso imprimir algo diferente de 264550, seu cadastro de system_unit está errado
-            var_dump("ID DO SISTEMA: $systemUnitId", "LOJA ID RETORNADO: $lojaId", "DATA: $dataAnalise");
-            // die();
-            // --------------------------------------------------------
-
-            // Garante que a data esteja estritamente no formato Y-m-d para bater com DATE() no SQL
             $dataAnalise = date('Y-m-d', strtotime($dataAnalise));
 
-            // -------------------------------------------------------------------------
             // PASSO 1: Preparar Mapa de Vínculos
-            // -------------------------------------------------------------------------
             $stmtVinc = $pdo->prepare("
-            SELECT UPPER(TRIM(nome_meio)) as nome_meio, nome_opcao, codigo_opcao 
-            FROM financeiro_opcoes_vinculo_meios 
-            WHERE system_unit_id = :unit
-        ");
+                SELECT UPPER(TRIM(nome_meio)) as nome_meio, nome_opcao, codigo_opcao 
+                FROM financeiro_opcoes_vinculo_meios 
+                WHERE system_unit_id = :unit
+            ");
             $stmtVinc->execute([':unit' => $systemUnitId]);
 
             $mapaVinculos = [];
@@ -215,39 +202,36 @@ class ConferenciaCaixaController
                 ];
             }
 
-            // -------------------------------------------------------------------------
-            // PASSO 2: Consultar Vendas do PDV (QUERY CORRIGIDA)
-            // -------------------------------------------------------------------------
+            // PASSO 2: Consultar Vendas do PDV (AGORA PEGANDO O CÓDIGO)
             $sqlVendas = "
-            SELECT 
-                UPPER(TRIM(p.nome_meio)) as meio_original, 
-                SUM(p.valor) as total_venda
-            FROM api_movimento_caixa_pagamentos p
-            INNER JOIN api_movimento_caixa m ON m.uuid = p.movimento_caixa_uuid
-            WHERE m.loja_id = :loja_id 
-              AND DATE(m.data_contabil) = :data_analise 
-              AND m.cancelado = 0
-            GROUP BY UPPER(TRIM(p.nome_meio))
-        ";
+                SELECT 
+                    UPPER(TRIM(p.nome_meio)) as meio_original, 
+                    MAX(p.codigo_meio) as codigo_meio_pdv, 
+                    SUM(p.valor) as total_venda
+                FROM api_movimento_caixa_pagamentos p
+                INNER JOIN api_movimento_caixa m ON m.uuid = p.movimento_caixa_uuid
+                WHERE m.loja_id = :loja_id 
+                  AND DATE(m.data_contabil) = :data_analise 
+                  AND m.cancelado = 0
+                GROUP BY UPPER(TRIM(p.nome_meio))
+            ";
 
             $stmtRaw = $pdo->prepare($sqlVendas);
             $stmtRaw->execute([
-                ':loja_id'      => $lojaId,      // Tem que ser 264550
-                ':data_analise' => $dataAnalise  // Tem que ser '2026-01-02'
+                ':loja_id'      => $lojaId,
+                ':data_analise' => $dataAnalise
             ]);
 
             $vendasPDV = $stmtRaw->fetchAll(PDO::FETCH_ASSOC);
 
-            // -------------------------------------------------------------------------
             // PASSO 3: Consultar Conferência Já Realizada
-            // -------------------------------------------------------------------------
             $stmtSaved = $pdo->prepare("
-            SELECT 
-                codigo_opcao, nome_opcao, valor_venda, valor_adquirente, 
-                diferenca, user_id, updated_at
-            FROM conferencia_caixa
-            WHERE system_unit_id = :unit AND data_contabil = :data
-        ");
+                SELECT 
+                    codigo_opcao, nome_opcao, valor_venda, valor_adquirente, 
+                    diferenca, user_id, updated_at
+                FROM conferencia_caixa
+                WHERE system_unit_id = :unit AND data_contabil = :data
+            ");
             $stmtSaved->execute([':unit' => $systemUnitId, ':data' => $dataAnalise]);
 
             $dadosSalvos = [];
@@ -255,44 +239,41 @@ class ConferenciaCaixaController
                 $dadosSalvos[$row['codigo_opcao']] = $row;
             }
 
-            // -------------------------------------------------------------------------
-            // PASSO 4: Processamento Lógico (Montagem do Array)
-            // -------------------------------------------------------------------------
+            // PASSO 4: Processamento Lógico
             $agrupamentoVendas = [];
 
             foreach ($vendasPDV as $venda) {
                 $nomeBruto  = $venda['meio_original'];
                 $valorVenda = (float)$venda['total_venda'];
+                $codigoPdv  = $venda['codigo_meio_pdv']; // Código vindo da tabela de pagamentos
 
                 if (isset($mapaVinculos[$nomeBruto])) {
-                    // TEM VÍNCULO
+                    // Tem vínculo
                     $cod = $mapaVinculos[$nomeBruto]['codigo'];
                     $nom = $mapaVinculos[$nomeBruto]['nome'];
 
                     if (!isset($agrupamentoVendas[$cod])) {
                         $agrupamentoVendas[$cod] = [
-                            'nome_opcao'      => $nom,
-                            'forma_pagamento' => null, // Cenário 2 ou 3 não tem nome bruto na raiz
-                            'venda_pdv'       => 0.0,
-                            'is_linked'       => true
+                            'nome_opcao' => $nom,
+                            'venda_pdv'  => 0.0,
+                            'is_linked'  => true
                         ];
                     }
                     $agrupamentoVendas[$cod]['venda_pdv'] += $valorVenda;
                 } else {
-                    // NÃO TEM VÍNCULO
+                    // Não tem vínculo (Cenário 1)
                     $chave = 'RAW_' . $nomeBruto;
                     $agrupamentoVendas[$chave] = [
                         'nome_opcao'      => null,
                         'forma_pagamento' => $nomeBruto,
+                        'codigo_meio_pdv' => $codigoPdv, // Passa o código para o front
                         'venda_pdv'       => $valorVenda,
                         'is_linked'       => false
                     ];
                 }
             }
 
-            // -------------------------------------------------------------------------
             // PASSO 5: Construção do Retorno Final
-            // -------------------------------------------------------------------------
             $resultadoFinal = [];
 
             foreach ($agrupamentoVendas as $chave => $dados) {
@@ -303,9 +284,8 @@ class ConferenciaCaixaController
                     $nomeOpcao   = $dados['nome_opcao'];
 
                     if (isset($dadosSalvos[$codigoOpcao])) {
-                        // --- CENÁRIO 3: CONFERIDO ---
+                        // CENÁRIO 3: CONFERIDO
                         $salvo = $dadosSalvos[$codigoOpcao];
-
                         $resultadoFinal[] = [
                             "codigo_opcao"           => $codigoOpcao,
                             "nome_opcao"             => $nomeOpcao,
@@ -319,7 +299,7 @@ class ConferenciaCaixaController
                         ];
                         unset($dadosSalvos[$codigoOpcao]);
                     } else {
-                        // --- CENÁRIO 2: VINCULADO, NÃO CONFERIDO ---
+                        // CENÁRIO 2: VINCULADO / PENDENTE
                         $resultadoFinal[] = [
                             "codigo_opcao"           => $codigoOpcao,
                             "nome_opcao"             => $nomeOpcao,
@@ -333,11 +313,12 @@ class ConferenciaCaixaController
                         ];
                     }
                 } else {
-                    // --- CENÁRIO 1: NÃO VINCULADO ---
+                    // CENÁRIO 1: NÃO VINCULADO
                     $resultadoFinal[] = [
                         "codigo_opcao"           => null,
                         "nome_opcao"             => null,
                         "forma_pagamento"        => $dados['forma_pagamento'],
+                        "codigo_meio_pdv"        => $dados['codigo_meio_pdv'] ?? null,
                         "venda_pdv"              => round($vendaPDV, 2),
                         "valor_adquirente"       => 0,
                         "diferenca"              => round($vendaPDV, 2),
@@ -348,7 +329,7 @@ class ConferenciaCaixaController
                 }
             }
 
-            // Adiciona itens que foram conferidos mas não tiveram venda hoje (ex: estorno total)
+            // Itens conferidos sem venda hoje
             foreach ($dadosSalvos as $cod => $salvo) {
                 $resultadoFinal[] = [
                     "codigo_opcao"           => $salvo['codigo_opcao'],
@@ -375,34 +356,40 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    public static function getVendasByForma($systemUnitId, $dataAnalise, $codigoOuNome): array
+
+    public static function getVendasByForma($systemUnitId, $dataAnalise, $chaveBusca, $tipoBusca): array
     {
         global $pdo;
 
-        if (!$systemUnitId || !$dataAnalise || !$codigoOuNome) {
+        if (!$systemUnitId || !$dataAnalise || !$chaveBusca || !$tipoBusca) {
             return ['success' => false, 'message' => 'Parâmetros inválidos.'];
         }
 
         try {
             $lojaId = self::getLojaIdBySystemUnit($systemUnitId);
+            $meiosParaBuscar = [];
 
-            // PASSO A: Descobrir quais nomes de meios (PDV) estão vinculados a este código/nome
-            // Tentamos buscar pelo código primeiro (que é o ideal)
-            $stmtMeios = $pdo->prepare("
-                SELECT nome_meio FROM financeiro_opcoes_vinculo_meios 
-                WHERE system_unit_id = :unit 
-                  AND (codigo_opcao = :chave OR nome_opcao = :chave)
-            ");
-            $stmtMeios->execute([':unit' => $systemUnitId, ':chave' => $codigoOuNome]);
-            $meiosEncontrados = $stmtMeios->fetchAll(PDO::FETCH_COLUMN);
+            if ($tipoBusca === 'OPCAO') {
+                $stmtMeios = $pdo->prepare("
+                    SELECT UPPER(TRIM(nome_meio)) 
+                    FROM financeiro_opcoes_vinculo_meios 
+                    WHERE system_unit_id = :unit 
+                      AND codigo_opcao = :cod
+                ");
+                $stmtMeios->execute([':unit' => $systemUnitId, ':cod' => $chaveBusca]);
+                $meiosParaBuscar = $stmtMeios->fetchAll(PDO::FETCH_COLUMN);
 
-            // Se não encontrou vínculos, assumimos que é um item órfão e usamos o próprio nome como filtro
-            if (empty($meiosEncontrados)) {
-                $meiosEncontrados = [$codigoOuNome];
+                if (empty($meiosParaBuscar)) {
+                    return ['success' => true, 'data' => []];
+                }
+
+            } elseif ($tipoBusca === 'MEIO') {
+                $meiosParaBuscar = [$chaveBusca];
+            } else {
+                return ['success' => false, 'message' => 'Tipo de busca inválido.'];
             }
 
-            // PASSO B: Montar a query com IN (...) para buscar todos os filhos
-            $inQuery = implode(',', array_fill(0, count($meiosEncontrados), '?'));
+            $placeholders = implode(',', array_fill(0, count($meiosParaBuscar), '?'));
 
             $sql = "
                 SELECT 
@@ -411,7 +398,7 @@ class ConferenciaCaixaController
                     COALESCE(autorizacao, '-') AS autorizacao,
                     COALESCE(adquirente, 'Não Identificado') AS adquirente,
                     COALESCE(bandeira, '') AS bandeira,
-                    descricao AS meio_original, -- Mostra qual foi o meio original (Visa/Master)
+                    UPPER(TRIM(descricao)) AS forma_pagamento_original, 
                     valor AS valor_bruto,
                     taxa_comissao AS taxa_percentual,
                     valor_comissao AS valor_taxa,
@@ -421,45 +408,25 @@ class ConferenciaCaixaController
                 WHERE id_loja = ?
                   AND data_contabil = ?
                   AND (status_pagamento IS NULL OR status_pagamento != 'cancelado')
-                  AND UPPER(TRIM(descricao)) IN ($inQuery)
+                  AND UPPER(TRIM(descricao)) IN ($placeholders)
                 ORDER BY hora_lancamento ASC
             ";
 
-            // Parâmetros para o execute: id_loja, data, ...meios
-            $params = array_merge([$lojaId, $dataAnalise], $meiosEncontrados);
-
+            $params = array_merge([$lojaId, $dataAnalise], $meiosParaBuscar);
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
             return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro detalhamento: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'Erro ao buscar detalhamento: ' . $e->getMessage()];
         }
     }
-    public static function getHistoricoAuditoria($conferenciaId)
-    {
-        global $pdo;
-        $stmt = $pdo->prepare("
-            SELECT 
-                a.valor_anterior, 
-                a.valor_novo, 
-                a.motivo, 
-                DATE_FORMAT(a.created_at, '%d/%m/%Y %H:%i') as data_alteracao,
-                u.name as usuario_nome
-            FROM conferencia_caixa_auditoria a
-            LEFT JOIN system_users u ON u.id = a.user_id 
-            WHERE a.conferencia_id = :id
-            ORDER BY a.created_at DESC
-        ");
-        $stmt->execute([':id' => $conferenciaId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+
     public static function sendConferenciaWpp(int $systemUnitId, string $dataContabil, int $userId): array
     {
         global $pdo;
 
-        // Busca pelo CÓDIGO_OPCAO, mas traz o NOME_OPCAO para exibir
         $stmtItems = $pdo->prepare("
             SELECT nome_opcao, valor_venda, valor_adquirente, diferenca
             FROM conferencia_caixa
@@ -499,7 +466,7 @@ class ConferenciaCaixaController
         $msg .= "--------------------------------\n";
 
         foreach ($items as $item) {
-            $fp          = strtoupper($item['nome_opcao']); // Nome amigável salvo
+            $fp          = strtoupper($item['nome_opcao']);
             $venda       = (float) $item['valor_venda'];
             $adquirente  = (float) $item['valor_adquirente'];
             $diferenca   = (float) $item['diferenca'];
@@ -515,9 +482,9 @@ class ConferenciaCaixaController
         }
 
         UtilsController::sendWhatsapp($userData['phone'], $msg);
-
         return ['success' => true, 'message' => 'Enviado com sucesso!'];
     }
+
     private static function getUserName($userId) {
         global $pdo;
         if(!$userId) return 'Não conferido';

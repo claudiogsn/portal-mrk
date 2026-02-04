@@ -558,30 +558,31 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getPayloadConferencia':
                 $response = ConferenciaCaixaController::getPayloadConferencia(
                     $requestData['system_unit_id'] ?? null,
-                    $requestData['data'] ?? null
+                    $requestData['data_analise'] ?? null
                 );
                 break;
             case 'getAuditoriaConferencia':
                 $response = ConferenciaCaixaController::getAuditoriaMovimentos(
                     $requestData['system_unit_id'] ?? null,
-                    $requestData['data'] ?? null,
+                    $requestData['data_analise'] ?? null,
                     $requestData['forma_pagamento'] ?? null
                 );
                 break;
-            case 'saveConferenciaCaixa':
+            case 'saveConferencia':
                 $response = ConferenciaCaixaController::saveConferencia($requestData);
                 break;
             case 'getVendasByForma':
                 $response = ConferenciaCaixaController::getVendasByForma(
                     $requestData['system_unit_id'] ?? null,
-                    $requestData['data'] ?? null,
-                    $requestData['forma_pagamento'] ?? null
+                    $requestData['data_analise'] ?? null,
+                    $requestData['chaveBusca'] ?? null,
+                    $requestData['tipoBusca'] ?? null
                 );
                 break;
             case 'sendConferenciaWpp':
                 $response = ConferenciaCaixaController::sendConferenciaWpp(
                     $requestData['system_unit_id'] ?? null,
-                    $requestData['data'] ?? null,
+                    $requestData['data_contabil'] ?? null,
                     $requestData['user_id'] ?? $_SESSION['user_id'] ?? null
                 );
                 break;
