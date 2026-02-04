@@ -45,6 +45,10 @@
             <action>ListarFormasPagamento</action>
             <icon>fas:circle fa-fw</icon>
         </menuitem>
+      <menuitem label="Opções de Recebimento">
+            <action>ListarOpcoesRecebimento</action>
+            <icon>fas:circle fa-fw</icon>
+        </menuitem>
       <menuitem label="Bancos">
         <action>ListarBancos</action>
         <icon>fas:circle fa-fw</icon>
