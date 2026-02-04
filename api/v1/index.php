@@ -68,6 +68,7 @@ require_once 'controllers/UserController.php';
 require_once 'controllers/MenuMobileController.php';
 require_once 'controllers/MdeController.php';
 require_once 'controllers/UtilsController.php';
+require_once 'controllers/CategoriaController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -1770,6 +1771,51 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros unit_id ou is_insumo ausente'];
                 }
                 break;
+
+            case 'listarCategorias':
+                $unitId = $requestData['system_unit_id'];
+
+                if (!$unitId) {
+                    $response = ['success' => false, 'message' => 'ID da unidade não informado.'];
+                } else {
+                    $response = CategoriasController::listar((int)$unitId);
+                }
+                break;
+
+            case 'getCategoria':
+                $id = $requestData['id'];
+
+                if (!$id) {
+                    $response = ['success' => false, 'message' => 'ID da categoria não informado.'];
+                } else {
+                    $response = CategoriasController::getById((int)$id);
+                }
+                break;
+
+            case 'salvarCategoria':
+                $response = CategoriasController::salvar($requestData);
+                break;
+
+            case 'excluirCategoria':
+                $id = $requestData['id'];
+
+                if (!$id) {
+                    $response = ['success' => false, 'message' => 'ID da categoria não informado.'];
+                } else {
+                    $response = CategoriasController::excluir((int)$id);
+                }
+                break;
+
+            case 'getProximoCodigo':
+                $unitId = $requestData['system_unit_id'];
+
+                if (!$unitId) {
+                    $response = ['success' => false, 'message' => 'Unidade não informada.'];
+                } else {
+                    $response = CategoriasController::proximoCodigo((int)$unitId);
+                }
+                break;
+
             case 'listModelosWithProducts':
                 if (isset($requestData['unit_id'])) {
                     $response = ModeloBalancoController::listModelosWithProducts($requestData['unit_id']);

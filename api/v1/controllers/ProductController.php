@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arquivo db.php
+require_once __DIR__ . '/../database/db.php';
 
 class ProductController {
 

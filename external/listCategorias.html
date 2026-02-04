@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Categorias</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        .form-control {
+            display: block; width: 100%; height: 34px; padding: 6px 12px; font-size: 14px;
+            color: #555; background-color: #fff; border: 1px solid #ccc; border-radius: 4px;
+            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
+            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+        }
+        .form-control:focus {
+            border-color: #66afe9; outline: 0;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
+        }
+        .blue { color: #2196F3; cursor: pointer; }
+        .red { color: #F44336; cursor: pointer; margin-left: 8px; }
+
+        /* Estilo do botão Outline (Borda Azul) */
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid #2196F3; /* Cor azul do tema */
+            color: #2196F3;
+            height: 34px; /* Mesma altura do input */
+            padding: 0 12px;
+            margin: 0;
+            transition: all 0.3s;
+        }
+        .btn-outline:hover {
+            background-color: #2196F3;
+            color: #fff;
+        }
+
+        /* Flex container para alinhar input e botão */
+        .input-row {
+            display: flex;
+            gap: 8px; /* Espaço entre o input e o botão */
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Gestão de Categorias</h2>
+        </div>
+
+        <div class="row" style="margin: 15px 0;">
+            <div class="col-md-2">
+                <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar Código">
+            </div>
+            <div class="col-md-7">
+                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome da categoria">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-success btn-block" onclick="abrirModal()">
+                    <i class="fa fa-plus"></i> NOVA CATEGORIA
+                </button>
+            </div>
+        </div>
+
+        <div class="body">
+            <table class="table table-striped" id="tabela-categorias">
+                <thead>
+                <tr>
+                    <th style="width: 80px;" class="text-center">Ações</th>
+                    <th style="width: 100px;">Código</th>
+                    <th>Nome da Categoria</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCategoria" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="modalTitulo">Dados da Categoria</h4>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="cat_id">
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <label>Código</label>
+                        <div class="input-row">
+                            <input type="number" id="cat_codigo" class="form-control" placeholder="Ex: 10">
+
+                            <button type="button" class="btn btn-outline waves-effect" onclick="gerarCodigo()" title="Gerar Próximo Código">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <label>Nome</label>
+                        <input type="text" id="cat_nome" class="form-control" placeholder="Ex: Bebidas">
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button id="salvarCategoria" class="btn btn-primary">Salvar</button>
+                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token     = urlParams.get('token');
+    const unit_id   = urlParams.get('system_unit_id') || urlParams.get('unit_id');
+
+    let todasCategorias = [];
+
+    $(document).ready(() => {
+        carregarCategorias();
+        $('#filtroNome, #filtroCodigo').on('input', aplicarFiltros);
+        $('#salvarCategoria').click(salvar);
+    });
+
+    async function gerarCodigo() {
+        const input = $('#cat_codigo');
+        const originalPlaceholder = input.attr('placeholder');
+        input.attr('placeholder', '...');
+
+        // Feedback visual no botão
+        const btn = $('.btn-outline');
+        btn.prop('disabled', true);
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getProximoCodigo',
+                token,
+                data: { system_unit_id: unit_id }
+            });
+
+            if (res.data.success) {
+                input.val(res.data.next_code);
+                // Flash visual no input
+                input.css('border-color', '#4CAF50');
+                setTimeout(() => input.css('border-color', '#ccc'), 1000);
+            } else {
+                Swal.fire('Atenção', res.data.message, 'warning');
+            }
+        } catch (e) {
+            Swal.fire('Erro', 'Não foi possível gerar o código.', 'error');
+        } finally {
+            input.attr('placeholder', originalPlaceholder);
+            btn.prop('disabled', false);
+        }
+    }
+
+    async function carregarCategorias() {
+        if(!unit_id) { Swal.fire('Erro', 'Unidade não identificada.', 'error'); return; }
+
+        try {
+            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            const res = await axios.post(baseUrl, {
+                method: 'listarCategorias',
+                token,
+                data: { system_unit_id: unit_id }
+            });
+
+            Swal.close();
+
+            if(res.data.success) {
+                todasCategorias = res.data.data;
+                aplicarFiltros();
+            } else {
+                Swal.fire('Atenção', res.data.message, 'warning');
+            }
+        } catch (e) {
+            Swal.fire('Erro', 'Falha ao carregar categorias.', 'error');
+        }
+    }
+
+    function aplicarFiltros() {
+        const codigoFiltro = $('#filtroCodigo').val().trim();
+        const nomeFiltro   = $('#filtroNome').val().toLowerCase().trim();
+        const tbody = $('#tabela-categorias tbody');
+        tbody.empty();
+
+        const filtrados = todasCategorias.filter(c => {
+            const codeCond = codigoFiltro === "" || String(c.codigo).includes(codigoFiltro);
+            const nomeCond = nomeFiltro === "" || c.nome.toLowerCase().includes(nomeFiltro);
+            return codeCond && nomeCond;
+        });
+
+        if (filtrados.length === 0) {
+            tbody.append('<tr><td colspan="3" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
+            return;
+        }
+
+        for (const c of filtrados) {
+            tbody.append(`
+            <tr>
+                <td class="text-center">
+                    <a href="#" title="Editar" onclick="abrirModal(${c.id}, '${c.codigo}', '${c.nome}')">
+                        <i class="far fa-edit blue"></i>
+                    </a>
+                    <a href="#" title="Excluir" onclick="excluir(${c.id})">
+                        <i class="far fa-trash-alt red"></i>
+                    </a>
+                </td>
+                <td>${c.codigo}</td>
+                <td>${c.nome}</td>
+            </tr>
+            `);
+        }
+    }
+
+    function abrirModal(id = null, codigo = '', nome = '') {
+        $('#cat_id').val(id || '');
+        $('#cat_codigo').val(codigo);
+        $('#cat_nome').val(nome);
+        $('#modalTitulo').text(id ? `Editar Categoria #${codigo}` : 'Nova Categoria');
+
+        $('#modalCategoria').modal('show');
+        setTimeout(() => $('#cat_codigo').focus(), 500);
+    }
+
+    async function salvar() {
+        const id     = $('#cat_id').val();
+        const codigo = $('#cat_codigo').val();
+        const nome   = $('#cat_nome').val();
+
+        if (!codigo || !nome) {
+            Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
+            return;
+        }
+
+        try {
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            const payload = {
+                method: 'salvarCategoria',
+                token,
+                data: {
+                    system_unit_id: unit_id,
+                    codigo: codigo,
+                    nome: nome
+                }
+            };
+            if(id) payload.data.id = id;
+
+            const res = await axios.post(baseUrl, payload);
+            Swal.close();
+
+            if (res.data.success) {
+                $('#modalCategoria').modal('hide');
+                Swal.fire('Sucesso', 'Salvo com sucesso!', 'success');
+                carregarCategorias();
+            } else {
+                Swal.fire('Erro', res.data.message, 'error');
+            }
+        } catch {
+            Swal.fire('Erro', 'Erro ao salvar.', 'error');
+        }
+    }
+
+    function excluir(id) {
+        Swal.fire({
+            title: 'Tem certeza?',
+            text: "Deseja excluir esta categoria?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, excluir',
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    Swal.fire({ title: 'Excluindo...', didOpen: () => Swal.showLoading() });
+                    const res = await axios.post(baseUrl, {
+                        method: 'excluirCategoria',
+                        token,
+                        data: { id: id }
+                    });
+                    Swal.close();
+                    if (res.data.success) {
+                        Swal.fire('Excluído!', res.data.message, 'success');
+                        carregarCategorias();
+                    } else {
+                        Swal.fire('Erro', res.data.message, 'error');
+                    }
+                } catch {
+                    Swal.fire('Erro', 'Falha ao excluir.', 'error');
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>
