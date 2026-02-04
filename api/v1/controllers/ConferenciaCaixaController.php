@@ -14,7 +14,7 @@ class ConferenciaCaixaController
         if (!$result) throw new Exception("Unidade não encontrada.");
         return $result['custom_code'];
     }
-    public static function saveConferencia($data)
+    public static function saveConferencia($data): array
     {
         global $pdo;
 
@@ -30,102 +30,100 @@ class ConferenciaCaixaController
         try {
             $pdo->beginTransaction();
 
-            // --- 1. Busca dados da Empresa e do Usuário para a Mensagem ---
-
-            // Busca Nome da Empresa
+            // --- 1. Dados para Mensagem ---
             $stmtUnit = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
             $stmtUnit->execute([$systemUnitId]);
-            $unitData = $stmtUnit->fetch(PDO::FETCH_ASSOC);
-            $nomeEmpresa = $unitData['name'] ?? 'Empresa Desconhecida';
+            $nomeEmpresa = $stmtUnit->fetchColumn() ?: 'Empresa Desconhecida';
 
-            // Busca Nome e Telefone do Usuário
             $stmtUser = $pdo->prepare("SELECT name, phone FROM system_users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
             $nomeUsuario = $userData['name'] ?? 'Usuário';
             $telefoneUsuario = $userData['phone'] ?? null;
 
-            // --- Montagem da Mensagem com as Duas Datas ---
-
-            $dataCaixaFormatada = date('d/m/Y', strtotime($dataContabil)); // Data do movimento
-            $dataRealizacao     = date('d/m/Y H:i'); // Data e hora de "agora"
+            $dataCaixaFormatada = date('d/m/Y', strtotime($dataContabil));
+            $dataRealizacao     = date('d/m/Y H:i');
 
             $resumoMsg = "🏢 *Conferência de Caixa*\n\n";
             $resumoMsg .= "🏪 *Empresa:* {$nomeEmpresa}\n";
-            $resumoMsg .= "👤 *Responsável:* {$nomeUsuario}\n";
-            $resumoMsg .= "📅 *Data do Caixa:* {$dataCaixaFormatada}\n";
-            $resumoMsg .= "🕒 *Realizado em:* {$dataRealizacao}\n";
+            $resumoMsg .= "👤 *Resp:* {$nomeUsuario}\n";
+            $resumoMsg .= "📅 *Data:* {$dataCaixaFormatada}\n";
+            $resumoMsg .= "🕒 *Em:* {$dataRealizacao}\n";
             $resumoMsg .= "--------------------------------\n";
 
-            // --- Fim da preparação da mensagem ---
+            // --- 2. Queries Preparadas ---
 
-            // Preparando as queries (mantido igual)
+            // Busca pelo CÓDIGO DA OPÇÃO
             $stmtCheck = $pdo->prepare("
-            SELECT id, valor_adquirente 
-            FROM conferencia_caixa 
-            WHERE system_unit_id = :system_unit_id 
-              AND data_contabil = :data_contabil 
-              AND forma_pagamento = :forma_pagamento
-            LIMIT 1
-        ");
+                SELECT id, valor_adquirente 
+                FROM conferencia_caixa 
+                WHERE system_unit_id = :system_unit_id 
+                  AND data_contabil = :data_contabil 
+                  AND codigo_opcao = :codigo_opcao
+                LIMIT 1
+            ");
 
             $stmtInsert = $pdo->prepare("
-            INSERT INTO conferencia_caixa (
-                system_unit_id, data_contabil, forma_pagamento, 
-                valor_venda, valor_processado, valor_adquirente, diferenca, user_id
-            ) VALUES (
-                :system_unit_id, :data_contabil, :forma_pagamento,
-                :valor_venda, :valor_processado, :valor_adquirente, :diferenca, :user_id
-            )
-        ");
+                INSERT INTO conferencia_caixa (
+                    system_unit_id, data_contabil, codigo_opcao, nome_opcao, 
+                    valor_venda, valor_processado, valor_adquirente, diferenca, user_id
+                ) VALUES (
+                    :system_unit_id, :data_contabil, :codigo_opcao, :nome_opcao,
+                    :valor_venda, :valor_processado, :valor_adquirente, :diferenca, :user_id
+                )
+            ");
 
             $stmtUpdate = $pdo->prepare("
-            UPDATE conferencia_caixa SET
-                valor_venda = :valor_venda,
-                valor_processado = :valor_processado,
-                valor_adquirente = :valor_adquirente,
-                diferenca = :diferenca,
-                user_id = :user_id,
-                updated_at = NOW()
-            WHERE id = :id
-        ");
+                UPDATE conferencia_caixa SET
+                    valor_venda = :valor_venda,
+                    valor_processado = :valor_processado,
+                    valor_adquirente = :valor_adquirente,
+                    diferenca = :diferenca,
+                    user_id = :user_id,
+                    updated_at = NOW()
+                WHERE id = :id
+            ");
 
             $stmtAudit = $pdo->prepare("
-            INSERT INTO conferencia_caixa_auditoria (
-                conferencia_id, user_id, valor_anterior, valor_novo, motivo
-            ) VALUES (
-                :conferencia_id, :user_id, :valor_anterior, :valor_novo, :motivo
-            )
-        ");
+                INSERT INTO conferencia_caixa_auditoria (
+                    conferencia_id, user_id, valor_anterior, valor_novo, motivo
+                ) VALUES (
+                    :conferencia_id, :user_id, :valor_anterior, :valor_novo, :motivo
+                )
+            ");
 
             foreach ($items as $item) {
-                $formaPagamento = strtoupper(trim($item['forma_pagamento']));
+                // Front deve enviar 'codigo_opcao' e 'forma_pagamento' (nome amigável)
+                $codigoOpcao = $item['codigo_opcao'] ?? null;
+                $nomeOpcao   = strtoupper(trim($item['forma_pagamento']));
 
-                // Valores
+                // SE NÃO TIVER CÓDIGO (Item Órfão), IGNORA O SALVAMENTO NO BANCO
+                // (O usuário deve vincular primeiro na config)
+                if (empty($codigoOpcao)) {
+                    continue;
+                }
+
                 $venda       = (float) ($item['venda_pdv'] ?? 0);
                 $processado  = (float) ($item['processado_pagos'] ?? 0);
                 $adquirente  = (float) ($item['valor_adquirente'] ?? 0);
                 $diferenca   = $venda - $adquirente;
                 $motivo      = $item['motivo'] ?? null;
 
-                // --- Adiciona item ao texto da mensagem ---
+                // Mensagem WPP (Usa o nome amigável)
                 $icone = abs($diferenca) > 0.01 ? '⚠️' : '✅';
-                $resumoMsg .= "💳 *{$formaPagamento}* {$icone}\n";
+                $resumoMsg .= "💳 *{$nomeOpcao}* {$icone}\n";
                 $resumoMsg .= "   Venda: R$ " . number_format($venda, 2, ',', '.') . "\n";
-                $resumoMsg .= "   Informado: R$ " . number_format($adquirente, 2, ',', '.') . "\n";
-
-                // Opcional: Mostrar a diferença apenas se houver
+                $resumoMsg .= "   Inf: R$ " . number_format($adquirente, 2, ',', '.') . "\n";
                 if (abs($diferenca) > 0.01) {
-                    $resumoMsg .= "   Diferença: R$ " . number_format($diferenca, 2, ',', '.') . "\n";
+                    $resumoMsg .= "   Dif: R$ " . number_format($diferenca, 2, ',', '.') . "\n";
                 }
                 $resumoMsg .= "\n";
-                // ------------------------------------------
 
-                // Lógica de Banco de Dados (Mantida igual)
+                // --- Operação Banco de Dados ---
                 $stmtCheck->execute([
-                    ':system_unit_id'  => $systemUnitId,
-                    ':data_contabil'   => $dataContabil,
-                    ':forma_pagamento' => $formaPagamento
+                    ':system_unit_id' => $systemUnitId,
+                    ':data_contabil'  => $dataContabil,
+                    ':codigo_opcao'   => $codigoOpcao // Busca pela chave correta
                 ]);
                 $existente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
@@ -156,7 +154,8 @@ class ConferenciaCaixaController
                     $stmtInsert->execute([
                         ':system_unit_id'   => $systemUnitId,
                         ':data_contabil'    => $dataContabil,
-                        ':forma_pagamento'  => $formaPagamento,
+                        ':codigo_opcao'     => $codigoOpcao,
+                        ':nome_opcao'       => $nomeOpcao, // Salva o nome para facilitar leitura no banco
                         ':valor_venda'      => $venda,
                         ':valor_processado' => $processado,
                         ':valor_adquirente' => $adquirente,
@@ -168,13 +167,11 @@ class ConferenciaCaixaController
 
             $pdo->commit();
 
-            // --- ENVIO DA MENSAGEM ---
             if (!empty($telefoneUsuario)) {
-                // Envia para o WhatsApp
                 UtilsController::sendWhatsapp($telefoneUsuario, $resumoMsg);
             }
 
-            return ['success' => true, 'message' => 'Conferência salva e notificação enviada!'];
+            return ['success' => true, 'message' => 'Conferência salva com sucesso!'];
 
         } catch (Exception $e) {
             if ($pdo->inTransaction()) {
@@ -183,147 +180,261 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => 'Erro ao salvar: ' . $e->getMessage()];
         }
     }
-    public static function getDetalhamentoPorFormaPagamento($systemUnitId, $dataAnalise)
+    public static function getPayloadConferencia($systemUnitId, $dataAnalise): array
     {
         global $pdo;
 
         try {
-            // 1. Converte ID interno para ID da Loja (API)
+            // 1. Resolve o ID da Loja
             $lojaId = self::getLojaIdBySystemUnit($systemUnitId);
 
-            // 2. Query detalhada com Join na system_users
-            $sql = "
+            // --- DEBUG TEMPORÁRIO (Descomente se continuar vazio) ---
+            // Se isso imprimir algo diferente de 264550, seu cadastro de system_unit está errado
+            var_dump("ID DO SISTEMA: $systemUnitId", "LOJA ID RETORNADO: $lojaId", "DATA: $dataAnalise");
+            // die();
+            // --------------------------------------------------------
+
+            // Garante que a data esteja estritamente no formato Y-m-d para bater com DATE() no SQL
+            $dataAnalise = date('Y-m-d', strtotime($dataAnalise));
+
+            // -------------------------------------------------------------------------
+            // PASSO 1: Preparar Mapa de Vínculos
+            // -------------------------------------------------------------------------
+            $stmtVinc = $pdo->prepare("
+            SELECT UPPER(TRIM(nome_meio)) as nome_meio, nome_opcao, codigo_opcao 
+            FROM financeiro_opcoes_vinculo_meios 
+            WHERE system_unit_id = :unit
+        ");
+            $stmtVinc->execute([':unit' => $systemUnitId]);
+
+            $mapaVinculos = [];
+            while ($row = $stmtVinc->fetch(PDO::FETCH_ASSOC)) {
+                $mapaVinculos[$row['nome_meio']] = [
+                    'codigo' => $row['codigo_opcao'],
+                    'nome'   => $row['nome_opcao']
+                ];
+            }
+
+            // -------------------------------------------------------------------------
+            // PASSO 2: Consultar Vendas do PDV (QUERY CORRIGIDA)
+            // -------------------------------------------------------------------------
+            $sqlVendas = "
             SELECT 
-                T.forma_pagamento,
-                
-                -- Valores calculados na hora (API)
-                SUM(T.valor_movimento) AS venda_pdv,
-                SUM(T.valor_pagamento) AS processado_pagos,
-                
-                -- Valor salvo pelo usuário (se existir)
-                COALESCE(C.valor_adquirente, 0) AS valor_adquirente,
-                
-                -- Diferença: Se usuário digitou, usa o digitado. Senão, usa o processado API.
-                CASE 
-                    WHEN C.valor_adquirente IS NOT NULL AND C.valor_adquirente > 0 
-                    THEN (SUM(T.valor_movimento) - C.valor_adquirente)
-                    ELSE (SUM(T.valor_movimento) - SUM(T.valor_pagamento))
-                END AS diferenca,
-
-                -- Auditoria (ID e Nome do Usuário)
-                C.user_id AS ultimo_usuario_id,
-                COALESCE(U.name, 'Não conferido') AS nome_usuario_alteracao,
-                DATE_FORMAT(C.updated_at, '%d/%m/%Y %H:%i') AS data_ultima_alteracao
-
-            FROM (
-                -- 1. Detalhe do Movimento (Vendas)
-                SELECT 
-                    UPPER(TRIM(p.nome_meio)) as forma_pagamento, 
-                    p.valor as valor_movimento,
-                    0 as valor_pagamento
-                FROM api_movimento_caixa m
-                JOIN api_movimento_caixa_pagamentos p ON p.movimento_caixa_uuid = m.uuid
-                WHERE m.loja_id = :loja_id 
-                  AND DATE(m.data_contabil) = :data_analise 
-                  AND m.cancelado = 0
-
-                UNION ALL
-
-                -- 2. Detalhe dos Pagamentos (Comprovantes)
-                SELECT 
-                    UPPER(TRIM(descricao)), 
-                    0,
-                    valor
-                FROM api_pagamentos
-                WHERE id_loja = :loja_id 
-                  AND data_contabil = :data_analise
-                  AND (status_pagamento IS NULL OR status_pagamento != 'cancelado')
-
-            ) AS T
-
-            -- Join com a tabela de conferência para pegar os valores digitados
-            LEFT JOIN conferencia_caixa C 
-                ON C.system_unit_id = :system_unit_id 
-                AND C.data_contabil = :data_analise
-                AND C.forma_pagamento = T.forma_pagamento
-            
-            -- Join com a tabela de usuários para pegar o nome de quem salvou
-            LEFT JOIN system_users U ON U.id = C.user_id
-
-            GROUP BY T.forma_pagamento
-            ORDER BY T.forma_pagamento ASC
+                UPPER(TRIM(p.nome_meio)) as meio_original, 
+                SUM(p.valor) as total_venda
+            FROM api_movimento_caixa_pagamentos p
+            INNER JOIN api_movimento_caixa m ON m.uuid = p.movimento_caixa_uuid
+            WHERE m.loja_id = :loja_id 
+              AND DATE(m.data_contabil) = :data_analise 
+              AND m.cancelado = 0
+            GROUP BY UPPER(TRIM(p.nome_meio))
         ";
 
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':loja_id' => $lojaId,
-                ':system_unit_id' => $systemUnitId,
-                ':data_analise' => $dataAnalise
+            $stmtRaw = $pdo->prepare($sqlVendas);
+            $stmtRaw->execute([
+                ':loja_id'      => $lojaId,      // Tem que ser 264550
+                ':data_analise' => $dataAnalise  // Tem que ser '2026-01-02'
             ]);
 
-            return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+            $vendasPDV = $stmtRaw->fetchAll(PDO::FETCH_ASSOC);
+
+            // -------------------------------------------------------------------------
+            // PASSO 3: Consultar Conferência Já Realizada
+            // -------------------------------------------------------------------------
+            $stmtSaved = $pdo->prepare("
+            SELECT 
+                codigo_opcao, nome_opcao, valor_venda, valor_adquirente, 
+                diferenca, user_id, updated_at
+            FROM conferencia_caixa
+            WHERE system_unit_id = :unit AND data_contabil = :data
+        ");
+            $stmtSaved->execute([':unit' => $systemUnitId, ':data' => $dataAnalise]);
+
+            $dadosSalvos = [];
+            while ($row = $stmtSaved->fetch(PDO::FETCH_ASSOC)) {
+                $dadosSalvos[$row['codigo_opcao']] = $row;
+            }
+
+            // -------------------------------------------------------------------------
+            // PASSO 4: Processamento Lógico (Montagem do Array)
+            // -------------------------------------------------------------------------
+            $agrupamentoVendas = [];
+
+            foreach ($vendasPDV as $venda) {
+                $nomeBruto  = $venda['meio_original'];
+                $valorVenda = (float)$venda['total_venda'];
+
+                if (isset($mapaVinculos[$nomeBruto])) {
+                    // TEM VÍNCULO
+                    $cod = $mapaVinculos[$nomeBruto]['codigo'];
+                    $nom = $mapaVinculos[$nomeBruto]['nome'];
+
+                    if (!isset($agrupamentoVendas[$cod])) {
+                        $agrupamentoVendas[$cod] = [
+                            'nome_opcao'      => $nom,
+                            'forma_pagamento' => null, // Cenário 2 ou 3 não tem nome bruto na raiz
+                            'venda_pdv'       => 0.0,
+                            'is_linked'       => true
+                        ];
+                    }
+                    $agrupamentoVendas[$cod]['venda_pdv'] += $valorVenda;
+                } else {
+                    // NÃO TEM VÍNCULO
+                    $chave = 'RAW_' . $nomeBruto;
+                    $agrupamentoVendas[$chave] = [
+                        'nome_opcao'      => null,
+                        'forma_pagamento' => $nomeBruto,
+                        'venda_pdv'       => $valorVenda,
+                        'is_linked'       => false
+                    ];
+                }
+            }
+
+            // -------------------------------------------------------------------------
+            // PASSO 5: Construção do Retorno Final
+            // -------------------------------------------------------------------------
+            $resultadoFinal = [];
+
+            foreach ($agrupamentoVendas as $chave => $dados) {
+                $vendaPDV = $dados['venda_pdv'];
+
+                if ($dados['is_linked']) {
+                    $codigoOpcao = $chave;
+                    $nomeOpcao   = $dados['nome_opcao'];
+
+                    if (isset($dadosSalvos[$codigoOpcao])) {
+                        // --- CENÁRIO 3: CONFERIDO ---
+                        $salvo = $dadosSalvos[$codigoOpcao];
+
+                        $resultadoFinal[] = [
+                            "codigo_opcao"           => $codigoOpcao,
+                            "nome_opcao"             => $nomeOpcao,
+                            "forma_pagamento"        => null,
+                            "venda_pdv"              => round($vendaPDV, 2),
+                            "valor_adquirente"       => (float)$salvo['valor_adquirente'],
+                            "diferenca"              => round($vendaPDV - $salvo['valor_adquirente'], 2),
+                            "tem_vinculo"            => null,
+                            "nome_usuario_alteracao" => self::getUserName($salvo['user_id']),
+                            "data_ultima_alteracao"  => date('d/m/Y H:i', strtotime($salvo['updated_at']))
+                        ];
+                        unset($dadosSalvos[$codigoOpcao]);
+                    } else {
+                        // --- CENÁRIO 2: VINCULADO, NÃO CONFERIDO ---
+                        $resultadoFinal[] = [
+                            "codigo_opcao"           => $codigoOpcao,
+                            "nome_opcao"             => $nomeOpcao,
+                            "forma_pagamento"        => $nomeOpcao,
+                            "venda_pdv"              => round($vendaPDV, 2),
+                            "valor_adquirente"       => 0,
+                            "diferenca"              => round($vendaPDV, 2),
+                            "tem_vinculo"            => true,
+                            "nome_usuario_alteracao" => "null",
+                            "data_ultima_alteracao"  => null
+                        ];
+                    }
+                } else {
+                    // --- CENÁRIO 1: NÃO VINCULADO ---
+                    $resultadoFinal[] = [
+                        "codigo_opcao"           => null,
+                        "nome_opcao"             => null,
+                        "forma_pagamento"        => $dados['forma_pagamento'],
+                        "venda_pdv"              => round($vendaPDV, 2),
+                        "valor_adquirente"       => 0,
+                        "diferenca"              => round($vendaPDV, 2),
+                        "tem_vinculo"            => false,
+                        "nome_usuario_alteracao" => "null",
+                        "data_ultima_alteracao"  => null
+                    ];
+                }
+            }
+
+            // Adiciona itens que foram conferidos mas não tiveram venda hoje (ex: estorno total)
+            foreach ($dadosSalvos as $cod => $salvo) {
+                $resultadoFinal[] = [
+                    "codigo_opcao"           => $salvo['codigo_opcao'],
+                    "nome_opcao"             => $salvo['nome_opcao'],
+                    "forma_pagamento"        => null,
+                    "venda_pdv"              => 0,
+                    "valor_adquirente"       => (float)$salvo['valor_adquirente'],
+                    "diferenca"              => round(0 - $salvo['valor_adquirente'], 2),
+                    "tem_vinculo"            => null,
+                    "nome_usuario_alteracao" => self::getUserName($salvo['user_id']),
+                    "data_ultima_alteracao"  => date('d/m/Y H:i', strtotime($salvo['updated_at']))
+                ];
+            }
+
+            usort($resultadoFinal, function($a, $b) {
+                $aScore = is_null($a['tem_vinculo']) ? 2 : ($a['tem_vinculo'] === true ? 1 : 0);
+                $bScore = is_null($b['tem_vinculo']) ? 2 : ($b['tem_vinculo'] === true ? 1 : 0);
+                return $bScore <=> $aScore;
+            });
+
+            return ['success' => true, 'data' => $resultadoFinal];
 
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-    public static function getDetalhePagamentosPorFormaPagamento($systemUnitId, $dataAnalise, $formaPagamento)
+    public static function getVendasByForma($systemUnitId, $dataAnalise, $codigoOuNome): array
     {
         global $pdo;
 
-        if (!$systemUnitId || !$dataAnalise || !$formaPagamento) {
-            return ['success' => false, 'message' => 'Parâmetros inválidos para o detalhamento financeiro.'];
+        if (!$systemUnitId || !$dataAnalise || !$codigoOuNome) {
+            return ['success' => false, 'message' => 'Parâmetros inválidos.'];
         }
 
         try {
             $lojaId = self::getLojaIdBySystemUnit($systemUnitId);
 
-            // Formata a hora que vem '1403' para '14:03' visualmente
+            // PASSO A: Descobrir quais nomes de meios (PDV) estão vinculados a este código/nome
+            // Tentamos buscar pelo código primeiro (que é o ideal)
+            $stmtMeios = $pdo->prepare("
+                SELECT nome_meio FROM financeiro_opcoes_vinculo_meios 
+                WHERE system_unit_id = :unit 
+                  AND (codigo_opcao = :chave OR nome_opcao = :chave)
+            ");
+            $stmtMeios->execute([':unit' => $systemUnitId, ':chave' => $codigoOuNome]);
+            $meiosEncontrados = $stmtMeios->fetchAll(PDO::FETCH_COLUMN);
+
+            // Se não encontrou vínculos, assumimos que é um item órfão e usamos o próprio nome como filtro
+            if (empty($meiosEncontrados)) {
+                $meiosEncontrados = [$codigoOuNome];
+            }
+
+            // PASSO B: Montar a query com IN (...) para buscar todos os filhos
+            $inQuery = implode(',', array_fill(0, count($meiosEncontrados), '?'));
+
             $sql = "
                 SELECT 
-                    -- Formatação da Hora (HHMM -> HH:mm)
                     CONCAT(SUBSTRING(hora_lancamento, 1, 2), ':', SUBSTRING(hora_lancamento, 3, 2)) AS hora,
-                    
-                    -- Identificadores da Transação
                     COALESCE(nsu, '-') AS nsu,
                     COALESCE(autorizacao, '-') AS autorizacao,
-                    
-                    -- Informações da Maquininha/Operadora
-                    COALESCE(adquirente, 'Não Identificado') AS adquirente, -- Ex: STONE, CIELO
-                    COALESCE(bandeira, '') AS bandeira,       -- Ex: MASTER, VISA
-                    
-                    -- Valores
+                    COALESCE(adquirente, 'Não Identificado') AS adquirente,
+                    COALESCE(bandeira, '') AS bandeira,
+                    descricao AS meio_original, -- Mostra qual foi o meio original (Visa/Master)
                     valor AS valor_bruto,
                     taxa_comissao AS taxa_percentual,
                     valor_comissao AS valor_taxa,
                     valor_liquido AS valor_liquido,
-                    
-                    -- Status
                     status_pagamento
-                
                 FROM api_pagamentos
-                
-                WHERE id_loja = :loja_id 
-                  AND data_contabil = :data_analise
+                WHERE id_loja = ?
+                  AND data_contabil = ?
                   AND (status_pagamento IS NULL OR status_pagamento != 'cancelado')
-                  
-                  -- Bate a descrição com a forma de pagamento selecionada na grid
-                  AND UPPER(TRIM(descricao)) = UPPER(TRIM(:forma_pagamento))
-                
+                  AND UPPER(TRIM(descricao)) IN ($inQuery)
                 ORDER BY hora_lancamento ASC
             ";
 
+            // Parâmetros para o execute: id_loja, data, ...meios
+            $params = array_merge([$lojaId, $dataAnalise], $meiosEncontrados);
+
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                ':loja_id' => $lojaId,
-                ':data_analise' => $dataAnalise,
-                ':forma_pagamento' => $formaPagamento
-            ]);
+            $stmt->execute($params);
 
             return ['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Erro ao buscar detalhes financeiros: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'Erro detalhamento: ' . $e->getMessage()];
         }
     }
     public static function getHistoricoAuditoria($conferenciaId)
@@ -337,7 +448,7 @@ class ConferenciaCaixaController
                 DATE_FORMAT(a.created_at, '%d/%m/%Y %H:%i') as data_alteracao,
                 u.name as usuario_nome
             FROM conferencia_caixa_auditoria a
-            LEFT JOIN system_users u ON u.id = a.user_id -- Ajuste para sua tabela de usuários
+            LEFT JOIN system_users u ON u.id = a.user_id 
             WHERE a.conferencia_id = :id
             ORDER BY a.created_at DESC
         ");
@@ -348,9 +459,9 @@ class ConferenciaCaixaController
     {
         global $pdo;
 
-        // 1. Verifica se existem itens conferidos para essa data e unidade
+        // Busca pelo CÓDIGO_OPCAO, mas traz o NOME_OPCAO para exibir
         $stmtItems = $pdo->prepare("
-            SELECT forma_pagamento, valor_venda, valor_adquirente, diferenca
+            SELECT nome_opcao, valor_venda, valor_adquirente, diferenca
             FROM conferencia_caixa
             WHERE system_unit_id = :unit_id 
               AND data_contabil = :data
@@ -361,65 +472,58 @@ class ConferenciaCaixaController
         ]);
         $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
-        // REGRA: Se não tem conferência, devolve erro.
         if (empty($items)) {
-            return ['success' => false, 'message' => 'Nenhuma conferência encontrada para esta data nesta unidade.'];
+            return ['success' => false, 'message' => 'Nenhuma conferência encontrada.'];
         }
 
-        // 2. Busca Dados da Empresa (Para o cabeçalho da mensagem)
         $stmtUnit = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
         $stmtUnit->execute([$systemUnitId]);
         $nomeEmpresa = $stmtUnit->fetchColumn() ?: 'Empresa Desconhecida';
 
-        // 3. Busca Dados do Usuário (Para pegar o telefone de destino)
         $stmtUser = $pdo->prepare("SELECT name, phone FROM system_users WHERE id = ?");
         $stmtUser->execute([$userId]);
         $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
         if (!$userData || empty($userData['phone'])) {
-            return ['success' => false, 'message' => 'Usuário não encontrado ou sem telefone cadastrado.'];
+            return ['success' => false, 'message' => 'Usuário sem telefone.'];
         }
 
-        // 4. Monta a Mensagem
         $dataCaixaFmt = date('d/m/Y', strtotime($dataContabil));
         $dataEnvio    = date('d/m/Y H:i');
 
         $msg  = "🏢 *Resumo de Conferência* (Reenvio)\n\n";
         $msg .= "🏪 *Empresa:* {$nomeEmpresa}\n";
         $msg .= "👤 *Solicitante:* {$userData['name']}\n";
-        $msg .= "📅 *Data do Caixa:* {$dataCaixaFmt}\n";
-        $msg .= "🕒 *Enviado em:* {$dataEnvio}\n";
+        $msg .= "📅 *Data:* {$dataCaixaFmt}\n";
+        $msg .= "🕒 *Envio:* {$dataEnvio}\n";
         $msg .= "--------------------------------\n";
 
         foreach ($items as $item) {
-            $fp          = strtoupper($item['forma_pagamento']);
+            $fp          = strtoupper($item['nome_opcao']); // Nome amigável salvo
             $venda       = (float) $item['valor_venda'];
             $adquirente  = (float) $item['valor_adquirente'];
             $diferenca   = (float) $item['diferenca'];
-
-            // Ícone visual
-            $icone = abs($diferenca) > 0.01 ? '⚠️' : '✅';
+            $icone       = abs($diferenca) > 0.01 ? '⚠️' : '✅';
 
             $msg .= "💳 *{$fp}* {$icone}\n";
             $msg .= "   Venda: R$ " . number_format($venda, 2, ',', '.') . "\n";
-            $msg .= "   Informado: R$ " . number_format($adquirente, 2, ',', '.') . "\n";
-
-            // Mostra diferença apenas se existir
+            $msg .= "   Inf: R$ " . number_format($adquirente, 2, ',', '.') . "\n";
             if (abs($diferenca) > 0.01) {
                 $msg .= "   Dif: R$ " . number_format($diferenca, 2, ',', '.') . "\n";
             }
             $msg .= "\n";
         }
 
-        // 5. Realiza o envio
-        // O retorno do sendWhatsapp é [http_code, body, err]
-        $resultado = UtilsController::sendWhatsapp($userData['phone'], $msg);
-        $httpCode  = $resultado[0];
+        UtilsController::sendWhatsapp($userData['phone'], $msg);
 
-        if ($httpCode >= 200 && $httpCode < 300) {
-            return ['success' => true, 'message' => 'Resumo enviado para o WhatsApp com sucesso!'];
-        } else {
-            return ['success' => false, 'message' => 'Erro ao enviar mensagem. Código: ' . $httpCode];
-        }
+        return ['success' => true, 'message' => 'Enviado com sucesso!'];
+    }
+    private static function getUserName($userId) {
+        global $pdo;
+        if(!$userId) return 'Não conferido';
+        $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $res = $stmt->fetch();
+        return $res ? $res['name'] : 'Usuário ' . $userId;
     }
 }

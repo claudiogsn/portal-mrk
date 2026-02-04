@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Opções de Recebimento</title>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        th, td { vertical-align: middle !important; }
+        .select2-container { width: 100% !important; z-index: 9999; }
+
+        /* Cores para os ícones nas ações */
+        i.blue { color: #2196F3; cursor: pointer; }
+        i.blue:hover { color: #0d47a1; }
+
+        i.red { color: #F44336; cursor: pointer; }
+        i.red:hover { color: #b71c1c; }
+
+        i.orange { color: #FF9800; cursor: pointer; }
+        i.orange:hover { color: #e65100; }
+
+        /* Badges */
+        .badge-taxa { background-color: #E91E63; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .badge-prazo { background-color: #00BCD4; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .badge-banco { background-color: #607D8B; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+        .plano-code { font-family: monospace; color: #555; font-weight: bold; background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+
+    </style>
+</head>
+
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Opções de Recebimento</h2>
+            <small>Gerencie taxas, prazos e vincule códigos do PDV.</small>
+        </div>
+        <div class="body">
+
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+                </div>
+                <div class="col-md-4 text-right">
+                    <button class="btn btn-info" id="btnImportarPadrao">
+                        <i class="fa fa-download"></i> Importar Padrão
+                    </button>
+                    <button class="btn btn-success" id="btnNovaOpcao">
+                        <i class="fa fa-plus"></i> Nova Opção
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabela-opcoes">
+                    <thead>
+                    <tr>
+                        <th style="width: 100px;"></th>
+
+                        <th style="width: 100px;">Código</th>
+                        <th>Nome</th>
+                        <th style="width: 100px;">Taxa</th>
+                        <th style="width: 100px;">Prazo</th>
+                        <th>Plano de Contas</th>
+                        <th>Banco Vinculado</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalOpcao" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="modalTitle">Cadastrar Opção</h4>
+            </div>
+            <div class="modal-body">
+                <form id="formOpcao">
+                    <input type="hidden" id="opcaoId">
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label>Código (Interno)</label>
+                            <input type="text" class="form-control" id="codigo" placeholder="Ex: CREDIT01">
+                        </div>
+                        <div class="col-md-8">
+                            <label>Nome *</label>
+                            <input type="text" class="form-control" id="nome" placeholder="Ex: Visa Crédito" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Taxa (%)</label>
+                            <input type="number" step="0.01" class="form-control" id="taxa" value="0.00">
+                        </div>
+                        <div class="col-md-6">
+                            <label>Prazo (Dias)</label>
+                            <input type="number" class="form-control" id="prazo" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Plano de Contas</label>
+                        <select id="plano_contas_id" class="form-control">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Banco para Depósito</label>
+                        <select id="banco_id" class="form-control">
+                            <option value="">Sem vínculo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnSalvar">Salvar Dados</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVinculos" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="padding: 15px;">
+                <h4 class="modal-title">
+                    <i class="fa fa-link"></i> Vincular Meios do PDV
+                    <br><small id="tituloVinculoOpcao">Opção: ...</small>
+                </h4>
+            </div>
+            <div class="modal-body">
+
+                <div class="well">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label>Código PDV *</label>
+                            <input type="text" id="vinc_codigo_meio" class="form-control" placeholder="Ex: VISA">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Nome PDV *</label>
+                            <input type="text" id="vinc_nome_meio" class="form-control" placeholder="Ex: Visa Crédito">
+                        </div>
+                        <div class="col-md-2">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-success btn-block" onclick="adicionarVinculo()">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <h5>Vínculos Existentes:</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped table-vinculos" id="tabela-vinculos">
+                        <thead>
+                        <tr>
+                            <th>Código PDV</th>
+                            <th>Nome PDV</th>
+                            <th>Data</th>
+                            <th style="width: 50px;">Ação</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('system_unit_id');
+
+    let opcoesCache = [];
+    let currentOpcaoCodigo = null;
+    let currentOpcaoNome = null;
+
+    $(document).ready(() => {
+        if (!token || !system_unit_id) {
+            Swal.fire('Erro', 'Token ou System Unit ID ausentes.', 'error');
+            return;
+        }
+
+        $('#plano_contas_id').select2({
+            dropdownParent: $('#modalOpcao'),
+            width: '100%',
+            placeholder: 'Selecione o plano...',
+            allowClear: true
+        });
+
+        carregarComboBancos();
+        carregarPlanos();
+        listarOpcoes();
+
+        $('#filtroCodigo, #filtroNome').on('input', filtrarTabela);
+        $('#btnNovaOpcao').click(abrirModalNovo);
+        $('#btnSalvar').click(salvarOpcao);
+        $('#btnImportarPadrao').click(importarPadrao);
+    });
+
+    async function carregarComboBancos() {
+        try {
+            const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id } });
+            let options = '<option value="">Sem vínculo</option>';
+            const dados = res.data.data || res.data;
+            if(Array.isArray(dados)) dados.forEach(b => options += `<option value="${b.id}">${b.nome}</option>`);
+            $('#banco_id').html(options);
+        } catch (e) { console.error(e); }
+    }
+
+    async function carregarPlanos() {
+        try {
+            const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id } });
+            const planos = res.data.data || res.data;
+            if(Array.isArray(planos)){
+                planos.sort((a,b) => a.codigo.localeCompare(b.codigo));
+                $('#plano_contas_id').empty().append('<option value="">Selecione...</option>');
+                planos.forEach(p => {
+                    const nivel = Math.floor((p.codigo.length - 2) / 2);
+                    const indent = '\u00A0'.repeat(nivel * 4);
+                    $('#plano_contas_id').append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
+                });
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function listarOpcoes() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listOpcoesRecebimento',
+                token,
+                data: { system_unit_id }
+            });
+
+            opcoesCache = res.data.data || res.data;
+            const tbody = $('#tabela-opcoes tbody').empty();
+
+            if (!opcoesCache || opcoesCache.length === 0) {
+                tbody.append('<tr><td colspan="7" class="text-center text-muted">Nenhum registro.</td></tr>');
+                return;
+            }
+
+            opcoesCache.forEach(o => {
+                const infoPlano = o.plano_contas_id
+                    ? `<div><b class="plano-code">${o.plano_contas_id}</b></div><div style="font-size: 10px; color: #777;">${o.nome_plano_contas || ''}</div>`
+                    : '<span class="text-muted">-</span>';
+
+                const infoBanco = o.nome_banco
+                    ? `<span class="badge-banco"><i class="fa fa-university"></i> ${o.nome_banco}</span>`
+                    : '<small class="text-muted">Nenhum</small>';
+
+                // AQUI ESTÁ A ALTERAÇÃO:
+                // 1. Coluna de Ações movida para o início.
+                // 2. Usando tags <a> com ícones coloridos em vez de botões.
+                // 3. Classes btn-vincular, btn-editar mantidas para o jQuery funcionar.
+                tbody.append(`
+                <tr data-id="${o.id}" data-codigo="${o.codigo || ''}" data-nome="${o.nome}">
+                    <td class="text-center">
+                        <a href="javascript:void(0)" class="btn-vincular" title="Vincular Meios">
+                            <i class="fa fa-link orange"></i>
+                        </a>
+                        &nbsp;&nbsp;
+                        <a href="javascript:void(0)" class="btn-editar" title="Editar">
+                            <i class="fa fa-edit blue"></i>
+                        </a>
+                        &nbsp;&nbsp;
+                        <a href="javascript:void(0)" class="btn-excluir" title="Excluir">
+                            <i class="fa fa-trash red"></i>
+                        </a>
+                    </td>
+                    <td><strong>${o.codigo || '-'}</strong></td>
+                    <td>${o.nome}</td>
+                    <td><span class="badge-taxa">${parseFloat(o.taxa || 0).toFixed(2)}%</span></td>
+                    <td><span class="badge-prazo">${o.prazo || 0} d</span></td>
+                    <td>${infoPlano}</td>
+                    <td>${infoBanco}</td>
+                </tr>
+                `);
+            });
+            filtrarTabela();
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha ao listar.', 'error');
+        }
+    }
+
+    function abrirModalNovo() {
+        $('#modalTitle').text('Cadastrar Opção');
+        $('#opcaoId').val('');
+        $('#formOpcao')[0].reset();
+        $('#plano_contas_id').val('').trigger('change');
+        $('#modalOpcao').modal('show');
+    }
+
+    $(document).on('click', '.btn-editar', function() {
+        const id = $(this).closest('tr').data('id');
+        const o = opcoesCache.find(x => x.id == id);
+        if (!o) return;
+        $('#modalTitle').text('Editar: ' + o.nome);
+        $('#opcaoId').val(o.id);
+        $('#codigo').val(o.codigo);
+        $('#nome').val(o.nome);
+        $('#taxa').val(o.taxa);
+        $('#prazo').val(o.prazo);
+        $('#banco_id').val(o.banco_id);
+        $('#plano_contas_id').val(o.plano_contas_id).trigger('change');
+        $('#modalOpcao').modal('show');
+    });
+
+    async function salvarOpcao() {
+        const id = $('#opcaoId').val();
+        const data = {
+            id,
+            system_unit_id,
+            codigo: $('#codigo').val(),
+            nome: $('#nome').val(),
+            taxa: $('#taxa').val(),
+            prazo: $('#prazo').val(),
+            banco_id: $('#banco_id').val(),
+            plano_contas_id: String($('#plano_contas_id').val() || "")
+        };
+
+        if(!data.nome || data.nome.trim() === "") return Swal.fire('Atenção', 'Nome obrigatório.', 'warning');
+
+        Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const method = id ? 'updateOpcaoRecebimento' : 'createOpcaoRecebimento';
+            const res = await axios.post(baseUrl, { method, token, data });
+            Swal.close();
+            if(res.data.success) {
+                Swal.fire('Sucesso!', 'Salvo.', 'success');
+                $('#modalOpcao').modal('hide');
+                listarOpcoes();
+            } else { Swal.fire('Erro', res.data.message, 'error'); }
+        } catch (e) { Swal.fire('Erro', 'Falha na conexão.', 'error'); }
+    }
+
+    $(document).on('click', '.btn-excluir', async function() {
+        const id = $(this).closest('tr').data('id');
+        const conf = await Swal.fire({ title: 'Excluir?', icon: 'warning', showCancelButton: true });
+        if(!conf.isConfirmed) return;
+        try {
+            const res = await axios.post(baseUrl, { method: 'deleteOpcaoRecebimento', token, data: { id } });
+            if(res.data.success) { listarOpcoes(); Swal.fire('Feito!', '', 'success'); }
+            else { Swal.fire('Erro', res.data.message, 'error'); }
+        } catch (e) { console.error(e); }
+    });
+
+    // LÓGICA DE VÍNCULOS
+    $(document).on('click', '.btn-vincular', function() {
+        const tr = $(this).closest('tr');
+        currentOpcaoCodigo = tr.data('codigo');
+        currentOpcaoNome   = tr.data('nome');
+
+        if(!currentOpcaoCodigo || currentOpcaoCodigo === 'undefined') {
+            return Swal.fire('Atenção', 'Adicione um Código à esta Opção antes de vincular.', 'warning');
+        }
+
+        $('#tituloVinculoOpcao').text(`Opção: ${currentOpcaoNome} (${currentOpcaoCodigo})`);
+        $('#vinc_codigo_meio').val(''); $('#vinc_nome_meio').val('');
+        $('#modalVinculos').modal('show');
+        carregarListaVinculos();
+    });
+
+    async function carregarListaVinculos() {
+        const tbody = $('#tabela-vinculos tbody').empty();
+        tbody.append('<tr><td colspan="5" class="text-center"><i class="fa fa-spinner fa-spin"></i></td></tr>');
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listMeiosPorOpcao',
+                token,
+                data: { system_unit_id, codigo_opcao: currentOpcaoCodigo }
+            });
+            tbody.empty();
+            const lista = res.data.data || [];
+            if(lista.length === 0) {
+                tbody.append('<tr><td colspan="5" class="text-center text-muted">Vazio.</td></tr>');
+                return;
+            }
+            lista.forEach(m => {
+                const data = m.created_at ? new Date(m.created_at).toLocaleDateString('pt-BR') : '-';
+                tbody.append(`
+                    <tr>
+                        <td class="text-primary font-bold">${m.codigo_meio}</td>
+                        <td>${m.nome_meio}</td>
+                        <td>${data}</td>
+                        <td class="text-center">
+                            <button class="btn btn-danger btn-xs" onclick="removerVinculo(${m.id})"><i class="fa fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `);
+            });
+        } catch(e) { tbody.html('<tr><td colspan="5">Erro.</td></tr>'); }
+    }
+
+    async function adicionarVinculo() {
+        const cod = $('#vinc_codigo_meio').val();
+        const nome = $('#vinc_nome_meio').val();
+        if(!cod || !nome) return Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'vincularMeioPagamento',
+                token,
+                data: { system_unit_id, codigo_opcao: currentOpcaoCodigo, nome_opcao: currentOpcaoNome, codigo_meio: cod, nome_meio: nome }
+            });
+            if(res.data.success) {
+                Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }).fire({ icon: 'success', title: 'Adicionado' });
+                $('#vinc_codigo_meio').val(''); $('#vinc_nome_meio').val('');
+                carregarListaVinculos();
+            } else { Swal.fire('Erro', res.data.message, 'error'); }
+        } catch(e) { Swal.fire('Erro', 'Falha ao vincular.', 'error'); }
+    }
+
+    async function removerVinculo(id) {
+        const conf = await Swal.fire({ title: 'Remover?', icon: 'question', showCancelButton: true });
+        if(!conf.isConfirmed) return;
+        try {
+            const res = await axios.post(baseUrl, { method: 'desvincularMeio', token, data: { id } });
+            if(res.data.success) carregarListaVinculos();
+            else Swal.fire('Erro', res.data.message, 'error');
+        } catch(e) { console.error(e); }
+    }
+
+    async function importarPadrao() {
+        const plano = $('#plano_contas_id').val();
+        if(!plano) return Swal.fire('Atenção', 'Selecione um Plano de Contas.', 'warning');
+        const conf = await Swal.fire({ title: 'Importar Padrão?', icon: 'question', showCancelButton: true });
+        if(!conf.isConfirmed) return;
+        Swal.fire({ title: 'Aguarde...', didOpen: () => Swal.showLoading() });
+        try {
+            await axios.post(baseUrl, { method: 'importarOpcoesPadrao', token, data: { system_unit_id, plano_contas_id: plano } });
+            listarOpcoes(); Swal.fire('Sucesso', '', 'success');
+        } catch (e) { Swal.fire('Erro', '', 'error'); }
+    }
+
+    function filtrarTabela() {
+        const c = $('#filtroCodigo').val().toLowerCase();
+        const n = $('#filtroNome').val().toLowerCase();
+        $('#tabela-opcoes tbody tr').each(function() {
+            const tc = $(this).find('td:nth-child(2)').text().toLowerCase();
+            const tn = $(this).find('td:nth-child(3)').text().toLowerCase();
+            $(this).toggle(tc.includes(c) && tn.includes(n));
+        });
+    }
+</script>
+</body>
+</html>

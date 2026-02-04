@@ -11,32 +11,37 @@
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
     <style>
+        /* Estados dos Cards */
+        .item-card {
+            background: #fff; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex; align-items: center; gap: 15px; position: relative;
+        }
+
+        /* 1. VERMELHO: Sem Vínculo */
+        .card-unlinked { border-left: 5px solid #F44336; background-color: #fffafa; }
+        .badge-unlinked { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+
+        /* 2. AZUL: Pendente (Vinculado mas não conferido) */
+        .card-pending { border-left: 5px solid #2196F3; }
+        .badge-pending { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+
+        /* 3. VERDE: Conferido (Salvo no banco) */
+        .card-done { border-left: 5px solid #4CAF50; background-color: #f1f8e9; }
+        .badge-done { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+
         .audit-info {
             font-size: 11px; color: #777; margin-top: 8px; display: flex; align-items: center;
-            gap: 5px; border-top: 1px solid #f5f5f5; padding-top: 5px; width: 100%;
+            gap: 5px; border-top: 1px solid #f0f0f0; padding-top: 5px; width: 100%;
         }
         .status-badge {
             font-weight: bold; text-transform: uppercase; font-size: 9px; padding: 2px 5px;
             border-radius: 3px; margin-right: 5px;
-        }
-        .status-conferido { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-        .status-pendente { background: #fafafa; color: #999; border: 1px solid #eee; }
-
-        .header-flex { display:flex; align-items:center; justify-content: space-between; }
-        .kpi { text-align:center; padding:12px; border-radius:6px; border:1px solid #eee; margin-bottom: 20px;}
-        .kpi h4 { margin:4px 0 0 0; font-weight:700; }
-        .kpi.green { background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
-        .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
-        .kpi.orange { background:#fff3e0; border-color:#ffe0b2; color:#ef6c00; }
-
-        .list-container { margin-top: 20px; }
-        .item-card {
-            background: #fff; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 5px solid #2196F3;
-            display: flex; align-items: center; gap: 15px;
         }
 
         .col-info { flex: 1; min-width: 150px; }
@@ -44,21 +49,31 @@
         .val-block { min-width: 110px; }
 
         .item-input-group { display: flex; align-items: center; gap: 10px; min-width: 180px; flex: 1; }
-        .item-actions { width: 40px; text-align: right; font-size: 18px; color: #999; cursor: pointer; }
-        .item-actions:hover { color: #2196F3; }
 
-        /* Estilo do botão de copiar */
+        /* Botões de Ação no Card */
+        .action-btn { cursor: pointer; font-size: 16px; padding: 5px; transition: 0.2s; }
+        .action-link { color: #FF9800; } /* Botão Vincular */
+        .action-detail { color: #999; }  /* Botão Detalhes */
+        .action-detail:hover { color: #2196F3; }
+
         .btn-copy-val {
-            background: #f5f5f5; border: 1px solid #2196f33d; border-radius: 4px;
-            padding: 6px 10px; cursor: pointer; color: #2196F3; transition: 0.2s;
-            margin-top: 14px; /* Alinhamento visual com o input */
+            background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px;
+            padding: 6px 10px; cursor: pointer; color: #555; margin-top: 14px;
         }
-        .btn-copy-val:hover { background: #2196F3; color: #fff; }
+        .btn-copy-val:hover:not(:disabled) { background: #2196F3; color: #fff; border-color: #2196F3; }
+        .btn-copy-val:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .label-custom { display: block; font-size: 10px; color: #999; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px;}
+        .label-custom { display: block; font-size: 10px; color: #999; text-transform: uppercase; margin-bottom: 2px; }
         .val-bold { font-weight: bold; font-size: 14px; color: #333; }
-        .diff-danger { color: #f44336; }
-        .diff-success { color: #4caf50; }
+        .diff-danger { color: #f44336; font-weight: bold; }
+        .diff-success { color: #4caf50; font-weight: bold; }
+
+        .kpi { text-align:center; padding:12px; border-radius:6px; border:1px solid #eee; margin-bottom: 20px;}
+        .kpi.green { background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
+        .kpi.blue  { background:#e3f2fd; border-color:#bbdefb; color:#1565c0; }
+        .kpi.orange { background:#fff3e0; border-color:#ffe0b2; color:#ef6c00; }
+
+        .select2-container { width: 100% !important; z-index: 9999; }
 
         @media (max-width: 992px) {
             .item-card { flex-direction: column; align-items: flex-start; }
@@ -72,14 +87,14 @@
 <div class="container-fluid">
     <br>
     <div class="card">
-        <div class="header header-flex">
+        <div class="header" style="display:flex; justify-content:space-between; align-items:center;">
             <h2>Conferência de Caixa</h2>
             <div>
-                <button class="btn btn-info waves-effect" id="btnEnviarWpp" style="margin-right: 10px;">
-                    <i class="fab fa-whatsapp"></i> ENVIAR RESUMO
+                <button class="btn btn-info waves-effect" id="btnEnviarWpp" style="margin-right: 5px;">
+                    <i class="fab fa-whatsapp"></i> WPP
                 </button>
                 <button class="btn btn-success waves-effect" id="btnSalvarTudo">
-                    <i class="fa fa-save"></i> SALVAR CONFERÊNCIA
+                    <i class="fa fa-save"></i> SALVAR
                 </button>
             </div>
         </div>
@@ -92,20 +107,46 @@
                 </div>
                 <div class="col-md-2">
                     <label>&nbsp;</label><br>
-                    <button class="btn btn-primary waves-effect" id="btnBuscar">
+                    <button class="btn btn-primary waves-effect btn-block" id="btnBuscar">
                         <i class="fa fa-search"></i> BUSCAR
                     </button>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-4"><div class="kpi blue"><small>Total Venda PDV</small><h4 id="kpiPDV">R$ 0,00</h4></div></div>
-                <div class="col-md-4"><div class="kpi green"><small>Total Conferência</small><h4 id="kpiConferencia">R$ 0,00</h4></div></div>
-                <div class="col-md-4"><div class="kpi orange"><small>Diferença Total</small><h4 id="kpiDiferenca">R$ 0,00</h4></div></div>
+            <div class="row" style="margin-top: 15px;">
+                <div class="col-md-4"><div class="kpi blue"><small>Venda PDV (Vinculada)</small><h4 id="kpiPDV">R$ 0,00</h4></div></div>
+                <div class="col-md-4"><div class="kpi green"><small>Conferido</small><h4 id="kpiConferencia">R$ 0,00</h4></div></div>
+                <div class="col-md-4"><div class="kpi orange"><small>Diferença</small><h4 id="kpiDiferenca">R$ 0,00</h4></div></div>
             </div>
 
-            <div id="containerCards" class="list-container">
-                <div class="text-center text-muted">Carregue uma data para iniciar a conferência.</div>
+            <div id="containerCards" style="margin-top: 20px;">
+                <div class="text-center text-muted">Selecione uma data para iniciar.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVincular" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-orange" style="color:white;">
+                <h4 class="modal-title"><i class="fa fa-link"></i> Vincular Meio de Pagamento</h4>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    O meio <strong><span id="lblMeioOriginal"></span></strong> não está vinculado a nenhuma opção financeira.
+                    Selecione abaixo onde ele deve ser somado.
+                </div>
+                <form>
+                    <input type="hidden" id="vinc_nome_meio"> <label>Vincular a qual Opção?</label>
+                    <select id="vinc_codigo_opcao" class="form-control select2">
+                        <option value="">Carregando opções...</option>
+                    </select>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning waves-effect" onclick="salvarVinculo()">SALVAR VÍNCULO</button>
             </div>
         </div>
     </div>
@@ -114,17 +155,9 @@
 <div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <div class="modal-header" style="background: #f5f5f5; border-bottom: 1px solid #ddd;">
-                <div class="pull-right">
-                    <button class="btn btn-default btn-xs waves-effect" id="btnExportExcel">
-                        <i class="fa fa-file-excel text-success"></i> EXPORTAR EXCEL
-                    </button>
-                    <button type="button" class="close" data-dismiss="modal" style="margin-left: 15px;">&times;</button>
-                </div>
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
                 <h4 class="modal-title" id="modalTitle">Detalhes</h4>
-                <div style="margin-top: 10px;">
-                    <span class="label label-info" id="totalDetalhe" style="font-size: 14px;">Total: R$ 0,00</span>
-                </div>
             </div>
             <div class="modal-body">
                 <div id="conteudoDetalhe" class="table-responsive"></div>
@@ -137,7 +170,7 @@
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -150,69 +183,127 @@
         : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
     function toBRL(v){ return Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
-
-    function formatDateBR(ymd) {
-        if(!ymd) return '';
-        const [y, m, d] = ymd.split('-');
-        return `${d}/${m}/${y}`;
-    }
+    function formatDateBR(ymd) { if(!ymd) return ''; const [y, m, d] = ymd.split('-'); return `${d}/${m}/${y}`; }
 
     $(document).ready(function(){
+        // Data Ontem
         const ontem = new Date();
         ontem.setDate(ontem.getDate() - 1);
         document.getElementById('data_conferencia').value = ontem.toISOString().split('T')[0];
 
+        // Init Select2 no Modal
+        $('#vinc_codigo_opcao').select2({ dropdownParent: $('#modalVincular') });
+
+        // Listeners
         $('#btnBuscar').on('click', carregarConferencia);
         $('#btnSalvarTudo').on('click', salvarConferencia);
-        $('#btnExportExcel').on('click', exportarExcel);
         $('#btnEnviarWpp').on('click', enviarResumoWpp);
+
+        // Pré-carrega opções para o modal de vínculo
+        carregarOpcoesParaVinculo();
     });
 
+    // --- CARREGAMENTO PRINCIPAL ---
     async function carregarConferencia(){
         const data = $('#data_conferencia').val();
         Swal.fire({ title: 'Carregando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await axios.post(baseUrl, {
-                method: 'getDetalhamentoConferencia',
+                method: 'getDetalhamentoPorFormaPagamento', // NOVO MÉTODO DO CONTROLLER
                 token,
-                data: { system_unit_id: unit_id, data: data }
+                data: { system_unit_id: unit_id, data_analise: data }
             });
+
             Swal.close();
+
             if(res.data.success) {
                 renderCards(res.data.data);
                 atualizarKPIsGerais();
+            } else {
+                Swal.fire('Erro', res.data.message, 'error');
             }
-        } catch (e) { Swal.fire('Error', 'Erro ao carregar dados', 'error'); }
+        } catch (e) { Swal.fire('Erro', 'Falha na conexão', 'error'); }
     }
 
     function renderCards(lista) {
         const container = $('#containerCards').empty();
 
         if(!lista || lista.length === 0) {
-            container.html('<div class="text-center text-muted">Nenhum dado encontrado.</div>');
+            container.html('<div class="text-center text-muted">Nenhum movimento encontrado para esta data.</div>');
             return;
         }
 
-        lista.forEach((item, idx) => {
+        lista.forEach((item) => {
+            // LÓGICA DE ESTADOS (Vermelho, Azul, Verde)
+            let cardClass = '';
+            let badgeClass = '';
+            let statusText = '';
+            let auditHtml = '';
+            let isUnlinked = false;
+            let codigoOuNome = ''; // Chave para buscar detalhes
+
+            // Cenário 1: Sem Vínculo (Vermelho)
+            if (item.tem_vinculo === false) {
+                cardClass  = 'card-unlinked';
+                badgeClass = 'badge-unlinked';
+                statusText = '<i class="fa fa-exclamation-triangle"></i> SEM VÍNCULO';
+                auditHtml  = '<span>Necessário vincular para conferir</span>';
+                isUnlinked = true;
+                codigoOuNome = item.forma_pagamento; // Busca detalhes pelo nome bruto
+            }
+            // Cenário 2: Pendente (Azul)
+            else if (item.tem_vinculo === true) {
+                cardClass  = 'card-pending';
+                badgeClass = 'badge-pending';
+                statusText = '<i class="fa fa-clock"></i> PENDENTE';
+                auditHtml  = '<span>Aguardando conferência</span>';
+                codigoOuNome = item.codigo_opcao; // Busca detalhes pelo código agrupado
+            }
+            // Cenário 3: Conferido (Verde) - tem_vinculo vem null do backend
+            else {
+                cardClass  = 'card-done';
+                badgeClass = 'badge-done';
+                statusText = '<i class="fa fa-check-circle"></i> CONFERIDO';
+                auditHtml  = `<span>Por <strong>${item.nome_usuario_alteracao}</strong> em ${item.data_ultima_alteracao}</span>`;
+                codigoOuNome = item.codigo_opcao;
+            }
+
             const diff = item.venda_pdv - item.valor_adquirente;
             const diffClass = diff === 0 ? 'diff-success' : 'diff-danger';
 
-            const isConferido = item.ultimo_usuario_id !== null;
-            const statusHtml = isConferido
-                ? `<span class="status-badge status-conferido"><i class="fa fa-check"></i> Conferido</span>`
-                : `<span class="status-badge status-pendente">Pendente</span>`;
+            // Botão de Ação Principal (Detalhes ou Vincular)
+            let actionButton = '';
+            if(isUnlinked) {
+                // Botão de Corrente para Vincular
+                actionButton = `
+                    <div class="action-btn action-link" title="Vincular este meio a uma opção"
+                         onclick="abrirModalVinculo('${item.forma_pagamento}')">
+                        <i class="fa fa-link"></i>
+                    </div>`;
+            } else {
+                // Botão de Olho para Detalhes
+                actionButton = `
+                    <div class="action-btn action-detail" title="Ver comprovantes agrupados"
+                         onclick="verDetalhesAPI('${codigoOuNome}', '${item.nome_opcao || item.forma_pagamento}')">
+                        <i class="fa fa-eye"></i>
+                    </div>`;
+            }
 
-            const auditText = isConferido
-                ? `Por: <strong>${item.nome_usuario_alteracao}</strong> em ${item.data_ultima_alteracao}`
-                : `Aguardando conferência`;
+            // Input: Desabilitado se não tiver vínculo
+            const disabledAttr = isUnlinked ? 'disabled' : '';
+            const bgInput = isUnlinked ? 'background:#eee;' : '';
 
             container.append(`
-            <div class="item-card" style="flex-wrap: wrap;">
+            <div class="item-card ${cardClass}">
+                <input type="hidden" class="hd-codigo" value="${item.codigo_opcao || ''}">
+                <input type="hidden" class="hd-nome" value="${item.nome_opcao || item.forma_pagamento}">
+                <input type="hidden" class="hd-is-linked" value="${!isUnlinked}">
+
                 <div style="display: flex; width: 100%; align-items: center; gap: 15px;">
                     <div class="col-info">
-                        <span class="label-custom">Forma de Pagto</span>
-                        <span class="val-bold">${item.forma_pagamento}</span>
+                        <span class="label-custom">Opção / Meio</span>
+                        <span class="val-bold" style="font-size:15px;">${item.nome_opcao || item.forma_pagamento}</span>
                     </div>
 
                     <div class="col-values">
@@ -223,15 +314,17 @@
                         </div>
 
                         <div class="item-input-group">
-                            <button class="btn-copy-val waves-effect" title="Copiar Venda PDV"
-                                    onclick="copiarValorPDV(this, ${item.venda_pdv})">
+                            <button class="btn-copy-val waves-effect" title="Copiar Valor" ${disabledAttr}
+                                    onclick="copiarValorPDV(this)">
                                 <i class="fa fa-chevron-right"></i>
                             </button>
 
                             <div style="flex:1">
-                                <span class="label-custom">Conferência</span>
+                                <span class="label-custom">Valor Conferido</span>
                                 <input type="number" step="0.01" class="form-control input-adquirente"
                                        value="${item.valor_adquirente}"
+                                       style="${bgInput}"
+                                       ${disabledAttr}
                                        oninput="recalcularDiferenca(this)">
                             </div>
                         </div>
@@ -242,34 +335,30 @@
                         </div>
                     </div>
 
-                    <div class="item-actions" onclick="verDetalhesAPI('${item.forma_pagamento}')">
-                        <i class="fa fa-external-link-alt"></i>
-                    </div>
+                    ${actionButton}
                 </div>
 
                 <div class="audit-info">
-                    ${statusHtml}
-                    <span>${auditText}</span>
+                    <span class="status-badge ${badgeClass}">${statusText}</span>
+                    ${auditHtml}
                 </div>
             </div>
-        `);
+            `);
         });
     }
 
-    // --- NOVA FUNÇÃO DE COPIAR ---
-    function copiarValorPDV(btn, valorPDV){
-        // Encontra o input vizinho do botão
-        const input = $(btn).closest('.item-input-group').find('.input-adquirente');
-        // Define o valor e recalcula
-        input.val(parseFloat(valorPDV).toFixed(2));
-        recalcularDiferenca(input[0]);
+    // --- CÁLCULOS NA TELA ---
+    function copiarValorPDV(btn){
+        const card = $(btn).closest('.item-card');
+        const valPDV = parseFloat(card.find('.val-pdv-raw').text()) || 0;
+        card.find('.input-adquirente').val(valPDV.toFixed(2));
+        recalcularDiferenca(btn);
     }
 
     function recalcularDiferenca(el){
         const card = $(el).closest('.item-card');
         const valPDV = parseFloat(card.find('.val-pdv-raw').text()) || 0;
-        const valConf = parseFloat($(el).val()) || 0;
-
+        const valConf = parseFloat(card.find('.input-adquirente').val()) || 0;
         const diff = valPDV - valConf;
 
         const displayDiff = card.find('.row-diff');
@@ -282,83 +371,169 @@
     function atualizarKPIsGerais(){
         let totalConf = 0, totalPDV = 0;
         $('.item-card').each(function(){
-            totalConf += parseFloat($(this).find('.input-adquirente').val()) || 0;
-            totalPDV += parseFloat($(this).find('.val-pdv-raw').text()) || 0;
+            // Só soma nos KPIs se estiver vinculado (azul ou verde)
+            const isLinked = $(this).find('.hd-is-linked').val() === 'true';
+
+            if(isLinked){
+                totalConf += parseFloat($(this).find('.input-adquirente').val()) || 0;
+                totalPDV  += parseFloat($(this).find('.val-pdv-raw').text()) || 0;
+            }
         });
         $('#kpiPDV').text(toBRL(totalPDV));
         $('#kpiConferencia').text(toBRL(totalConf));
         $('#kpiDiferenca').text(toBRL(totalPDV - totalConf));
     }
 
-    async function verDetalhesAPI(forma){
-        const data = $('#data_conferencia').val();
-        $('#modalTitle').text(`Detalhes: ${forma} | Data: ${formatDateBR(data)}`);
-        $('#modalDetalhes').modal('show');
-        $('#conteudoDetalhe').html('<div class="text-center">Carregando...</div>');
-
-        const res = await axios.post(baseUrl, {
-            method: 'getDetalhePagamentosPorFormaPagamento',
-            token,
-            data: { system_unit_id: unit_id, data: data, forma_pagamento: forma }
-        });
-
-        if(res.data.success){
-            let total = 0;
-            let html = `<table class="table table-striped" id="tabelaExport">
-                <thead><tr><th>Hora</th><th>NSU</th><th>Adquirente</th><th class="text-right">Valor</th></tr></thead>
-                <tbody>`;
-            res.data.data.forEach(d => {
-                total += parseFloat(d.valor_bruto);
-                html += `<tr><td>${d.hora}</td><td>${d.nsu}</td><td>${d.adquirente}</td><td class="text-right">${toBRL(d.valor_bruto)}</td></tr>`;
+    // --- LÓGICA DE VINCULAÇÃO (MODAL) ---
+    async function carregarOpcoesParaVinculo(){
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listOpcoesRecebimento',
+                token,
+                data: { system_unit_id: unit_id }
             });
-            html += `</tbody></table>`;
-            $('#totalDetalhe').text(`Total Acumulado: ${toBRL(total)}`);
-            $('#conteudoDetalhe').html(html);
+            const lista = res.data.data || [];
+
+            const select = $('#vinc_codigo_opcao');
+            select.empty().append('<option value="">Selecione...</option>');
+
+            lista.forEach(op => {
+                select.append(new Option(op.nome + ' (' + op.codigo + ')', op.codigo));
+            });
+        } catch(e) { console.error('Erro ao carregar opções', e); }
+    }
+
+    function abrirModalVinculo(nomeMeioOriginal){
+        $('#vinc_nome_meio').val(nomeMeioOriginal); // Nome que veio do PDV
+        $('#lblMeioOriginal').text(nomeMeioOriginal);
+        $('#vinc_codigo_opcao').val('').trigger('change'); // Limpa select
+        $('#modalVincular').modal('show');
+    }
+
+    async function salvarVinculo(){
+        const nomeMeio = $('#vinc_nome_meio').val();
+        const codigoOpcao = $('#vinc_codigo_opcao').val(); // Código Pai
+
+        if(!codigoOpcao){
+            return Swal.fire('Atenção', 'Selecione uma opção financeira.', 'warning');
         }
-    }
 
-    function exportarExcel(){
-        const table = document.getElementById("tabelaExport");
-        if(!table) return;
-        const wb = XLSX.utils.table_to_book(table, { sheet: "Detalhes" });
-        XLSX.writeFile(wb, `Conferencia_${$('#modalTitle').text().replace(/[^a-z0-9]/gi, '_')}.xlsx`);
-    }
+        // Pega o texto do select para salvar o nome da opção
+        const nomeOpcaoFull = $('#vinc_codigo_opcao option:selected').text().split('(')[0].trim();
 
-    async function salvarConferencia(){
-        const data = $('#data_conferencia').val();
-        const items = [];
-        $('.item-card').each(function(){
-            items.push({
-                forma_pagamento: $(this).find('.col-info .val-bold').text(),
-                venda_pdv: parseFloat($(this).find('.val-pdv-raw').text()) || 0,
-                processado_pagos: 0,
-                valor_adquirente: parseFloat($(this).find('.input-adquirente').val()) || 0
-            });
-        });
+        Swal.fire({ title: 'Vinculando...', didOpen: () => Swal.showLoading() });
 
         try {
             const res = await axios.post(baseUrl, {
-                method: 'saveConferenciaCaixa',
+                method: 'vincularMeioPagamento',
+                token,
+                data: {
+                    system_unit_id: unit_id,
+                    codigo_opcao: codigoOpcao,
+                    nome_opcao: nomeOpcaoFull,
+                    codigo_meio: nomeMeio, // O código e nome são iguais quando não tem vínculo
+                    nome_meio: nomeMeio
+                }
+            });
+
+            if(res.data.success){
+                $('#modalVincular').modal('hide');
+                // Recarrega a tela para recalcular os agrupamentos
+                carregarConferencia();
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                Toast.fire({ icon: 'success', title: 'Vínculo criado! Recalculando...' });
+            } else {
+                Swal.fire('Erro', res.data.message, 'error');
+            }
+        } catch(e) {
+            Swal.fire('Erro', 'Falha ao vincular.', 'error');
+        }
+    }
+
+    // --- SALVAR CONFERÊNCIA ---
+    async function salvarConferencia(){
+        const data = $('#data_conferencia').val();
+        const items = [];
+
+        $('.item-card').each(function(){
+            const isLinked = $(this).find('.hd-is-linked').val() === 'true';
+
+            // Só salva itens que tem vínculo (Azuis ou Verdes)
+            if(isLinked){
+                items.push({
+                    codigo_opcao: $(this).find('.hd-codigo').val(),
+                    forma_pagamento: $(this).find('.hd-nome').val(), // Envia o nome amigável para o WPP
+                    venda_pdv: parseFloat($(this).find('.val-pdv-raw').text()) || 0,
+                    valor_adquirente: parseFloat($(this).find('.input-adquirente').val()) || 0
+                });
+            }
+        });
+
+        if(items.length === 0){
+            return Swal.fire('Atenção', 'Não há itens válidos (vinculados) para salvar.', 'warning');
+        }
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'saveConferencia', // Método atualizado no backend
                 token,
                 data: { system_unit_id: unit_id, data: data, user_id: user_id, items: items }
             });
             if(res.data.success) {
-                Swal.fire('Sucesso', 'Salvo com sucesso!', 'success');
+                Swal.fire('Sucesso', 'Conferência salva!', 'success');
+                carregarConferencia(); // Recarrega para ficar verde
             }
         } catch (e) { Swal.fire('Erro', 'Falha ao salvar', 'error'); }
     }
 
+    // --- DETALHES E WPP ---
+    async function verDetalhesAPI(chaveBusca, nomeExibicao){
+        const data = $('#data_conferencia').val();
+        $('#modalTitle').text(`Detalhes: ${nomeExibicao}`);
+        $('#modalDetalhes').modal('show');
+        $('#conteudoDetalhe').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</div>');
+
+        const res = await axios.post(baseUrl, {
+            method: 'getDetalhePagamentosPorFormaPagamento',
+            token,
+            data: {
+                system_unit_id: unit_id,
+                data_analise: data,
+                codigoOuNome: chaveBusca // Envia o código da opção
+            }
+        });
+
+        if(res.data.success){
+            let html = `<table class="table table-striped table-condensed" style="font-size:12px;">
+                <thead><tr><th>Hora</th><th>Meio (PDV)</th><th>NSU</th><th class="text-right">Valor</th></tr></thead>
+                <tbody>`;
+            let total = 0;
+            res.data.data.forEach(d => {
+                total += parseFloat(d.valor_bruto);
+                html += `<tr>
+                    <td>${d.hora}</td>
+                    <td>${d.meio_original}</td>
+                    <td>${d.nsu}</td>
+                    <td class="text-right"><strong>${toBRL(d.valor_bruto)}</strong></td>
+                </tr>`;
+            });
+            html += `<tr><td colspan="3" class="text-right"><strong>TOTAL</strong></td><td class="text-right"><strong>${toBRL(total)}</strong></td></tr>`;
+            html += `</tbody></table>`;
+            $('#conteudoDetalhe').html(html);
+        } else {
+            $('#conteudoDetalhe').html('<div class="alert alert-danger">Erro ao carregar detalhes.</div>');
+        }
+    }
+
     async function enviarResumoWpp() {
         const data = $('#data_conferencia').val();
-        if (!data) { Swal.fire('Atenção', 'Selecione uma data.', 'warning'); return; }
-
-        Swal.fire({ title: 'Enviando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-
+        if (!data) return;
+        Swal.fire({ title: 'Enviando...', didOpen: () => Swal.showLoading()});
         try {
             const res = await axios.post(baseUrl, {
                 method: 'sendConferenciaWpp',
                 token,
-                data: { system_unit_id: unit_id, data: data, user_id: user_id }
+                data: { system_unit_id: unit_id, data_contabil: data, user_id: user_id }
             });
             Swal.close();
             if (res.data.success) Swal.fire('Sucesso', res.data.message, 'success');

@@ -27,6 +27,8 @@ require_once 'controllers/FinanceiroClienteController.php';
 require_once 'controllers/FinanceiroBancoController.php';
 require_once 'controllers/ConferenciaCaixaController.php';
 require_once 'controllers/FinanceiroFormaPagamentoController.php';
+require_once 'controllers/FinanceiroOpcoesRecebimentoController.php';
+
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     http_response_code(200);
@@ -224,6 +226,93 @@ if (isset($data['method']) && isset($data['data'])) {
                         'message' => 'Parâmetro obrigatório: system_unit_id'
                     ];
                 }
+                break;
+
+
+            case 'createOpcaoRecebimento':
+                if (
+                    isset($requestData['system_unit_id']) &&
+                    isset($requestData['codigo'])
+                ) {
+                    $response = FinanceiroOpcoesRecebimentoController::createOpcaoRecebimento($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id, codigo   '
+                    ];
+                }
+                break;
+
+            case 'updateOpcaoRecebimento':
+                if (isset($requestData['id'])) {
+                    $response = FinanceiroOpcoesRecebimentoController::updateOpcaoRecebimento($requestData);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'deleteOpcaoRecebimento':
+                if (isset($requestData['id'])) {
+                    $response = FinanceiroOpcoesRecebimentoController::deleteOpcaoRecebimento($requestData['id']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: id'
+                    ];
+                }
+                break;
+
+            case 'listOpcoesRecebimento':
+                if (isset($requestData['system_unit_id'])) {
+                    $response = FinanceiroOpcoesRecebimentoController::listOpcoesRecebimento($requestData['system_unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro obrigatório: system_unit_id'
+                    ];
+                }
+                break;
+
+            case 'importarOpcoesPadrao':
+                if (isset($requestData['system_unit_id']) && isset($requestData['plano_contas_id'])) {
+                    $response = FinanceiroOpcoesRecebimentoController::importarOpcoesPadrao(
+                        $requestData['system_unit_id'],
+                        $requestData['plano_contas_id']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id, plano_contas_id'
+                    ];
+                }
+                break;
+            case 'listMeiosPorOpcao':
+                if (
+                    isset($requestData['system_unit_id']) &&
+                    isset($requestData['codigo_opcao'])
+                ) {
+                    $response = FinanceiroOpcoesRecebimentoController::listMeiosPorOpcao(
+                        $requestData['system_unit_id'],
+                        $requestData['codigo_opcao']
+                    );
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetros obrigatórios: system_unit_id, codigo_opcao'
+                    ];
+                }
+                break;
+            case 'vincularMeioPagamento':
+                $response = FinanceiroOpcoesRecebimentoController::vincularMeioPagamento($requestData);
                 break;
 
             case 'fetchFinanceiroConta':
@@ -466,8 +555,8 @@ if (isset($data['method']) && isset($data['data'])) {
                     $requestData['data'] ?? null
                 );
                 break;
-            case 'getDetalhamentoConferencia':
-                $response = ConferenciaCaixaController::getDetalhamentoPorFormaPagamento(
+            case 'getPayloadConferencia':
+                $response = ConferenciaCaixaController::getPayloadConferencia(
                     $requestData['system_unit_id'] ?? null,
                     $requestData['data'] ?? null
                 );
@@ -482,8 +571,8 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'saveConferenciaCaixa':
                 $response = ConferenciaCaixaController::saveConferencia($requestData);
                 break;
-            case 'getDetalhePagamentosPorFormaPagamento':
-                $response = ConferenciaCaixaController::getDetalhePagamentosPorFormaPagamento(
+            case 'getVendasByForma':
+                $response = ConferenciaCaixaController::getVendasByForma(
                     $requestData['system_unit_id'] ?? null,
                     $requestData['data'] ?? null,
                     $requestData['forma_pagamento'] ?? null
