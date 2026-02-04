@@ -87,9 +87,6 @@
                     <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
                 </div>
                 <div class="col-md-4 text-right">
-                    <button class="btn btn-info" id="btnImportarPadrao">
-                        <i class="fa fa-download"></i> Importar Padrão
-                    </button>
                     <button class="btn btn-success" id="btnNovaOpcao">
                         <i class="fa fa-plus"></i> Nova Opção
                     </button>
@@ -258,7 +255,6 @@
         $('#filtroCodigo, #filtroNome').on('input', filtrarTabela);
         $('#btnNovaOpcao').click(abrirModalNovo);
         $('#btnSalvar').click(salvarOpcao);
-        $('#btnImportarPadrao').click(importarPadrao);
     });
 
     async function carregarComboBancos() {
