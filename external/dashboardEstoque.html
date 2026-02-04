@@ -107,13 +107,13 @@
                 <div class="text-sm font-semibold">Notas Pendentes</div>
                 <div class="flex items-center justify-between mt-1">
                     <div class="flex flex-col">
-                        <div class="text-2xl font-extrabold kpi-value" id="qtdNotasPendentes">0</div>
-                        <div id="nomeLojaPendente" class="text-[10px] font-bold text-amber-600  max-w-[100px] uppercase">Todas as lojas</div>
+                        <div class="text-2xl font-extrabold kpi-value" id="qtdNotasPendentes">-</div>
+                        <div id="nomeLojaPendente" class="text-[10px] font-bold text-gray-400 max-w-[100px] uppercase">Selecione uma loja</div>
                         <small class="text-xs text-gray-500">Últimos 30 dias</small>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <a href="javascript:void(0)" onclick="atualizarNotasPendentesForce(this)" class="text-amber-500 hover:text-amber-700 transition-colors p-2">
+                        <a href="javascript:void(0)" onclick="atualizarNotasPendentesForce(this)" class="text-amber-500 hover:text-amber-700 transition-colors p-2" title="Atualizar (Requer Loja Selecionada)">
                             <i class="fas fa-sync-alt"></i>
                         </a>
                         <button onclick="verDetalhesNotasPendentes()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-3 py-1.5 rounded border border-amber-200 transition-all">Ver mais</button>
@@ -170,10 +170,7 @@
         series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480']
     };
 
-    // Helper para formatar moeda nos gráficos
-    const formatCurrency = (val) => {
-        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    };
+    const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     let grupoId = null;
     let resumoEstoqueGrupo = [], evolucaoCmvGrupo = [], datasEvolucao = [], cmvProdutosGrupo = [], topFornecedoresGrupo = [], listaNotasPendentes = [];
@@ -211,6 +208,9 @@
         if (type === 'kpi' || type === 'all') {
             const kpis = document.querySelectorAll('.kpi-value');
             kpis.forEach(el => {
+                // Não adiciona skeleton ao card de notas pendentes se for 'all', pois ele tem lógica própria
+                if(type === 'all' && el.id === 'qtdNotasPendentes') return;
+
                 if (isLoading) el.classList.add('skeleton');
                 else el.classList.remove('skeleton');
             });
@@ -250,23 +250,52 @@
         window.requestAnimationFrame(step);
     }
 
+    // --- NOVA FUNÇÃO PARA RESETAR UI DE NOTAS ---
+    function resetNotasPendentesUI() {
+        const elQtd = document.getElementById('qtdNotasPendentes');
+        const elNome = document.getElementById('nomeLojaPendente');
+
+        elQtd.textContent = "-";
+        elQtd.classList.remove('skeleton');
+
+        elNome.textContent = "Selecione uma loja";
+        elNome.classList.remove('text-amber-600');
+        elNome.classList.add('text-gray-400');
+
+        document.getElementById('msgCache').classList.add('hidden');
+        listaNotasPendentes = [];
+    }
+
     async function fetchData() {
         hideApplyButton();
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
+        const lojaSelecionada = document.getElementById('filtroLoja').value;
+
         const dt_inicio = startDate + ' 00:00:00';
         const dt_fim = endDate + ' 23:59:59';
 
         toggleSkeleton('all', true);
 
+        // Lista de promessas básicas (sempre executadas)
+        const promises = [
+            carregarResumoEstoquePorGrupo(dt_inicio, dt_fim),
+            carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim),
+            carregarCmvProdutosPorGrupo(dt_inicio, dt_fim),
+            carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim)
+        ];
+
+        // LÓGICA CONDICIONAL: Só carrega notas se tiver loja selecionada
+        if (lojaSelecionada) {
+            // Adiciona skeleton visualmente apenas neste momento
+            document.getElementById('qtdNotasPendentes').classList.add('skeleton');
+            promises.push(carregarNotasPendentes());
+        } else {
+            resetNotasPendentesUI();
+        }
+
         try {
-            await Promise.all([
-                carregarResumoEstoquePorGrupo(dt_inicio, dt_fim),
-                carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim),
-                carregarCmvProdutosPorGrupo(dt_inicio, dt_fim),
-                carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim),
-                carregarNotasPendentes()
-            ]);
+            await Promise.all(promises);
             aplicarFiltroLoja();
         } catch (err) {
             console.error(err);
@@ -302,7 +331,8 @@
         grupoSelect.addEventListener('change', () => {
             grupoId = parseInt(grupoSelect.value);
             atualizarFiltroLoja();
-            document.getElementById('filtroLoja').value = "";
+            document.getElementById('filtroLoja').value = ""; // Reseta loja ao mudar grupo
+            resetNotasPendentesUI(); // Reseta notas ao mudar grupo
             showApplyButton();
         });
         atualizarFiltroLoja();
@@ -316,6 +346,7 @@
         filtro.addEventListener('change', showApplyButton);
     }
 
+    // --- FUNÇÕES DE CARGA DE DADOS ---
     async function carregarResumoEstoquePorGrupo(dt_inicio, dt_fim) {
         const res = await axios.post(baseUrl, { method: 'generateResumoEstoquePorGrupo', token, data: { grupoId, dt_inicio, dt_fim } });
         resumoEstoqueGrupo = res.data.data || [];
@@ -335,7 +366,14 @@
 
     async function carregarNotasPendentes() {
         const filtroLojaEl = document.getElementById('filtroLoja');
-        const selectedLoja = parseInt(filtroLojaEl.value) || system_unit_id;
+        // Se chegou aqui, já validamos que tem valor, mas por segurança:
+        if(!filtroLojaEl.value) {
+            resetNotasPendentesUI();
+            return;
+        }
+
+        const selectedLoja = parseInt(filtroLojaEl.value);
+
         try {
             const res = await axios.post(baseUrl, {
                 method: 'listarNotasNaoImportadasUltimos30DiasCached',
@@ -346,17 +384,29 @@
         } catch (e) {
             console.error(e);
             listaNotasPendentes = [];
-            document.getElementById('qtdNotasPendentes').textContent = "0";
+            document.getElementById('qtdNotasPendentes').textContent = "Erro";
         }
     }
 
     async function atualizarNotasPendentesForce(element) {
+        const filtroLojaEl = document.getElementById('filtroLoja');
+
+        // BLOQUEIO: Se não tem loja selecionada, avisa e para.
+        if(!filtroLojaEl.value) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Atenção',
+                text: 'Selecione uma loja específica para buscar notas pendentes.'
+            });
+        }
+
         const elQtd = document.getElementById('qtdNotasPendentes');
         elQtd.classList.add('skeleton');
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        const selectedLoja = parseInt(filtroLojaEl.value) || system_unit_id;
+
+        const selectedLoja = parseInt(filtroLojaEl.value);
         const icon = element.querySelector('i');
         if(icon) icon.classList.add('fa-spin');
+
         try {
             const res = await axios.post(baseUrl, {
                 method: 'listarNotasNaoImportadasUltimos30Dias',
@@ -374,11 +424,21 @@
 
     function processarRespostaNotas(data) {
         const msgCache = document.getElementById('msgCache');
+        const nomeLojaEl = document.getElementById('nomeLojaPendente');
+
+        // Estiliza o nome da loja para ativo
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        const nomeLojaSelecionada = filtroLojaEl.options[filtroLojaEl.selectedIndex].text;
+        nomeLojaEl.textContent = nomeLojaSelecionada;
+        nomeLojaEl.classList.remove('text-gray-400');
+        nomeLojaEl.classList.add('text-amber-600');
+
         if (data.success && data.data && data.data.notas_pendentes) {
             listaNotasPendentes = data.data.notas_pendentes;
             const el = document.getElementById('qtdNotasPendentes');
             el.textContent = data.data.total_pendentes || listaNotasPendentes.length;
             el.classList.remove('skeleton');
+
             if (data.data.cached && data.data.last_update) {
                 const date = new Date(data.data.last_update);
                 msgCache.textContent = `Atualizado às ${date.getHours()}:${date.getMinutes().toString().padStart(2,'0')}`;
@@ -393,9 +453,16 @@
     }
 
     function verDetalhesNotasPendentes() {
-        if (!Array.isArray(listaNotasPendentes) || listaNotasPendentes.length === 0) {
-            return Swal.fire('Tudo em dia!', 'Nenhuma nota pendente.', 'success');
+        // Se não houver loja selecionada ou lista vazia, mostra mensagem
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        if(!filtroLojaEl.value) {
+            return Swal.fire('Atenção', 'Selecione uma loja para ver os detalhes.', 'warning');
         }
+
+        if (!Array.isArray(listaNotasPendentes) || listaNotasPendentes.length === 0) {
+            return Swal.fire('Tudo em dia!', 'Nenhuma nota pendente para esta loja.', 'success');
+        }
+
         const valorTotalGeral = listaNotasPendentes.reduce((acc, n) => acc + Number(n.valor_total), 0);
         let html = `
         <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-lg mb-4 shadow-sm">
@@ -429,8 +496,10 @@
         const lojaObj = selectedLoja ? (lojasPorGrupo[grupoId].find(x => parseInt(x.id) === selectedLoja)) : null;
         const nomeSelecionado = lojaObj ? lojaObj.name : null;
 
-        // ATUALIZAÇÃO DO NOME DA LOJA NO CARD DE NOTAS
-        document.getElementById('nomeLojaPendente').textContent = nomeSelecionado || "Todas as lojas";
+        // Se não tem loja selecionada (selectedLoja é null ou 0), chama o reset
+        if (!selectedLoja) {
+            resetNotasPendentesUI();
+        }
 
         const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
 
@@ -499,25 +568,11 @@
     function renderChartTopProdutos(data) {
         const chart = echarts.init(document.getElementById('chartTopProdutos'));
         chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                formatter: (params) => `${params[0].name}: <b>${formatCurrency(params[0].value)}</b>`
-            },
+            tooltip: { trigger: 'axis', formatter: (params) => `${params[0].name}: <b>${formatCurrency(params[0].value)}</b>` },
             yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
             xAxis: { type: 'value', axisLabel: { show: false } },
             grid: { left: '3%', right: '12%', bottom: '10%', containLabel: true },
-            series: [{
-                type: 'bar',
-                data: data.map(d => d.valor),
-                itemStyle: { color: MRK.blue },
-                label: {
-                    show: true,
-                    position: 'right',
-                    formatter: (p) => formatCurrency(p.value),
-                    fontSize: 10,
-                    fontWeight: 'bold'
-                }
-            }]
+            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.blue }, label: { show: true, position: 'right', formatter: (p) => formatCurrency(p.value), fontSize: 10, fontWeight: 'bold' } }]
         }, true);
     }
 
@@ -526,7 +581,6 @@
         chart.setOption({
             tooltip: {
                 trigger: 'axis',
-                // Atualizado para mostrar Valor e Quantidade
                 formatter: (params) => {
                     const item = data[params[0].dataIndex];
                     return `<b>${item.nome}</b><br/>` +
@@ -534,25 +588,10 @@
                         `<i class="fas fa-file-invoice"></i> Qtd Notas: <b>${item.qtd}</b>`;
                 }
             },
-            yAxis: {
-                type: 'category',
-                data: data.map(d => d.nome.slice(0,15)),
-                inverse: true
-            },
+            yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
             xAxis: { type: 'value', axisLabel: { show: false } },
             grid: { left: '3%', right: '15%', bottom: '10%', containLabel: true },
-            series: [{
-                type: 'bar',
-                data: data.map(d => d.valor),
-                itemStyle: { color: MRK.green },
-                label: {
-                    show: true,
-                    position: 'right',
-                    formatter: (p) => formatCurrency(p.value),
-                    fontSize: 10,
-                    fontWeight: 'bold'
-                }
-            }]
+            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.green }, label: { show: true, position: 'right', formatter: (p) => formatCurrency(p.value), fontSize: 10, fontWeight: 'bold' } }]
         }, true);
     }
 
