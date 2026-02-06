@@ -1592,6 +1592,38 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
+
+            case 'getProjeccoes':
+                if (isset($requestData['unit_id'])) {
+                    // Retorna a lista formatada (com os dias zerados ou preenchidos)
+                    $response = ProjecaoVendasController::getProjeccoes($requestData['unit_id']);
+
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            case 'saveProjecaoBatch':
+                // Verifica se tem ID da unidade e o array de itens
+                if (isset($requestData['unit_id']) && isset($requestData['itens'])) {
+                    $response = ProjecaoVendasController::saveBatch($requestData['unit_id'], $requestData['itens']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'Parâmetros unit_id ou itens ausentes'];
+                }
+                break;
+
+            case 'clearProjecaoProduto':
+                // Verifica unidade e código do produto para limpar
+                if (isset($requestData['unit_id']) && isset($requestData['product_codigo'])) {
+                    $response = ProjecaoVendasController::clearProductProjections($requestData['unit_id'], $requestData['product_codigo']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'Parâmetros unit_id ou product_codigo ausentes'];
+                }
+                break;
+
             // Métodos para ProductController
             case 'createProduto':
                 $response = ProductController::createProduto($requestData);
@@ -2357,7 +2389,7 @@ if (isset($data['method']) && isset($data['data'])) {
             $user,
             $method ?? 'invalid_call',
             $requestData ?? $json,
-            $response, // Poderíamos melhorar isso para enviar o response real
+            $response,
             $startTime
         );
     } catch (Exception $e) {

@@ -212,6 +212,10 @@
             <action>SolicitacaoInsumos</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Inserir Previsão de Vendas">
+            <action>PrevisaoVendas</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
         </menu>
       </menuitem>
       <menuitem label="Compra">
