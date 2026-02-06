@@ -50,7 +50,7 @@ require_once 'controllers/DashboardController.php';
 require_once 'controllers/EstoqueController.php';
 require_once 'controllers/FornecedoresController.php';
 require_once 'controllers/InsumoController.php';
-require_once 'controllers/NecessidadesController.php';
+require_once 'controllers/NecessidadesRefactorController.php';
 require_once 'controllers/ProductionController.php';
 require_once 'controllers/SalesController.php';
 require_once 'controllers/TransfersController.php';
@@ -633,7 +633,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getInsumoConsumption':
                 if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes']) && isset($requestData['username'])) {
-                    $response = NecessidadesController::getInsumoConsumption($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
+                    $response = NecessidadesRefactorController::getInsumoConsumption($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
@@ -641,7 +641,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getInsumoConsumptionTop3':
                 if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes']) && isset($requestData['username'])) {
-                    $response = NecessidadesController::getInsumoConsumptionTop3($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
+                    $response = NecessidadesRefactorController::getInsumoConsumptionTop3($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
@@ -649,7 +649,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getInsumoConsumptionMatriz':
                 if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes'])) {
-                    $response = NecessidadesController::getInsumoConsumptionMatriz($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes']);
+                    $response = NecessidadesRefactorController::getInsumoConsumptionMatriz($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
@@ -657,7 +657,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getFiliaisProduction':
                 if (isset($requestData['username'])) {
-                    $response = NecessidadesController::getFiliaisProduction($requestData['username']);
+                    $response = NecessidadesRefactorController::getFiliaisProduction($requestData['username']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro $unit_matriz_id ausente'];
@@ -665,7 +665,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getFiliaisByMatriz':
                 if (isset($requestData['unit_matriz_id'])) {
-                    $response = NecessidadesController::getFiliaisByMatriz($requestData['unit_matriz_id']);
+                    $response = NecessidadesRefactorController::getFiliaisByMatriz($requestData['unit_matriz_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro $unit_matriz_id ausente'];
@@ -963,7 +963,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getProductsToBuy':
                 if (isset($requestData['matriz_id']) && isset($requestData['vendas'])) {
-                    $response = NecessidadesController::getProductsToBuys($requestData['matriz_id'], $requestData['vendas']);
+                    $response = NecessidadesRefactorController::getProductsToBuys($requestData['matriz_id'], $requestData['vendas']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro system_unit_id ou doc ausente'];
@@ -971,7 +971,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getConsumptionBuy':
                 if (isset($requestData['matriz_id']) && isset($requestData['insumoIds']) && isset($requestData['dias'])) {
-                    $response = NecessidadesController::getConsumptionBuy(
+                    $response = NecessidadesRefactorController::getConsumptionBuy(
                         $requestData['matriz_id'],
                         $requestData['insumoIds'],
                         $requestData['dias']
@@ -991,7 +991,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'calculateInsumosByItens':
                 if (isset($requestData['system_unit_id']) && isset($requestData['itens'])) {
-                    $response = NecessidadesController::calculateInsumosByItens(
+                    $response = NecessidadesRefactorController::calculateInsumosByItens(
                         $requestData['system_unit_id'],
                         $requestData['itens']
                     );
@@ -1010,10 +1010,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = MovimentacaoController::getTransferenciasComCustos($requestData);
                 break;
             case 'contarDiasSemana':
-                $response = NecessidadesController::contarDiasSemana($requestData['dias']);
+                $response = NecessidadesRefactorController::contarDiasSemana($requestData['dias']);
                 break;
             case 'ultimasQuatroDatasPorDiaSemana':
-                $response = NecessidadesController::ultimasQuatroDatasPorDiaSemana();
+                $response = NecessidadesRefactorController::ultimasQuatroDatasPorDiaSemana();
                 break;
             // Métodos para DashboardController
             case 'getDashboardData':
@@ -1484,11 +1484,11 @@ if (isset($data['method']) && isset($data['data'])) {
 
             // Métodos para NecessidadesController
             case 'createNecessidade':
-                $response = NecessidadesController::createNecessidade($requestData);
+                $response = NecessidadesRefactorController::createNecessidade($requestData);
                 break;
             case 'updateNecessidade':
                 if (isset($requestData['id'])) {
-                    $response = NecessidadesController::updateNecessidade($requestData['id'], $requestData);
+                    $response = NecessidadesRefactorController::updateNecessidade($requestData['id'], $requestData);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro id ausente'];
@@ -1496,7 +1496,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'getNecessidadeById':
                 if (isset($requestData['id'])) {
-                    $response = NecessidadesController::getNecessidadeById($requestData['id']);
+                    $response = NecessidadesRefactorController::getNecessidadeById($requestData['id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro id ausente'];
@@ -1504,7 +1504,7 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'listNecessidades':
                 if (isset($requestData['unit_id'])) {
-                    $response = NecessidadesController::listNecessidades($requestData['unit_id']);
+                    $response = NecessidadesRefactorController::listNecessidades($requestData['unit_id']);
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetro unit_id ausente'];

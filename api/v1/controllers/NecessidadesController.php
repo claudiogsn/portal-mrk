@@ -4,10 +4,6 @@ require_once __DIR__ . '/../database/db.php'; // Ajustando o caminho para o arqu
 
 class NecessidadesController
 {
-
-    /**
-     * @throws DateMalformedStringException
-     */
     public static function getConsumptionBuy($matriz_id, $insumoIds, $dias): array
     {
         global $pdo;
@@ -367,7 +363,6 @@ class NecessidadesController
             'consumos' => array_values($insumoConsumption)
         ];
     }
-
     private static function fetchTotalConsumption($system_unit_id, $insumoIds, $date): array
     {
         global $pdo;
@@ -410,7 +405,6 @@ class NecessidadesController
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todos os resultados
     }
-
     public static function getFiliaisProduction($user_id): array
     {
         global $pdo;
@@ -432,7 +426,6 @@ class NecessidadesController
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function getFiliaisByMatriz($user_id): array
     {
         global $pdo;
@@ -454,7 +447,6 @@ class NecessidadesController
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function getProductStock($system_unit_id, $codigo): array
     {
         global $pdo;
@@ -477,7 +469,6 @@ class NecessidadesController
             return ['success' => false, 'message' => 'Produto não encontrado ou saldo indisponível.'];
         }
     }
-
     public static function getProductsToBuys($matriz_id, $vendas): array
     {
         global $pdo;
@@ -687,7 +678,6 @@ class NecessidadesController
                 : null
         ];
     }
-
     public static function contarDiasSemana($dias): array
     {
         $diasSemana = [
@@ -722,7 +712,6 @@ class NecessidadesController
 
         return $diasSemana;
     }
-
     public static function ultimasQuatroDatasPorDiaSemana(): array
     {
         $diasSemana = [
@@ -767,7 +756,6 @@ class NecessidadesController
 
         return $diasSemana;
     }
-
     public static function calculateInsumosByItens($system_unit_id, $itens): array
     {
         global $pdo;
@@ -874,6 +862,4 @@ class NecessidadesController
             'consumos' => array_values($resultado)
         ];
     }
-
-
 }

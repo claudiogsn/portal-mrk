@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="vps-mrk" uuid="58c2c523-e1e4-4336-a92e-6ce118ab56fa">
+    <data-source source="LOCAL" name="mrk" uuid="db1d52a3-e960-4c58-b0fd-4b74886e3794">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
