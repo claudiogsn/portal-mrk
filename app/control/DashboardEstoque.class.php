@@ -14,12 +14,12 @@ class DashboardEstoque extends TPage
         public function __construct($param)
         {
             parent::__construct();
-    
+
             $user_id = TSession::getValue('userid');
             $token = TSession::getValue('sessionid');
             $unit_id = TSession::getValue('userunitid');
-    
-    
+
+
             if($_SERVER['SERVER_NAME'] == "localhost"){
                 $link = "http://localhost/portal-mrk/external/dashboardEstoque.html?system_unit_id={$unit_id}&user_id={$user_id}&token={$token}";
             }else{
@@ -45,6 +45,8 @@ class DashboardEstoque extends TPage
 
             parent::add($this->container);
 
+
+
             // ---- SCRIPT PARA REAJUSTAR ALTURA DINAMICAMENTE ----
             TScript::create("
             function resizeIframe() {
@@ -57,6 +59,18 @@ class DashboardEstoque extends TPage
             }
             window.onresize = resizeIframe;
             window.onload   = resizeIframe;
+        ");
+            // =============================
+            // 🔥 TRACKING GA4 (NOVO)
+            // =============================
+            TScript::create("
+            if (typeof gtag === 'function') {
+                gtag('event', 'page_view', {
+                    page_title: 'DashboardEstoque',
+                    page_path: 'DashboardEstoque',
+                    empresa_id: " . json_encode($unit_id) . "
+                });
+            }
         ");
         }
         function onFeed($param){

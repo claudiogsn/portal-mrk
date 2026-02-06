@@ -76,11 +76,17 @@
 
 
   <script>
-      gtag('event', 'page_view', {
-          page_path: window.location.pathname,
-          empresa_id: {userunit}
-      });
+      function trackAdiantiPage(pageName, empresaId) {
+          if (typeof gtag !== 'function') return;
+
+          gtag('event', 'page_view', {
+              page_title: pageName,
+              page_path: pageName,
+              empresa_id: empresaId
+          });
+      }
   </script>
+
 
 <body style="font-family: 'Lato', sans-serif" class="theme-blue">
     <!-- Page Loader -->
