@@ -69,8 +69,17 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
+      gtag('config', 'G-1JB61S8YMF', {
+          send_page_view: false
+      });
+  </script>
 
-      gtag('config', 'G-1JB61S8YMF');
+
+  <script>
+      gtag('event', 'page_view', {
+          page_path: window.location.pathname,
+          empresa_id: {userunit}
+      });
   </script>
 
 <body style="font-family: 'Lato', sans-serif" class="theme-blue">
