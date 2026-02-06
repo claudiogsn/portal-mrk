@@ -50,28 +50,16 @@ class DashboardEstoque extends TPage
             // ---- SCRIPT PARA REAJUSTAR ALTURA DINAMICAMENTE ----
             TScript::create("
             function resizeIframe() {
-                try {
-                    var iframe = document.getElementById('iframe_external');
-                    var bc     = document.querySelector('.breadcrumb');
-                    var bcH    = bc ? bc.offsetHeight : 70;
-                    iframe.style.height = (window.innerHeight - bcH) + 'px';
-                } catch(e) {}
-            }
-            window.onresize = resizeIframe;
-            window.onload   = resizeIframe;
-        ");
-            // =============================
-            // 🔥 TRACKING GA4 (NOVO)
-            // =============================
-            TScript::create("
-            if (typeof gtag === 'function') {
-                gtag('event', 'page_view', {
-                    page_title: 'DashboardEstoque',
-                    page_path: 'DashboardEstoque',
-                    empresa_id: " . json_encode($unit_id) . "
-                });
-            }
-        ");
+                    try {
+                        var iframe = document.getElementById('iframe_external');
+                        var bc     = document.querySelector('.breadcrumb');
+                        var bcH    = bc ? bc.offsetHeight : 70;
+                        iframe.style.height = (window.innerHeight - bcH) + 'px';
+                    } catch(e) {}
+                }
+                window.onresize = resizeIframe;
+                window.onload   = resizeIframe;
+            ");
         }
         function onFeed($param){
             // $id = $param['key'];

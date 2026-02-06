@@ -39,16 +39,29 @@ class VendasDetalhado extends TPage
 
         // ---- SCRIPT PARA REAJUSTAR ALTURA DINAMICAMENTE ----
         TScript::create("
-            function resizeIframe() {
-                try {
-                    var iframe = document.getElementById('iframe_external');
-                    var bc     = document.querySelector('.breadcrumb');
-                    var bcH    = bc ? bc.offsetHeight : 70;
-                    iframe.style.height = (window.innerHeight - bcH) + 'px';
-                } catch(e) {}
-            }
-            window.onresize = resizeIframe;
-            window.onload   = resizeIframe;
-        ");
+function resizeIframe() {
+        try {
+            var iframe = document.getElementById('iframe_external');
+            var bc     = document.querySelector('.breadcrumb');
+            var bcH    = bc ? bc.offsetHeight : 70;
+            iframe.style.height = (window.innerHeight - bcH) + 'px';
+        } catch(e) {}
+    }
+    window.onresize = resizeIframe;
+    window.onload   = resizeIframe;
+");
+
+$pageName = __CLASS__;
+
+TScript::create("
+    if (typeof gtag === 'function') {
+        gtag('event', 'page_view', {
+            page_title: " . json_encode($pageName) . ",
+            page_path: " . json_encode($pageName) . ",
+            empresa_id: " . json_encode($unit_id) . "
+        });
+    }
+");
+
     }
 }
