@@ -13,6 +13,7 @@
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
     <style>
         /* Tabela Limpa */
@@ -67,10 +68,16 @@
                 Projeção de Vendas
                 <small>Defina a estimativa de vendas, para que a projecao seja realizada</small>
             </h2>
-            <button class="btn btn-success waves-effect" id="btnSalvarTudo">
-                <i class="fa fa-save"></i> SALVAR
-            </button>
+            <div>
+                <button class="btn btn-info waves-effect" onclick="abrirModalImportacao()">
+                    <i class="fa fa-file-excel"></i> IMPORTAR EXCEL
+                </button>
+                <button class="btn btn-success waves-effect" id="btnSalvarTudo">
+                    <i class="fa fa-save"></i> SALVAR
+                </button>
+            </div>
         </div>
+
 
         <div class="body">
 
@@ -107,6 +114,42 @@
             <div id="loading" class="text-center" style="display:none; padding: 20px;">
                 <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
                 <p>Carregando dados...</p>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modalImportacao" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    Importar Projeção
+                </h4>
+            </div>
+            <div class="modal-body">
+                <p><strong>Passo 1:</strong> Baixe o modelo padrão.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <button class="btn btn-default btn-block waves-effect" onclick="baixarModelo(false)">
+                            <i class="fa fa-download"></i> Modelo Em Branco
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-primary btn-block waves-effect" onclick="baixarModelo(true)">
+                            <i class="fa fa-download"></i> Modelo Com Seus Produtos
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <p><strong>Passo 2:</strong> Preencha e faça o upload.</p>
+                <input type="file" id="arquivoExcel" class="form-control" accept=".xlsx, .xls, .csv">
+                <small class="text-danger">* O arquivo deve conter a coluna <strong>CODIGO</strong> obrigatoriamente.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">CANCELAR</button>
+                <button type="button" class="btn btn-success waves-effect" onclick="processarArquivoExcel()">
+                    <i class="fa fa-upload"></i> PROCESSAR E SALVAR
+                </button>
             </div>
         </div>
     </div>
@@ -422,6 +465,163 @@
                 }
             }
         });
+    }
+    // --- IMPORTAÇÃO EXCEL ---
+
+    function abrirModalImportacao() {
+        $('#arquivoExcel').val(''); // Limpa input
+        $('#modalImportacao').modal('show');
+    }
+
+    // Gera e baixa o XLS
+    async function baixarModelo(comDados) {
+        let dados = [];
+
+        if (comDados) {
+            // Busca os produtos atuais para preencher o Excel
+            // Usa sua lista global se já estiver carregada ou busca da API
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'listItemVenda',
+                    token: token,
+                    data: { unit_id: unit_id, search: '' }
+                });
+
+                let produtos = [];
+                if (res.data.success && Array.isArray(res.data.produtos)) {
+                    produtos = res.data.produtos;
+                } else if (Array.isArray(res.data)) {
+                    produtos = res.data;
+                }
+
+                // Monta o array pro Excel
+                dados = produtos.map(p => ({
+                    "CODIGO": p.codigo,
+                    "NOME_PRODUTO": p.nome, // Apenas visual
+                    "SEGUNDA": 0, "TERCA": 0, "QUARTA": 0, "QUINTA": 0, "SEXTA": 0, "SABADO": 0, "DOMINGO": 0
+                }));
+
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao buscar produtos para o modelo.');
+                return;
+            }
+        } else {
+            // Modelo vazio de exemplo
+            dados = [
+                { "CODIGO": 10104, "NOME_PRODUTO": "Exemplo", "SEGUNDA": 10, "TERCA": 10, "QUARTA": 10, "QUINTA": 10, "SEXTA": 20, "SABADO": 30, "DOMINGO": 15 }
+            ];
+        }
+
+        // Cria a planilha
+        const ws = XLSX.utils.json_to_sheet(dados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Projecao");
+
+        // Salva arquivo
+        XLSX.writeFile(wb, "Modelo_Projecao_Vendas.xlsx");
+    }
+
+    // Lê o arquivo, transforma em JSON para API e envia
+    function processarArquivoExcel() {
+        const input = document.getElementById('arquivoExcel');
+        if (!input.files || input.files.length === 0) {
+            Swal.fire('Atenção', 'Selecione um arquivo primeiro.', 'warning');
+            return;
+        }
+
+        const file = input.files[0];
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Pega a primeira aba
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                // Converte para JSON
+                const jsonExcel = XLSX.utils.sheet_to_json(worksheet);
+
+                if (jsonExcel.length === 0) {
+                    Swal.fire('Erro', 'Planilha vazia ou formato inválido.', 'error');
+                    return;
+                }
+
+                // Normaliza e modela para a API (Batch)
+                let itensParaSalvar = [];
+                let erros = 0;
+
+                jsonExcel.forEach(linha => {
+                    // Tenta achar a chave do código (pode ser "CODIGO", "codigo", "Codigo")
+                    // Normaliza chaves para UpperCase para evitar erro de digitação
+                    const chaves = Object.keys(linha).reduce((acc, k) => {
+                        acc[k.toUpperCase().trim()] = linha[k];
+                        return acc;
+                    }, {});
+
+                    if (!chaves['CODIGO']) {
+                        erros++;
+                        return;
+                    }
+
+                    const codigo = chaves['CODIGO'];
+
+                    // Dias da semana
+                    const diasMap = {
+                        'SEGUNDA': 'segunda', 'TERCA': 'terca', 'TERÇA': 'terca',
+                        'QUARTA': 'quarta', 'QUINTA': 'quinta', 'SEXTA': 'sexta',
+                        'SABADO': 'sabado', 'SÁBADO': 'sabado', 'DOMINGO': 'domingo'
+                    };
+
+                    for (let [headerExcel, diaApi] of Object.entries(diasMap)) {
+                        if (chaves[headerExcel] !== undefined) {
+                            itensParaSalvar.push({
+                                product_codigo: codigo,
+                                day: diaApi,
+                                qty: parseFloat(chaves[headerExcel]) || 0
+                            });
+                        }
+                    }
+                });
+
+                if (itensParaSalvar.length === 0) {
+                    Swal.fire('Erro', 'Nenhum dado válido encontrado. Verifique as colunas (CODIGO, SEGUNDA, TERCA...).', 'error');
+                    return;
+                }
+
+                // Envia para o Backend
+                $('#modalImportacao').modal('hide');
+
+                Swal.fire({
+                    title: `Processando ${itensParaSalvar.length} registros...`,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const res = await axios.post(baseUrl, {
+                    method: 'saveProjecaoBatch',
+                    token: token,
+                    data: { unit_id: unit_id, itens: itensParaSalvar }
+                });
+
+                if (res.data.success || (res.data.message && res.data.message.includes('sucesso'))) {
+                    Swal.fire('Sucesso!', 'Dados importados com sucesso.', 'success').then(() => {
+                        // Recarrega a tela para mostrar os dados novos
+                        inicializarTela();
+                    });
+                } else {
+                    Swal.fire('Erro no Banco', res.data.message, 'error');
+                }
+
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Erro', 'Falha ao processar arquivo. Verifique o formato.', 'error');
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
     }
 </script>
 </body>
