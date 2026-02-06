@@ -157,4 +157,72 @@ class ProjecaoVendasController
             return ['success' => false, 'message' => 'Erro ao limpar produto.'];
         }
     }
+
+    /**
+     * RETORNA LISTA DE PRODUTOS COM PROJEÇÕES FORMATADA
+     * Formato: [ {codigo: 100, nome: 'Carne', segunda: 10, terca: 0...}, ... ]
+     */
+    public static function getProjeccoes($system_unit_id): array
+    {
+        global $pdo;
+
+        // INNER JOIN garante que só retorna produtos que tenham registro na tabela de projeção
+        $sql = "
+            SELECT 
+                p.codigo,
+                p.nome,
+                proj.day_of_week,
+                proj.quantity
+            FROM product_daily_projections proj
+            INNER JOIN products p 
+                ON p.codigo = proj.product_codigo 
+                AND p.system_unit_id = proj.system_unit_id
+            WHERE proj.system_unit_id = ? 
+              AND proj.deleted_at IS NULL
+            ORDER BY p.nome ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$system_unit_id]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $resultado = [];
+
+        // Template para garantir que todos os dias existam no JSON final
+        $diasPadrao = [
+            'segunda' => 0,
+            'terca'   => 0,
+            'quarta'  => 0,
+            'quinta'  => 0,
+            'sexta'   => 0,
+            'sabado'  => 0,
+            'domingo' => 0
+        ];
+
+        foreach ($rows as $row) {
+            $codigo = $row['codigo'];
+            $dia    = $row['day_of_week'];
+            $qtd    = (float)$row['quantity'];
+
+            // Se o produto ainda não está no array, inicializa ele
+            if (!isset($resultado[$codigo])) {
+                $resultado[$codigo] = array_merge(
+                    [
+                        'codigo' => $codigo,
+                        'nome'   => $row['nome']
+                    ],
+                    $diasPadrao // Adiciona os dias zerados
+                );
+            }
+
+            // Atualiza o valor do dia específico que veio do banco
+            // Se o dia não vier do banco, ele mantém o 0 do $diasPadrao
+            if (array_key_exists($dia, $diasPadrao)) {
+                $resultado[$codigo][$dia] = $qtd;
+            }
+        }
+
+        // Retorna apenas os valores (remove as chaves associativas do código)
+        return array_values($resultado);
+    }
 }

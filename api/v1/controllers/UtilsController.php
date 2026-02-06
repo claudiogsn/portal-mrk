@@ -3,6 +3,21 @@ date_default_timezone_set("America/Recife");
 
 class UtilsController
 {
+    public static function getEnvCustom($key) {
+        static $env = null;
+        if ($env === null) {
+            // Ajuste o caminho para onde o .env realmente está (ex: raiz do projeto)
+            $path = __DIR__ . '/../../../.env';
+            if (file_exists($path)) {
+                $env = parse_ini_file($path);
+            } else {
+                $env = [];
+                // Log de erro interno para você saber que o arquivo não foi achado
+                error_log("Arquivo .env não encontrado em: " . $path);
+            }
+        }
+        return $env[$key] ?? null;
+    }
     public static function httpGet(string $url, array $headers = ['Accept: application/json']): array
     {
         $ch = curl_init($url);
@@ -170,4 +185,95 @@ class UtilsController
     }
 
 
+    public static function trackApiToSqs($user, $method, $request, $response, $startTime): void
+    {
+        // 1. Configurações de Ambiente
+        $accessKey = self::getEnvCustom('AWS_ACCESS_KEY_ID');
+        $secretKey = self::getEnvCustom('AWS_SECRET_ACCESS_KEY');
+        $region    = self::getEnvCustom('AWS_REGION');
+        $service   = 'sqs';
+        $queueUrl  = self::getEnvCustom('AWS_QUEUE_URL');
+
+        if (!$queueUrl || !$accessKey) {
+            error_log("SQS Tracking abortado: Credenciais ausentes.");
+            return;
+        }
+
+        // 2. Cálculo de Tempo e Limite de Tamanho (Proteção de Carga)
+        $execTime = (microtime(true) - $startTime) * 1000;
+
+        // Limite de 60KB para o log (o SQS aceita até 256KB, mas 60KB é seguro para o SQL)
+        $maxSize = 60 * 1024;
+        $responseJson = json_encode($response);
+
+        if ($responseJson === false || strlen($responseJson) > $maxSize) {
+            $logResponse = [
+                'info' => 'Response omitido ou muito grande para log',
+                'size_bytes' => strlen($responseJson ?: ''),
+                'status' => 'too_large'
+            ];
+        } else {
+            $logResponse = $response;
+        }
+
+        // 3. Montagem do Payload
+        $payload = json_encode([
+            'user'    => $user ?? 'anonymous',
+            'method'  => $method ?? 'unknown',
+            'status'  => http_response_code(),
+            'exec_ms' => round($execTime, 2),
+            'request' => $request,
+            'response' => $logResponse,
+            'ip'      => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+            'date'    => date('Y-m-d H:i:s')
+        ]);
+
+        // 4. AWS Signature v4
+        $now = gmdate('Ymd\THis\Z');
+        $date = gmdate('Ymd');
+        $params = http_build_query([
+            'Action' => 'SendMessage',
+            'MessageBody' => $payload,
+            'Version' => '2012-11-05'
+        ]);
+
+        $parsedUrl = parse_url($queueUrl);
+        $host = $parsedUrl['host'] ?? '';
+        $canonicalUri = $parsedUrl['path'] ?? '/';
+
+        $canonicalHeaders = "host:$host\nx-amz-date:$now\n";
+        $signedHeaders = 'host;x-amz-date';
+        $payloadHash = hash('sha256', $params);
+
+        $canonicalRequest = "POST\n$canonicalUri\n\n$canonicalHeaders\n$signedHeaders\n$payloadHash";
+        $credentialScope = "$date/$region/$service/aws4_request";
+        $stringToSign = "AWS4-HMAC-SHA256\n$now\n$credentialScope\n" . hash('sha256', $canonicalRequest);
+
+        $sign = function ($key, $msg) {
+            return hash_hmac('sha256', (string)$msg, $key, true);
+        };
+
+        $kSigning = $sign($sign($sign($sign('AWS4' . $secretKey, $date), $region), $service), 'aws4_request');
+        $signature = hash_hmac('sha256', $stringToSign, $kSigning);
+
+        $authorizationHeader = "AWS4-HMAC-SHA256 Credential=$accessKey/$credentialScope, SignedHeaders=$signedHeaders, Signature=$signature";
+
+        // 5. Envio "Fire and Forget" via cURL
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $queueUrl,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $params,
+            CURLOPT_RETURNTRANSFER => true, // Mantemos true para o PHP processar internamente
+            CURLOPT_TIMEOUT_MS     => 800,  // Se em 0.8s não for, aborta para não travar o worker
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_HTTPHEADER     => [
+                "Authorization: $authorizationHeader",
+                "x-amz-date: $now",
+                "Content-Type: application/x-www-form-urlencoded"
+            ]
+        ]);
+
+        curl_exec($ch);
+    }
 }
