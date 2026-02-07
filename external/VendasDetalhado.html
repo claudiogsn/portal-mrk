@@ -1,380 +1,229 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <title>Relatório de Vendas Detalhado</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- Bootstrap Core Css -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
-    <!-- Waves Effect Css -->
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
-    <!-- Animation Css -->
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-
-    <!-- JQuery DataTable Css -->
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-
-    <!-- SweetAlert Css -->
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
-
-    <!-- Custom Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
-
-    <!-- FontAwesome para ícones -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
-        .table-container {
-            position: relative;
-        }
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
 
-        .spinner {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
         }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
 
-        .selected-row {
-            background-color: rgba(0, 123, 255, 0.2);
+        /* Ações */
+        .btn-action {
+            color: var(--mrk-blue);
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
         }
+        .btn-action:hover { transform: scale(1.1); color: var(--mrk-black); }
 
-        .modal-lg {
-            max-width: 90%;
-        }
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button {
-                font-size: 12px !important;
-            }
-            h2, .modal-title { font-size: 16px !important; }
-            .btn { padding: 6px 10px !important; font-size: 12px !important; }
-            .table-responsive { overflow-x: auto; }
-            .modal-dialog { margin: 10px; }
-            .row > div[class*="col-"] { margin-bottom: 10px; }
-            .form-control { height: 30px; padding: 4px 8px; }
-        }
-
-        i.blue { color: #2196F3; cursor: pointer; }
+        /* Modal */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; }
     </style>
 </head>
 
 <body class="theme-blue">
 
 <div class="container-fluid">
-    <!-- Filtros principais (datas + ações) -->
-    <div class="header-card">
-        <div class="row">
-            <div class="col-md-3">
-                <label for="dataInicio">Data inicial</label>
-                <input type="date" id="dataInicio" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label for="dataFim">Data final</label>
-                <input type="date" id="dataFim" class="form-control">
-            </div>
-            <div class="col-md-6 text-right" style="margin-top:25px;">
-                <button id="btnBuscar" class="btn btn-primary">Buscar</button>
-                <button id="btnExportarTabela" class="btn btn-success">Exportar Tabela</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Card do relatório -->
     <div class="card">
-        <div class="header">
-            <h2>Relatório de Vendas Detalhado por Insumo</h2>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:sales-report" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                RELATÓRIO DE VENDAS DETALHADO
+            </h2>
         </div>
-        <div class="body table-responsive">
 
-            <!-- Filtro de insumo/produto (linha imediatamente acima do grid) -->
-            <div class="row" style="margin-bottom: 10px;">
-                <div class="col-md-4">
-                    <input type="text"
-                           id="filtro"
-                           class="form-control"
-                           placeholder="Filtrar por Código/Descrição do Insumo ou Produto"
-                           onkeyup="filterTable()">
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataInicio" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataFim" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-6" style="margin-top: 22px; text-align: right;">
+                        <button id="btnBuscar" class="btn btn-primary waves-effect" style="margin-right: 5px;">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            BUSCAR
+                        </button>
+                        <button id="btnExportarTabela" class="btn btn-success waves-effect">
+                            <iconify-icon icon="icon-park-outline:file-excel" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            EXPORTAR TABELA
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="table-container">
-                <table id="relatorioTable" class="table table-striped">
+            <div class="row clearfix" style="margin-bottom: 10px;">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:filter"></iconify-icon></span>
+                        <input type="text" id="filtro" class="form-control" placeholder="Filtrar resultado por Código ou Nome..." onkeyup="filterTable()">
+                    </div>
+                </div>
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="relatorioTable">
                     <thead>
                     <tr>
-                        <th style="width:60px;">Detalhes</th>
-                        <th>Código Insumo</th>
+                        <th width="60" class="text-center">Ações</th>
+                        <th width="120">Código Insumo</th>
                         <th>Nome Insumo</th>
-                        <th>Venda Insumos</th>
+                        <th class="text-right">Venda Insumos</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <!-- Conteúdo Dinâmico -->
+                    <tr><td colspan="4" class="text-center muted" style="padding: 30px;">Selecione o período e clique em Buscar.</td></tr>
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 </div>
 
-<!-- Modal Detalhes -->
-<div id="detalhesModal" class="modal fade" tabindex="-1" role="dialog">
+<div class="modal fade" id="detalhesModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
+        <div class="modal-content" style="border-radius: 8px; border:none;">
             <div class="modal-header">
-                <h5 class="modal-title">Detalhes do Insumo</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:preview-open" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Detalhes do Insumo
+                </h4>
             </div>
-            <div class="modal-body">
-                <table class="table table-striped">
-                    <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Código Produto</th>
-                        <th>Nome Produto</th>
-                        <th>Quantidade Insumo</th>
-                        <th>Quantidade Vendida</th>
-                        <th>Uso Insumo</th>
-                    </tr>
-                    </thead>
 
-                    <tbody id="detalhesProdutos">
-                    <!-- Conteúdo Dinâmico -->
-                    </tbody>
-                </table>
+            <div class="modal-body" style="padding: 0;">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cód. Produto</th>
+                            <th>Nome Produto</th>
+                            <th class="text-right">Qtd. Insumo</th>
+                            <th class="text-right">Qtd. Vendida</th>
+                            <th class="text-right">Uso Insumo</th>
+                        </tr>
+                        </thead>
+                        <tbody id="detalhesProdutos">
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
             <div class="modal-footer">
-                <button id="btnExportarDetalhes" class="btn btn-success">Exportar Detalhes</button>
-                <button class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                <button id="btnExportarDetalhes" class="btn btn-success waves-effect">
+                    <iconify-icon icon="icon-park-outline:file-excel"></iconify-icon> Exportar Detalhes
+                </button>
+                <button type="button" class="btn btn-default waves-effect" data-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
 <script>
-    function hidePageLoader() {
-        $('.page-loader-wrapper').fadeOut();
+    // Configurações
+    const baseUrl = window.location.hostname !== 'localhost' ?
+        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
+        'http://localhost/portal-mrk/api/v1/index.php';
+
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    const unitId = params.get('unit_id');
+
+    // Helper: Skeleton Toggle
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
     }
 
-    function filterTable() {
-        const input = document.getElementById('filtro');
-        const filter = input.value.toLowerCase();
-        const rows = document.querySelectorAll('#relatorioTable tbody tr');
-
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(filter) ? '' : 'none';
-        });
-    }
-
+    // Init
     $(document).ready(function () {
-        const baseUrl = window.location.hostname !== 'localhost' ?
-            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-            'http://localhost/portal-mrk/api/v1/index.php';
-
-        const params = new URLSearchParams(window.location.search);
-        const token  = params.get('token');
-        const unitId = params.get('unit_id');
-
-        // Preenche datas com hoje por padrão
+        // Datas Padrão
         const today = new Date().toISOString().split('T')[0];
         $('#dataInicio').val(today);
         $('#dataFim').val(today);
 
-        function showLoader() {
-            Swal.fire({
-                title: 'Aguarde...',
-                html: 'Carregando os dados, por favor espere.',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-        }
-
-        function hideLoader() {
-            Swal.close();
-        }
-
-        async function fetchAndRenderData() {
-            const dataInicio = $('#dataInicio').val();
-            const dataFim    = $('#dataFim').val();
-
-            if (!dataInicio || !dataFim) {
-                return Swal.fire({
-                    icon: 'warning',
-                    title: 'Atenção',
-                    text: 'Informe a data inicial e a data final.'
-                });
-            }
-
-            if (dataInicio > dataFim) {
-                return Swal.fire({
-                    icon: 'warning',
-                    title: 'Atenção',
-                    text: 'A data inicial não pode ser maior que a data final.'
-                });
-            }
-
-            showLoader();
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'getSalesByInsumos',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        data_inicio: dataInicio,
-                        data_fim: dataFim
-                    }
-                });
-
-                hideLoader();
-
-                if (response.data && Array.isArray(response.data)) {
-                    renderTable(response.data);
-                } else if (response.data && response.data.error) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Aviso',
-                        text: response.data.error
-                    });
-                    $('#relatorioTable tbody').empty();
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Erro ao buscar dados.'
-                    });
-                }
-            } catch (error) {
-                hideLoader();
-                console.error("Erro ao buscar relatório:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Erro inesperado ao buscar dados.'
-                });
-            }
-        }
-
         $('#btnBuscar').on('click', fetchAndRenderData);
 
-        function renderTable(data) {
-            const tbody = $('#relatorioTable tbody');
-            tbody.empty();
-
-            if (!data.length) {
-                tbody.append('<tr><td colspan="4" class="text-center">Nenhum dado encontrado para o período informado.</td></tr>');
-                return;
-            }
-
-            data.forEach(item => {
-                const encoded = encodeURIComponent(JSON.stringify(item));
-                tbody.append(`
-                    <tr>
-                        <td class="text-center">
-                            <a href="#" class="ver-detalhes" data-item="${encoded}" title="Ver detalhes">
-                                <i class="fa fa-search-plus blue"></i>
-                            </a>
-                        </td>
-                        <td>${item.codigo_insumo}</td>
-                        <td>${item.nome_insumo}</td>
-                        <td>${item.sale_insumos}</td>
-                    </tr>
-                `);
-            });
-
-            // Click no ícone de detalhes
-            $('.ver-detalhes').off('click').on('click', function (e) {
-                e.preventDefault();
-                const item = JSON.parse(decodeURIComponent($(this).data('item')));
-                renderModal(item);
-                $('#detalhesModal').modal('show');
-            });
-
-            // Reaplica filtro se o usuário já digitou algo
-            filterTable();
-        }
-
-        function renderModal(item) {
-            const tbody = $('#detalhesProdutos');
-            tbody.empty();
-
-            if (!item.produtos_vendidos || !item.produtos_vendidos.length) {
-                tbody.append('<tr><td colspan="6" class="text-center">Nenhum produto vinculado a este insumo neste período.</td></tr>');
-            } else {
-                item.produtos_vendidos.forEach(prod => {
-                    tbody.append(`
-                <tr>
-                    <td>${prod.data_movimento || ''}</td>
-                    <td>${prod.codigo_produto}</td>
-                    <td>${prod.nome_produto}</td>
-                    <td>${prod.quantidade_insumo}</td>
-                    <td>${prod.quantidade_venda_produto}</td>
-                    <td>${prod.uso_insumo}</td>
-                </tr>
-            `);
-                });
-            }
-
-            $('#btnExportarDetalhes').off('click').on('click', function () {
-                exportToExcel(item.produtos_vendidos || [], `Detalhes_${item.nome_insumo}`);
-            });
-        }
-
-
-        function exportToExcel(data, fileName) {
-            if (!data || !data.length) {
-                return Swal.fire('Aviso', 'Não há dados para exportar.', 'info');
-            }
-
-            Swal.fire({
-                title: 'Exportar para Excel?',
-                text: 'Você deseja exportar os dados para um arquivo Excel?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sim, exportar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const ws = XLSX.utils.json_to_sheet(data);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, fileName);
-                    XLSX.writeFile(wb, `${fileName}.xlsx`);
-
-                    Swal.fire({
-                        title: 'Exportação Concluída!',
-                        text: 'O arquivo foi exportado com sucesso.',
-                        icon: 'success'
-                    });
-                }
-            });
-        }
-
+        // Exportar Tabela Principal
         $('#btnExportarTabela').on('click', function () {
             const rows = [];
             $('#relatorioTable tbody tr:visible').each(function () {
@@ -390,6 +239,135 @@
             exportToExcel(rows, "Relatorio_Vendas_Insumos");
         });
     });
+
+    // Filtro Local
+    window.filterTable = function() {
+        const input = document.getElementById('filtro');
+        const filter = input.value.toLowerCase();
+        const rows = document.querySelectorAll('#relatorioTable tbody tr');
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
+    }
+
+    // Busca API
+    async function fetchAndRenderData() {
+        const dataInicio = $('#dataInicio').val();
+        const dataFim    = $('#dataFim').val();
+
+        if (!dataInicio || !dataFim) return Swal.fire('Atenção', 'Informe o período.', 'warning');
+        if (dataInicio > dataFim) return Swal.fire('Atenção', 'Data inicial maior que final.', 'warning');
+
+        toggleLoading(true);
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'getSalesByInsumos',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    data_inicio: dataInicio,
+                    data_fim: dataFim
+                }
+            });
+
+            if (response.data && Array.isArray(response.data)) {
+                renderTable(response.data);
+            } else if (response.data && response.data.error) {
+                Swal.fire('Aviso', response.data.error, 'info');
+                $('#relatorioTable tbody').empty();
+            } else {
+                Swal.fire('Erro', 'Erro ao buscar dados.', 'error');
+            }
+        } catch (error) {
+            console.error("Erro:", error);
+            Swal.fire('Erro', 'Erro de conexão.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = $('#relatorioTable tbody');
+        tbody.empty();
+
+        if (!data.length) {
+            tbody.append('<tr><td colspan="4" class="text-center muted" style="padding: 20px;">Nenhum dado encontrado para o período.</td></tr>');
+            return;
+        }
+
+        data.forEach(item => {
+            // Encode item for data attribute
+            const itemStr = encodeURIComponent(JSON.stringify(item));
+
+            tbody.append(`
+                <tr>
+                    <td class="text-center">
+                        <a class="btn-action ver-detalhes" data-item="${itemStr}" title="Ver Detalhes">
+                            <iconify-icon icon="icon-park-outline:search"></iconify-icon>
+                        </a>
+                    </td>
+                    <td>${item.codigo_insumo}</td>
+                    <td>${item.nome_insumo}</td>
+                    <td class="text-right"><strong>${item.sale_insumos}</strong></td>
+                </tr>
+            `);
+        });
+
+        // Bind Click
+        $('.ver-detalhes').off('click').on('click', function (e) {
+            e.preventDefault();
+            const item = JSON.parse(decodeURIComponent($(this).data('item')));
+            renderModal(item);
+            $('#detalhesModal').modal('show');
+        });
+
+        // Reapply filter if exists
+        filterTable();
+    }
+
+    function renderModal(item) {
+        const tbody = $('#detalhesProdutos');
+        tbody.empty();
+
+        if (!item.produtos_vendidos || !item.produtos_vendidos.length) {
+            tbody.append('<tr><td colspan="6" class="text-center muted">Nenhum produto vinculado.</td></tr>');
+        } else {
+            item.produtos_vendidos.forEach(prod => {
+                tbody.append(`
+                    <tr>
+                        <td>${prod.data_movimento || '-'}</td>
+                        <td>${prod.codigo_produto}</td>
+                        <td>${prod.nome_produto}</td>
+                        <td class="text-right">${prod.quantidade_insumo}</td>
+                        <td class="text-right">${prod.quantidade_venda_produto}</td>
+                        <td class="text-right">${prod.uso_insumo}</td>
+                    </tr>
+                `);
+            });
+        }
+
+        // Setup Export Button
+        $('#btnExportarDetalhes').off('click').on('click', function () {
+            if (!item.produtos_vendidos || !item.produtos_vendidos.length) {
+                Swal.fire('Aviso', 'Nada para exportar.', 'info');
+                return;
+            }
+            exportToExcel(item.produtos_vendidos, `Detalhes_${item.nome_insumo}`);
+        });
+    }
+
+    function exportToExcel(data, fileName) {
+        if (!data || !data.length) return Swal.fire('Aviso', 'Não há dados para exportar.', 'info');
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, fileName);
+        XLSX.writeFile(wb, `${fileName}.xlsx`);
+    }
+
 </script>
 
 </body>
