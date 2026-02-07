@@ -5,49 +5,89 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vincular Meio de Pagamento</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        body { background-color: #fdfdfd; padding: 20px; overflow-x: hidden; }
-        .card { box-shadow: none; border: 1px solid #eee; }
-        .header h2 { font-size: 18px; color: #555; }
+        /* Ajustes específicos para Iframe */
+        html, body {
+            background-color: transparent !important;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .card {
+            box-shadow: none;
+            border: 1px solid #f0f0f0;
+            border-top: 3px solid var(--mrk-amber); /* Laranja para indicar "Ação Pendente" */
+        }
+
+        .alert-warning {
+            background-color: #fff3e0;
+            border-color: #ffe0b2;
+            color: #e65100;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            border-radius: 6px;
+        }
+
         .select2-container { width: 100% !important; }
-        .btn-add-new { cursor: pointer; color: #4CAF50; font-weight: bold; margin-top: 5px; display: inline-block; }
-        .btn-add-new:hover { text-decoration: underline; }
+
+        /* Botão Adicionar */
+        .btn-add-modal {
+            border-radius: 0 4px 4px 0 !important;
+            margin-left: -1px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
 
 <div class="card" id="telaVinculo">
     <div class="body">
+
         <div class="alert alert-warning">
-            O meio <strong><span id="lblMeioPDV">...</span></strong> veio do PDV e precisa ser associado a uma Opção Financeira.
+            <div style="display:flex; align-items:center; gap:10px;">
+                <iconify-icon icon="icon-park-outline:attention" width="24"></iconify-icon>
+                <div>
+                    O meio <strong><span id="lblMeioPDV">...</span></strong> veio do PDV e precisa ser associado a uma Opção Financeira.
+                </div>
+            </div>
         </div>
 
         <form>
             <input type="hidden" id="hd_codigo_meio_pdv">
             <input type="hidden" id="hd_nome_meio_pdv">
 
-            <label>Selecione a Opção Financeira</label>
-            <div class="input-group">
-                <select id="selectOpcao" class="form-control">
-                    <option value="">Carregando...</option>
-                </select>
-                <span class="input-group-addon" style="padding: 0; border: none; background: transparent; padding-left: 10px;">
-                    <button type="button" class="btn btn-success waves-effect" onclick="abrirModalNovaOpcao()" title="Criar Nova Opção">
-                        <i class="fa fa-plus"></i>
-                    </button>
-                </span>
+            <label class="muted" style="margin-top:10px;">SELECIONE A OPÇÃO FINANCEIRA</label>
+            <div class="input-group" style="display: flex;">
+                <div style="flex:1;">
+                    <select id="selectOpcao" class="form-control">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-success waves-effect btn-add-modal" onclick="abrirModalNovaOpcao()" title="Criar Nova Opção">
+                    <iconify-icon icon="icon-park-outline:plus" width="18"></iconify-icon>
+                </button>
             </div>
 
             <hr>
-            <button type="button" class="btn btn-warning btn-lg btn-block waves-effect" onclick="salvarVinculo()">
+
+            <button type="button" class="btn btn-primary btn-lg btn-block waves-effect" onclick="salvarVinculo()" style="background-color: var(--mrk-amber) !important; border:none;">
+                <iconify-icon icon="icon-park-outline:link-one" width="20" style="vertical-align: sub; margin-right:5px;"></iconify-icon>
                 CONFIRMAR VÍNCULO
             </button>
         </form>
@@ -56,45 +96,55 @@
 
 <div class="modal fade" id="modalNovaOpcao" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-success" style="padding: 10px 15px;">
-                <h4 class="modal-title" style="color:white;">Nova Opção de Recebimento</h4>
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="border-bottom: 2px solid var(--mrk-green); padding: 15px;">
+                <h4 class="modal-title" style="font-family: 'Kanit', sans-serif; color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:add-mode" style="vertical-align: middle; color: var(--mrk-green);"></iconify-icon>
+                    Nova Opção de Recebimento
+                </h4>
             </div>
             <div class="modal-body">
                 <form id="formNovaOpcao">
-                    <div class="row">
+                    <div class="row clearfix">
                         <div class="col-xs-4">
-                            <label>Código *</label>
+                            <label class="muted">Código *</label>
                             <input type="text" id="new_codigo" class="form-control" placeholder="Ex: CREDIT">
                         </div>
                         <div class="col-xs-8">
-                            <label>Nome *</label>
+                            <label class="muted">Nome *</label>
                             <input type="text" id="new_nome" class="form-control" placeholder="Ex: Cartão Crédito">
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row clearfix">
                         <div class="col-xs-6">
-                            <label>Taxa (%)</label>
+                            <label class="muted">Taxa (%)</label>
                             <input type="number" id="new_taxa" class="form-control" value="0">
                         </div>
                         <div class="col-xs-6">
-                            <label>Prazo (Dias)</label>
+                            <label class="muted">Prazo (Dias)</label>
                             <input type="number" id="new_prazo" class="form-control" value="1">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Plano de Contas</label>
-                        <select id="new_plano" class="form-control"></select>
+                    <div class="row clearfix">
+                        <div class="col-xs-12">
+                            <label class="muted">Plano de Contas</label>
+                            <select id="new_plano" class="form-control" style="width: 100%;"></select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Banco</label>
-                        <select id="new_banco" class="form-control"></select>
+                    <div class="row clearfix" style="margin-top: 10px;">
+                        <div class="col-xs-12">
+                            <label class="muted">Banco</label>
+                            <select id="new_banco" class="form-control" style="width: 100%;"></select>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-link" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" onclick="salvarNovaOpcao()">SALVAR OPÇÃO</button>
+            <div class="modal-footer" style="background: #f9f9f9; border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-default waves-effect" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success waves-effect" onclick="salvarNovaOpcao()">
+                    <iconify-icon icon="icon-park-outline:check" width="16" style="vertical-align: middle;"></iconify-icon>
+                    SALVAR OPÇÃO
+                </button>
             </div>
         </div>
     </div>
@@ -111,22 +161,21 @@
     const token = urlParams.get('token');
     const system_unit_id = urlParams.get('system_unit_id');
     const nomeMeioPDV = urlParams.get('meio');
-    const codigoMeioPDV = urlParams.get('codigo'); // Novo parâmetro
+    const codigoMeioPDV = urlParams.get('codigo');
 
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
         : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
     $(document).ready(function() {
-        // Preenche o header e os inputs ocultos
         $('#lblMeioPDV').text(`${nomeMeioPDV} (Cód: ${codigoMeioPDV || '?'})`);
-
         $('#hd_codigo_meio_pdv').val(codigoMeioPDV);
         $('#hd_nome_meio_pdv').val(nomeMeioPDV);
 
-        // Configura Select2
-        $('#selectOpcao').select2();
-        $('#new_plano').select2({ dropdownParent: $('#modalNovaOpcao') });
+        // Select2 com tema MRK
+        $('#selectOpcao').select2({ placeholder: "Selecione..." });
+        $('#new_plano').select2({ dropdownParent: $('#modalNovaOpcao'), placeholder: "Selecione o plano..." });
+        $('#new_banco').select2({ dropdownParent: $('#modalNovaOpcao'), placeholder: "Selecione o banco..." });
 
         carregarOpcoes();
 
@@ -144,29 +193,18 @@
             const select = $('#selectOpcao');
             select.empty().append('<option value="">Selecione...</option>');
 
-            if (lista.length === 0) {
-                console.warn("Nenhuma opção encontrada ou formato de API incorreto.");
-            }
-
             lista.forEach(op => {
                 select.append(new Option(`${op.nome} (${op.codigo})`, op.codigo));
             });
 
-            if(selecionarCodigo) {
-                select.val(selecionarCodigo).trigger('change');
-            }
-        } catch(e) {
-            console.error(e);
-            Swal.fire('Erro', 'Falha ao carregar opções.', 'error');
-        }
+            if(selecionarCodigo) select.val(selecionarCodigo).trigger('change');
+        } catch(e) { console.error(e); }
     }
 
     async function salvarVinculo() {
         const codigoOpcao = $('#selectOpcao').val();
-
         if(!codigoOpcao) return Swal.fire('Atenção', 'Selecione uma opção financeira.', 'warning');
 
-        // Dados para envio
         const nomeOpcaoFull = $('#selectOpcao option:selected').text().split('(')[0].trim();
         const codMeio = $('#hd_codigo_meio_pdv').val();
         const nomMeio = $('#hd_nome_meio_pdv').val();
@@ -177,13 +215,7 @@
             const res = await axios.post(baseUrl, {
                 method: 'vincularMeioPagamento',
                 token,
-                data: {
-                    system_unit_id,
-                    codigo_opcao: codigoOpcao,
-                    nome_opcao: nomeOpcaoFull,
-                    codigo_meio: codMeio, // Usa o código oculto
-                    nome_meio: nomMeio    // Usa o nome oculto
-                }
+                data: { system_unit_id, codigo_opcao: codigoOpcao, nome_opcao: nomeOpcaoFull, codigo_meio: codMeio, nome_meio: nomMeio }
             });
 
             if(res.data.success) {
@@ -194,28 +226,19 @@
         } catch(e) { Swal.fire('Erro', 'Falha ao salvar.', 'error'); }
     }
 
-    // --- CADASTRO DE NOVA OPÇÃO ---
-    function abrirModalNovaOpcao() {
-        $('#modalNovaOpcao').modal('show');
-    }
-
     async function carregarPlanosEBancos() {
-        if($('#new_plano option').length > 0) return;
+        if($('#new_plano option').length > 1) return; // Evita recarregar se já tem dados
 
         try {
             const resPlan = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id } });
             const planos = Array.isArray(resPlan.data) ? resPlan.data : (resPlan.data.data || []);
-            $('#new_plano').empty().append('<option value="">Plano de Contas...</option>');
-            planos.forEach(p => {
-                $('#new_plano').append(new Option(p.codigo + ' - ' + p.descricao, p.codigo));
-            });
+            $('#new_plano').empty().append('<option value="">Selecione...</option>');
+            planos.forEach(p => $('#new_plano').append(new Option(p.codigo + ' - ' + p.descricao, p.codigo)));
 
             const resBank = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id } });
             const bancos = Array.isArray(resBank.data) ? resBank.data : (resBank.data.data || []);
-            $('#new_banco').empty().append('<option value="">Banco...</option>');
-            bancos.forEach(b => {
-                $('#new_banco').append(new Option(b.nome, b.id));
-            });
+            $('#new_banco').empty().append('<option value="">Selecione...</option>');
+            bancos.forEach(b => $('#new_banco').append(new Option(b.nome, b.id)));
         } catch(e) { console.error(e); }
     }
 
@@ -236,15 +259,18 @@
             const res = await axios.post(baseUrl, { method: 'createOpcaoRecebimento', token, data });
             if(res.data.success) {
                 $('#modalNovaOpcao').modal('hide');
-                Swal.fire({
-                    toast: true, position: 'top-end', icon: 'success',
-                    title: 'Opção criada!', showConfirmButton: false, timer: 1500
-                });
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Opção criada!', showConfirmButton: false, timer: 1500 });
                 carregarOpcoes(data.codigo);
             } else {
                 Swal.fire('Erro', res.data.message, 'error');
             }
         } catch(e) { Swal.fire('Erro', 'Falha ao criar opção.', 'error'); }
+    }
+
+    function abrirModalNovaOpcao() {
+
+        $('#modalNovaOpcao').modal('show');
+
     }
 </script>
 </body>

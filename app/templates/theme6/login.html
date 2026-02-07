@@ -1,86 +1,167 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <!-- Manifesto PWA -->
+    <title>Portal MRK - Acesso</title>
+    <meta charset="utf-8">
+
     <link rel="manifest" href="manifest.json">
-
-    <!-- Ativação como app no iPhone -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Portal MRK">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="app/images/icon.png">
-
-    <!-- Cor da barra do navegador -->
-    <meta name="theme-color" content="#0b46ac">
-    <meta name="msapplication-navbutton-color" content="#0b46ac">
-    <meta name="apple-mobile-web-app-status-bar-style" content="#0b46ac">
-
-    <title>Portal MRK</title>
-	<link rel="stylesheet" type="text/css" href="app/templates/{template}/style.css">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#0B46AC">
+    <meta name="theme-color" content="#0B46AC">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
-	<link href="https://fonts.googleapis.com/css?family=Poppins:600&display=swap" rel="stylesheet">
-<!--	<script src="https://kit.fontawesome.com/a81368914c.js"></script>-->
-    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     {LIBRARIES}
     {HEAD}
+
     <link href="app/templates/{template}/plugins/node-waves/waves.css" rel="stylesheet" />
     <link href="app/templates/{template}/plugins/animate-css/animate.css" rel="stylesheet" />
     <link href="app/templates/{template}/css/style.css" rel="stylesheet">
     <link href="app/templates/{template}/css/themes/all-themes.css" rel="stylesheet" />
     <link href="app/lib/include/admin.min.css?appver=700" rel="stylesheet" type="text/css" media="screen">
+
     <style>
-    #tbutton_btn_entrar{
-        background-image:none;
-        background-color:#0b46ac !important;
-   }
-   .btn{
-       background-color:#0b46ac !important;
-    };
-    select {
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
+        /* Fundo e Fonte Global */
+        body {
+            font-family: 'Poppins', sans-serif !important;
+            background-color: #f0f2f5 !important; /* Cinza bem claro */
+            background-image: url('app/templates/{template}/images/bg-01.png'); /* Imagem de fundo opcional */
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh; /* Ocupa tela toda */
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Container Centralizado */
+        .container {
+            width: 100%;
+            max-width: 420px !important; /* Tamanho do Card */
+            padding: 0 20px;
+            display: block !important; /* Remove grid antigo */
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Esconde a imagem lateral antiga */
+        .img { display: none !important; }
+
+        /* O Card de Login */
+        .login-content {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px; /* Soft Square */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); /* Sombra elegante */
+            text-align: center;
+            width: 100%;
+        }
+
+        /* Inputs (Usuário e Senha) */
+        .login-content .input-div > div > input,
+        input.form-control {
+            font-family: 'Poppins', sans-serif !important;
+            font-size: 14px;
+            color: #555;
+            padding: 10px 15px !important;
+            border-radius: 6px !important;
+            border: 1px solid #ddd !important;
+            height: 45px !important;
+            background: #f9f9f9;
+        }
+
+        /* Foco no Input */
+        .login-content .input-div > div > input:focus,
+        input.form-control:focus {
+            border-color: #0B46AC !important;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(11, 70, 172, 0.1);
+        }
+
+        /* Ícones dos inputs */
+        .i i {
+            color: #0B46AC !important; /* Ícones azuis */
+            transition: .3s;
+        }
+
+        /* Botão de Entrar (Força total no estilo) */
+        #tbutton_btn_entrar, .btn {
+            width: 100%;
+            height: 50px;
+            border-radius: 6px !important; /* Soft Square */
+            background-color: #0B46AC !important; /* Azul MRK */
+            background-image: none !important;
+            color: #fff !important;
+            font-family: 'Kanit', sans-serif !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(11, 70, 172, 0.3);
+            transition: 0.3s;
+        }
+
+        #tbutton_btn_entrar:hover, .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(11, 70, 172, 0.4);
+        }
+
+        /* Títulos */
+        .title {
+            font-family: 'Kanit', sans-serif !important;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Loader */
+        .page-loader-wrapper { background: #0B46AC; }
     </style>
 </head>
 
 <body>
-<!-- Page Loader -->
 <div class="page-loader-wrapper">
     <div class="loader">
         <div class="preloader">
-            <div class="spinner-layer pl-indigo">
-                <div class="circle-clipper left">
-                    <div class="circle"></div>
-                </div>
-                <div class="circle-clipper right">
-                    <div class="circle"></div>
-                </div>
+            <div class="spinner-layer pl-white"> <div class="circle-clipper left"><div class="circle"></div></div>
+                <div class="circle-clipper right"><div class="circle"></div></div>
             </div>
         </div>
-        <p>Carregando...</p>
+        <p style="color:white; font-family:'Kanit', sans-serif; font-weight:600;">CARREGANDO...</p>
     </div>
 </div>
-<div class="wave"></div>
-<!--	<img class="wave" src="app/templates/{template}/images/wave.png">-->
-    
-	<div class="container">
-		<div class="img">
-			<img src="app/templates/{template}/images/bg-01.png">
-		</div>
-		<div class="login-content">
-			<form>
-				<img style="width: 60%;height: 60%" src="app/templates/{template}/images/logo.png">
-				<h2 class="title"></h2>
-                <div id="adianti_div_content"></div>
-                <div id="adianti_online_content"></div>
-                <div id="adianti_online_content2"></div>
-    
-            </form>
-        </div>
+
+<div class="container">
+    <div class="login-content">
+        <form>
+            <img style="width: 180px; height: auto; margin-bottom: 20px;" src="app/templates/{template}/images/logo.png" alt="Logo MRK">
+
+            <h2 class="title" style="font-size: 18px; color: #777; margin-bottom: 30px;">Acesso ao Sistema</h2>
+
+            <div id="adianti_div_content"></div>
+
+            <div id="adianti_online_content"></div>
+            <div id="adianti_online_content2"></div>
+
+        </form>
     </div>
-    <script type="text/javascript" src="app/templates/{template}/main.js"></script>
-</body>
+
+    <div style="text-align: center; margin-top: 15px; color: #888; font-size: 12px;">
+        © 2026 MRK Soluções
+    </div>
+</div>
+
+<script type="text/javascript" src="app/templates/{template}/main.js"></script>
 <script src="app/templates/{template}/js/admin-login.js"></script>
+</body>
 </html>

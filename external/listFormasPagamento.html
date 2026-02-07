@@ -5,61 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Formas de Pagamento</title>
 
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        th, td { vertical-align: middle !important; }
-
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button {
-                font-size: 12px !important;
-            }
-            h2, .modal-title { font-size: 16px !important; }
-            .btn { padding: 6px 10px !important; font-size: 12px !important; }
-            .table-responsive { overflow-x: auto; }
-            .modal-dialog { margin: 10px; }
-            .row > div[class*="col-"] { margin-bottom: 10px; }
-            .form-control { height: 30px; padding: 4px 8px; }
-
-            #tabela-formas td,
-            #tabela-formas th { white-space: nowrap; }
-        }
-
-        i.blue { color: #2196F3; cursor: pointer; }
-        i.orange { color: #FF9800; cursor: pointer; }
-        i.red { color: #F44336; cursor: pointer; }
-
-        .status-label {
-            padding: 3px 6px;
+        /* Ajustes Específicos */
+        .badge-banco {
+            background-color: #f5f5f5;
+            color: #555;
+            padding: 4px 8px;
             border-radius: 4px;
             font-size: 11px;
-            color: #fff;
+            border: 1px solid #e0e0e0;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: 'Poppins', sans-serif;
         }
-        .status-ativo { background-color: #4CAF50; }
-        .status-inativo { background-color: #F44336; }
 
-        .badge-banco {
-            background-color: #607D8B;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 11px;
+        .badge-status.ativo { background-color: var(--mrk-green); }
+        .badge-status.inativo { background-color: var(--mrk-red); }
+
+        /* Ações na tabela */
+        .actions-cell a {
+            display: inline-flex;
+            text-decoration: none;
+            margin: 0 4px;
+            transition: transform 0.2s;
         }
+        .actions-cell a:hover { transform: scale(1.2); }
     </style>
 </head>
 
@@ -67,25 +53,42 @@
 <div class="container-fluid">
     <br>
     <div class="card">
-        <div class="header">
-            <h2>Formas de Pagamento</h2>
-            <small>Defina como sua empresa recebe e pague, e onde o dinheiro entra.</small>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-solid:wallet-two" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                FORMAS DE PAGAMENTO
+            </h2>
+            <small class="muted" style="display:block; margin-top:5px; margin-left: 29px;">
+                Gerencie como sua empresa recebe e para onde o dinheiro vai.
+            </small>
         </div>
         <div class="body">
 
-            <div class="row">
+            <div class="row clearfix">
                 <div class="col-md-3">
-                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
+                    <label class="muted">Filtrar Código</label>
+                    <div class="input-group">
+                        <span class="input-group-addon">
+                            <iconify-icon icon="icon-park-outline:topic" width="18"></iconify-icon>
+                        </span>
+                        <input type="text" id="filtroCodigo" class="form-control" placeholder="Cód.">
+                    </div>
                 </div>
                 <div class="col-md-5">
-                    <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+                    <label class="muted">Filtrar Nome</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                        <input type="text" id="filtroNome" class="form-control" placeholder="Nome da forma...">
+                    </div>
                 </div>
-                <div class="col-md-4 text-right">
-                    <button class="btn btn-info" id="btnImportarPadrao">
-                        <i class="fa fa-download"></i> Importar Padrão
+                <div class="col-md-4 text-right" style="padding-top: 25px;">
+                    <button class="btn btn-default waves-effect" id="btnImportarPadrao" style="margin-right: 5px;">
+                        <iconify-icon icon="icon-park-outline:download-one" width="16" style="vertical-align: middle; margin-right: 4px;"></iconify-icon>
+                        Padrão
                     </button>
-                    <button class="btn btn-success" id="btnNovaForma">
-                        <i class="fa fa-plus"></i> Nova Forma
+                    <button class="btn btn-success waves-effect" id="btnNovaForma">
+                        <iconify-icon icon="icon-park-outline:add" width="16" style="vertical-align: middle; margin-right: 4px;"></iconify-icon>
+                        Nova Forma
                     </button>
                 </div>
             </div>
@@ -94,11 +97,11 @@
                 <table class="table table-striped table-hover" id="tabela-formas">
                     <thead>
                     <tr>
+                        <th style="width:120px; text-align:center;">Ações</th>
                         <th style="width:90px;">Código</th>
                         <th>Nome</th>
                         <th>Banco Vinculado</th>
                         <th style="width:100px;">Status</th>
-                        <th style="width:120px;">Ações</th>
                     </tr>
                     </thead>
                     <tbody></tbody>
@@ -111,34 +114,35 @@
 
 <div class="modal fade" id="modalForma" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h4 class="modal-title">Cadastrar Forma de Pagamento</h4>
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="border-bottom: 2px solid var(--mrk-blue);">
+                <h4 class="modal-title" style="color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:add-mode" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Nova Forma de Pagamento
+                </h4>
             </div>
-
             <div class="modal-body">
                 <form id="formForma">
                     <div class="form-group">
-                        <label for="codigo">Código *</label>
-                        <input inputmode="numeric" type="number" class="form-control" id="codigo" placeholder="" required>
+                        <label class="muted">Código *</label>
+                        <input inputmode="numeric" type="number" class="form-control" id="codigo" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="nome">Nome *</label>
+                        <label class="muted">Nome *</label>
                         <input type="text" class="form-control" id="nome" placeholder="Ex: Dinheiro" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="banco_padrao_id">Vincular a Banco</label>
-                        <select id="banco_padrao_id" class="form-control select-bancos">
+                        <label class="muted">Vincular a Banco</label>
+                        <select id="banco_padrao_id" class="form-control select-bancos" style="width: 100%;">
                             <option value="">Sem vínculo</option>
                         </select>
-                        <small class="text-muted">Selecione onde o dinheiro cairá automaticamente.</small>
+                        <small class="text-muted" style="font-size: 11px;">O dinheiro cairá automaticamente neste banco.</small>
                     </div>
 
                     <div class="form-group">
-                        <label for="ativos">Status</label>
+                        <label class="muted">Status</label>
                         <select id="ativos" class="form-control">
                             <option value="1">Ativo</option>
                             <option value="0">Inativo</option>
@@ -146,47 +150,46 @@
                     </div>
                 </form>
             </div>
-
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="salvarForma">Salvar</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="salvarForma">Salvar</button>
             </div>
-
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="modalEditarForma" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h4 class="modal-title">Editar Forma de Pagamento</h4>
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="border-bottom: 2px solid var(--mrk-blue);">
+                <h4 class="modal-title" style="color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:edit" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Editar Forma
+                </h4>
             </div>
-
             <div class="modal-body">
                 <form id="formEditarForma">
                     <input type="hidden" id="editarId">
 
                     <div class="form-group">
-                        <label for="editarCodigo">Código *</label>
+                        <label class="muted">Código *</label>
                         <input type="text" class="form-control" id="editarCodigo" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="editarNome">Nome *</label>
+                        <label class="muted">Nome *</label>
                         <input type="text" class="form-control" id="editarNome" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="editarBancoPadraoId">Vincular a Banco</label>
-                        <select id="editarBancoPadraoId" class="form-control select-bancos">
-                            <option value="">Sem vínculo/option>
+                        <label class="muted">Vincular a Banco</label>
+                        <select id="editarBancoPadraoId" class="form-control select-bancos" style="width: 100%;">
+                            <option value="">Sem vínculo</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="editarAtivos">Status</label>
+                        <label class="muted">Status</label>
                         <select id="editarAtivos" class="form-control">
                             <option value="1">Ativo</option>
                             <option value="0">Inativo</option>
@@ -194,15 +197,20 @@
                     </div>
                 </form>
             </div>
-
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="salvarEdicaoForma">Salvar Alterações</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="salvarEdicaoForma">Salvar Alterações</button>
             </div>
-
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -214,7 +222,7 @@
     const system_unit_id = urlParams.get('system_unit_id');
 
     let formasCache = [];
-    let bancosDisponiveis = []; // Cache para o combo de bancos
+    let bancosDisponiveis = [];
 
     $(document).ready(() => {
         if (!token || !system_unit_id) {
@@ -222,7 +230,21 @@
             return;
         }
 
-        // Carrega os combos e a lista principal
+        // Configurações do Select2
+        $('.select-bancos').select2({
+            dropdownParent: document.body,
+            placeholder: "Selecione o banco...",
+            allowClear: true
+        });
+
+        $('#modalForma, #modalEditarForma').on('shown.bs.modal', function () {
+            $(this).find('.select-bancos').select2({
+                dropdownParent: $(this),
+                placeholder: "Selecione o banco...",
+                allowClear: true
+            });
+        });
+
         carregarComboBancos();
         listarFormas();
 
@@ -231,7 +253,7 @@
         $('#btnNovaForma').click(() => {
             $('#formForma')[0].reset();
             $('#ativos').val('1');
-            $('#banco_padrao_id').val(''); // Reseta o combo
+            $('#banco_padrao_id').val('').trigger('change');
             $('#modalForma').modal('show');
         });
 
@@ -240,11 +262,10 @@
         $('#btnImportarPadrao').click(importarPadrao);
     });
 
-    // 1. Carrega a lista de BANCOS REAIS para preencher o <select>
     async function carregarComboBancos() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'listBancos', // Esse método ainda existe no FinanceiroBancoController para listar bancos reais
+                method: 'listBancos',
                 token,
                 data: { system_unit_id, apenas_ativos: true }
             });
@@ -257,21 +278,15 @@
 
             $('.select-bancos').html(options);
 
-        } catch (err) {
-            console.error("Erro ao carregar bancos para combo:", err);
-        }
+        } catch (err) { console.error("Erro ao carregar bancos:", err); }
     }
 
-    // 2. Carrega a lista de FORMAS DE PAGAMENTO
     async function listarFormas() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'listFormasPagamento', // Novo método
+                method: 'listFormasPagamento',
                 token,
-                data: {
-                    system_unit_id,
-                    apenas_ativos: false
-                }
+                data: { system_unit_id, apenas_ativos: false }
             });
 
             const dados = Array.isArray(res.data) ? res.data : (res.data.data || []);
@@ -283,10 +298,10 @@
             if (!formasCache.length) {
                 tbody.append(`
                     <tr>
-                        <td colspan="5" class="text-center">
-                            Nenhuma forma de pagamento cadastrada.<br>
-                            <button class="btn btn-info btn-sm" id="btnImportarPadraoInline" style="margin-top:8px;">
-                                <i class="fa fa-download"></i> Importar Padrão
+                        <td colspan="5" class="text-center muted" style="padding: 20px;">
+                            Nenhuma forma de pagamento cadastrada.<br><br>
+                            <button class="btn btn-default btn-sm" id="btnImportarPadraoInline">
+                                <iconify-icon icon="icon-park-outline:download-one"></iconify-icon> Importar Padrão
                             </button>
                         </td>
                     </tr>
@@ -295,40 +310,41 @@
                 return;
             }
 
-            // Ordena por código
-            formasCache.sort((a, b) => {
-                return String(a.nome).localeCompare(String(b.nome));
-            });
+            formasCache.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
             formasCache.forEach(f => {
-                const codigo    = f.codigo ?? '';
-                const nome      = (f.nome || '').trim();
-                const ativos    = Number(f.ativos ?? 1);
-                // Campo trazido pelo JOIN no controller
-                const nomeBanco = f.nome_banco_padrao ? `<span class="badge-banco"><i class="fa fa-university"></i> ${f.nome_banco_padrao}</span>` : '<span class="text-muted">-</span>';
+                const codigo = f.codigo ?? '';
+                const nome   = (f.nome || '').trim();
+                const ativos = Number(f.ativos ?? 1);
 
-                const statusClass = ativos ? 'status-ativo' : 'status-inativo';
-                const statusText  = ativos ? 'Ativo' : 'Inativo';
+                const nomeBanco = f.nome_banco_padrao
+                    ? `<span class="badge-banco"><iconify-icon icon="icon-park-outline:bank" width="12"></iconify-icon> ${f.nome_banco_padrao}</span>`
+                    : '<span class="muted" style="font-size:11px;">-</span>';
+
+                const statusBadge = ativos
+                    ? '<span class="badge-status st-1">ATIVO</span>'
+                    : '<span class="badge-status st-0">INATIVO</span>';
+
+                const iconToggle = ativos ? 'icon-park-outline:power' : 'icon-park-outline:play-one';
+                const colorToggle = ativos ? 'var(--mrk-amber)' : 'var(--mrk-green)';
 
                 tbody.append(`
                     <tr data-id="${f.id}">
+                        <td class="text-center actions-cell">
+                            <a href="#" class="editar-forma" title="Editar">
+                                <iconify-icon icon="icon-park-outline:edit" width="18" style="color:var(--mrk-blue)"></iconify-icon>
+                            </a>
+                            <a href="#" class="toggle-ativo-forma" title="${ativos ? 'Inativar' : 'Ativar'}">
+                                <iconify-icon icon="${iconToggle}" width="18" style="color:${colorToggle}"></iconify-icon>
+                            </a>
+                            <a href="#" class="excluir-forma" title="Excluir">
+                                <iconify-icon icon="icon-park-outline:delete" width="18" style="color:var(--mrk-red)"></iconify-icon>
+                            </a>
+                        </td>
                         <td><strong>${codigo}</strong></td>
                         <td>${nome}</td>
                         <td>${nomeBanco}</td>
-                        <td><span class="status-label ${statusClass}">${statusText}</span></td>
-                        <td>
-                            <a href="#" class="editar-forma" title="Editar">
-                                <i class="fa fa-edit blue"></i>
-                            </a>
-                            &nbsp;
-                            <a href="#" class="toggle-ativo-forma" title="${ativos ? 'Inativar' : 'Ativar'}">
-                                <i class="fa fa-power-off orange"></i>
-                            </a>
-                            &nbsp;
-                            <a href="#" class="excluir-forma" title="Excluir">
-                                <i class="fa fa-trash red"></i>
-                            </a>
-                        </td>
+                        <td>${statusBadge}</td>
                     </tr>
                 `);
             });
@@ -348,8 +364,10 @@
             const $tr = $(this);
             if ($tr.find('#btnImportarPadraoInline').length) return;
 
-            const textoCodigo = $tr.find('td:nth-child(1)').text().toLowerCase();
-            const textoNome   = $tr.find('td:nth-child(2)').text().toLowerCase();
+            // Ajuste dos índices das colunas devido à mudança de ordem
+            // 1: Ações | 2: Código | 3: Nome
+            const textoCodigo = $tr.find('td:nth-child(2)').text().toLowerCase();
+            const textoNome   = $tr.find('td:nth-child(3)').text().toLowerCase();
 
             const matchCodigo = !codigoFiltro || textoCodigo.includes(codigoFiltro);
             const matchTexto  = !textoFiltro || textoNome.includes(textoFiltro);
@@ -359,142 +377,98 @@
     }
 
     async function salvarForma() {
-        const codigo          = $('#codigo').val().trim();
-        const nome            = $('#nome').val().trim();
-        const banco_padrao_id = $('#banco_padrao_id').val();
-        const ativos          = $('#ativos').val();
+        const codigo = $('#codigo').val().trim();
+        const nome   = $('#nome').val().trim();
+        const banco  = $('#banco_padrao_id').val();
+        const ativos = $('#ativos').val();
 
-        if (!codigo || !nome) {
-            return Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
-        }
+        if (!codigo || !nome) return Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
 
         Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await axios.post(baseUrl, {
-                method: 'createFormaPagamento', // Método novo
+                method: 'createFormaPagamento',
                 token,
-                data: {
-                    system_unit_id,
-                    codigo,
-                    nome,
-                    banco_padrao_id, // Enviando o vínculo
-                    ativos
-                }
+                data: { system_unit_id, codigo, nome, banco_padrao_id: banco, ativos }
             });
-
             Swal.close();
 
-            if (res.data && res.data.success === false) {
-                return Swal.fire('Atenção', res.data.message || 'Erro ao criar.', 'warning');
-            }
+            if (res.data && res.data.success === false) return Swal.fire('Atenção', res.data.message, 'warning');
 
-            Swal.fire('Sucesso', 'Forma de pagamento criada com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Criado com sucesso.', 'success');
             $('#modalForma').modal('hide');
             listarFormas();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao criar.', 'error');
-        }
+        } catch (err) { Swal.fire('Erro', 'Falha ao criar.', 'error'); }
     }
 
-    // Abrir modal editar
     $(document).on('click', '.editar-forma', function (e) {
         e.preventDefault();
-        const $tr = $(this).closest('tr');
-        const id  = $tr.data('id');
+        const id = $(this).closest('tr').data('id');
         const forma = formasCache.find(f => String(f.id) === String(id));
-
-        if (!forma) return Swal.fire('Erro', 'Registro não encontrado.', 'error');
+        if (!forma) return;
 
         $('#editarId').val(forma.id);
         $('#editarCodigo').val(forma.codigo);
         $('#editarNome').val(forma.nome || '');
-        // Preenche o combo com o ID do banco salvo
-        $('#editarBancoPadraoId').val(forma.banco_padrao_id || '');
+        $('#editarBancoPadraoId').val(forma.banco_padrao_id || '').trigger('change');
         $('#editarAtivos').val(forma.ativos ?? 1);
 
         $('#modalEditarForma').modal('show');
     });
 
     async function salvarEdicaoForma() {
-        const id              = $('#editarId').val();
-        const codigo          = $('#editarCodigo').val().trim();
-        const nome            = $('#editarNome').val().trim();
-        const banco_padrao_id = $('#editarBancoPadraoId').val();
-        const ativos          = $('#editarAtivos').val();
+        const id     = $('#editarId').val();
+        const codigo = $('#editarCodigo').val().trim();
+        const nome   = $('#editarNome').val().trim();
+        const banco  = $('#editarBancoPadraoId').val();
+        const ativos = $('#editarAtivos').val();
 
-        if (!codigo || !nome) {
-            return Swal.fire('Atenção', 'Código e Nome obrigatórios.', 'warning');
-        }
+        if (!codigo || !nome) return Swal.fire('Atenção', 'Código e Nome obrigatórios.', 'warning');
 
         Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await axios.post(baseUrl, {
-                method: 'updateFormaPagamento', // Método novo
+                method: 'updateFormaPagamento',
                 token,
-                data: {
-                    id,
-                    codigo,
-                    nome,
-                    banco_padrao_id,
-                    ativos
-                }
+                data: { id, codigo, nome, banco_padrao_id: banco, ativos }
             });
-
             Swal.close();
 
-            if (res.data && res.data.success === false) {
-                return Swal.fire('Erro', res.data.message || 'Erro ao atualizar.', 'error');
-            }
+            if (res.data && res.data.success === false) return Swal.fire('Erro', res.data.message, 'error');
 
-            Swal.fire('Sucesso', 'Atualizado com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Atualizado.', 'success');
             $('#modalEditarForma').modal('hide');
             listarFormas();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Erro ao atualizar.', 'error');
-        }
+        } catch (err) { Swal.fire('Erro', 'Falha ao atualizar.', 'error'); }
     }
 
-    // Toggle Status
     $(document).on('click', '.toggle-ativo-forma', async function (e) {
         e.preventDefault();
         const id = $(this).closest('tr').data('id');
         const forma = formasCache.find(f => String(f.id) === String(id));
         const novoStatus = forma.ativos ? 0 : 1;
-        const acao = novoStatus ? 'ativar' : 'inativar';
+        const acao = novoStatus ? 'Ativar' : 'Inativar';
 
         const conf = await Swal.fire({
-            title: `Confirmar ${acao}?`,
-            text: `Deseja ${acao} "${forma.nome}"?`,
+            title: `${acao}?`,
+            text: `Deseja ${acao.toLowerCase()} "${forma.nome}"?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Sim',
-            cancelButtonText: 'Não'
+            confirmButtonText: 'Sim', cancelButtonText: 'Não'
         });
         if (!conf.isConfirmed) return;
 
         Swal.showLoading();
-
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'updateFormaPagamento',
-                token,
-                data: { id, ativos: novoStatus }
-            });
+            const res = await axios.post(baseUrl, { method: 'updateFormaPagamento', token, data: { id, ativos: novoStatus } });
             Swal.close();
             if(!res.data.success) return Swal.fire('Erro', res.data.message, 'error');
-
-            Swal.fire('Sucesso', 'Status atualizado.', 'success');
             listarFormas();
-        } catch (e) {
-            Swal.fire('Erro', 'Falha na requisição.', 'error');
-        }
+        } catch (e) { Swal.fire('Erro', 'Falha na requisição.', 'error'); }
     });
 
-    // Excluir
     $(document).on('click', '.excluir-forma', async function (e) {
         e.preventDefault();
         const id = $(this).closest('tr').data('id');
@@ -502,36 +476,27 @@
 
         const conf = await Swal.fire({
             title: 'Excluir?',
-            text: `Excluir "${forma.nome}"?`,
+            text: `Excluir permanentemente "${forma.nome}"?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sim, excluir'
+            confirmButtonText: 'Excluir', confirmButtonColor: '#d33'
         });
         if (!conf.isConfirmed) return;
 
         Swal.showLoading();
-
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'deleteFormaPagamento',
-                token,
-                data: { id }
-            });
+            const res = await axios.post(baseUrl, { method: 'deleteFormaPagamento', token, data: { id } });
             Swal.close();
             if(!res.data.success) return Swal.fire('Atenção', res.data.message, 'warning');
-
             Swal.fire('Sucesso', 'Excluído.', 'success');
             listarFormas();
-        } catch (e) {
-            Swal.fire('Erro', 'Falha ao excluir.', 'error');
-        }
+        } catch (e) { Swal.fire('Erro', 'Falha ao excluir.', 'error'); }
     });
 
-    // Importar Padrão
     async function importarPadrao() {
         const conf = await Swal.fire({
             title: 'Importar Padrão?',
-            text: 'Isso criará formas de pagamento padrão (Dinheiro, PIX, etc) vinculadas ao Banco Principal (ID 1).',
+            text: 'Isso criará formas como Dinheiro, PIX, etc.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Importar'
@@ -539,21 +504,13 @@
         if (!conf.isConfirmed) return;
 
         Swal.showLoading();
-
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'importarFormasPadrao', // Método novo
-                token,
-                data: { system_unit_id }
-            });
+            const res = await axios.post(baseUrl, { method: 'importarFormasPadrao', token, data: { system_unit_id } });
             Swal.close();
             if(!res.data.success) return Swal.fire('Erro', res.data.message, 'error');
-
-            Swal.fire('Sucesso', 'Importado com sucesso.', 'success');
+            Swal.fire('Sucesso', 'Importado.', 'success');
             listarFormas();
-        } catch (e) {
-            Swal.fire('Erro', 'Falha ao importar.', 'error');
-        }
+        } catch (e) { Swal.fire('Erro', 'Falha ao importar.', 'error'); }
     }
 </script>
 

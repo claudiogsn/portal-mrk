@@ -3,276 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <title>Gestão de Produtos</title>
+    <!-- Favicon-->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="style/mrk.css" rel="stylesheet">
+
     <style>
-        select[multiple] {
-            height: 90px;
-        }
-        /* Header azul estilo AdminBSB */
-        .modal-header {
-            background-color: #2196F3;
-            color: white;
-            padding: 10px 15px;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-        }
-
-        /* Divisor azul claro entre colunas */
-        .divider-col {
-            border-left: 3px solid #2196F3;
-            height: auto;
-            min-height: 100%;
-            margin-top: 10px;
+        /* Ajustes para o Select no Header da Tabela */
+        .th-select {
+            color: #333;
+            font-weight: normal;
+            font-size: 11px;
+            height: 25px;
+            padding: 2px;
+            margin-top: 4px;
+            width: 100%;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            background-color: #fff;
+            font-family: 'Poppins', sans-serif;
         }
 
-        .modal-body .row {
-            display: flex;
-            align-items: stretch; /* força colunas a terem a mesma altura */
-        }
+        /* Modal ajustado para Iframe */
+        .modal-dialog { width: 95%; max-width: 1200px; margin: 20px auto; }
+        .modal-content { border-radius: 8px; overflow: hidden; }
+        .modal-header { padding: 15px; border-bottom: 2px solid var(--mrk-blue); background: #fff; }
+        .modal-body { padding: 0; height: 85vh; background: #f9f9f9; }
 
-        .divider-col {
-            border-left: 1px solid #2196F3;
-            width: 3px;
-        }
+        iframe { width: 100%; height: 100%; border: none; }
 
-        .modal-dialog {
-            width: 90%;
-            margin: 30px auto;
-        }
-
-        .modal-body {
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .tab-content {
-            padding: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .nav-tabs > li > a {
-            padding: 6px 12px;
-        }
-
-        .input-error {
-            border: 1px solid red !important;
-        }
-
-
-        @media (max-width: 768px) {
-            .modal-dialog {
-                width: 95%;
-                margin: 10px auto;
-            }
-
-            .tab-content {
-                max-height: 200px;
-            }
-        }
-
-        .swal2-container { z-index: 2000 !important; }
-
+        /* Badges */
+        .badge-tag { font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-right: 3px; font-weight: 500; }
+        .bg-venda { background-color: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+        .bg-insumo { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+        .bg-composicao { background-color: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .bg-compravel { background-color: #F3E5F5; color: #7B1FA2; border: 1px solid #E1BEE7; }
     </style>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
     <br>
     <div class="card">
-        <div class="header">
-            <h2>Produtos
-                <button class="btn btn-success btn-sm pull-right" onclick="abrirModalNovo()">
-                    <i class="fa fa-plus"></i> Novo Produto
-                </button>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-solid:ad-product" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                PRODUTOS
             </h2>
+            <small class="muted" style="display:block; margin-top:5px; margin-left: 29px;">
+                Gerencie seu catálogo, fichas técnicas e estoques.
+            </small>
+
+            <button class="btn btn-success waves-effect" onclick="abrirModalProduto()" style="margin-left: auto;">
+                <iconify-icon icon="icon-park-outline:add" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                Novo Produto
+            </button>
         </div>
-        <div class="row" style="margin: 15px 0;">
-            <div class="col-md-4">
-                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome, código ou EAN">
-            </div>
-            <div class="col-md-3">
-                <select id="filtroStatus" class="form-control">
-                    <option value="">Status: Todos</option>
-                    <option value="1">Ativo</option>
-                    <option value="0">Inativo</option>
-                </select>
-            </div>
-            <div class="col-md-5">
-                <label>Filtrar por Tags:</label>
-                <div class="demo-checkbox">
-                    <input type="checkbox" id="filtroVenda" />
-                    <label for="filtroVenda">Venda</label>
 
-                    <input type="checkbox" id="filtroComposicao" />
-                    <label for="filtroComposicao">Composição</label>
-
-                    <input type="checkbox" id="filtroInsumo" />
-                    <label for="filtroInsumo">Insumo</label>
-
-                    <input type="checkbox" id="filtroCompravel" />
-                    <label for="filtroCompravel">Comprável</label>
+        <div class="body">
+            <div class="row clearfix" style="margin-bottom: 20px;">
+                <div class="col-md-4">
+                    <label class="muted">Busca Rápida</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                        <input type="text" id="filtroNome" class="form-control" placeholder="Nome, Código ou EAN...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Status</label>
+                    <select id="filtroStatus" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="muted">Tags</label>
+                    <div class="demo-checkbox" style="padding-top: 5px;">
+                        <input type="checkbox" id="filtroVenda" class="chk-col-blue"/> <label for="filtroVenda">Venda</label>
+                        <input type="checkbox" id="filtroComposicao" class="chk-col-blue"/> <label for="filtroComposicao">Composição</label>
+                        <input type="checkbox" id="filtroInsumo" class="chk-col-blue"/> <label for="filtroInsumo">Insumo</label>
+                        <input type="checkbox" id="filtroCompravel" class="chk-col-blue"/> <label for="filtroCompravel">Comprável</label>
+                    </div>
                 </div>
             </div>
 
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tabela-produtos">
+                    <thead>
+                    <tr>
+                        <th style="width: 100px; text-align: center;">Ações</th>
+                        <th style="cursor:pointer" onclick="ordenarPor('codigo')">Cód <i id="icon-codigo" class="fa fa-sort"></i></th>
+                        <th style="cursor:pointer" onclick="ordenarPor('nome')">Nome <i id="icon-nome" class="fa fa-sort"></i></th>
+                        <th>EAN</th>
 
-        </div>
-        <div class="body">
-            <table class="table table-striped" id="tabela-produtos">
-                <thead>
-                <tr>
-                    <th style="width: 28px; padding: 0;" class="text-center"></th>
-                    <th style="width: 28px; padding: 0;" class="text-center"></th>
-                    <th style="cursor:pointer" onclick="ordenarPor('codigo')">Código <i id="icon-codigo" class="fa fa-sort"></i></th>
-                    <th style="cursor:pointer" onclick="ordenarPor('nome')">Nome <i id="icon-nome" class="fa fa-sort"></i></th>
-                    <th>EAN</th>
-                    <th>Tags</th>
-                    <th>Und</th>
-                    <th>Saldo</th>
-                    <th>Preço Custo</th>
-                    <th>Preço Venda</th>
-                    <th>%CV</th>
-                    <th>Status</th>
+                        <th style="min-width: 140px;">
+                            Categoria
+                            <select id="headerFiltroCategoria" class="form-control th-select" onchange="aplicarFiltros()">
+                                <option value="">Todas</option>
+                            </select>
+                        </th>
 
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+                        <th>Tags</th>
+                        <th>Und</th>
+                        <th class="text-right">Saldo</th>
+                        <th class="text-right">Custo</th>
+                        <th class="text-right">Venda</th>
+                        <th class="text-center">%CV</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalProduto" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document" style="width: 90%; max-width: 1200px;">
+<div class="modal fade" id="modalIframeProduto" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title" id="modalTituloProduto">Produto</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="carregarProdutos()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="tituloModal" style="color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:ad-product" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Gerenciar Produto
+                </h4>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="produtoId">
-
-                <div class="row">
-                    <div class="col-md-6 col-sm-12">
-                        <div class="demo-checkbox">
-                            <input type="checkbox" id="venda" class="chk-col-blue" />
-                            <label for="venda">Venda</label>
-
-                            <input type="checkbox" id="insumo" class="chk-col-blue" />
-                            <label for="insumo">Insumo</label>
-
-                            <input type="checkbox" id="composicao" class="chk-col-blue" />
-                            <label for="composicao">Composição</label>
-                        </div>
-
-                        <div class="row" style="margin-top: 10px;">
-                            <div class="col-md-6">
-                                <label for="codigo">Código *</label>
-                                <div style="position: relative;">
-                                    <input type="number" id="codigo" class="form-control">
-                                    <span id="erroCodigo" class="text-danger" style="position: absolute; top: 35px; left: 0; font-size: 12px; display: none;">Erro</span>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <label>&nbsp;</label><br>
-                                <a href="javascript:void(0);" id="gerarCodigo" title="Gerar Código">
-                                    <i class="fa fa-plus"></i> Gerar
-                                </a>
-                            </div>
-                        </div>
-                        <br>
-
-                        <div class="form-group">
-                            <label for="codigo_pdv">Código PDV</label>
-                            <input type="text" id="codigo_pdv" class="form-control" placeholder="Código utilizado no PDV">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="ean">EAN (Código de Barras)</label>
-                            <input type="text" id="ean" class="form-control" placeholder="GTIN/EAN">
-                        </div>
-
-                        <div class="form-group" style="margin-top: 10px;">
-                            <label for="nome">Nome *</label>
-                            <input type="text" id="nome" class="form-control" placeholder="Nome do produto">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="categoria">Categoria *</label>
-                            <select id="categoria" class="form-control">
-                                <option value="">Selecione</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="und">Unidade *</label>
-                            <select id="und" class="form-control">
-                                <option value="UND">Unidades (UND)</option>
-                                <option value="L">Litros (L)</option>
-                                <option value="PCT">Pacotes (PCT)</option>
-                                <option value="KG">Quilogramas (KG)</option>
-                            </select>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <span id="labelPrecoCusto" class="label label-default" style="margin-right: 5px;">Preço de Custo: R$ 0,00</span>
-                            <span id="labelSaldo" class="label label-info" style="margin-right: 5px;">Saldo: 0,00</span>
-                            <span id="labelCompravel" class="label label-warning">Comprável: Não</span>
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-1 hidden-sm hidden-xs divider-col">&nbsp;</div>
-
-                    <div class="col-md-6 col-sm-12">
-                        <ul class="nav nav-tabs" role="tablist">
-                            <li class="active"><a href="#composicaoTab" role="tab" data-toggle="tab">Ficha Técnica</a></li>
-                            <li><a href="#fichaTab" role="tab" data-toggle="tab">Ficha de Produção</a></li>
-                            <li><a href="#movimentacoesTab" role="tab" data-toggle="tab">Últimas Movimentações</a></li>
-
-                        </ul>
-                        <div class="tab-content" style="margin-top: 10px; max-height: 400px; overflow-y: auto;">
-                            <div class="tab-pane active" id="composicaoTab">
-                                <table class="table table-striped">
-                                    <thead>
-                                    <tr><th>Insumo</th><th>Quantidade</th></tr>
-                                    </thead>
-                                    <tbody id="tabelaComposicao"></tbody>
-                                </table>
-                            </div>
-                            <div class="tab-pane" id="fichaTab">
-                                <table class="table table-condensed">
-                                    <thead>
-                                    <tr><th>Insumo</th><th>Quantidade</th></tr>
-                                    </thead>
-                                    <tbody id="tabelaFicha"></tbody>
-                                </table>
-                            </div>
-                            <div class="tab-pane" id="movimentacoesTab">
-                                <table class="table table-condensed">
-                                    <thead>
-                                    <tr><th>Data</th><th>Tipo</th><th>Doc</th><th>Qtd</th></tr>
-                                    </thead>
-                                    <tbody id="tabelaMovimentacoes"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div> </div>
-
-            <div class="modal-footer">
-                <button id="salvarProduto" class="btn btn-primary">Salvar</button>
-                <button id="btnDeletarProduto" class="btn btn-danger" style="display:none;">Excluir</button>
-                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+                <iframe id="iframeProduto" src=""></iframe>
             </div>
-
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -281,576 +161,143 @@
 
     const token = new URLSearchParams(window.location.search).get('token');
     const system_unit_id = new URLSearchParams(window.location.search).get('system_unit_id');
-
     const currentUser = new URLSearchParams(window.location.search).get('user');
-    let canDelete = false;
-    const ALLOWED_GROUP_IDS_FOR_DELETE = [1, 2, 3];
 
     let todosProdutos = [];
+    let listaCategoriasGlobal = [];
     let ordenacaoCampo = 'codigo';
     let ordenacaoAsc = true;
 
-    function ordenarPor(campo) {
-        if (ordenacaoCampo === campo) {
-            ordenacaoAsc = !ordenacaoAsc;
-        } else {
-            ordenacaoCampo = campo;
-            ordenacaoAsc = true;
+    // Escuta mensagens vindas do Iframe (filho)
+    window.addEventListener('message', function(event) {
+        if (event.data === 'produtoSalvo' || event.data === 'fecharModal') {
+            $('#modalIframeProduto').modal('hide');
+            carregarProdutos(); // Atualiza a grid
         }
-
-        // Atualiza ícones
-        $('#icon-codigo, #icon-nome').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
-        const iconId = `#icon-${campo}`;
-        $(iconId).removeClass('fa-sort').addClass(ordenacaoAsc ? 'fa-sort-up' : 'fa-sort-down');
-
-        aplicarFiltros(); // re-renderiza ordenado
-    }
-
-    async function carregarPermissoesUsuario() {
-        try {
-            if (!currentUser) return; // se não veio user na URL, não habilita exclusão
-
-            const resp = await axios.post(baseUrl, {
-                method: 'getUserDetails',
-                token,
-                data: { user: currentUser }   // pode ser "1" (id) ou "login"
-            });
-
-            if (resp.data && resp.data.success && resp.data.userDetails && Array.isArray(resp.data.userDetails.groups)) {
-                const groups = resp.data.userDetails.groups;
-                canDelete = groups.some(g => ALLOWED_GROUP_IDS_FOR_DELETE.includes(Number(g.id)));
-            } else {
-                canDelete = false;
-            }
-        } catch (e) {
-            console.warn('Falha ao carregar permissões do usuário:', e);
-            canDelete = false;
-        }
-    }
-
-    $(document).ready(() => {
-
-        $('#filtroVenda, #filtroComposicao, #filtroInsumo, #filtroCompravel').on('change', aplicarFiltros);
-
-        $('#filtroTags').on('change', aplicarFiltros);
-
-
-        $('#gerarCodigo').click(async () => {
-            const isInsumo = $('#insumo').is(':checked');
-            const res = await axios.post(baseUrl, {
-                method: 'getProximoCodigoProduto',
-                token,
-                data: { unit_id: system_unit_id, is_insumo: isInsumo ? 1 : 0 }
-            });
-            $('#codigo').val(res.data.proximo_codigo).trigger('blur');
-        });
-
-        $('#insumo').change(() => {
-            if ($('#insumo').is(':checked')) $('#composicao').prop('checked', false);
-        });
-
-        $('#composicao').change(() => {
-            if ($('#composicao').is(':checked')) $('#insumo').prop('checked', false);
-        });
-
-        $('#codigo').on('blur', async function () {
-            const codigo = $(this).val();
-            const isInsumo = $('#insumo').is(':checked');
-            const $input = $(this);
-            const $erroSpan = $('#erroCodigo');
-
-            $input.removeClass('input-error');
-            $erroSpan.hide();
-
-            if (!codigo) return;
-
-            if (isInsumo && codigo.length < 5) {
-                $input.addClass('input-error');
-                $erroSpan.text('Insumos devem ter código com no mínimo 5 dígitos').show();
-                return;
-            }
-
-            if (!isInsumo && codigo.length > 4) {
-                $input.addClass('input-error');
-                $erroSpan.text('Produtos de venda devem ter código até 4 dígitos').show();
-                return;
-            }
-
-            if (!$('#produtoId').val()) {
-                try {
-                    const res = await axios.post(baseUrl, {
-                        method: 'checkCodigoDisponivel',
-                        token,
-                        data: { codigo, unit_id: system_unit_id }
-                    });
-
-                    if (!res.data.disponivel) {
-                        $input.addClass('input-error');
-                        $erroSpan.text('Código já utilizado. Escolha outro.').show();
-                    }
-                } catch {
-                    $input.addClass('input-error');
-                    $erroSpan.text('Erro ao verificar código').show();
-                }
-            }
-        });
-
-
-        $('#salvarProduto').click(async () => {
-            const data = {
-                id: $('#produtoId').val(),
-                sku_zig: $('#codigo_pdv').val(),
-                ean: $('#ean').val(), // ALTERAÇÃO 4: Adicionado campo EAN no envio
-                unit_id: system_unit_id,
-                codigo: $('#codigo').val(),
-                nome: $('#nome').val(),
-                und: $('#und').val(),
-                categoria: $('#categoria').val(),
-                venda: $('#venda').is(':checked') ? 1 : 0,
-                composicao: $('#composicao').is(':checked') ? 1 : 0,
-                insumo: $('#insumo').is(':checked') ? 1 : 0
-            };
-
-            try {
-                Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-                const method = data.id ? 'updateProduto' : 'createProduto';
-                await axios.post(baseUrl, { method, token, data });
-                Swal.close();
-                $('#modalProduto').modal('hide');
-                carregarProdutos();
-            } catch {
-                Swal.fire('Erro', 'Erro ao salvar produto', 'error');
-            }
-        });
-
-        carregarPermissoesUsuario();
-
-        carregarProdutos();
-        $('#filtroNome, #filtroStatus').on('input change', aplicarFiltros);
     });
 
-    function abrirModalNovo() {
-        $('#modalTituloProduto').text('Novo Produto');
-        $('#produtoId').val('');
-        $('#codigo_pdv').val('');
-        $('#ean').val(''); // ALTERAÇÃO 5: Limpar campo EAN no novo
-        $('#codigo, #nome').val('');
-        $('#categoria').val('');
-        $('#und').val('UND');
-        $('#venda, #composicao, #insumo').prop('checked', false);
-        $('#gerarCodigo').show(); // mostra botão de gerar código
-        $('#codigo').prop('disabled', false); // reabilita campo código
-        loadCategories();
-        $('#tabelaFicha, #tabelaComposicao').empty();
-        $('#modalProduto').modal('show');
-        $('#btnDeletarProduto').hide().off('click');
-        $(document).off('focusin.bs.modal');
+    $(document).ready(() => {
+        initCategorias();
+        carregarProdutos();
 
-    }
+        // Eventos de filtro
+        $('#filtroNome, #filtroStatus').on('input change', aplicarFiltros);
+        $('#filtroVenda, #filtroComposicao, #filtroInsumo, #filtroCompravel').on('change', aplicarFiltros);
+    });
 
-    function showTab(tabId, show) {
-        const $a = $(`a[href="${tabId}"]`);
-        const $li = $a.closest('li');
-        const $pane = $(tabId);
+    async function initCategorias() {
+        try {
+            const response = await axios.post(baseUrl, { method: 'listCategorias', token, data: { unit_id: system_unit_id } });
+            listaCategoriasGlobal = response.data.categorias || [];
 
-        // remove qualquer style inline que tenha sido colocado antes (show/hide)
-        $pane.removeAttr('style');
-
-        if (show) {
-            $li.show();
-            $pane.removeClass('hidden');
-        } else {
-            const wasActive = $li.hasClass('active');
-
-            $li.hide().removeClass('active');
-            $pane.addClass('hidden').removeClass('active in');
-
-            // Se a aba que foi escondida estava ativa, ativa a primeira visível
-            if (wasActive) {
-                const $firstVisibleA = $li.siblings(':visible').first().find('a');
-                if ($firstVisibleA.length) $firstVisibleA.tab('show');
-            }
-        }
-    }
-
-
-
-    async function abrirModalEditar(produto) {
-        $('#gerarCodigo').hide(); // esconde o botão de gerar código
-
-        // ===== Labels (sem NaN) =====
-        const custoNum = toNumberSafe(produto.preco_custo);
-        const saldoNum = toNumberSafe(produto.saldo);
-
-        $('#labelPrecoCusto').text(`Preço de Custo: ${fmtMoney(custoNum)}`);
-        $('#labelSaldo').text(`Saldo: ${fmtNumber(saldoNum, 2)}`);
-
-        $('#labelCompravel')
-            .text(`Comprável: ${produto.compravel == 1 ? 'Sim' : 'Não'}`)
-            .removeClass('label-success label-default')
-            .addClass(produto.compravel == 1 ? 'label-success' : 'label-default');
-
-        // ===== Campos =====
-        $('#modalTituloProduto').text('Editar Produto');
-        $('#produtoId').val(produto.id);
-        $('#codigo_pdv').val(produto.codigo_pdv || '');
-        $('#ean').val(produto.ean || ''); // ALTERAÇÃO 6: Popular campo EAN ao editar
-        $('#codigo').val(produto.codigo).prop('disabled', true);
-        $('#nome').val(produto.nome);
-        $('#und').val(produto.und);
-        $('#categoria').val(produto.categoria);
-        $('#venda').prop('checked', produto.venda == 1);
-        $('#composicao').prop('checked', produto.composicao == 1);
-        $('#insumo').prop('checked', produto.insumo == 1);
-        loadCategories(produto.categoria);
-
-        // ===== RESET tabs/panes (EVITA "empilhar" conteúdos) =====
-        $('#modalProduto .tab-pane')
-            .removeAttr('style')              // remove display:block inline que quebra tab
-            .removeClass('hidden active in'); // limpa classes do bootstrap/controle
-
-        $('#modalProduto .nav-tabs li')
-            .show()
-            .removeClass('active');
-
-        // ativa uma aba padrão temporária (depois ajusta conforme o que existir)
-        $('#modalProduto .nav-tabs li:first a').tab('show');
-
-        // ===== Busca dados =====
-        const [ficha, composicao, movimentacoes] = await Promise.all([
-            axios.post(baseUrl, { method: 'getFichaTecnica', token, data: { system_unit_id, product_id: produto.codigo } }),
-            axios.post(baseUrl, { method: 'getComposicaoByProduto', token, data: { unit_id: system_unit_id, product_id: produto.codigo } }),
-            axios.post(baseUrl, { method: 'getUltimasMovimentacoesProduto', token, data: { system_unit_id, codigo_produto: produto.codigo } })
-        ]);
-
-        // ===== Normaliza arrays =====
-        const fichaArr = Array.isArray(ficha.data) ? ficha.data : (Array.isArray(ficha.data?.data) ? ficha.data.data : []);
-        const compArr  = Array.isArray(composicao.data) ? composicao.data : (Array.isArray(composicao.data?.data) ? composicao.data.data : []);
-        const movArr   = Array.isArray(movimentacoes.data?.movimentacoes) ? movimentacoes.data.movimentacoes : [];
-
-        // ===== Preenche tabelas =====
-        $('#tabelaFicha').html(
-            fichaArr.map(item =>
-                `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity || 0).toFixed(3)}</td></tr>`
-            ).join('')
-        );
-
-        $('#tabelaComposicao').html(
-            compArr.map(item =>
-                `<tr><td>${item.insumo_nome}</td><td>${parseFloat(item.quantity || 0).toFixed(3)}</td></tr>`
-            ).join('')
-        );
-
-        $('#tabelaMovimentacoes').html(
-            movArr.map(m => `
-            <tr>
-                <td>${(m.data || '').toString().split('-').reverse().join('/')}</td>
-                <td>${m.tipo_mov || '-'}</td>
-                <td>${m.doc || '-'}</td>
-                <td>${parseFloat(m.quantidade || 0).toFixed(2)}</td>
-            </tr>
-        `).join('')
-        );
-
-        // ===== Regra: nunca tem as duas (Composição vs Produção) =====
-        const temComposicao = compArr.length > 0;
-        const temProducao   = fichaArr.length > 0;
-        const temMov        = movArr.length > 0;
-
-        // mostra só o que existe (NÃO usa .show()/.hide() no pane!)
-        showTab('#composicaoTab', temComposicao);
-        showTab('#fichaTab', temProducao);
-
-        // se por algum motivo vierem as duas, prioriza composição
-        if (temComposicao && temProducao) showTab('#fichaTab', false);
-
-        // movimentações: (eu recomendo sempre mostrar, mas respeitei sua regra atual)
-        showTab('#movimentacoesTab', temMov);
-
-        // garante aba ativa visível
-        setTimeout(() => {
-            const $activeVisible = $('#modalProduto .nav-tabs li:visible.active');
-            if (!$activeVisible.length) {
-                $('#modalProduto .nav-tabs li:visible:first a').tab('show');
-            }
-        }, 0);
-
-        // ===== Botão deletar =====
-        if (canDelete) {
-            $('#btnDeletarProduto')
-                .show()
-                .off('click')
-                .on('click', async () => {
-                    await excluirProduto(produto.codigo);
-                });
-        } else {
-            $('#btnDeletarProduto').hide().off('click');
-        }
-
-        $('#modalProduto').modal('show');
-    }
-
-    async function excluirProduto(codigo) {
-        await withModalFocusDisabled(async () => {
-            const confirm = await Swal.fire({
-                title: 'Confirma a exclusão permanente?',
-                html: `
-        <p style="text-align:left">
-          Esta ação <b>não poderá ser desfeita</b> e removerá o produto definitivamente.
-        </p>
-        <p style="text-align:left;margin-top:8px">
-          Para confirmar, <b>digite a palavra EXCLUIR</b> no campo abaixo:
-        </p>
-      `,
-                input: 'text',
-                inputPlaceholder: 'Digite EXCLUIR para confirmar',
-                showCancelButton: true,
-                confirmButtonText: 'Apagar',
-                cancelButtonText: 'Cancelar',
-                allowOutsideClick: false,
-                allowEscapeKey: true,
-                returnFocus: false, // não tenta voltar o foco pro botão do Swal
-                didOpen: () => {
-                    const input = Swal.getInput();
-                    if (input) input.focus(); // força foco no campo
-                },
-                preConfirm: (valor) => {
-                    if ((valor || '').trim().toUpperCase() !== 'EXCLUIR') {
-                        Swal.showValidationMessage('Você precisa digitar exatamente: EXCLUIR');
-                    }
-                }
+            const headerSelect = $('#headerFiltroCategoria');
+            headerSelect.find('option:not(:first)').remove();
+            listaCategoriasGlobal.forEach(c => {
+                headerSelect.append(`<option value="${c.codigo}">${c.nome}</option>`);
             });
-
-            if (!confirm.isConfirmed) return;
-
-            try {
-                Swal.fire({ title: 'Processando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-
-                const response = await axios.post(baseUrl, {
-                    method: 'deleteProduto',
-                    token,
-                    data: {
-                        codigo,
-                        unit_id: system_unit_id,
-                        user: currentUser // envia para log no backend
-                    }
-                });
-
-                Swal.close();
-                Swal.fire('Resultado', response.data.message || 'Operação concluída', 'info');
-                $('#modalProduto').modal('hide');
-                carregarProdutos();
-
-            } catch (error) {
-                Swal.fire('Erro', 'Erro ao excluir/inativar produto.', 'error');
-                console.error(error);
-            }
-        });
+        } catch (e) { console.error('Erro categorias', e); }
     }
 
     async function carregarProdutos() {
-        const res = await axios.post(baseUrl, {
-            method: 'listProdutosDetalhado',
-            token,
-            data: { unit_id: system_unit_id }
-        });
-        todosProdutos = res.data.produtos;
-        aplicarFiltros();
+        try {
+            const res = await axios.post(baseUrl, { method: 'listProdutosDetalhado', token, data: { unit_id: system_unit_id } });
+            todosProdutos = res.data.produtos;
+            aplicarFiltros();
+        } catch (e) { console.error(e); }
+    }
+
+    function abrirModalProduto(codigo = null) {
+        let url = `createProduct.html?token=${token}&system_unit_id=${system_unit_id}&user=${currentUser}&mode=iframe`;
+
+        if (codigo) {
+            $('#tituloModal').html('<iconify-icon icon="icon-park-outline:edit" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon> Editar Produto');
+            url += `&codigo=${codigo}`;
+        } else {
+            $('#tituloModal').html('<iconify-icon icon="icon-park-outline:add" style="vertical-align: middle; color: var(--mrk-green);"></iconify-icon> Novo Produto');
+        }
+
+        $('#iframeProduto').attr('src', url);
+        $('#modalIframeProduto').modal('show');
     }
 
     function aplicarFiltros() {
-        const nomeFiltro = $('#filtroNome').val().toLowerCase();
-        const statusFiltro = $('#filtroStatus').val();
+        const termo = $('#filtroNome').val().toLowerCase().trim();
+        const status = $('#filtroStatus').val();
+        const cat = $('#headerFiltroCategoria').val();
 
-        const filtrarVenda = $('#filtroVenda').is(':checked');
-        const filtrarComposicao = $('#filtroComposicao').is(':checked');
-        const filtrarInsumo = $('#filtroInsumo').is(':checked');
-        const filtrarCompravel = $('#filtroCompravel').is(':checked');
+        const fVenda = $('#filtroVenda').is(':checked');
+        const fComp = $('#filtroComposicao').is(':checked');
+        const fIns = $('#filtroInsumo').is(':checked');
+        const fBuy = $('#filtroCompravel').is(':checked');
 
         const tbody = $('#tabela-produtos tbody');
         tbody.empty();
 
         const filtrados = todosProdutos.filter(p => {
-            const termo = (nomeFiltro || '').trim();
-            const nome = String(p.nome || '').toLowerCase();
-            const codigo = String(p.codigo || '').toLowerCase();
-            // ALTERAÇÃO 7: Lógica de filtro por EAN adicionada
-            const ean = String(p.ean || '').toLowerCase();
+            const matchTermo = !termo || String(p.nome).toLowerCase().includes(termo) || String(p.codigo).includes(termo) || String(p.ean).includes(termo);
+            const matchStatus = status === '' || String(p.status) === status;
+            const matchCat = cat === '' || String(p.categoria) === String(cat);
 
-            const nomeCond = termo === '' || nome.includes(termo) || codigo.includes(termo) || ean.includes(termo);
-            const statusCond = statusFiltro === '' || String(p.status) === statusFiltro;
+            const matchTags = (!fVenda || p.venda == 1) && (!fComp || p.composicao == 1) && (!fIns || p.insumo == 1) && (!fBuy || p.compravel == 1);
 
-            const tagsCond =
-                (!filtrarVenda || p.venda == 1) &&
-                (!filtrarComposicao || p.composicao == 1) &&
-                (!filtrarInsumo || p.insumo == 1) &&
-                (!filtrarCompravel || p.compravel == 1);
-
-            return nomeCond && statusCond && tagsCond;
+            return matchTermo && matchStatus && matchCat && matchTags;
         });
 
+        // Ordenação
         filtrados.sort((a, b) => {
-            let valA = a[ordenacaoCampo] || '';
-            let valB = b[ordenacaoCampo] || '';
+            let valA = a[ordenacaoCampo];
+            let valB = b[ordenacaoCampo];
 
-// Se estiver ordenando por código, converte para número
-            if (ordenacaoCampo === 'codigo') {
-                valA = Number(valA);
-                valB = Number(valB);
-            } else {
-                if (typeof valA === 'string') valA = valA.toLowerCase();
-                if (typeof valB === 'string') valB = valB.toLowerCase();
-            }
-
-
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
+            if (ordenacaoCampo === 'codigo') { valA = Number(valA); valB = Number(valB); }
+            else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); }
 
             if (valA < valB) return ordenacaoAsc ? -1 : 1;
             if (valA > valB) return ordenacaoAsc ? 1 : -1;
             return 0;
         });
 
-
-        for (const p of filtrados) {
-            const status = p.status == 1
-                ? '<span class="label label-success">Ativo</span>'
-                : '<span class="label label-default">Inativo</span>';
+        filtrados.forEach(p => {
+            const statusBadge = p.status == 1 ? '<span class="badge-status st-1">Ativo</span>' : '<span class="badge-status st-0">Inativo</span>';
 
             let tags = '';
-            if (p.venda == 1) tags += '<span class="label label-primary" style="margin-right:2px;">Venda</span>';
-            if (p.composicao == 1) tags += '<span class="label label-info" style="margin-right:2px;">Composição</span>';
-            if (p.insumo == 1) tags += '<span class="label label-warning" style="margin-right:2px;">Insumo</span>';
-            if (p.compravel == 1) tags += '<span class="label label-purple" style="margin-right:2px; background-color: #7e57c2;">Comprável</span>';
+            if (p.venda == 1) tags += '<span class="badge-tag bg-venda">Venda</span>';
+            if (p.composicao == 1) tags += '<span class="badge-tag bg-composicao">Comp</span>';
+            if (p.insumo == 1) tags += '<span class="badge-tag bg-insumo">Insumo</span>';
+            if (p.compravel == 1) tags += '<span class="badge-tag bg-compravel">Compra</span>';
 
-            // Preço venda
-            const precoVendaNum = Number(p.preco ?? 0);
-            const precoVendaFmt = (!isNaN(precoVendaNum) && precoVendaNum > 0)
-                ? `R$ ${precoVendaNum.toFixed(2)}`
-                : '-';
+            const catObj = listaCategoriasGlobal.find(c => String(c.codigo) === String(p.categoria));
+            const catNome = catObj ? catObj.nome : '-';
 
-// Preço custo (pode vir como número ou string "R$ 12.34")
-            const custoNum = Number(String(p.preco_custo ?? '0').replace('R$', '').trim());
-            const custoValido = !isNaN(custoNum) && custoNum > 0;
+            // Tratamento simples para o preço de venda (caso venha 0 no JSON, mostra "R$ 0.00" para manter padrão visual)
+            const precoVenda = p.preco ? `R$ ${parseFloat(p.preco).toFixed(2)}` : 'R$ 0.00';
 
-// %CV = custo / venda
-            let cvFmt = '-';
-            if (custoValido && !isNaN(precoVendaNum) && precoVendaNum > 0) {
-                const cv = (custoNum / precoVendaNum) * 100;
-                cvFmt = `${cv.toFixed(2)}%`;
-            }
-
-
-            // ALTERAÇÃO 8: EAN inserido na linha da tabela
             tbody.append(`
-                <tr>
-                    <td class="text-center">
-                        <a href="#" title="Editar" onclick='abrirModalEditar(${JSON.stringify(p)})'>
-                            <i class="far fa-edit blue" style="color: #0d6aad"></i>
-                        </a>
-                    </td>
-                    <td class="text-center">
-                        <a href="#" onclick="excluirProduto('${p.codigo}')" title="Excluir/Inativar">
-                            <i class="fa fa-power-off orange" style="color: orange"></i>
-                        </a>
-                    </td>
-                    <td>${p.codigo}</td>
-                    <td>${p.nome}</td>
-                    <td>${p.ean || '-'}</td>
-                    <td>${tags}</td>
-                    <td>${p.und || '-'}</td>
-                    <td>${p.saldo}</td>
-                    <td>${p.preco_custo}</td>
-                    <td>${precoVendaFmt}</td>
-                    <td>${cvFmt}</td>
-                    <td class="text-center">${status}</td>
-
-
-                </tr>
-            `);
-
-        }
-    }
-
-    async function loadCategories(selectedCategory = null) {
-        const response = await axios.post(baseUrl, {
-            method: 'listCategorias',
-            token,
-            data: { unit_id: system_unit_id }
+            <tr>
+                <td class="text-center actions-cell">
+                    <a href="#" onclick="abrirModalProduto('${p.codigo}')" title="Editar">
+                        <iconify-icon icon="icon-park-outline:edit" width="18" style="color:var(--mrk-blue)"></iconify-icon>
+                    </a>
+                </td>
+                <td><strong>${p.codigo}</strong></td>
+                <td>${p.nome}</td>
+                <td>${p.ean || ''}</td>
+                <td>${catNome}</td>
+                <td>${tags}</td>
+                <td>${p.und || ''}</td>
+                <td class="text-right">${p.saldo}</td>
+                <td class="text-right">${p.preco_custo}</td>
+                <td class="text-right">${precoVenda}</td>
+                <td class="text-center"><small>${p.percentual_cv}</small></td>
+                <td class="text-center">${statusBadge}</td>
+            </tr>
+        `);
         });
-
-        const select = $('#categoria');
-        select.empty().append('<option value="">Selecione</option>');
-        response.data.categorias.forEach(c => {
-            select.append(`<option value="${c.codigo}">${c.nome}</option>`);
-        });
-
-        if (selectedCategory) {
-            select.val(selectedCategory);
-        }
     }
-
-    function toNumberSafe(v) {
-        if (v === null || v === undefined) return 0;
-
-        if (typeof v === 'number') return v;
-
-        let s = String(v).trim();
-
-        // casos tipo "-" ou vazio
-        if (!s || s === '-') return 0;
-
-        // remove "R$" e qualquer coisa que não seja número/virgula/ponto/sinal
-        s = s.replace(/R\$\s?/gi, '').replace(/[^0-9.,-]/g, '');
-
-        // trata formato PT-BR: "1.234,56" -> "1234.56"
-        if (s.includes(',') && s.includes('.')) {
-            s = s.replace(/\./g, '').replace(',', '.');
-        } else if (s.includes(',')) {
-            s = s.replace(',', '.');
-        }
-
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
+    function ordenarPor(campo) {
+        if (ordenacaoCampo === campo) ordenacaoAsc = !ordenacaoAsc;
+        else { ordenacaoCampo = campo; ordenacaoAsc = true; }
+        aplicarFiltros();
     }
-
-    function fmtMoney(v) {
-        return `R$ ${toNumberSafe(v).toFixed(2)}`;
-    }
-
-    function fmtNumber(v, dec = 2) {
-        return toNumberSafe(v).toFixed(dec);
-    }
-
-
-    function withModalFocusDisabled(fn) {
-        // guarda a função original do Bootstrap que força foco no modal
-        const originalEnforceFocus = $.fn.modal && $.fn.modal.Constructor
-            ? $.fn.modal.Constructor.prototype.enforceFocus
-            : null;
-
-        // desativa a forçagem de foco do Bootstrap
-        try {
-            if (originalEnforceFocus) {
-                $.fn.modal.Constructor.prototype.enforceFocus = function () {};
-                // "cinto e suspensório": remove o handler global que trava o focus
-                $(document).off('focusin.bs.modal');
-            }
-        } catch (e) {
-            // ignora se não existir Bootstrap ou algo assim
-        }
-
-        // executa a função (normalmente um await Swal.fire(...))
-        return Promise.resolve()
-            .then(fn)
-            .finally(() => {
-                // restaura comportamento original
-                if (originalEnforceFocus) {
-                    $.fn.modal.Constructor.prototype.enforceFocus = originalEnforceFocus;
-                }
-            });
-    }
-
 </script>
 </body>
 </html>

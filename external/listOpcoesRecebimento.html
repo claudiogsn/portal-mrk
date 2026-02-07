@@ -5,90 +5,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Opções de Recebimento</title>
 
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
-
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        th, td { vertical-align: middle !important; }
+        /* Ajustes Específicos */
         .select2-container { width: 100% !important; z-index: 9999; }
 
-        /* Cores para os ícones nas ações */
-        i.blue { color: #2196F3; cursor: pointer; }
-        i.blue:hover { color: #0d47a1; }
+        .badge-taxa { background-color: var(--mrk-red); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-prazo { background-color: var(--mrk-blue); color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
 
-        i.red { color: #F44336; cursor: pointer; }
-        i.red:hover { color: #b71c1c; }
-
-        i.orange { color: #FF9800; cursor: pointer; }
-        i.orange:hover { color: #e65100; }
-
-        /* Badges */
-        .badge-taxa { background-color: #E91E63; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
-        .badge-prazo { background-color: #00BCD4; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
-        .badge-banco { background-color: #607D8B; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
-        .plano-code { font-family: monospace; color: #555; font-weight: bold; background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
-
-    </style>
-</head>
-<script>
-    // --- LÓGICA PARA MODO IFRAME (EMBED) ---
-    $(document).ready(function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const isIframe = urlParams.get('mode') === 'iframe';
-
-        if (isIframe) {
-            // Esconde elementos desnecessários do template BSB/Admin
-            $('body').addClass('iframe-mode'); // Classe auxiliar
-            $('.navbar, .sidebar, .search-bar, footer').hide(); // Esconde barras do template
-            $('section.content').css('margin', '0').css('padding', '10px'); // Remove margens laterais
-
-            // Ajusta o card para ocupar 100% sem bordas extras
-            $('.card').css('box-shadow', 'none').css('margin-bottom', '0');
-
-            // Se quiser abrir o modal de cadastro automaticamente ao carregar
-            if(urlParams.get('action') === 'new') {
-                setTimeout(abrirModalNovo, 500);
-            }
+        .badge-banco {
+            background-color: #f5f5f5;
+            color: #555;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            border: 1px solid #ddd;
+            display: inline-flex; align-items: center; gap: 5px;
         }
-    });
-</script>
+
+        .plano-code {
+            font-family: 'Poppins', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            background: #e3f2fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* Ações na Tabela */
+        .actions-cell a {
+            display: inline-flex;
+            text-decoration: none;
+            margin: 0 5px;
+            transition: transform 0.2s;
+        }
+        .actions-cell a:hover { transform: scale(1.15); }
+
+        /* Modo Iframe */
+        body.iframe-mode { background: #fff; padding: 10px; }
+        body.iframe-mode .card { box-shadow: none; border: 1px solid #eee; margin-bottom: 0; }
+    </style>
+
+    <script>
+        // Detecção de Modo Iframe
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('mode') === 'iframe') {
+                document.body.classList.add('iframe-mode');
+                if(urlParams.get('action') === 'new') setTimeout(abrirModalNovo, 500);
+            }
+        });
+    </script>
+</head>
 
 <body class="theme-blue">
 <div class="container-fluid">
     <br>
     <div class="card">
-        <div class="header">
-            <h2>Opções de Recebimento</h2>
-            <small>Gerencie taxas, prazos e vincule códigos do PDV.</small>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-solid:bank-card" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                OPÇÕES DE RECEBIMENTO
+            </h2>
+            <small class="muted" style="display:block; margin-top:5px; margin-left:29px;">
+                Gerencie taxas, prazos e vínculos com o PDV.
+            </small>
         </div>
         <div class="body">
 
-            <div class="row">
+            <div class="row clearfix">
                 <div class="col-md-3">
-                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar por código">
+                    <label class="muted">Filtrar Código</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:topic"></iconify-icon></span>
+                        <input type="text" id="filtroCodigo" class="form-control" placeholder="Cód.">
+                    </div>
                 </div>
                 <div class="col-md-5">
-                    <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome">
+                    <label class="muted">Filtrar Nome</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                        <input type="text" id="filtroNome" class="form-control" placeholder="Nome da opção...">
+                    </div>
                 </div>
-                <div class="col-md-4 text-right">
-                    <button class="btn btn-success" id="btnNovaOpcao">
-                        <i class="fa fa-plus"></i> Nova Opção
+                <div class="col-md-4 text-right" style="padding-top: 25px;">
+                    <button class="btn btn-success waves-effect" id="btnNovaOpcao">
+                        <iconify-icon icon="icon-park-outline:add" width="16" style="vertical-align: middle; margin-right: 4px;"></iconify-icon>
+                        Nova Opção
                     </button>
                 </div>
             </div>
@@ -97,8 +115,7 @@
                 <table class="table table-striped table-hover" id="tabela-opcoes">
                     <thead>
                     <tr>
-                        <th style="width: 100px;"></th>
-
+                        <th style="width: 120px; text-align: center;">Ações</th>
                         <th style="width: 100px;">Código</th>
                         <th>Nome</th>
                         <th style="width: 100px;">Taxa</th>
@@ -116,54 +133,57 @@
 
 <div class="modal fade" id="modalOpcao" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="modalTitle">Cadastrar Opção</h4>
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="border-bottom: 2px solid var(--mrk-blue);">
+                <h4 class="modal-title" id="modalTitle" style="color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:edit" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Cadastrar Opção
+                </h4>
             </div>
             <div class="modal-body">
                 <form id="formOpcao">
                     <input type="hidden" id="opcaoId">
 
-                    <div class="row">
+                    <div class="row clearfix">
                         <div class="col-md-4">
-                            <label>Código (Interno)</label>
+                            <label class="muted">Código (Interno)</label>
                             <input type="text" class="form-control" id="codigo" placeholder="Ex: CREDIT01">
                         </div>
                         <div class="col-md-8">
-                            <label>Nome *</label>
+                            <label class="muted">Nome *</label>
                             <input type="text" class="form-control" id="nome" placeholder="Ex: Visa Crédito" required>
                         </div>
                     </div>
 
-                    <div class="row">
+                    <div class="row clearfix">
                         <div class="col-md-6">
-                            <label>Taxa (%)</label>
+                            <label class="muted">Taxa (%)</label>
                             <input type="number" step="0.01" class="form-control" id="taxa" value="0.00">
                         </div>
                         <div class="col-md-6">
-                            <label>Prazo (Dias)</label>
+                            <label class="muted">Prazo (Dias)</label>
                             <input type="number" class="form-control" id="prazo" value="0">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Plano de Contas</label>
-                        <select id="plano_contas_id" class="form-control">
+                        <label class="muted">Plano de Contas</label>
+                        <select id="plano_contas_id" class="form-control" style="width: 100%;">
                             <option value="">Selecione...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Banco para Depósito</label>
-                        <select id="banco_id" class="form-control">
+                        <label class="muted">Banco para Depósito</label>
+                        <select id="banco_id" class="form-control" style="width: 100%;">
                             <option value="">Sem vínculo</option>
                         </select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="btnSalvar">Salvar Dados</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnSalvar">Salvar Dados</button>
             </div>
         </div>
     </div>
@@ -171,42 +191,42 @@
 
 <div class="modal fade" id="modalVinculos" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="padding: 15px;">
-                <h4 class="modal-title">
-                    <i class="fa fa-link"></i> Vincular Meios do PDV
-                    <br><small id="tituloVinculoOpcao">Opção: ...</small>
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="background: #fff8e1; border-bottom: 2px solid var(--mrk-amber);">
+                <h4 class="modal-title" style="color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:link-one" style="vertical-align: middle; color: var(--mrk-amber);"></iconify-icon>
+                    Vincular Meios do PDV
+                    <br><small id="tituloVinculoOpcao" class="muted" style="font-size:12px;">Opção: ...</small>
                 </h4>
             </div>
             <div class="modal-body">
 
-                <div class="well">
-                    <div class="row">
+                <div class="well" style="background: #fff; border: 1px solid #eee; box-shadow: none;">
+                    <div class="row clearfix">
                         <div class="col-md-3">
-                            <label>Código PDV *</label>
+                            <label class="muted">Código PDV *</label>
                             <input type="text" id="vinc_codigo_meio" class="form-control" placeholder="Ex: VISA">
                         </div>
-                        <div class="col-md-4">
-                            <label>Nome PDV *</label>
+                        <div class="col-md-5">
+                            <label class="muted">Nome PDV *</label>
                             <input type="text" id="vinc_nome_meio" class="form-control" placeholder="Ex: Visa Crédito">
                         </div>
-                        <div class="col-md-2">
-                            <label>&nbsp;</label>
-                            <button type="button" class="btn btn-success btn-block" onclick="adicionarVinculo()">
-                                <i class="fa fa-plus"></i>
+                        <div class="col-md-4" style="padding-top: 25px;">
+                            <button type="button" class="btn btn-success btn-block waves-effect" onclick="adicionarVinculo()">
+                                <iconify-icon icon="icon-park-outline:add" style="vertical-align: middle;"></iconify-icon> Adicionar
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <h5>Vínculos Existentes:</h5>
+                <h5 class="muted" style="font-size:13px; text-transform:uppercase; margin-bottom:10px;">Vínculos Existentes</h5>
                 <div class="table-responsive">
-                    <table class="table table-striped table-vinculos" id="tabela-vinculos">
+                    <table class="table table-striped table-hover" id="tabela-vinculos">
                         <thead>
                         <tr>
                             <th>Código PDV</th>
                             <th>Nome PDV</th>
-                            <th>Data</th>
+                            <th>Data Criação</th>
                             <th style="width: 50px;">Ação</th>
                         </tr>
                         </thead>
@@ -221,6 +241,12 @@
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -241,12 +267,9 @@
             return;
         }
 
-        $('#plano_contas_id').select2({
-            dropdownParent: $('#modalOpcao'),
-            width: '100%',
-            placeholder: 'Selecione o plano...',
-            allowClear: true
-        });
+        // Select2
+        $('#plano_contas_id').select2({ dropdownParent: $('#modalOpcao'), width: '100%', placeholder: 'Selecione o plano...', allowClear: true });
+        $('#banco_id').select2({ dropdownParent: $('#modalOpcao'), width: '100%', placeholder: 'Selecione o banco...', allowClear: true });
 
         carregarComboBancos();
         carregarPlanos();
@@ -285,46 +308,35 @@
 
     async function listarOpcoes() {
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'listOpcoesRecebimento',
-                token,
-                data: { system_unit_id }
-            });
-
+            const res = await axios.post(baseUrl, { method: 'listOpcoesRecebimento', token, data: { system_unit_id } });
             opcoesCache = res.data.data || res.data;
             const tbody = $('#tabela-opcoes tbody').empty();
 
             if (!opcoesCache || opcoesCache.length === 0) {
-                tbody.append('<tr><td colspan="7" class="text-center text-muted">Nenhum registro.</td></tr>');
+                tbody.append('<tr><td colspan="7" class="text-center muted" style="padding:20px;">Nenhum registro encontrado.</td></tr>');
                 return;
             }
 
             opcoesCache.forEach(o => {
                 const infoPlano = o.plano_contas_id
-                    ? `<div><b class="plano-code">${o.plano_contas_id}</b></div><div style="font-size: 10px; color: #777;">${o.nome_plano_contas || ''}</div>`
-                    : '<span class="text-muted">-</span>';
+                    ? `<div><span class="plano-code">${o.plano_contas_id}</span></div><div style="font-size: 10px; color: #777;">${o.nome_plano_contas || ''}</div>`
+                    : '<span class="muted" style="font-size:11px;">-</span>';
 
                 const infoBanco = o.nome_banco
-                    ? `<span class="badge-banco"><i class="fa fa-university"></i> ${o.nome_banco}</span>`
-                    : '<small class="text-muted">Nenhum</small>';
+                    ? `<span class="badge-banco"><iconify-icon icon="icon-park-outline:bank"></iconify-icon> ${o.nome_banco}</span>`
+                    : '<small class="muted">Nenhum</small>';
 
-                // AQUI ESTÁ A ALTERAÇÃO:
-                // 1. Coluna de Ações movida para o início.
-                // 2. Usando tags <a> com ícones coloridos em vez de botões.
-                // 3. Classes btn-vincular, btn-editar mantidas para o jQuery funcionar.
                 tbody.append(`
                 <tr data-id="${o.id}" data-codigo="${o.codigo || ''}" data-nome="${o.nome}">
-                    <td class="text-center">
-                        <a href="javascript:void(0)" class="btn-vincular" title="Vincular Meios">
-                            <i class="fa fa-link orange"></i>
+                    <td class="text-center actions-cell">
+                        <a href="javascript:void(0)" class="btn-vincular" title="Vincular Meios" style="color:var(--mrk-amber);">
+                            <iconify-icon icon="icon-park-outline:link-one" width="18"></iconify-icon>
                         </a>
-                        &nbsp;&nbsp;
-                        <a href="javascript:void(0)" class="btn-editar" title="Editar">
-                            <i class="fa fa-edit blue"></i>
+                        <a href="javascript:void(0)" class="btn-editar" title="Editar" style="color:var(--mrk-blue);">
+                            <iconify-icon icon="icon-park-outline:edit" width="18"></iconify-icon>
                         </a>
-                        &nbsp;&nbsp;
-                        <a href="javascript:void(0)" class="btn-excluir" title="Excluir">
-                            <i class="fa fa-trash red"></i>
+                        <a href="javascript:void(0)" class="btn-excluir" title="Excluir" style="color:var(--mrk-red);">
+                            <iconify-icon icon="icon-park-outline:delete" width="18"></iconify-icon>
                         </a>
                     </td>
                     <td><strong>${o.codigo || '-'}</strong></td>
@@ -337,17 +349,15 @@
                 `);
             });
             filtrarTabela();
-        } catch (e) {
-            console.error(e);
-            Swal.fire('Erro', 'Falha ao listar.', 'error');
-        }
+        } catch (e) { console.error(e); Swal.fire('Erro', 'Falha ao listar.', 'error'); }
     }
 
     function abrirModalNovo() {
-        $('#modalTitle').text('Cadastrar Opção');
+        $('#modalTitle').html('<iconify-icon icon="icon-park-outline:add-mode" style="vertical-align: middle; color: var(--mrk-green);"></iconify-icon> Cadastrar Opção');
         $('#opcaoId').val('');
         $('#formOpcao')[0].reset();
         $('#plano_contas_id').val('').trigger('change');
+        $('#banco_id').val('').trigger('change');
         $('#modalOpcao').modal('show');
     }
 
@@ -355,13 +365,13 @@
         const id = $(this).closest('tr').data('id');
         const o = opcoesCache.find(x => x.id == id);
         if (!o) return;
-        $('#modalTitle').text('Editar: ' + o.nome);
+        $('#modalTitle').html('<iconify-icon icon="icon-park-outline:edit" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon> Editar: ' + o.nome);
         $('#opcaoId').val(o.id);
         $('#codigo').val(o.codigo);
         $('#nome').val(o.nome);
         $('#taxa').val(o.taxa);
         $('#prazo').val(o.prazo);
-        $('#banco_id').val(o.banco_id);
+        $('#banco_id').val(o.banco_id).trigger('change');
         $('#plano_contas_id').val(o.plano_contas_id).trigger('change');
         $('#modalOpcao').modal('show');
     });
@@ -369,8 +379,7 @@
     async function salvarOpcao() {
         const id = $('#opcaoId').val();
         const data = {
-            id,
-            system_unit_id,
+            id, system_unit_id,
             codigo: $('#codigo').val(),
             nome: $('#nome').val(),
             taxa: $('#taxa').val(),
@@ -424,28 +433,24 @@
 
     async function carregarListaVinculos() {
         const tbody = $('#tabela-vinculos tbody').empty();
-        tbody.append('<tr><td colspan="5" class="text-center"><i class="fa fa-spinner fa-spin"></i></td></tr>');
+        tbody.append('<tr><td colspan="5" class="text-center"><iconify-icon icon="icon-park-outline:loading-four" class="fa-spin"></iconify-icon></td></tr>');
         try {
-            const res = await axios.post(baseUrl, {
-                method: 'listMeiosPorOpcao',
-                token,
-                data: { system_unit_id, codigo_opcao: currentOpcaoCodigo }
-            });
+            const res = await axios.post(baseUrl, { method: 'listMeiosPorOpcao', token, data: { system_unit_id, codigo_opcao: currentOpcaoCodigo } });
             tbody.empty();
             const lista = res.data.data || [];
-            if(lista.length === 0) {
-                tbody.append('<tr><td colspan="5" class="text-center text-muted">Vazio.</td></tr>');
-                return;
-            }
+            if(lista.length === 0) { tbody.append('<tr><td colspan="5" class="text-center muted">Sem vínculos.</td></tr>'); return; }
+
             lista.forEach(m => {
                 const data = m.created_at ? new Date(m.created_at).toLocaleDateString('pt-BR') : '-';
                 tbody.append(`
                     <tr>
-                        <td class="text-primary font-bold">${m.codigo_meio}</td>
+                        <td style="color:var(--mrk-blue); font-weight:600;">${m.codigo_meio}</td>
                         <td>${m.nome_meio}</td>
                         <td>${data}</td>
                         <td class="text-center">
-                            <button class="btn btn-danger btn-xs" onclick="removerVinculo(${m.id})"><i class="fa fa-trash"></i></button>
+                            <button class="btn btn-default btn-xs" onclick="removerVinculo(${m.id})" title="Remover">
+                                <iconify-icon icon="icon-park-outline:close" style="color:var(--mrk-red);"></iconify-icon>
+                            </button>
                         </td>
                     </tr>
                 `);
@@ -480,18 +485,6 @@
             if(res.data.success) carregarListaVinculos();
             else Swal.fire('Erro', res.data.message, 'error');
         } catch(e) { console.error(e); }
-    }
-
-    async function importarPadrao() {
-        const plano = $('#plano_contas_id').val();
-        if(!plano) return Swal.fire('Atenção', 'Selecione um Plano de Contas.', 'warning');
-        const conf = await Swal.fire({ title: 'Importar Padrão?', icon: 'question', showCancelButton: true });
-        if(!conf.isConfirmed) return;
-        Swal.fire({ title: 'Aguarde...', didOpen: () => Swal.showLoading() });
-        try {
-            await axios.post(baseUrl, { method: 'importarOpcoesPadrao', token, data: { system_unit_id, plano_contas_id: plano } });
-            listarOpcoes(); Swal.fire('Sucesso', '', 'success');
-        } catch (e) { Swal.fire('Erro', '', 'error'); }
     }
 
     function filtrarTabela() {

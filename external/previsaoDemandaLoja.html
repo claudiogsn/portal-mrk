@@ -7,110 +7,22 @@
 
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
-
-    <style>
-        /* --- Identidade Visual MRK --- */
-        :root {
-            --mrk-blue:  #0B46AC;
-            --mrk-green: #08A794;
-            --mrk-gray:  #EBEBEB;
-            --mrk-black: #191F2A;
-            --mrk-amber: #f59e0b;
-        }
-
-        /* Overrides Gerais */
-        html, body { background-color: transparent !important; font-family: 'Roboto', sans-serif; }
-        .card { border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .card .header h2 { color: var(--mrk-black); font-weight: bold; }
-
-        /* Botões */
-        .btn-primary, .btn-primary:hover, .btn-primary:active, .btn-primary:focus {
-            background-color: var(--mrk-blue) !important;
-        }
-
-        /* Checkboxes (Cor Azul MRK) */
-        .chk-col-blue:checked + label:before {
-            background-color: var(--mrk-blue) !important;
-            border-color: var(--mrk-blue) !important;
-        }
-
-        /* Inputs */
-        .form-control:focus {
-            border-color: var(--mrk-blue);
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(11, 70, 172, 0.4);
-        }
-
-        /* --- Toggle Segmentado (Abas) --- */
-        .segmented-control {
-            display: inline-flex;
-            background-color: #e0e0e0;
-            border-radius: 30px;
-            padding: 4px;
-            position: relative;
-            user-select: none;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
-        }
-
-        .segment-option {
-            padding: 8px 25px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            color: #666;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .segment-option:hover { color: var(--mrk-black); }
-
-        /* Estado Ativo do Toggle */
-        .segment-option.active {
-            background-color: var(--mrk-blue);
-            color: white;
-            box-shadow: 0 2px 5px rgba(11, 70, 172, 0.4);
-            transform: scale(1.02);
-        }
-
-        /* Tabela */
-        .table-striped > tbody > tr:nth-of-type(odd) { background-color: #f8faff; }
-        .table-striped > tbody > tr:hover { background-color: #eef2f8; }
-
-        .category-header td {
-            background-color: var(--mrk-gray) !important;
-            color: var(--mrk-black);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 12px;
-            border-top: 2px solid #ccc;
-            letter-spacing: 0.5px;
-        }
-
-        /* Input da Tabela */
-        .recomendado-input {
-            text-align: center;
-            font-weight: bold;
-            color: var(--mrk-black);
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            max-width: 100px;
-        }
-
-        .modal-body { max-height: 500px; overflow-y: auto; }
-        .hide-print { display: none !important; }
-    </style>
+    <link href="style/mrk.css" rel="stylesheet" />
 </head>
 <body class="theme-blue">
 
@@ -124,24 +36,27 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="header">
-                    <h2><i class="material-icons" style="vertical-align: bottom; color: var(--mrk-blue);">trending_up</i> Previsão Demanda - Loja</h2>
+                    <h2>
+                        <iconify-icon icon="icon-park-solid:chart-line" width="24" style="color: #0B46AC; vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                        PREVISÃO DEMANDA - LOJA
+                    </h2>
                 </div>
                 <div class="body">
                     <form id="transferForm">
 
                         <div class="row clearfix">
                             <div class="col-md-12 text-center">
-                                <p style="margin-bottom: 8px; color: #777;"><b>Selecione o Método de Cálculo</b></p>
+                                <p style="margin-bottom: 8px; color: #777; font-family: 'Kanit', sans-serif;"><b>SELECIONE O MÉTODO DE CÁLCULO</b></p>
 
                                 <input type="checkbox" id="calc-method-toggle" style="display:none;">
 
                                 <div class="segmented-control">
                                     <div class="segment-option active" id="seg-historico" onclick="toggleSegment(false)">
-                                        <i class="material-icons" style="font-size: 18px;">history</i>
+                                        <iconify-icon icon="icon-park-outline:history" width="18" style="margin-right: 6px;"></iconify-icon>
                                         Média Histórica
                                     </div>
                                     <div class="segment-option" id="seg-projecao" onclick="toggleSegment(true)">
-                                        <i class="material-icons" style="font-size: 18px;">show_chart</i>
+                                        <iconify-icon icon="icon-park-outline:analysis" width="18" style="margin-right: 6px;"></iconify-icon>
                                         Projeção Definida
                                     </div>
                                 </div>
@@ -151,7 +66,7 @@
 
                         <div class="row">
                             <div class="col-md-12">
-                                <h5 style="color: var(--mrk-blue); margin-bottom: 15px;">Período de Análise</h5>
+                                <h5 style="color: #0B46AC; margin-bottom: 15px; font-family: 'Kanit', sans-serif;">PERÍODO DE ANÁLISE</h5>
                                 <div class="demo-checkbox">
                                     <input type="checkbox" id="day_0" class="chk-col-blue" /> <label for="day_0">Domingo</label>
                                     <input type="checkbox" id="day_1" class="chk-col-blue" /> <label for="day_1">Segunda</label>
@@ -167,18 +82,19 @@
 
                         <div class="row">
                             <div class="col-md-4">
-                                <label for="unit-select">Unidade</label>
-                                <select id="unit-select" class="form-control" required>
-                                    <option value="">Selecione</option>
+                                <label for="unit-select" style="font-family: 'Kanit', sans-serif;">Empresa</label>
+                                <select id="unit-select" class="form-control" style="width: 100%;" required>
+                                    <option value="">Carregando...</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label for="modelos-select">Modelo de Balanço:</label>
+                                <label for="modelos-select" style="font-family: 'Kanit', sans-serif;">Modelo de Balanço:</label>
                                 <select id="modelos-select" name="modelos-select" class="form-control"></select>
                             </div>
                             <div class="col-md-2" style="margin-top: 25px;">
                                 <button type="button" id="add-item" class="btn btn-primary waves-effect btn-block">
-                                    <i class="material-icons">search</i> CONSULTAR
+                                    <iconify-icon icon="icon-park-outline:search" width="18" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                                    CONSULTAR
                                 </button>
                             </div>
                         </div>
@@ -209,10 +125,12 @@
     <center>
         <div class="text-center" style="margin-top: 20px; margin-bottom: 40px;">
             <button id="print-filtered-button" class="btn btn-primary waves-effect">
-                <i class="material-icons">print</i> Imprimir Filtrado
+                <iconify-icon icon="icon-park-outline:printer" width="18" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                Imprimir Filtrado
             </button>
             <button id="print-full-button" class="btn btn-default waves-effect">
-                <i class="material-icons">print</i> Imprimir Completo
+                <iconify-icon icon="icon-park-outline:printer" width="18" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                Imprimir Completo
             </button>
         </div>
     </center>
@@ -223,16 +141,14 @@
 <script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    // Função Global para o Toggle (precisa estar fora do DOMContentLoaded ou anexada ao window)
     window.toggleSegment = function(isProjecao) {
         const check = document.getElementById('calc-method-toggle');
         const btnHist = document.getElementById('seg-historico');
         const btnProj = document.getElementById('seg-projecao');
-
         check.checked = isProjecao;
-
         if (isProjecao) {
             btnHist.classList.remove('active');
             btnProj.classList.add('active');
@@ -243,7 +159,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Configurações Iniciais ---
         const baseUrl = window.location.hostname !== 'localhost'
             ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
             : 'http://localhost/portal-mrk/api/v1/index.php';
@@ -256,168 +171,121 @@
         let unitName = '';
         let userName = '';
 
-        // --- Funções de Data ---
         function getSelectedDayIndices() {
             const dias = [];
-            for (let i = 0; i <= 6; i++) {
-                if (document.getElementById(`day_${i}`).checked) dias.push(i);
-            }
+            for (let i = 0; i <= 6; i++) { if (document.getElementById(`day_${i}`).checked) dias.push(i); }
             return dias;
         }
 
         function calcularUltimas4DatasPorSemana() {
             const today = new Date();
             const diasSelecionados = getSelectedDayIndices();
-
             if (diasSelecionados.length === 0) {
                 Swal.fire('Atenção', 'Selecione pelo menos um dia da semana.', 'warning');
                 return [];
             }
-
             function getLastDatesForDay(dayOfWeek) {
                 const dates = [];
                 let currentDate = new Date(today);
                 currentDate.setDate(currentDate.getDate() - 1);
-
                 while (dates.length < 4) {
-                    if (currentDate.getDay() === dayOfWeek) {
-                        dates.push(new Date(currentDate));
-                    }
+                    if (currentDate.getDay() === dayOfWeek) dates.push(new Date(currentDate));
                     currentDate.setDate(currentDate.getDate() - 1);
                 }
                 return dates;
             }
-
             const allDates = [];
             diasSelecionados.forEach(day => allDates.push(...getLastDatesForDay(day)));
             return Array.from(new Set(allDates.map(date => date.toISOString().split('T')[0]))).sort();
         }
 
-        // --- Carregamentos ---
         async function loadUnidades() {
             try {
-                const res = await axios.post(baseUrl, {
-                    method: 'getFiliaisByMatriz',
-                    token: token,
-                    data: { unit_matriz_id: username }
-                });
+                const res = await axios.post(baseUrl, { method: 'getFiliaisByMatriz', token: token, data: { unit_matriz_id: username } });
                 const select = document.getElementById('unit-select');
+
+                // Limpa e prepara
+                select.innerHTML = '<option value="">Selecione uma empresa</option>';
+
                 res.data.forEach(filial => {
                     select.appendChild(new Option(filial.filial_nome, filial.filial_id));
                 });
-            } catch(e) { console.error("Erro ao carregar unidades", e); }
+
+                // Inicializa o Select2 APÓS carregar os dados
+                $('#unit-select').select2({
+                    placeholder: 'Pesquise a empresa...',
+                    allowClear: true,
+                    language: { noResults: () => "Nenhuma empresa encontrada" }
+                });
+
+                // Listener do Select2 para disparar o carregamento de modelos
+                $('#unit-select').on('select2:select', function (e) {
+                    loadModelos(e.params.data.id);
+                });
+
+            } catch(e) {
+                console.error("Erro unidades", e);
+                $('#unit-select').html('<option>Erro ao carregar</option>');
+            }
         }
 
         async function loadModelos(unitId) {
             const select = document.getElementById('modelos-select');
             select.innerHTML = '<option disabled selected>Carregando...</option>';
-
             try {
-                const res = await axios.post(baseUrl, {
-                    method: 'listModelosWithProducts',
-                    token: token,
-                    data: { unit_id: unitId }
-                });
-
+                const res = await axios.post(baseUrl, { method: 'listModelosWithProducts', token: token, data: { unit_id: unitId } });
                 select.innerHTML = '<option value="">Selecione um modelo</option>';
-                res.data.modelos.forEach(modelo => {
-                    select.appendChild(new Option(modelo.nome, modelo.tag));
-                });
-            } catch (e) {
-                select.innerHTML = '<option value="">Erro ao carregar</option>';
-            }
+                res.data.modelos.forEach(modelo => select.appendChild(new Option(modelo.nome, modelo.tag)));
+            } catch (e) { select.innerHTML = '<option value="">Erro ao carregar</option>'; }
         }
 
         async function loadProdutosDoModelo(tag) {
             try {
-                const res = await axios.post(baseUrl, {
-                    method: 'getModelByTag',
-                    data: { tag: tag }
-                });
+                const res = await axios.post(baseUrl, { method: 'getModelByTag', data: { tag: tag } });
                 const produtosModelo = res.data.itens;
                 importedProductCodes = [];
                 for (const cat in produtosModelo) {
                     produtosModelo[cat].forEach(i => importedProductCodes.push(i.codigo_produto));
                 }
-            } catch(e) { console.error("Erro ao carregar produtos", e); }
+            } catch(e) { console.error("Erro produtos", e); }
         }
 
-        // --- CÁLCULO PRINCIPAL ---
         async function calcularNecessidades() {
-            const selectedUnitId = document.getElementById('unit-select').value;
+            // Pega o valor do Select2
+            const selectedUnitId = $('#unit-select').val();
             const allSelectedProducts = importedProductCodes;
             const isProjecao = document.getElementById('calc-method-toggle').checked;
             const diasIndices = getSelectedDayIndices();
 
             if (!selectedUnitId || diasIndices.length === 0 || allSelectedProducts.length === 0) {
-                Swal.fire('Atenção', 'Preencha unidade, dias e modelo.', 'warning');
+                Swal.fire('Atenção', 'Preencha empresa, dias e modelo.', 'warning');
                 return;
             }
 
-            // Atualiza Título da Coluna
             const thVendas = document.querySelector('#result-table thead th:nth-child(3)');
             thVendas.innerText = isProjecao ? "Projeção (+)" : "Média Vendas (+)";
 
-            Swal.fire({
-                title: isProjecao ? 'Calculando Projeção...' : 'Calculando Histórico...',
-                html: 'Aguarde um momento',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+            Swal.fire({ title: 'Calculando...', didOpen: () => Swal.showLoading() });
 
             try {
                 let result;
-
                 if (isProjecao) {
-                    // MODO PROJEÇÃO
-                    const response = await axios.post(baseUrl, {
-                        method: 'getInsumoProjection',
-                        token: token,
-                        data: {
-                            system_unit_id: selectedUnitId,
-                            daysOfWeek: diasIndices,
-                            insumoIds: allSelectedProducts,
-                            user_id: username
-                        }
-                    });
+                    const response = await axios.post(baseUrl, { method: 'getInsumoProjection', token: token, data: { system_unit_id: selectedUnitId, daysOfWeek: diasIndices, insumoIds: allSelectedProducts, user_id: username } });
                     result = response.data;
-
                 } else {
-                    // MODO HISTÓRICO
                     const dates = calcularUltimas4DatasPorSemana();
-
-                    const configResp = await axios.post(baseUrl, {
-                        method: 'getConfigGroupByUnitId',
-                        token: token,
-                        data: { system_unit_id: selectedUnitId }
-                    });
-
+                    const configResp = await axios.post(baseUrl, { method: 'getConfigGroupByUnitId', token: token, data: { system_unit_id: selectedUnitId } });
                     const useTop3 = configResp?.data?.consumo_media3 == 1;
                     const metodo = useTop3 ? 'getInsumoConsumptionTop3' : 'getInsumoConsumption';
-
-                    const response = await axios.post(baseUrl, {
-                        method: metodo,
-                        token: token,
-                        data: {
-                            system_unit_id: selectedUnitId,
-                            dates: dates,
-                            productCodes: allSelectedProducts,
-                            insumoIds: allSelectedProducts,
-                            username: username,
-                            user_id: username
-                        }
-                    });
+                    const response = await axios.post(baseUrl, { method: metodo, token: token, data: { system_unit_id: selectedUnitId, dates: dates, productCodes: allSelectedProducts, insumoIds: allSelectedProducts, username: username, user_id: username } });
                     result = response.data;
                 }
 
-                if (!result || !Array.isArray(result.consumos)) {
-                    throw new Error("Resposta inválida da API");
-                }
+                if (!result || !Array.isArray(result.consumos)) throw new Error("Erro API");
 
                 unitName = result.unidade;
                 userName = result.usuario;
 
-                // Agrupamento e Renderização
                 const produtosAgrupados = result.consumos.reduce((acc, produto) => {
                     if (!acc[produto.categoria]) acc[produto.categoria] = [];
                     acc[produto.categoria].push(produto);
@@ -426,127 +294,60 @@
 
                 renderItensByCategory(produtosAgrupados);
                 Swal.close();
-
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Erro', 'Falha ao processar dados.', 'error');
-            }
+            } catch (error) { console.error(error); Swal.fire('Erro', 'Falha ao processar.', 'error'); }
         }
 
         function renderItensByCategory(itens) {
             const tbody = $('#result-table tbody');
             tbody.empty();
-
             for (const categoria in itens) {
-                tbody.append(`
-                    <tr class="category-header">
-                        <td colspan="5">${categoria}</td>
-                    </tr>
-                `);
-
+                tbody.append(`<tr class="category-header"><td colspan="5">${categoria}</td></tr>`);
                 itens[categoria].forEach(produto => {
-                    tbody.append(`
-                        <tr>
-                            <td>${produto.codigo}</td>
-                            <td>${produto.nome || 'Produto não encontrado'}</td>
-                            <td>${produto.sales}</td>
-                            <td>${produto.saldo}</td>
-                            <td>
-                                <input type="number" step="0.01" class="form-control recomendado-input"
-                                       value="${produto.recomendado}" />
-                            </td>
-                        </tr>
-                    `);
+                    tbody.append(`<tr>
+                        <td>${produto.codigo}</td>
+                        <td>${produto.nome || 'Produto não encontrado'}</td>
+                        <td>${produto.sales}</td>
+                        <td>${produto.saldo}</td>
+                        <td><input type="number" step="0.01" class="form-control recomendado-input" value="${produto.recomendado}" /></td>
+                    </tr>`);
                 });
             }
         }
 
-        // --- Impressão ---
         function printTable(columnsToHide = []) {
             const table = document.getElementById('result-table');
-
-            // Fixa os valores dos inputs no HTML
             const inputs = table.querySelectorAll('.recomendado-input');
             inputs.forEach(input => {
                 input.parentElement.setAttribute('data-print-val', input.value);
                 input.parentElement.innerHTML = `<strong>${input.value}</strong>`;
             });
-
             const clone = table.cloneNode(true);
-
-            // Oculta colunas
             if(columnsToHide.length > 0) {
                 const rows = clone.rows;
                 for (let i = 0; i < rows.length; i++) {
                     for (let j = columnsToHide.length - 1; j >= 0; j--) {
-                        if (rows[i].cells.length > columnsToHide[j]) {
-                            rows[i].deleteCell(columnsToHide[j]);
-                        }
+                        if (rows[i].cells.length > columnsToHide[j]) rows[i].deleteCell(columnsToHide[j]);
                     }
                 }
             }
-
             const currentDateTime = new Date().toLocaleString('pt-BR');
             const win = window.open('', '', 'height=700,width=900');
-
-            win.document.write(`
-                <html><head><title>Impressão</title>
-                <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-                <style>
-                    body{padding:20px; font-family: sans-serif;}
-                    table{width:100%; border-collapse:collapse; margin-top:15px;}
-                    td,th{border:1px solid #ccc; padding:6px; font-size: 12px;}
-                    .category-header td{background:#eee;font-weight:bold; text-transform:uppercase;}
-                    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;}
-                    .header img { height: 50px; }
-                </style>
-                </head><body>
-                <div class="header">
-                    <div>
-                        <h3>Portal MRK - Previsão de Demanda</h3>
-                        <small>Unidade: ${unitName} | Gerado em: ${currentDateTime}</small>
-                    </div>
-                    <img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" />
-                </div>
-                ${clone.outerHTML}
-                <br><br>
-                <div style="border-top:1px solid #000; width:300px; text-align:center; padding-top:5px;">Responsável</div>
-                </body></html>
-            `);
-
+            // Alterado "Unidade" para "Empresa" na impressão
+            win.document.write(`<html><head><title>Impressão</title><link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600&family=Poppins:wght@400;500&display=swap" rel="stylesheet"><link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet"><style>body{padding:20px; font-family: 'Poppins', sans-serif; color: #191F2A;} h3 { font-family: 'Kanit', sans-serif; color: #0B46AC; } table{width:100%; border-collapse:collapse; margin-top:15px;} td,th{border:1px solid #ccc; padding:6px; font-size: 12px;} .category-header td{background:#EBEBEB; font-family: 'Kanit', sans-serif; font-weight:bold; text-transform:uppercase;} .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;} .header img { height: 50px; }</style></head><body><div class="header"><div><h3>Portal MRK - Previsão de Demanda</h3><small>Empresa: ${unitName} | Gerado em: ${currentDateTime}</small></div><img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" /></div>${clone.outerHTML}<br><br><div style="border-top:1px solid #000; width:300px; text-align:center; padding-top:5px;">Responsável</div></body></html>`);
             win.document.close();
-            // Espera carregar imagem antes de imprimir
             setTimeout(() => { win.print(); win.close(); }, 500);
-
-            // Restaura Inputs na tela original
             inputs.forEach(input => {
                 const val = input.parentElement.getAttribute('data-print-val');
                 input.parentElement.innerHTML = `<input type="number" step="0.01" class="form-control recomendado-input" value="${val}" />`;
             });
         }
 
-        // --- Event Listeners ---
-        document.getElementById('unit-select').addEventListener('change', function() {
-            if (this.value) loadModelos(this.value);
-        });
-
-        document.getElementById('modelos-select').addEventListener('change', function() {
-            if (this.value) loadProdutosDoModelo(this.value);
-        });
-
+        // Listeners
+        document.getElementById('modelos-select').addEventListener('change', function() { if (this.value) loadProdutosDoModelo(this.value); });
         document.getElementById('add-item').addEventListener('click', calcularNecessidades);
+        document.getElementById('print-full-button').addEventListener('click', (e) => { e.preventDefault(); printTable([]); });
+        document.getElementById('print-filtered-button').addEventListener('click', (e) => { e.preventDefault(); printTable([2, 3]); });
 
-        document.getElementById('print-full-button').addEventListener('click', (e) => {
-            e.preventDefault(); printTable([]);
-        });
-
-        document.getElementById('print-filtered-button').addEventListener('click', (e) => {
-            e.preventDefault();
-            // Oculta colunas 2 (Vendas) e 3 (Saldo), mantendo Código, Produto e Recomendado
-            printTable([2, 3]);
-        });
-
-        // Inicializa
         loadUnidades();
     });
 </script>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Produto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <link href="style/mrk.css" rel="stylesheet">
+
+    <style>
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        .card { box-shadow: none; border: 1px solid #eee; margin-bottom: 20px; }
+
+        /* Abas */
+        .nav-tabs > li > a { color: #555; font-weight: 500; }
+        .nav-tabs > li.active > a, .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover {
+            color: var(--mrk-blue); border-top: 2px solid var(--mrk-blue); font-weight: 600;
+        }
+
+        .input-group-addon { background: transparent; border: none; padding-right: 10px; }
+        .form-control { background: #fff; }
+
+        /* Footer */
+        .floating-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #fff; padding: 15px; border-top: 1px solid #ddd;
+            text-align: right; z-index: 999;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            display: none;
+        }
+
+        .content-body { padding-bottom: 70px; display: none; }
+        .input-error { border-color: var(--mrk-red) !important; }
+        .error-msg { color: var(--mrk-red); font-size: 11px; display: none; margin-top: 2px; }
+
+        /* Skeleton Loader */
+        .skeleton-wrapper { display: block; padding-bottom: 50px; }
+        .skeleton {
+            background: #e0e0e0; border-radius: 4px; margin-bottom: 10px;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        .sk-title { height: 30px; width: 40%; margin-bottom: 20px; }
+        .sk-input { height: 45px; width: 100%; margin-bottom: 15px; }
+        .sk-big { height: 300px; width: 100%; }
+
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Ajuste fino Select2 para alinhar com inputs do BSB */
+        .select2-container .select2-selection--single {
+            height: 34px !important;
+            padding-top: 2px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            top: 4px !important;
+        }
+    </style>
+</head>
+<body>
+
+<div id="skeleton-screen" class="skeleton-wrapper">
+    <div class="row clearfix">
+        <div class="col-md-7">
+            <div class="card" style="padding: 20px;">
+                <div class="skeleton sk-title"></div>
+                <div class="row">
+                    <div class="col-md-8"><div class="skeleton sk-input"></div></div>
+                    <div class="col-md-4"><div class="skeleton sk-input"></div></div>
+                </div>
+                <div class="skeleton sk-input"></div>
+                <div class="skeleton sk-input"></div>
+                <div class="row">
+                    <div class="col-md-6"><div class="skeleton sk-input"></div></div>
+                    <div class="col-md-6"><div class="skeleton sk-input"></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="card" style="padding: 20px;">
+                <div class="skeleton sk-title"></div>
+                <div class="skeleton sk-big"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="real-content" class="content-body">
+    <input type="hidden" id="produtoId">
+
+    <div class="row clearfix">
+        <div class="col-md-7 col-sm-12">
+            <div class="card">
+                <div class="header"><h2>Dados Cadastrais</h2></div>
+                <div class="body">
+                    <div class="demo-checkbox mb-3">
+                        <input type="checkbox" id="venda" class="chk-col-blue" /> <label for="venda">Venda</label>
+                        <input type="checkbox" id="insumo" class="chk-col-blue" /> <label for="insumo">Insumo</label>
+                        <input type="checkbox" id="composicao" class="chk-col-blue" /> <label for="composicao">Composição</label>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label class="muted">Código *</label>
+                            <div class="input-group">
+                                <input type="number" id="codigo" class="form-control" placeholder="Automático">
+                                <span class="input-group-addon" style="padding:0; padding-left:5px;">
+                                    <button class="btn btn-default btn-sm" id="gerarCodigo" title="Gerar">
+                                        <iconify-icon icon="icon-park-outline:refresh"></iconify-icon>
+                                    </button>
+                                </span>
+                            </div>
+                            <small class="error-msg" id="erroCodigo"></small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="muted">Cód. PDV</label>
+                            <input type="text" id="codigo_pdv" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <label class="muted">EAN</label>
+                            <input type="text" id="ean" class="form-control" placeholder="GTIN/EAN-13">
+                        </div>
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <label class="muted">Nome *</label>
+                            <input type="text" id="nome" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <label class="muted">Categoria *</label>
+                            <select id="categoria" class="form-control select2" style="width: 100%;">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="muted">Unidade *</label>
+                            <select id="und" class="form-control">
+                                <option value="UND">Unidades (UND)</option>
+                                <option value="KG">Quilogramas (KG)</option>
+                                <option value="L">Litros (L)</option>
+                                <option value="PCT">Pacote (PCT)</option>
+                                <option value="CX">Caixa (CX)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div style="background: #f0f4f8; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between;">
+                                <div><small class="muted">Preço Custo</small><br><strong id="labelPrecoCusto">R$ 0,00</strong></div>
+                                <div><small class="muted">Saldo</small><br><strong id="labelSaldo" style="color: var(--mrk-blue);">0,000</strong></div>
+                                <div><span id="labelCompravel" class="badge-status st-0">Não Comprável</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5 col-sm-12">
+            <div class="card">
+                <div class="body" style="padding: 0;">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active"><a href="#composicaoTab" data-toggle="tab">Composição</a></li>
+                        <li role="presentation"><a href="#movimentacoesTab" data-toggle="tab">Movimentações</a></li>
+                    </ul>
+                    <div class="tab-content" style="padding: 15px; height: 380px; overflow-y: auto;">
+                        <div role="tabpanel" class="tab-pane active" id="composicaoTab">
+                            <table class="table table-striped">
+                                <thead><tr><th>Insumo</th><th class="text-right">Qtd</th><th class="text-right">Custo</th></tr></thead>
+                                <tbody id="tabelaComposicao"></tbody>
+                            </table>
+                            <div id="msgSemComposicao" class="text-center muted" style="padding:20px; display:none;">Sem ficha técnica.</div>
+                        </div>
+                        <div role="tabpanel" class="tab-pane" id="movimentacoesTab">
+                            <table class="table table-condensed">
+                                <thead><tr><th>Data</th><th>Tipo</th><th class="text-right">Qtd</th></tr></thead>
+                                <tbody id="tabelaMovimentacoes"></tbody>
+                            </table>
+                            <div id="msgSemMov" class="text-center muted" style="padding:20px; display:none;">Nenhuma movimentação.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="floating-footer" id="mainFooter">
+    <button type="button" class="btn btn-danger pull-left" id="btnExcluir" style="display: none;">Excluir</button>
+    <button type="button" class="btn btn-default" onclick="cancelar()">Cancelar</button>
+    <button type="button" class="btn btn-success" id="btnSalvar">Salvar</button>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const system_unit_id = params.get('system_unit_id');
+    const currentUser = params.get('user');
+    const codigoEdicao = params.get('codigo');
+
+    let canDelete = true;
+    const ALLOWED_GROUP_IDS_FOR_DELETE = [1, 2, 3];
+
+    $(document).ready( () => {
+
+        // 1. INICIALIZA O SELECT2
+        $('.select2').select2({
+            width: '100%',
+            placeholder: 'Selecione uma categoria...',
+            allowClear: true,
+            language: {
+                noResults: function() {
+                    return "Nenhum resultado encontrado";
+                }
+            }
+        });
+
+        try {
+            Promise.all([
+                carregarPermissoesUsuario(),
+                loadCategories()
+            ]);
+
+            if (codigoEdicao) {
+                 carregarDetalhesProduto(codigoEdicao);
+            } else {
+                $('#codigo').prop('disabled', false);
+                $('#gerarCodigo').show();
+                $('#und').val('UND');
+                removerSkeleton();
+            }
+
+            $('#gerarCodigo').click(gerarProximoCodigo);
+            $('#btnSalvar').click(salvarProduto);
+            $('#btnExcluir').click(() => excluirProduto(codigoEdicao));
+            $('#codigo').on('blur', validarCodigoInput);
+
+            $('#insumo').change(function() { if($(this).is(':checked')) $('#composicao').prop('checked', false); });
+            $('#composicao').change(function() { if($(this).is(':checked')) $('#insumo').prop('checked', false); });
+
+        } catch (err) {
+            console.error('Erro init:', err);
+            Swal.fire('Erro', 'Falha ao iniciar. Verifique o console.', 'error');
+        }
+    });
+
+    function removerSkeleton() {
+        $('#skeleton-screen').fadeOut(300, function() {
+            $('#real-content').fadeIn(300);
+            $('#mainFooter').show();
+        });
+    }
+
+    async function loadCategories() {
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listCategorias',
+                token: token,
+                data: { unit_id: system_unit_id }
+            });
+
+            const select = $('#categoria');
+
+            // Limpa, mas mantém o placeholder compatível com Select2
+            select.empty().append('<option value="">Selecione...</option>');
+
+            if (response.data && Array.isArray(response.data.categorias)) {
+                response.data.categorias.forEach(c => {
+                    select.append(`<option value="${c.codigo}">${c.codigo} - ${c.nome}</option>`);
+                });
+            }
+
+            // ATUALIZA O SELECT2 APÓS CARREGAR DADOS
+            select.trigger('change');
+
+        } catch (e) { console.error('Erro categorias:', e); }
+    }
+
+    async function carregarDetalhesProduto(codigo) {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getProdutoDetalhado',
+                token: token,
+                data: {
+                    system_unit_id: system_unit_id,
+                    codigo: codigo
+                }
+            });
+
+            if (!res.data || !res.data.success || !res.data.data) {
+                Swal.fire('Erro', 'Produto não encontrado ou erro na API.', 'error');
+                return;
+            }
+
+            const dados = res.data.data;
+            const produto = dados.produto;
+            const composicao = dados.composicao || [];
+            const producao = dados.producao || [];
+            const movs = dados.movimentacoes || [];
+
+            $('#produtoId').val(produto.id);
+            $('#codigo').val(produto.codigo).prop('disabled', true);
+            $('#gerarCodigo').hide();
+            $('#codigo_pdv').val(produto.sku_zig || produto.codigo_pdv || '');
+            $('#ean').val(produto.ean || '');
+            $('#nome').val(produto.nome);
+
+            // IMPORTANTE: .val().trigger('change') PARA O SELECT2 FUNCIONAR
+            $('#categoria').val(produto.categoria).trigger('change');
+
+            $('#und').val(produto.und || 'UND');
+
+            $('#venda').prop('checked', produto.venda == 1);
+            $('#insumo').prop('checked', produto.insumo == 1);
+            $('#composicao').prop('checked', produto.composicao == 1);
+
+            const custo = parseFloat(produto.preco_custo || 0);
+            const saldo = parseFloat(produto.saldo || 0);
+            $('#labelPrecoCusto').text(`R$ ${custo.toFixed(2)}`);
+            $('#labelSaldo').text(saldo.toFixed(3));
+
+            if(produto.compravel == 1) {
+                $('#labelCompravel').text('Comprável').removeClass('st-0').addClass('st-1');
+            } else {
+                $('#labelCompravel').text('Não Comprável').removeClass('st-1').addClass('st-0');
+            }
+
+            if (canDelete) $('#btnExcluir').show();
+
+            const listaIngredientes = producao.length > 0 ? producao : composicao;
+            const tbodyComp = $('#tabelaComposicao');
+            tbodyComp.empty();
+
+            if (listaIngredientes.length > 0) {
+                $('#msgSemComposicao').hide();
+                listaIngredientes.forEach(item => {
+                    const qtd = parseFloat(item.quantity);
+                    const custoItem = parseFloat(item.custo_atual_insumo || 0);
+                    const totalItem = custoItem * qtd;
+
+                    tbodyComp.append(`
+                        <tr>
+                            <td>${item.insumo_nome || 'Item ' + item.insumo_id}</td>
+                            <td class="text-right">${qtd.toFixed(3)} ${item.insumo_und || ''}</td>
+                            <td class="text-right"><small class="muted">R$ ${totalItem.toFixed(2)}</small></td>
+                        </tr>
+                    `);
+                });
+            } else {
+                $('#msgSemComposicao').show();
+            }
+
+            const tbodyMov = $('#tabelaMovimentacoes');
+            tbodyMov.empty();
+
+            if (movs.length > 0) {
+                $('#msgSemMov').hide();
+                movs.forEach(m => {
+                    const dataFmt = m.data ? m.data.split('-').reverse().join('/') : '-';
+                    const qtd = parseFloat(m.quantidade || 0);
+                    const color = qtd < 0 ? 'text-danger' : 'text-success';
+
+                    tbodyMov.append(`
+                        <tr>
+                            <td>${dataFmt}</td>
+                            <td>${m.tipo_mov || m.tipo || '-'}</td>
+                            <td class="text-right ${color}"><strong>${qtd.toFixed(2)}</strong></td>
+                        </tr>
+                    `);
+                });
+            } else {
+                $('#msgSemMov').show();
+            }
+
+            removerSkeleton();
+
+        } catch (e) {
+            console.error('Erro carregar detalhes:', e);
+            Swal.fire('Erro', 'Falha ao comunicar com o servidor.', 'error');
+        }
+    }
+
+    // --- Outras Funções ---
+
+    async function gerarProximoCodigo() {
+        const isInsumo = $('#insumo').is(':checked');
+        try {
+            const res = await axios.post(baseUrl, { method: 'getProximoCodigoProduto', token, data: { unit_id: system_unit_id, is_insumo: isInsumo ? 1 : 0 } });
+            if(res.data && res.data.proximo_codigo) {
+                $('#codigo').val(res.data.proximo_codigo).removeClass('input-error');
+                $('#erroCodigo').hide();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function validarCodigoInput() {
+        if(codigoEdicao) return;
+        const codigo = $(this).val();
+        if (!codigo) return;
+
+        const isInsumo = $('#insumo').is(':checked');
+        const $input = $(this);
+        const $erroSpan = $('#erroCodigo');
+
+        $input.removeClass('input-error'); $erroSpan.hide();
+
+        if (isInsumo && codigo.length < 5) {
+            $input.addClass('input-error'); $erroSpan.text('Mínimo 5 dígitos').show(); return;
+        }
+        if (!isInsumo && codigo.length > 4) {
+            $input.addClass('input-error'); $erroSpan.text('Máximo 4 dígitos').show(); return;
+        }
+
+        try {
+            const res = await axios.post(baseUrl, { method: 'checkCodigoDisponivel', token, data: { codigo, unit_id: system_unit_id } });
+            if (res.data && !res.data.disponivel) {
+                $input.addClass('input-error');
+                $erroSpan.text('Código já em uso.').show();
+            }
+        } catch { console.error('Erro validação'); }
+    }
+
+    async function salvarProduto() {
+        const codigo = $('#codigo').val();
+        const nome = $('#nome').val();
+
+        if(!codigo || !nome) {
+            Swal.fire('Atenção', 'Preencha Código e Nome.', 'warning');
+            return;
+        }
+
+        const data = {
+            id: $('#produtoId').val(),
+            sku_zig: $('#codigo_pdv').val(),
+            ean: $('#ean').val(),
+            unit_id: system_unit_id,
+            codigo: codigo,
+            nome: nome,
+            und: $('#und').val(),
+            categoria: $('#categoria').val(),
+            venda: $('#venda').is(':checked') ? 1 : 0,
+            composicao: $('#composicao').is(':checked') ? 1 : 0,
+            insumo: $('#insumo').is(':checked') ? 1 : 0
+        };
+
+        try {
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+            const method = codigoEdicao ? 'updateProduto' : 'createProduto';
+            await axios.post(baseUrl, { method, token, data });
+            Swal.close();
+            window.parent.postMessage('produtoSalvo', '*');
+        } catch (e) {
+            Swal.fire('Erro', 'Não foi possível salvar.', 'error');
+        }
+    }
+
+    async function excluirProduto(codigo) {
+        const confirm = await Swal.fire({
+            title: 'Excluir?',
+            text: 'Digite EXCLUIR para confirmar.',
+            input: 'text',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            preConfirm: (v) => v === 'EXCLUIR'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        try {
+            Swal.showLoading();
+            await axios.post(baseUrl, { method: 'deleteProduto', token, data: { codigo, unit_id: system_unit_id, user: currentUser } });
+            Swal.close();
+            window.parent.postMessage('produtoSalvo', '*');
+        } catch (e) { Swal.fire('Erro', 'Falha ao excluir.', 'error'); }
+    }
+
+    function cancelar() {
+        window.parent.postMessage('fecharModal', '*');
+    }
+
+    async function carregarPermissoesUsuario() {
+        try {
+            if (!currentUser) return;
+            const resp = await axios.post(baseUrl, { method: 'getUserDetails', token, data: { user: currentUser } });
+            if (resp.data?.userDetails?.groups) {
+                canDelete = resp.data.userDetails.groups.some(g => ALLOWED_GROUP_IDS_FOR_DELETE.includes(Number(g.id)));
+            }
+        } catch (e) {}
+    }
+</script>
+
+</body>
+</html>

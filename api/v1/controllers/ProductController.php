@@ -1800,5 +1800,125 @@ class ProductController {
         }
     }
 
+    public static function getProdutoDetalhado($system_unit_id, $codigo)
+    {
+        global $pdo;
+
+        if (empty($system_unit_id) || empty($codigo)) {
+            return ['success' => false, 'message' => 'Parâmetros system_unit_id e codigo são obrigatórios.'];
+        }
+
+        try {
+            // 1. Buscar dados principais do produto
+            $sqlProduto = "
+            SELECT 
+                p.*,
+                c.nome AS nome_categoria
+            FROM products p
+            LEFT JOIN categorias c 
+                ON c.codigo = p.categoria 
+               AND c.system_unit_id = p.system_unit_id
+            WHERE p.system_unit_id = :unit_id 
+              AND p.codigo = :codigo
+            LIMIT 1
+            ";
+
+            $stmt = $pdo->prepare($sqlProduto);
+            $stmt->execute([
+                ':unit_id' => $system_unit_id,
+                ':codigo'  => $codigo
+            ]);
+
+            $produto = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$produto) {
+                return ['success' => false, 'message' => 'Produto não encontrado.'];
+            }
+
+            // Formatação de valores monetários e numéricos para padrão de API (float)
+            $produto['preco']       = (float)$produto['preco'];
+            $produto['preco_custo'] = (float)$produto['preco_custo'];
+            $produto['saldo']       = (float)$produto['saldo'];
+
+            // 2. Buscar Composição (Tabela compositions - Venda/Kit)
+            $sqlComposicao = "
+            SELECT 
+                c.id,
+                c.insumo_id,
+                p.nome AS insumo_nome,
+                p.und AS insumo_und,
+                c.quantity,
+                p.preco_custo AS custo_atual_insumo
+            FROM compositions c
+            INNER JOIN products p 
+                ON p.codigo = c.insumo_id 
+               AND p.system_unit_id = c.system_unit_id
+            WHERE c.product_id = :codigo 
+              AND c.system_unit_id = :unit_id
+            ";
+            $stmtComp = $pdo->prepare($sqlComposicao);
+            $stmtComp->execute([':unit_id' => $system_unit_id, ':codigo' => $codigo]);
+            $composicao = $stmtComp->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. Buscar Ficha de Produção (Tabela productions - Industrialização)
+            // Caso seu sistema utilize uma tabela separada para produção
+            $sqlProducao = "
+            SELECT 
+                pr.id,
+                pr.insumo_id,
+                p.nome AS insumo_nome,
+                p.und AS insumo_und,
+                pr.quantity,
+                pr.rendimento
+            FROM productions pr
+            INNER JOIN products p 
+                ON p.codigo = pr.insumo_id 
+               AND p.system_unit_id = pr.system_unit_id
+            WHERE pr.product_id = :codigo 
+              AND pr.system_unit_id = :unit_id
+            ";
+            $stmtProd = $pdo->prepare($sqlProducao);
+            $stmtProd->execute([':unit_id' => $system_unit_id, ':codigo' => $codigo]);
+            $producao = $stmtProd->fetchAll(PDO::FETCH_ASSOC);
+
+            // 4. Buscar Últimas Movimentações (Histórico)
+            $sqlMov = "
+            SELECT 
+                m.data,
+                m.tipo,     -- 'e' ou 's'
+                m.tipo_mov, -- 'compra', 'venda', 'ajuste', etc
+                m.doc,
+                m.quantidade,
+                m.valor
+            FROM movimentacao m
+            WHERE m.produto = :codigo 
+              AND m.system_unit_id = :unit_id
+              AND m.status = 1
+            ORDER BY m.data DESC, m.id DESC
+            LIMIT 10
+            ";
+            $stmtMov = $pdo->prepare($sqlMov);
+            $stmtMov->execute([':unit_id' => $system_unit_id, ':codigo' => $codigo]);
+            $movimentacoes = $stmtMov->fetchAll(PDO::FETCH_ASSOC);
+
+            // Retorno estruturado
+            return [
+                'success' => true,
+                'data' => [
+                    'produto'       => $produto,
+                    'composicao'    => $composicao, // Ingredientes do Kit/Prato
+                    'producao'      => $producao,   // Ingredientes da produção
+                    'movimentacoes' => $movimentacoes
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao buscar detalhes do produto: ' . $e->getMessage()
+            ];
+        }
+    }
+
 }
 ?>

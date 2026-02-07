@@ -26,8 +26,7 @@ class LoginForm extends TPage
         $this->style = 'clear:both';
         // creates the form
         $this->form = new BootstrapFormBuilder('form_login');
-        $this->form->setFormTitle( 'Faça seu login para acessar' );
-        
+
         // create the form fields
         $login = new TEntry('login');
         $password = new TPassword('password');
