@@ -1,175 +1,508 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <title>Lista de Balanços</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-     <!-- Google Fonts -->
-     <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
- 
-     <!-- Bootstrap Core Css -->
-     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
- 
-     <!-- Waves Effect Css -->
-     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
- 
-     <!-- Animation Css -->
-     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
- 
-     <!-- JQuery DataTable Css -->
-     <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
- 
-     <!-- SweetAlert Css -->
-     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
- 
-     <!-- Custom Css -->
-     <link href="bsb/css/style.css" rel="stylesheet">
-     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
- 
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
-        .table-container {
-            position: relative;
+        /* Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Checkbox Custom */
+        .chk-col-blue:checked + label:before {
+            background-color: var(--mrk-blue) !important;
+            border-color: var(--mrk-blue) !important;
         }
 
-        .spinner {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        /* Botão Ação (Olho) */
+        .btn-action {
+            color: var(--mrk-blue);
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
         }
+        .btn-action:hover { transform: scale(1.1); color: var(--mrk-black); }
 
-        /* Estilo da linha selecionada */
-        .selected-row {
-            background-color: rgba(0, 123, 255, 0.2); /* Azul com baixa opacidade */
-        }
+        /* Linha selecionada */
+        tr.selected-row td { background-color: #e3f2fd !important; }
 
-        
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Modal Custom */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; }
     </style>
 </head>
 
 <body class="theme-blue">
 
-    <div class="page-loader-wrapper">
-        <div class="loader">
-            <div class="preloader">
-                <div class="spinner-layer pl-blue">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
+<div class="container-fluid">
+
+    <div class="card">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:clipboard" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                LISTA DE BALANÇOS
+            </h2>
+        </div>
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataInicial" class="form-control">
+                        </div>
                     </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
+                    <div class="col-md-3">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataFinal" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-6" style="margin-top: 22px; text-align: right;">
+                        <button id="btnBuscar" class="btn btn-primary waves-effect" style="margin-right: 5px;">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            BUSCAR
+                        </button>
+                        <button id="btnExportarSelecionados" class="btn btn-success waves-effect">
+                            <iconify-icon icon="icon-park-outline:file-excel" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            EXPORTAR SELECIONADOS
+                        </button>
                     </div>
                 </div>
             </div>
-            <p>Aguarde...</p>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="balancosTable">
+                    <thead>
+                    <tr>
+                        <th width="40" class="text-center">
+                            <input type="checkbox" id="selectAll" class="chk-col-blue" />
+                            <label for="selectAll" style="margin:0; height:18px;"></label>
+                        </th>
+                        <th width="60" class="text-center">Ações</th>
+                        <th width="150">Documento</th>
+                        <th>Data de Criação</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr><td colspan="4" class="text-center muted" style="padding: 30px;">Utilize os filtros para buscar balanços.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
+</div>
 
-    <div class="container-fluid">
-        <!-- Filtros e Ações -->
-        <div class="header-card">
-            <div class="row">
-                <div class="col-md-3">
-                    <input type="date" id="dataInicial" class="form-control" placeholder="Data Inicial">
-                </div>
-                <div class="col-md-3">
-                    <input type="date" id="dataFinal" class="form-control" placeholder="Data Final">
-                </div>
-                <div class="col-md-3 text-right">
-                    <button id="btnBuscar" class="btn btn-primary">Buscar</button>
-                    <button id="btnExportarSelecionados" class="btn btn-success">Exportar Selecionados</button>
-                </div>
+<div class="modal fade" id="balancoModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 8px; border:none;">
+
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:preview-open" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    <span id="modalTitleText">Detalhes do Balanço</span>
+                </h4>
             </div>
-        </div>
 
-        <!-- Tabela de Balanços -->
-        <div class="card">
-            <div class="body table-responsive">
-                <div class="table-container">
-                    <table id="balancosTable" class="table table-striped">
+            <div class="modal-body" style="padding: 0;">
+                <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                    <table class="table table-striped table-hover mb-0">
                         <thead>
-                            <tr>
-                                <!-- Usando o atributo label e title para acessibilidade -->
-                                <th>
-                                <input class="chk-col-blue"  type="checkbox" id="selectAll" title="Selecionar Todos"><label for="selectAll" ></label>
-                                </th>
-                                <th>Doc</th>
-                                <th>Data</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Conteúdo Dinâmico -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Detalhes do Balanço -->
-    <div id="balancoModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detalhes do Balanço</h5>
-                </div>
-                <div class="modal-body">
-                    <!-- Detalhes dinâmicos aqui -->
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th>Quantidade</th>
-                                <th>Categoria</th>
-                            </tr>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="text-right">Quantidade</th>
+                            <th>Categoria</th>
+                        </tr>
                         </thead>
                         <tbody id="detalhesBalanco">
-                            <!-- Conteúdo Dinâmico -->
                         </tbody>
                     </table>
                 </div>
-                <div class="modal-footer">
-                    <button id="btnExportarModal" class="btn btn-success">Exportar Excel</button>
-                    <button id="btnImprimir" class="btn btn-info">Imprimir</button>
-                    <button class="btn btn-secondary" data-dismiss="modal">Fechar</button>
-                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btnExportarModal" class="btn btn-success waves-effect">
+                    <iconify-icon icon="icon-park-outline:file-excel"></iconify-icon> Exportar Excel
+                </button>
+                <button id="btnImprimir" class="btn btn-primary waves-effect">
+                    <iconify-icon icon="icon-park-outline:printer"></iconify-icon> Imprimir
+                </button>
+                <button type="button" class="btn btn-default waves-effect" data-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <!-- Bootstrap Core Js -->
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <!-- Axios CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <!-- Waves Effect Plugin Js -->
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <!-- SweetAlert Plugin Js -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- DataTables Js -->
-    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-    
-    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script>
+    // Configurações
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    <script src="script/listBalancos.js"></script> <!-- Script externo -->
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unitId = urlParams.get('unit_id');
+
+    let selectedDocs = [];
+    let currentItems = [];
+
+    // Helper: Skeleton Toggle
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
+    $(document).ready(function () {
+        // Datas Padrão
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const d = String(hoje.getDate()).padStart(2, '0');
+        const primeiroDia = `${y}-${m}-01`;
+        const diaAtual = `${y}-${m}-${d}`;
+
+        $('#dataInicial').val(primeiroDia);
+        $('#dataFinal').val(diaAtual);
+
+        // --- Eventos ---
+
+        // Buscar
+        $('#btnBuscar').click(function () {
+            const dataInicial = $('#dataInicial').val();
+            const dataFinal = $('#dataFinal').val();
+            loadBalancos(dataInicial, dataFinal);
+        });
+
+        // Select All
+        $('#selectAll').off('click').on('click', function () {
+            const isChecked = $(this).prop('checked');
+            $('.balanco-checkbox').prop('checked', isChecked).trigger('change');
+        });
+
+        // Exportar Selecionados
+        $('#btnExportarSelecionados').click(exportarSelecionados);
+
+        // Ações do Modal
+        $('#btnExportarModal').click(exportarDoModal);
+        $('#btnImprimir').click(imprimirModal);
+
+        // Validação Inicial
+        if (!token || !unitId) {
+            Swal.fire('Atenção', 'Parâmetros de URL (token/unit_id) ausentes.', 'warning');
+        }
+    });
+
+    // --- Funções de Carregamento ---
+
+    async function loadBalancos(dataInicial, dataFinal, doc = null) {
+        if (!dataInicial || !dataFinal) {
+            Swal.fire('Atenção', 'Informe o período.', 'warning');
+            return;
+        }
+
+        // Ajuste de horas para garantir o range completo
+        const dtIni = dataInicial + " 00:00:00";
+        const dtFim = dataFinal + " 23:59:59";
+
+        toggleLoading(true);
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listBalance',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    data_inicial: dtIni,
+                    data_final: dtFim,
+                    doc: doc
+                }
+            });
+
+            if (response.data && response.data.success) {
+                renderBalancos(response.data.balances || []);
+            } else {
+                renderBalancos([]); // Limpa tabela
+                Swal.fire('Aviso', 'Nenhum balanço encontrado ou erro na busca.', 'info');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar balanços:', error);
+            Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    function renderBalancos(balances) {
+        const tbody = $('#balancosTable tbody');
+        tbody.empty();
+        selectedDocs = []; // Reseta seleção
+
+        if (balances.length === 0) {
+            tbody.html('<tr><td colspan="4" class="text-center muted" style="padding:30px;">Nenhum registro encontrado.</td></tr>');
+            return;
+        }
+
+        balances.forEach(balanco => {
+            const dataFmt = new Date(balanco.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+            const row = $(`
+                <tr>
+                    <td class="text-center">
+                        <input type="checkbox" id="balanco-${balanco.doc}" class="chk-col-blue balanco-checkbox" data-doc="${balanco.doc}">
+                        <label for="balanco-${balanco.doc}" style="margin:0; height:18px;"></label>
+                    </td>
+                    <td class="text-center">
+                        <a class="btn-action btnDetalhes" data-doc="${balanco.doc}" title="Ver Detalhes">
+                            <iconify-icon icon="icon-park-outline:preview-open"></iconify-icon>
+                        </a>
+                    </td>
+                    <td><strong>${balanco.doc}</strong></td>
+                    <td>${dataFmt}</td>
+                </tr>
+            `);
+
+            tbody.append(row);
+
+            // Lógica de Seleção de Linha
+            row.find('.balanco-checkbox').on('change', function () {
+                const doc = $(this).data('doc');
+                if ($(this).prop('checked')) {
+                    row.addClass('selected-row');
+                    if (!selectedDocs.includes(doc)) selectedDocs.push(doc);
+                } else {
+                    row.removeClass('selected-row');
+                    selectedDocs = selectedDocs.filter(item => item !== doc);
+                }
+            });
+        });
+
+        // Re-bind click detalhes
+        $('.btnDetalhes').off('click').on('click', function () {
+            const doc = $(this).data('doc');
+            loadDetalhesBalanco(doc);
+        });
+    }
+
+    async function loadDetalhesBalanco(doc) {
+        // Abre modal e mostra loading
+        $('#balancoModal').modal('show');
+        $('#detalhesBalanco').html('<tr><td colspan="3" class="text-center" style="padding:20px;">Carregando...</td></tr>');
+        $('#modalTitleText').text(`Detalhes do Balanço - Doc: ${doc}`);
+        $('#balancoModal').data('doc', doc); // Salva doc no modal para exportação
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'getBalanceByDoc',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    doc: doc
+                }
+            });
+
+            if (response.data && response.data.success) {
+                currentItems = response.data.balance.itens || [];
+                renderDetalhesModal(currentItems);
+            } else {
+                $('#detalhesBalanco').html('<tr><td colspan="3" class="text-center text-danger">Erro ao carregar itens.</td></tr>');
+            }
+        } catch (error) {
+            console.error(error);
+            $('#detalhesBalanco').html('<tr><td colspan="3" class="text-center text-danger">Falha na conexão.</td></tr>');
+        }
+    }
+
+    function renderDetalhesModal(itens) {
+        const tbody = $('#detalhesBalanco');
+        tbody.empty();
+
+        if (itens.length === 0) {
+            tbody.html('<tr><td colspan="3" class="text-center">Nenhum item neste balanço.</td></tr>');
+            return;
+        }
+
+        itens.forEach(item => {
+            tbody.append(`
+                <tr>
+                    <td>${item.produto}</td>
+                    <td class="text-right"><strong>${parseFloat(item.quantidade).toFixed(3)}</strong></td>
+                    <td>${item.categoria || '-'}</td>
+                </tr>
+            `);
+        });
+    }
+
+    // --- Funções de Exportação ---
+
+    async function exportarSelecionados() {
+        if (selectedDocs.length === 0) {
+            Swal.fire("Atenção", "Nenhum balanço foi selecionado.", "warning");
+            return;
+        }
+
+        const confirm = await Swal.fire({
+            title: "Exportar?",
+            text: `Deseja exportar os ${selectedDocs.length} balanços selecionados?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Sim, exportar",
+            cancelButtonText: "Cancelar"
+        });
+
+        if (confirm.isConfirmed) {
+            Swal.fire({ title: 'Gerando Excel...', didOpen: () => Swal.showLoading() });
+
+            let allItems = [];
+
+            // Loop sequencial (para não sobrecarregar API) ou Promise.all
+            // Usando loop sequencial para garantir ordem
+            for (const doc of selectedDocs) {
+                try {
+                    const response = await axios.post(baseUrl, {
+                        method: 'getBalanceByDoc',
+                        token: token,
+                        data: { system_unit_id: unitId, doc: doc }
+                    });
+
+                    if (response.data && response.data.success) {
+                        const balance = response.data.balance;
+                        const items = balance.itens.map(item => ({
+                            'Documento': doc,
+                            'Codigo': item.codigo,
+                            'Produto': item.produto,
+                            'Quantidade': parseFloat(item.quantidade),
+                            'Categoria': item.categoria
+                        }));
+                        allItems = allItems.concat(items);
+                    }
+                } catch (error) {
+                    console.error(`Erro no doc ${doc}`, error);
+                }
+            }
+
+            Swal.close();
+
+            if (allItems.length > 0) {
+                exportToExcel(allItems, 'balancos_agrupados');
+                Swal.fire("Sucesso", "Arquivo gerado!", "success");
+            } else {
+                Swal.fire("Erro", "Não foi possível obter dados para exportação.", "error");
+            }
+        }
+    }
+
+    function exportarDoModal() {
+        if (currentItems.length > 0) {
+            const doc = $('#balancoModal').data('doc');
+            // Formata para Excel
+            const exportData = currentItems.map(i => ({
+                'Produto': i.produto,
+                'Quantidade': parseFloat(i.quantidade),
+                'Categoria': i.categoria
+            }));
+            exportToExcel(exportData, `balanco_${doc}`);
+        } else {
+            Swal.fire("Atenção", "Nenhum item para exportar.", "warning");
+        }
+    }
+
+    function exportToExcel(items, fileName) {
+        const ws = XLSX.utils.json_to_sheet(items);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Dados");
+        XLSX.writeFile(wb, `${fileName}.xlsx`);
+    }
+
+    function imprimirModal() {
+        const docNumber = $('#balancoModal').data('doc');
+        const content = document.getElementById('detalhesBalanco').innerHTML;
+
+        // Janela de impressão simples
+        const printWindow = window.open('', '', 'height=600,width=800');
+        printWindow.document.write('<html><head><title>Impressão</title>');
+        printWindow.document.write('<link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(`<h3>Detalhes do Balanço - Doc: ${docNumber}</h3>`);
+        printWindow.document.write('<table class="table table-striped table-bordered"><thead><tr><th>Produto</th><th class="text-right">Quantidade</th><th>Categoria</th></tr></thead><tbody>');
+        printWindow.document.write(content);
+        printWindow.document.write('</tbody></table>');
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    }
+
+</script>
 </body>
-
 </html>
