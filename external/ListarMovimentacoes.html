@@ -1,436 +1,453 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Lista de Movimentações por Data</title>
+    <title>Lista de Movimentações</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Fonts e Ícones -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- CSS -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
-        }
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
-        .spinner {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-        }
-
-        .filter-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
             margin-bottom: 20px;
+            border-radius: 6px;
         }
+
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Botão Ação */
+        .btn-action {
+            color: var(--mrk-blue);
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+        .btn-action:hover { transform: scale(1.1); color: var(--mrk-black); }
+
+        /* Badges de Status */
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; text-transform: uppercase; }
+        .bg-green-light { background: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+        .bg-orange-light { background: #fff3e0; color: var(--mrk-amber); border: 1px solid #ffe0b2; }
+        .bg-gray-light { background: #f5f5f5; color: #777; border: 1px solid #ddd; }
+
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 45px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Modal Custom */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; }
     </style>
-
-
-
-
-
-
 </head>
 
 <body class="theme-blue">
 
-<!-- Carregador -->
-<div class="page-loader-wrapper">
-    <div class="loader">
-        <div class="preloader">
-            <div class="spinner-layer pl-blue">
-                <div class="circle-clipper left">
-                    <div class="circle"></div>
-                </div>
-                <div class="circle-clipper right">
-                    <div class="circle"></div>
-                </div>
-            </div>
-        </div>
-        <p>Aguarde...</p>
-    </div>
-
-
-</div>
-
-<!-- Conteúdo -->
 <div class="container-fluid">
-    <div class="header-card">
-        <div class="row">
-            <div class="col-md-2">
-                <label for="dataInicial">Data Inicial</label>
-                <input type="date" id="dataInicial" class="form-control" placeholder="Data Inicial">
-            </div>
-            <div class="col-md-2">
-                <label for="dataFinal">Data Final</label>
-                <input type="date" id="dataFinal" class="form-control" placeholder="Data Final">
-            </div>
-            <div class="col-md-2">
-                <label for="filterOrigem">Origem</label>
-                <select id="filterOrigem" class="form-control">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label for="filterDestino">Destino</label>
-                <select id="filterDestino" class="form-control">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label for="filterTipo">Tipo</label>
-                <select id="filterTipo" class="form-control">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <label for="filterStatus">Status</label>
-                <select id="filterStatus" class="form-control">
-                    <option value="">Todos</option>
-                </select>
-            </div>
-            <div class="col-md-1 text-right">
-                <button id="btnFiltrar" class="btn btn-primary">Buscar</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Tabela -->
     <div class="card">
-        <div class="header">
-            <h2>Movimentações por Data</h2>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:transfer-data" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                LISTA DE MOVIMENTAÇÕES
+            </h2>
         </div>
-        <div class="body table-responsive">
-            <div class="table-container position-relative">
-                <div class="spinner">
-                    <div class="preloader pl-size-xs">
-                        <div class="spinner-layer pl-blue">
-                            <div class="circle-clipper left">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-4">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataInicial" class="form-control">
                         </div>
                     </div>
+                    <div class="col-md-4">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataFinal" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4" style="margin-top: 22px;">
+                        <button id="btnFiltrar" class="btn btn-primary btn-block waves-effect">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            BUSCAR MOVIMENTAÇÕES
+                        </button>
+                    </div>
                 </div>
-                <table id="movimentacoesTable" class="table  table-striped">
+            </div>
+
+            <div class="row clearfix" style="margin-bottom: 15px;">
+                <div class="col-md-3">
+                    <label class="muted">Origem</label>
+                    <select id="filterOrigem" class="form-control"><option value="">Todos</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Destino</label>
+                    <select id="filterDestino" class="form-control"><option value="">Todos</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Tipo</label>
+                    <select id="filterTipo" class="form-control"><option value="">Todos</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Status</label>
+                    <select id="filterStatus" class="form-control"><option value="">Todos</option></select>
+                </div>
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="movimentacoesTable">
                     <thead>
                     <tr>
-                        <th>Doc</th>
-                        <th>Data</th>
+                        <th width="50" class="text-center">Ações</th>
+                        <th width="100">Doc</th>
+                        <th width="100">Data</th>
                         <th>Tipo</th>
                         <th>Origem</th>
                         <th>Destino</th>
                         <th>Usuário</th>
-                        <th>Status</th>
-                        <th>Ações</th>
+                        <th class="text-center">Status</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <!-- Conteúdo Dinâmico -->
+                    <tr><td colspan="8" class="text-center muted" style="padding: 30px;">Utilize os filtros acima para buscar.</td></tr>
                     </tbody>
                 </table>
             </div>
+
+            <div style="margin-top: 10px; text-align: right;">
+                <small class="muted" id="infoRegistros"></small>
+            </div>
+
         </div>
     </div>
-
 </div>
 
-<!-- Modal Detalhes -->
-<div id="movimentacaoModal" class="modal fade" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+<div class="modal fade" id="movimentacaoModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 8px; border:none;">
+
             <div class="modal-header">
-                <h5 class="modal-title">Detalhes da Movimentação</h5>
-                <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:preview-open" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                    <span id="modalTitleDoc">Detalhes da Movimentação</span>
+                </h4>
             </div>
-            <div class="modal-body">
-                <table class="table  table-striped">
-                    <thead>
-                    <tr>
-                        <th>Produto</th>
-                        <th>Quantidade</th>
-                    </tr>
-                    </thead>
-                    <tbody id="detalhesMovimentacao">
-                    <!-- Conteúdo Dinâmico -->
-                    </tbody>
-                </table>
+
+            <div class="modal-body" style="padding: 0;">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="text-right">Quantidade</th>
+                        </tr>
+                        </thead>
+                        <tbody id="detalhesMovimentacao">
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
             <div class="modal-footer">
-                <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-default waves-effect" data-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
 </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
+    // Configurações
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const unitId = urlParams.get('unit_id');
+
+    let allMovements = [];
+
+    // Helper: Skeleton Toggle
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
+    // Helper: Formata Data
+    function formatDateBR(dateStr) {
+        if (!dateStr) return '-';
+        const [ano, mes, dia] = dateStr.split("-");
+        return `${dia}/${mes}/${ano}`;
+    }
+
+    // Helper: Badge Status
+    function getStatusBadge(status) {
+        const s = (status || '').toLowerCase();
+        if (s.includes('concl') || s.includes('final')) return `<span class="badge-status bg-green-light">${status}</span>`;
+        if (s.includes('cancel')) return `<span class="badge-status bg-gray-light" style="color:#d32f2f; border-color:#ffcdd2; background:#ffebee;">${status}</span>`;
+        return `<span class="badge-status bg-orange-light">${status}</span>`;
+    }
+
     $(document).ready(function () {
-        const baseUrl = window.location.hostname !== 'localhost' ?
-            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-            'http://localhost/portal-mrk/api/v1/index.php';
-
-
-
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const unitId = urlParams.get('unit_id');
-
-
-        const baseUrlRedirect = window.location.hostname !== 'localhost' ?
-            'https://portal.mrksolucoes.com.br/index.php' :
-            'http://localhost/portal-mrk/index.php';
-
-        function showLoader() {
-            $('.page-loader-wrapper').fadeIn();
-        }
-
-        function hideLoader() {
-            $('.page-loader-wrapper').fadeOut();
-        }
-
-        // Carregar movimentações
-        async function loadMovements(dataInicial, dataFinal) {
-            showLoader();
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'listarMovimentacoesPorData',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        data_inicial: dataInicial,
-                        data_final: dataFinal
-                    }
-                });
-
-                if (response.data) {
-                    renderMovements(response.data);
-                    populateFilters(response.data); // Preencher filtros
-                } else {
-                    Swal.fire("Erro", "Erro ao carregar movimentações.", "error");
-                }
-            } catch (error) {
-                console.error('Erro ao carregar movimentações:', error);
-            } finally {
-                hideLoader();
-            }
-        }
-
-
-        $('#filterTipo, #filterOrigem, #filterDestino, #filterStatus').on('change', applyFilters);
-
-
-        // Renderizar movimentações
-        function renderMovements(movements) {
-            const tbody = $('#movimentacoesTable tbody');
-            tbody.empty();
-
-            movements.forEach(movement => {
-                const formatarData = (data) => {
-                    if (!data) return 'N/A';
-                    const [ano, mes, dia] = data.split("-");
-                    return `${dia}/${mes}/${ano}`;
-                };
-                const row = $(`
-            <tr>
-                <td>${movement.doc}</td>
-                <td>${formatarData(movement.data)}</td>
-                <td>${movement.tipo_movimentacao}</td>
-                <td>${movement.nome_unidade_origem || 'N/A'}</td>
-                <td>${movement.nome_unidade_destino || 'N/A'}</td>
-                <td>${movement.username || 'N/A'}</td>
-                <td>${movement.status}</td>
-                <td>
-                    <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
-                </td>
-            </tr>
-        `);
-
-                tbody.append(row);
-
-                row.find('.btnDetalhes').on('click', function () {
-                    const doc = $(this).data('doc');
-                    loadMovementDetails(doc);
-                });
-            });
-
-            applyFilters(); // Aplicar filtros após renderizar
-        }
-
-
-        // Carregar detalhes
-        async function loadMovementDetails(doc) {
-            showLoader();
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'getMovimentacao',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        doc: doc
-                    }
-                });
-
-                if (response.data) {
-                    renderDetailsModal(response.data);
-                    $('#movimentacaoModal').modal('show');
-                } else {
-                    Swal.fire("Erro", "Erro ao carregar detalhes da movimentação.", "error");
-                }
-            } catch (error) {
-                console.error('Erro ao carregar detalhes:', error);
-            } finally {
-                hideLoader();
-            }
-        }
-
-        function renderDetailsModal(details) {
-            const tbody = $('#detalhesMovimentacao');
-            tbody.empty();
-
-            details.forEach(item => {
-                const row = $(`
-                        <tr>
-                            <td>${item.produto} - ${item.product_name}</td>
-                            <td>${item.quantidade}</td>
-                        </tr>
-                    `);
-                tbody.append(row);
-            });
-        }
-
-        // Data padrão de hoje
+        // Data Padrão: Hoje
         const today = new Date().toISOString().split('T')[0];
         $('#dataInicial').val(today);
         $('#dataFinal').val(today);
-        loadMovements(today, today);
 
-        // Filtrar por data
-        $('#btnFiltrar').on('click', function () {
-            const dataInicial = $('#dataInicial').val();
-            const dataFinal = $('#dataFinal').val();
-            loadMovements(dataInicial, dataFinal);
+        // Eventos
+        $('#btnFiltrar').click(() => {
+            const ini = $('#dataInicial').val();
+            const fim = $('#dataFinal').val();
+            loadMovements(ini, fim);
         });
 
-        function populateFilters(movements) {
-            const tipos = new Set();
-            const origens = new Set();
-            const destinos = new Set();
-            const status = new Set();
+        // Filtros Locais
+        $('#filterTipo, #filterOrigem, #filterDestino, #filterStatus').on('change', applyLocalFilters);
 
-            movements.forEach(movement => {
-                tipos.add(movement.tipo_movimentacao);
-                origens.add(movement.nome_unidade_origem || 'N/A');
-                destinos.add(movement.nome_unidade_destino || 'N/A');
-                status.add(movement.status);
-            });
-
-            const populateSelect = (selectId, items) => {
-                const select = $(`#${selectId}`);
-                select.empty();
-                select.append('<option value="">Todos</option>');
-                items.forEach(item => {
-                    select.append(`<option value="${item}">${item}</option>`);
-                });
-            };
-
-            populateSelect('filterTipo', tipos);
-            populateSelect('filterOrigem', origens);
-            populateSelect('filterDestino', destinos);
-            populateSelect('filterStatus', status);
+        // Validação Inicial
+        if (token && unitId) {
+            // Auto-load opcional
+            loadMovements(today, today);
+        } else {
+            Swal.fire('Atenção', 'Parâmetros de URL ausentes.', 'warning');
         }
+    });
 
-        function applyFilters() {
-            const tipo = $('#filterTipo').val();
-            const origem = $('#filterOrigem').val();
-            const destino = $('#filterDestino').val();
-            const status = $('#filterStatus').val();
+    // --- Carregar Movimentações (API) ---
+    async function loadMovements(dataInicial, dataFinal) {
+        if (!dataInicial || !dataFinal) return Swal.fire('Aviso', 'Preencha as datas.', 'warning');
 
-            $('#movimentacoesTable tbody tr').each(function () {
-                const row = $(this);
-                const matchesTipo = !tipo || row.find('td:nth-child(3)').text() === tipo;
-                const matchesOrigem = !origem || row.find('td:nth-child(4)').text() === origem;
-                const matchesDestino = !destino || row.find('td:nth-child(5)').text() === destino;
-                const matchesStatus = !status || row.find('td:nth-child(6)').text() === status;
+        toggleLoading(true);
 
-                if (matchesTipo && matchesOrigem && matchesDestino && matchesStatus) {
-                    row.show();
-                } else {
-                    row.hide();
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'listarMovimentacoesPorData',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    data_inicial: dataInicial,
+                    data_final: dataFinal
                 }
             });
+
+            if (response.data) {
+                allMovements = Array.isArray(response.data) ? response.data : [];
+                renderMovements(allMovements);
+                populateFilters(allMovements);
+            } else {
+                allMovements = [];
+                renderMovements([]);
+                Swal.fire("Aviso", "Nenhum dado retornado.", "info");
+            }
+        } catch (error) {
+            console.error('Erro ao carregar:', error);
+            Swal.fire("Erro", "Falha na comunicação com o servidor.", "error");
+        } finally {
+            toggleLoading(false);
+        }
+    }
+
+    // --- Renderização ---
+    function renderMovements(movements) {
+        const tbody = $('#movimentacoesTable tbody');
+        tbody.empty();
+
+        if (movements.length === 0) {
+            tbody.html('<tr><td colspan="8" class="text-center muted" style="padding:30px;">Nenhum registro encontrado.</td></tr>');
+            $('#infoRegistros').text('');
+            return;
         }
 
-    });
+        movements.forEach(m => {
+            tbody.append(`
+                <tr class="mov-row"
+                    data-tipo="${m.tipo_movimentacao}"
+                    data-origem="${m.nome_unidade_origem || 'N/A'}"
+                    data-destino="${m.nome_unidade_destino || 'N/A'}"
+                    data-status="${m.status}">
+
+                    <td class="text-center">
+                        <a class="btn-action" title="Ver Detalhes" onclick="openDetails('${m.doc}')">
+                            <iconify-icon icon="icon-park-outline:preview-open"></iconify-icon>
+                        </a>
+                    </td>
+                    <td><strong>${m.doc}</strong></td>
+                    <td>${formatDateBR(m.data)}</td>
+                    <td>${m.tipo_movimentacao}</td>
+                    <td class="muted">${m.nome_unidade_origem || '-'}</td>
+                    <td class="muted">${m.nome_unidade_destino || '-'}</td>
+                    <td>${m.username || '-'}</td>
+                    <td class="text-center">${getStatusBadge(m.status)}</td>
+                </tr>
+            `);
+        });
+
+        $('#infoRegistros').text(`Total de registros: ${movements.length}`);
+    }
+
+    // --- Filtros Locais ---
+    function populateFilters(movements) {
+        const tipos = new Set();
+        const origens = new Set();
+        const destinos = new Set();
+        const status = new Set();
+
+        movements.forEach(m => {
+            if(m.tipo_movimentacao) tipos.add(m.tipo_movimentacao);
+            if(m.nome_unidade_origem) origens.add(m.nome_unidade_origem);
+            if(m.nome_unidade_destino) destinos.add(m.nome_unidade_destino);
+            if(m.status) status.add(m.status);
+        });
+
+        fillSelect('filterTipo', tipos);
+        fillSelect('filterOrigem', origens);
+        fillSelect('filterDestino', destinos);
+        fillSelect('filterStatus', status);
+    }
+
+    function fillSelect(id, set) {
+        const sel = $(`#${id}`);
+        sel.empty().append('<option value="">Todos</option>');
+        set.forEach(v => sel.append(`<option value="${v}">${v}</option>`));
+    }
+
+    function applyLocalFilters() {
+        const tipo = $('#filterTipo').val();
+        const origem = $('#filterOrigem').val();
+        const destino = $('#filterDestino').val();
+        const status = $('#filterStatus').val();
+        let visibleCount = 0;
+
+        $('#movimentacoesTable tbody tr.mov-row').each(function () {
+            const row = $(this);
+            const mTipo = row.data('tipo');
+            const mOrigem = row.data('origem');
+            const mDestino = row.data('destino');
+            const mStatus = row.data('status');
+
+            let show = true;
+            if (tipo && mTipo !== tipo) show = false;
+            if (origem && mOrigem !== origem) show = false;
+            if (destino && mDestino !== destino) show = false;
+            if (status && mStatus !== status) show = false;
+
+            if (show) {
+                row.show();
+                visibleCount++;
+            } else {
+                row.hide();
+            }
+        });
+
+        $('#infoRegistros').text(`Exibindo ${visibleCount} de ${allMovements.length} registros.`);
+    }
+
+    // --- Modal Detalhes ---
+    window.openDetails = async function(doc) {
+        $('#movimentacaoModal').modal('show');
+        $('#detalhesMovimentacao').html('<tr><td colspan="2" class="text-center" style="padding:20px;">Carregando...</td></tr>');
+        $('#modalTitleDoc').text(`Detalhes da Movimentação: ${doc}`);
+
+        try {
+            const response = await axios.post(baseUrl, {
+                method: 'getMovimentacao',
+                token: token,
+                data: {
+                    system_unit_id: unitId,
+                    doc: doc
+                }
+            });
+
+            if (response.data) {
+                renderDetails(response.data);
+            } else {
+                $('#detalhesMovimentacao').html('<tr><td colspan="2" class="text-center text-danger">Erro ao carregar itens.</td></tr>');
+            }
+        } catch (error) {
+            console.error(error);
+            $('#detalhesMovimentacao').html('<tr><td colspan="2" class="text-center text-danger">Falha na conexão.</td></tr>');
+        }
+    };
+
+    function renderDetails(items) {
+        const tbody = $('#detalhesMovimentacao');
+        tbody.empty();
+
+        if (items.length === 0) {
+            tbody.html('<tr><td colspan="2" class="text-center">Nenhum item nesta movimentação.</td></tr>');
+            return;
+        }
+
+        items.forEach(i => {
+            const nome = i.product_name || i.produto_nome || '';
+            const cod = i.produto || i.codigo || '';
+            const qtd = parseFloat(i.quantidade || 0).toLocaleString('pt-BR', {minimumFractionDigits: 3});
+
+            tbody.append(`
+                <tr>
+                    <td><strong>${cod}</strong> - ${nome}</td>
+                    <td class="text-right">${qtd}</td>
+                </tr>
+            `);
+        });
+    }
+
 </script>
 </body>
-
 </html>
