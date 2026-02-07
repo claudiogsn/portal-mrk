@@ -5,185 +5,199 @@
     <title>Relatório de Itens Comprados</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- AdminBSB / Bootstrap -->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
-    <!-- Select2 para múltipla seleção de produtos -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
-        .table thead th { white-space: nowrap; }
-        .nowrap { white-space: nowrap; }
-        .muted { color: #777; }
-        .text-small { font-size: 12px; }
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
-        .table thead th { white-space:nowrap; }
-        .text-right { text-align:right; }
-
-        /* Cards KPI (estilo da tela de Contas) */
-        .kpi {
-            text-align: center;
-            padding: 12px;
-            border-radius: 6px;
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             border: 1px solid #eee;
-        }
-        .kpi h4 {
-            margin: 4px 0 0 0;
-            font-weight: 700;
-        }
-        .kpi small {
-            color: #333;
-            opacity: .9;
-            display: block;
-        }
-        .kpi.green {
-            background: #e3f2fd;
-            border-color: #bbdefb;
-            color: #1565c0;
-        }
-        .kpi.red {
-            background: #e3f2fd;
-            border-color: #bbdefb;
-            color: #1565c0;
-        }
-        .kpi.blue {
-            background: #e3f2fd;
-            border-color: #bbdefb;
-            color: #1565c0;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Select2 Custom */
         .select2-container--default .select2-selection--multiple {
-            min-height: 34px;
-            border-radius: 0;
-            border: 1px solid #ccc;
-            font-size: 12px;
+            border: 1px solid #ccc; border-radius: 4px; min-height: 34px; font-family: 'Poppins', sans-serif;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: var(--mrk-blue);
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(11, 70, 172, 0.4);
         }
 
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
-            .kpi small { font-size: 11px; }
-            .kpi h4 { font-size: 14px; }
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
         }
+        .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Skeleton Loader */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-kpi { height: 80px; width: 100%; border-radius: 6px; margin-bottom: 15px; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
+
 <body class="theme-blue">
 <div class="container-fluid">
-    <br>
 
     <div class="card">
-        <div class="header">
-            <h2>Relatório de Produtos Comprados</h2>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:shopping-bag" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                RELATÓRIO DE ITENS COMPRADOS
+            </h2>
         </div>
 
-        <!-- FILTROS PRINCIPAIS -->
-        <div class="row" style="margin: 15px 0 5px;">
-            <div class="col-md-3">
-                <label class="muted">Data inicial</label>
-                <input type="date" id="dtInicio" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="muted">Data final</label>
-                <input type="date" id="dtFim" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="muted">Tipo de data</label>
-                <select id="tipoData" class="form-control">
-                    <option value="entrada">Data de Entrada</option>
-                    <option value="emissao">Data de Emissão NF</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="muted">Ações</label><br>
-                <button id="btnConsultar" class="btn btn-primary">
-                    <i class="fa fa-search"></i> Consultar
-                </button>
-            </div>
-        </div>
-
-        <!-- FILTROS EM TEMPO REAL -->
-        <div class="row" style="margin: 5px 0 10px;">
-            <div class="col-md-4">
-                <label class="muted">Produto (múltipla seleção)</label>
-                <select id="filtroProduto" class="form-control" multiple="multiple"></select>
-            </div>
-            <div class="col-md-2">
-                <label class="muted">Número da Nota</label>
-                <input type="text" id="filtroNota" class="form-control" placeholder="Filtrar por Nº NF">
-            </div>
-            <div class="col-md-4">
-                <label class="muted">Busca texto (nome, código, descrição nota)</label>
-                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar...">
-            </div>
-        </div>
-
-        <!-- TOTALIZADORES ESTILO KPI -->
-        <div class="row" style="margin: 0 0 5px;">
-            <div class="col-md-4">
-                <div class="kpi blue">
-                    <small>Quantidade interna total</small>
-                    <h4 id="kpiQtd">0,0000</h4>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="kpi green">
-                    <small>Quantidade total da NF</small>
-                    <h4 id="kpiQtdNF">0,0000</h4>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="kpi red">
-                    <small>Valor Total</small>
-                    <h4 id="kpiVlrNota">R$ 0,00</h4>
-                </div>
-            </div>
-        </div>
-
-        <!-- Linha com quantidade de registros -->
-        <div class="row" style="margin: 0 0 10px;">
-            <div class="col-md-12">
-                <small class="muted">
-                    Registros filtrados: <b id="kpiRegistros">0</b>
-                </small>
-            </div>
-        </div>
-
-        <!-- TABELA -->
         <div class="body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="tabela-resultado">
-                    <thead>
-                    <tr>
-                        <th class="nowrap">Nº NF</th>
-                        <th class="nowrap">Data Entrada</th>
-                        <th class="nowrap">Data Emissão</th>
-                        <th class="nowrap">Produto Interno</th>
-                        <th class="text-right nowrap">Qtd Interna</th>
-                        <th class="text-right nowrap">Vlr Unit. Interno (R$)</th>
-                        <th class="nowrap">Item Nota (Fornecedor)</th>
-                        <th class="text-right nowrap">Qtd Nota</th>
-                        <th class="text-right nowrap">Vlr Unit. Nota (R$)</th>
-                        <th class="text-right nowrap">Vlr Total (R$)</th>
-                        <th class="text-right nowrap">Fator Conv.</th>
-                    </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dtInicio" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dtFim" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Considerar Data de:</label>
+                        <select id="tipoData" class="form-control">
+                            <option value="entrada">Entrada</option>
+                            <option value="emissao">Emissão NF</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" style="margin-top: 22px;">
+                        <button id="btnConsultar" class="btn btn-primary btn-block waves-effect">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            CONSULTAR
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="row">
+                    <div class="col-md-4"><div class="skeleton sk-kpi"></div></div>
+                    <div class="col-md-4"><div class="skeleton sk-kpi"></div></div>
+                    <div class="col-md-4"><div class="skeleton sk-kpi"></div></div>
+                </div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div id="result-area" style="display: none;">
+
+                <div class="row clearfix" style="margin-bottom: 20px;">
+                    <div class="col-md-4">
+                        <div class="kpi blue">
+                            <small>Qtd. Interna Total</small>
+                            <h4 id="kpiQtd">0,0000</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="kpi green">
+                            <small>Qtd. Total da NF</small>
+                            <h4 id="kpiQtdNF">0,0000</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="kpi orange" style="border-left-color: var(--mrk-red) !important;">
+                            <small>Valor Total</small>
+                            <h4 id="kpiVlrNota" style="color: var(--mrk-red);">R$ 0,00</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row clearfix" style="margin-bottom: 15px;">
+                    <div class="col-md-4">
+                        <label class="muted">Filtrar Produtos</label>
+                        <select id="filtroProduto" class="form-control" multiple="multiple"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Nº da Nota</label>
+                        <input type="text" id="filtroNota" class="form-control" placeholder="Ex: 1234">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="muted">Busca Geral</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                            <input type="text" id="filtroTexto" class="form-control" placeholder="Nome, código, descrição...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabela-resultado">
+                        <thead>
+                        <tr>
+                            <th class="nowrap">Nº NF</th>
+                            <th class="nowrap">Entrada</th>
+                            <th class="nowrap">Emissão</th>
+                            <th>Produto Interno</th>
+                            <th class="text-right nowrap">Qtd Interna</th>
+                            <th class="text-right nowrap">Vlr Unit. (Int)</th>
+                            <th>Item Nota (Fornecedor)</th>
+                            <th class="text-right nowrap">Qtd Nota</th>
+                            <th class="text-right nowrap">Vlr Unit. (NF)</th>
+                            <th class="text-right nowrap">Vlr Total</th>
+                            <th class="text-right nowrap">Fator</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 10px; text-align: right;">
+                    <small class="muted">Registros exibidos: <b id="kpiRegistros">0</b></small>
+                </div>
+
+            </div>
+
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     // ====== CONFIG ======
@@ -193,46 +207,32 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const system_unit_id = urlParams.get('unit_id'); // vem pela URL
+    const system_unit_id = urlParams.get('unit_id');
 
     // ====== STATE ======
-    let dadosBrutos = [];      // itens retornados pelo backend (data.itens)
-    let itensFiltrados = [];   // itens após aplicação dos filtros em tempo real
+    let dadosBrutos = [];
+    let itensFiltrados = [];
 
     // ====== UTILS ======
     function brNumber(v, casas = 2) {
         if (v === null || v === undefined || isNaN(v)) return '0,00';
-        return Number(v).toLocaleString('pt-BR', {
-            minimumFractionDigits: casas,
-            maximumFractionDigits: casas
-        });
+        return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
     }
 
     function brMoney(v) {
         if (v === null || v === undefined || isNaN(v)) return 'R$ 0,00';
-        return Number(v).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        });
+        return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
     function escapeHtml(s) {
         if (s == null) return '';
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function normalizeDateIso(dt) {
         if (!dt) return null;
         const s = String(dt);
-        // tenta pegar só YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-            return s.slice(0, 10);
-        }
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
         const d = new Date(s);
         if (isNaN(d.getTime())) return null;
         const y = d.getFullYear();
@@ -249,35 +249,55 @@
         return `${d}/${m}/${y}`;
     }
 
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#result-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#result-area').fadeIn();
+        }
+    }
+
+    function debounce(fn, ms){
+        let t; return function(){ clearTimeout(t); const args = arguments; t = setTimeout(() => fn.apply(null, args), ms); }
+    }
+
     // ====== INIT ======
     $(document).ready(() => {
-        // Select2 no filtro de produto
         $('#filtroProduto').select2({
-            placeholder: 'Selecione um ou mais produtos',
+            placeholder: 'Selecione produtos...',
             width: '100%',
             allowClear: true,
             closeOnSelect: false
         });
 
-        // Handlers
+        // Eventos
         $('#btnConsultar').on('click', onConsultar);
-
         $('#filtroProduto').on('change', applyFiltros);
-        $('#filtroNota').on('input', applyFiltros);
-        $('#filtroTexto').on('input', applyFiltros);
+        $('#filtroNota').on('input', debounce(applyFiltros, 300));
+        $('#filtroTexto').on('input', debounce(applyFiltros, 300));
         $('#tipoData').on('change', applyFiltros);
 
-        // datas padrão (hoje e -7 dias)
+        // Datas Padrão
         const hoje = new Date();
         const y = hoje.getFullYear();
         const m = String(hoje.getMonth() + 1).padStart(2, '0');
         const d = String(hoje.getDate()).padStart(2, '0');
         $('#dtFim').val(`${y}-${m}-${d}`);
+
         const semanaPassada = new Date(hoje.getTime() - 7*24*60*60*1000);
         const y2 = semanaPassada.getFullYear();
         const m2 = String(semanaPassada.getMonth() + 1).padStart(2, '0');
         const d2 = String(semanaPassada.getDate()).padStart(2, '0');
         $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+
+        if (!token || !system_unit_id) {
+            Swal.fire('Atenção', 'Parâmetros de sistema ausentes.', 'warning');
+        } else {
+            // Estado inicial vazio
+            renderTabela([]);
+        }
     });
 
     // ====== CONSULTA BACKEND ======
@@ -285,18 +305,11 @@
         const data_inicio = $('#dtInicio').val();
         const data_fim    = $('#dtFim').val();
 
-        if (!token || !system_unit_id) {
-            return Swal.fire('Atenção', 'URL deve conter token e system_unit_id.', 'warning');
-        }
         if (!data_inicio || !data_fim) {
-            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+            return Swal.fire('Atenção', 'Informe o período.', 'warning');
         }
 
-        Swal.fire({
-            title: 'Consultando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        toggleLoading(true);
 
         try {
             const res = await axios.post(baseUrl, {
@@ -309,93 +322,72 @@
                 }
             });
 
-            Swal.close();
-
             const api = res.data;
             if (!api || api.success === false) {
+                toggleLoading(false);
                 dadosBrutos = [];
                 renderTabela([]);
                 renderTotais([]);
-                return Swal.fire('Atenção', api && api.error ? api.error : 'Falha ao consultar.', 'warning');
+                return Swal.fire('Atenção', api && api.error ? api.error : 'Nenhum registro encontrado.', 'info');
             }
 
             const payload = api.data || {};
             dadosBrutos = Array.isArray(payload.itens) ? payload.itens : [];
 
-            // monta opções do filtro de produto a partir dos itens retornados
             buildFiltroProduto();
-
-            // aplica filtros (já leva em conta tipoData, texto, etc.)
             applyFiltros();
 
+            toggleLoading(false);
+
         } catch (e) {
-            Swal.close();
             console.error(e);
-            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+            toggleLoading(false);
+            Swal.fire('Erro', 'Falha na comunicação.', 'error');
         }
     }
 
-    // ====== MONTA FILTRO DE PRODUTO (baseado NOS ITENS) ======
+    // ====== FILTROS ======
     function buildFiltroProduto() {
-        const mapa = {}; // { codigo: nome }
-
+        const mapa = {};
         dadosBrutos.forEach(it => {
             const cod = it.pi_codigo || it.mv_produto;
             const nome = it.pi_nome || it.in_descricao_nota || '';
-            if (!cod) return;
-            if (!mapa[cod]) {
-                mapa[cod] = nome;
-            }
+            if (cod && !mapa[cod]) mapa[cod] = nome;
         });
 
         const $sel = $('#filtroProduto');
         $sel.empty();
-
-        const codigos = Object.keys(mapa).sort((a,b) => Number(a) - Number(b));
-        codigos.forEach(cod => {
-            const label = `[${cod}] ${mapa[cod] || ''}`;
-            $sel.append(`<option value="${escapeHtml(cod)}">${escapeHtml(label)}</option>`);
+        Object.keys(mapa).sort((a,b) => Number(a) - Number(b)).forEach(cod => {
+            $sel.append(`<option value="${escapeHtml(cod)}">[${escapeHtml(cod)}] ${escapeHtml(mapa[cod])}</option>`);
         });
-
-        // reset seleção
         $sel.val(null).trigger('change');
     }
 
-    // ====== APLICA TODOS OS FILTROS EM TEMPO REAL ======
     function applyFiltros() {
-        if (!Array.isArray(dadosBrutos) || dadosBrutos.length === 0) {
-            itensFiltrados = [];
+        if (!dadosBrutos.length) {
             renderTabela([]);
             renderTotais([]);
             return;
         }
 
         let arr = dadosBrutos.slice();
-
-        const tipoData   = $('#tipoData').val(); // 'entrada' ou 'emissao'
+        const tipoData   = $('#tipoData').val();
         const dtIni      = $('#dtInicio').val();
         const dtFim      = $('#dtFim').val();
-        const selProds   = $('#filtroProduto').val() || []; // array de códigos (string)
+        const selProds   = $('#filtroProduto').val() || [];
         const filtroNota = ($('#filtroNota').val() || '').trim().toLowerCase();
         const filtroTxt  = ($('#filtroTexto').val() || '').trim().toLowerCase();
 
-        // 1) filtro por tipo de data (entrada / emissão) usando range informado
+        // 1. Data Range (Local) - Opcional se a API já filtrou, mas bom pra garantir se mudar o tipoData
         if (dtIni && dtFim) {
             arr = arr.filter(it => {
-                let campo;
-                if (tipoData === 'emissao') {
-                    campo = it.nt_data_emissao || it.mv_data_emissao || it.mv_data;
-                } else {
-                    // entrada
-                    campo = it.mv_data || it.nt_data_entrada;
-                }
+                let campo = (tipoData === 'emissao') ? (it.nt_data_emissao || it.mv_data_emissao) : (it.mv_data || it.nt_data_entrada);
                 const iso = normalizeDateIso(campo);
-                if (!iso) return false;
-                return iso >= dtIni && iso <= dtFim;
+                return iso && iso >= dtIni && iso <= dtFim;
             });
         }
 
-        // 2) filtro por produto (múltipla seleção)
+        // 2. Produto
         if (selProds.length > 0) {
             const setSel = new Set(selProds.map(String));
             arr = arr.filter(it => {
@@ -404,30 +396,16 @@
             });
         }
 
-        // 3) filtro por número de nota
+        // 3. Nota
         if (filtroNota) {
-            arr = arr.filter(it => {
-                const nf  = (it.nt_numero_nf || it.mv_doc || '').toString().toLowerCase();
-                return nf.indexOf(filtroNota) !== -1;
-            });
+            arr = arr.filter(it => (it.nt_numero_nf || it.mv_doc || '').toString().toLowerCase().includes(filtroNota));
         }
 
-        // 4) filtro por texto (nome, código, descrição nota, etc.)
+        // 4. Texto Geral
         if (filtroTxt) {
             arr = arr.filter(it => {
-                const campos = [
-                    it.pi_nome,
-                    it.pi_codigo,
-                    it.in_descricao_nota,
-                    it.in_codigo_produto_nota,
-                    it.rf_descricao_nota,
-                    it.mv_doc,
-                    it.nt_numero_nf
-                ];
-                return campos.some(c => {
-                    if (c === null || c === undefined) return false;
-                    return String(c).toLowerCase().indexOf(filtroTxt) !== -1;
-                });
+                const searchStr = [it.pi_nome, it.pi_codigo, it.in_descricao_nota, it.mv_doc].join(' ').toLowerCase();
+                return searchStr.includes(filtroTxt);
             });
         }
 
@@ -436,163 +414,95 @@
         renderTotais(arr);
     }
 
-    // ====== RENDER TABELA ======
+    // ====== RENDER ======
+    function renderTotais(itens) {
+        let qtdInt = 0, qtdNF = 0, vlrTotal = 0;
+
+        itens.forEach(it => {
+            const qInt = parseNumberAny(it.mv_quantidade_interna);
+            const qNF = parseNumberAny(it.in_quantidade_nota);
+            const vUnit = parseNumberAny(it.in_valor_unitario_nota);
+
+            // Total nota calculado ou vindo da API
+            const vTot = (it.in_valor_total_nota != null) ? Number(it.in_valor_total_nota) : (qNF * vUnit);
+
+            qtdInt += qInt;
+            qtdNF += qNF;
+            vlrTotal += vTot;
+        });
+
+        $('#kpiQtd').text(brNumber(qtdInt, 4));
+        $('#kpiQtdNF').text(brNumber(qtdNF, 4));
+        $('#kpiVlrNota').text(brMoney(vlrTotal));
+        $('#kpiRegistros').text(itens.length);
+    }
+
     function renderTabela(itens) {
         const $tbody = $('#tabela-resultado tbody');
         $tbody.empty();
 
-        itens.forEach(it => {
+        if (itens.length === 0) {
+            $tbody.html('<tr><td colspan="11" class="text-center muted" style="padding: 30px;">Nenhum registro encontrado.</td></tr>');
+            return;
+        }
+
+        // Limit Render
+        const limit = 500;
+        const list = itens.slice(0, limit);
+
+        list.forEach(it => {
             const nf        = it.nt_numero_nf || it.mv_doc || '';
             const dtEntrada = normalizeDateIso(it.mv_data || it.nt_data_entrada);
             const dtEmissao = normalizeDateIso(it.nt_data_emissao || it.mv_data_emissao);
 
-            const prodCod   = it.pi_codigo || it.mv_produto || '';
-            const prodNome  = it.pi_nome || '';
-            const prodUnd   = it.pi_unidade || '';
+            const qtdInt = parseNumberAny(it.mv_quantidade_interna);
+            const vlrUnitInt = parseNumberAny(it.mv_valor_unitario_interno);
 
-            const notaCod   = it.in_codigo_produto_nota || '';
-            const notaDesc  = it.in_descricao_nota || '';
-            const notaUnd   = it.in_unidade_nota || '';
+            const qtdNota = parseNumberAny(it.in_quantidade_nota);
+            const vlrUnitNt = parseNumberAny(it.in_valor_unitario_nota);
+            const vlrTotNt = (it.in_valor_total_nota != null) ? Number(it.in_valor_total_nota) : (qtdNota * vlrUnitNt);
+            const fator = it.rf_fator_conversao != null ? Number(it.rf_fator_conversao) : null;
 
-            const qtdInt = parseNumberAny(it.mv_quantidade_interna || 0);
-            const vlrUnitInt = parseNumberAny(it.mv_valor_unitario_interno || 0);
-
-// total interno em centavos (arredonda por linha)
-            const vlrTotIntCents = (it.mv_valor_total_interno != null)
-                ? toCents(it.mv_valor_total_interno)
-                : toCents(qtdInt * vlrUnitInt);
-
-            const qtdNota = parseNumberAny(it.in_quantidade_nota || 0);
-            const vlrUnitNt = parseNumberAny(it.in_valor_unitario_nota || 0);
-
-// total nota em centavos (arredonda por linha)
-            const vlrTotNtCents = (it.in_valor_total_nota != null)
-                ? toCents(it.in_valor_total_nota)
-                : toCents(qtdNota * vlrUnitNt);
-
-            const vlrTotNt = vlrTotNtCents / 100; // para exibir na tabela
-
-
-            const fatorConv  = it.rf_fator_conversao != null ? Number(it.rf_fator_conversao) : null;
-
-            const linha = `
-        <tr>
-          <td class="nowrap">${escapeHtml(nf)}</td>
-          <td class="nowrap">${dtEntrada ? formatDateBR(dtEntrada) : ''}</td>
-          <td class="nowrap">${dtEmissao ? formatDateBR(dtEmissao) : ''}</td>
-
-          <td>
-            <div><strong>[${escapeHtml(prodCod)}]</strong> ${escapeHtml(prodNome)}</div>
-            <div class="text-small muted">Unid. interna: ${escapeHtml(prodUnd || '-')}</div>
-          </td>
-
-          <td class="text-right nowrap">${brNumber(qtdInt, 4)}</td>
-          <td class="text-right nowrap">${brMoney(vlrUnitInt)}</td>
-
-          <td>
-            <div><strong>${escapeHtml(notaCod)}</strong> - ${escapeHtml(notaDesc)}</div>
-            <div class="text-small muted">Unid. nota: ${escapeHtml(notaUnd || '-')}</div>
-          </td>
-
-          <td class="text-right nowrap">${brNumber(qtdNota, 4)}</td>
-          <td class="text-right nowrap">${brMoney(vlrUnitNt)}</td>
-
-          <td class="text-right nowrap">${brMoney(vlrTotNt)}</td>
-          <td class="text-right nowrap">${fatorConv != null ? brNumber(fatorConv, 6) : '-'}</td>
-        </tr>
-      `;
-
-            $tbody.append(linha);
-        });
-
-        if (itens.length === 0) {
             $tbody.append(`
-        <tr>
-          <td colspan="11" class="text-center text-small muted">
-            Nenhum registro para os filtros atuais.
-          </td>
-        </tr>
-      `);
-        }
-    }
+                <tr>
+                    <td class="nowrap"><strong>${escapeHtml(nf)}</strong></td>
+                    <td class="nowrap">${formatDateBR(dtEntrada)}</td>
+                    <td class="nowrap">${formatDateBR(dtEmissao)}</td>
 
-    // ====== RENDER TOTAIS EM TEMPO REAL (KPI STYLE) ======
-    function renderTotais(itens) {
-        const totalRegistros = Array.isArray(itens) ? itens.length : 0;
+                    <td>
+                        <div style="font-weight:500; color:var(--mrk-black);">[${it.pi_codigo || '-'}] ${escapeHtml(it.pi_nome)}</div>
+                        <div class="text-small muted">Unid: ${escapeHtml(it.pi_unidade || '-')}</div>
+                    </td>
+                    <td class="text-right nowrap">${brNumber(qtdInt, 3)}</td>
+                    <td class="text-right nowrap text-small muted">${brMoney(vlrUnitInt)}</td>
 
-        if (!Array.isArray(itens) || itens.length === 0) {
-            $('#kpiRegistros').text('0');
-            $('#kpiQtd').text('0,0000');
-            $('#kpiQtdNF').text('0,0000');
-            $('#kpiVlrNota').text('R$ 0,00');
-            return;
-        }
+                    <td>
+                        <div style="color:#555;">${escapeHtml(it.in_descricao_nota)}</div>
+                        <div class="text-small muted">Unid: ${escapeHtml(it.in_unidade_nota || '-')}</div>
+                    </td>
+                    <td class="text-right nowrap">${brNumber(qtdNota, 3)}</td>
+                    <td class="text-right nowrap text-small muted">${brMoney(vlrUnitNt)}</td>
 
-        let totalQtdInterna4 = 0; // inteiro com 4 casas
-        let totalQtdNF4      = 0; // inteiro com 4 casas
-        let totalVlrNotaCents = 0; // inteiro em centavos
-
-        itens.forEach(it => {
-            const qtdInt4  = toQty4(it.mv_quantidade_interna || 0);
-            const qtdNota4 = toQty4(it.in_quantidade_nota || 0);
-
-            // total da nota SEMPRE em centavos, arredondado por linha
-            const qtdNota = parseNumberAny(it.in_quantidade_nota || 0);
-            const vlrUnit = parseNumberAny(it.in_valor_unitario_nota || 0);
-
-            const linhaCents = (it.in_valor_total_nota != null)
-                ? toCents(it.in_valor_total_nota)
-                : toCents(qtdNota * vlrUnit);
-
-            totalQtdInterna4 += qtdInt4;
-            totalQtdNF4      += qtdNota4;
-            totalVlrNotaCents += linhaCents;
+                    <td class="text-right nowrap"><strong>${brMoney(vlrTotNt)}</strong></td>
+                    <td class="text-right nowrap text-small">${fator ? brNumber(fator, 4) : '-'}</td>
+                </tr>
+            `);
         });
 
-        $('#kpiRegistros').text(totalRegistros);
-        $('#kpiQtd').text(brNumber(totalQtdInterna4 / 10000, 4));
-        $('#kpiQtdNF').text(brNumber(totalQtdNF4 / 10000, 4));
-        $('#kpiVlrNota').text(brMoney(totalVlrNotaCents / 100));
+        if(itens.length > limit) {
+            $tbody.append(`<tr><td colspan="11" class="text-center text-warning">Exibindo os primeiros ${limit} de ${itens.length} registros.</td></tr>`);
+        }
     }
 
     function parseNumberAny(v) {
         if (v === null || v === undefined) return 0;
-        if (typeof v === 'number') return isFinite(v) ? v : 0;
-
-        let s = String(v).trim();
+        if (typeof v === 'number') return v;
+        const s = String(v).trim().replace(/[R$\s]/g, '');
         if (!s) return 0;
-
-        // remove R$, espaços etc
-        s = s.replace(/[R$\s]/g, '');
-
-        // Se tem vírgula, assume pt-BR: tira milhares e troca vírgula por ponto
-        if (s.indexOf(',') !== -1) {
-            s = s.replace(/\./g, '').replace(',', '.');
-        } else {
-            // Se veio com vários pontos (milhar + decimal), mantém só o último como decimal
-            const parts = s.split('.');
-            if (parts.length > 2) {
-                const dec = parts.pop();
-                s = parts.join('') + '.' + dec;
-            }
-        }
-
-        const n = Number(s);
-        return isFinite(n) ? n : 0;
+        // Se tem vírgula, assume padrão BR
+        if (s.includes(',')) return Number(s.replace(/\./g, '').replace(',', '.'));
+        return Number(s);
     }
-
-    // dinheiro sempre em centavos (inteiro)
-    function toCents(v) {
-        return Math.round(parseNumberAny(v) * 100);
-    }
-
-    // quantidade com 4 casas como inteiro (ex: 30,0000 => 300000)
-    function toQty4(v) {
-        return Math.round(parseNumberAny(v) * 10000);
-    }
-
-
-
 </script>
 </body>
 </html>
