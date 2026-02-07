@@ -1,353 +1,472 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Relatório de Diferenças de Estoque</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Fonts e Ícones -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- CSS -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/css/bootstrap-select.min.css">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
-        .total-row {
-            font-weight: bold;
-            background-color: #e0e0e0;
+        /* Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Select2 Custom */
+        .select2-container--default .select2-selection--multiple {
+            border: 1px solid #ccc; border-radius: 4px; min-height: 34px; font-family: 'Poppins', sans-serif;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: var(--mrk-blue);
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(11, 70, 172, 0.4);
         }
 
+        /* KPIs Globais */
+        .kpi-card {
+            background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #eee;
+            margin-bottom: 15px; display: flex; flex-direction: column; position: relative; overflow: hidden;
+        }
+        .kpi-title { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
+        .kpi-value { font-size: 20px; font-weight: 700; font-family: 'Kanit', sans-serif; color: var(--mrk-black); }
+        .kpi-bg-icon { position: absolute; right: 15px; top: 15px; font-size: 28px; opacity: 0.1; }
+
+        .kpi-card.red { border-left: 4px solid var(--mrk-red); }
+        .kpi-card.red .kpi-value, .kpi-card.red .kpi-bg-icon { color: var(--mrk-red); }
+
+        .kpi-card.blue { border-left: 4px solid var(--mrk-blue); }
+        .kpi-card.blue .kpi-value, .kpi-card.blue .kpi-bg-icon { color: var(--mrk-blue); }
+
+        /* Acordeão de Lojas */
         .unit-header {
+            background-color: #e3f2fd;
+            color: var(--mrk-blue);
+            padding: 15px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            font-family: 'Kanit', sans-serif;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #bbdefb;
+            margin-bottom: 5px;
+            transition: background 0.2s;
         }
+        .unit-header:hover { background-color: #bbdefb; }
+        .unit-header.collapsed { background-color: #f5f5f5; color: #666; border-color: #ddd; }
+        .unit-body { padding: 10px; border: 1px solid #eee; border-top: none; border-radius: 0 0 6px 6px; margin-bottom: 15px; display: none; }
 
-        .unit-table {
-            margin-top: 10px;
-            display: none;
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; font-size: 12px;
+            background-color: #fff; border-bottom: 2px solid #e9ecef; white-space: nowrap;
         }
+        .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+        .total-row td { background-color: #f9f9f9; font-weight: 700; color: var(--mrk-black); border-top: 2px solid #eee; }
 
-        .spinner {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-        }
-        .bootstrap-select .dropdown-menu {
-            margin-left: 20px !important;
-            max-width: none;
-            width: auto;
-        }
-
-        .bootstrap-select .dropdown-menu-inner {
-            margin-left: 20px !important;
-            white-space: normal;
-        }
-        .override-bootstrap-select {
-            display: block !important;
-        }
-        .bootstrap-select {
-            width: 100% !important;
-        }
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 
 <body class="theme-blue">
+
 <div class="container-fluid">
-    <div class="header-card">
-        <div class="row">
-            <div class="col-md-2">
-                <label for="dataInicial">Data Inicial</label>
-                <input type="date" id="dataInicial" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <label for="dataFinal">Data Final</label>
-                <input type="date" id="dataFinal" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label for="selectLojas">Lojas</label>
-                <select id="selectLojas" style="display: block; width: 100%;" class="form-control selectpicker override-bootstrap-select" data-selected-text-format="count" data-actions-box="true" multiple data-live-search="true" data-width="fit">
-                    <!-- Preenchido dinamicamente -->
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="visualizacao">Visualização</label>
-                <select id="visualizacao" class="form-control">
-                    <option value="resumido">Resumido</option>
-                    <option value="detalhado">Detalhado</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <label for="btnBuscar">&nbsp;</label>
-                <button id="btnBuscar" class="form-control btn btn-primary waves-effect" style="color: #FFFFFF">Buscar</button>
-            </div>
-        </div>
-    </div>
 
     <div class="card">
-        <div class="header">
-            <h2>Relatório de Diferenças de Estoque</h2>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:data-sheet" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                DIFERENÇAS DE ESTOQUE
+            </h2>
         </div>
-        <div id="relatorio" class="mt-4">
-            <!-- Conteúdo dinâmico -->
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataInicial" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataFinal" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Visualização</label>
+                        <select id="visualizacao" class="form-control">
+                            <option value="resumido">Resumido (Agrupado por Produto)</option>
+                            <option value="detalhado">Detalhado (Dia a Dia)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" style="margin-top: 22px;">
+                        <button id="btnBuscar" class="btn btn-primary btn-block waves-effect">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            BUSCAR
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row clearfix mt-2">
+                    <div class="col-md-12">
+                        <label class="muted">Lojas</label>
+                        <select id="selectLojas" class="form-control" multiple="multiple"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="row">
+                    <div class="col-md-6"><div class="skeleton" style="height: 80px;"></div></div>
+                    <div class="col-md-6"><div class="skeleton" style="height: 80px;"></div></div>
+                </div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div id="result-area" style="display: none;">
+
+                <div class="row clearfix" style="margin-bottom: 20px;">
+                    <div class="col-md-6">
+                        <div class="kpi-card blue">
+                            <span class="kpi-title">Diferença Total (Qtd)</span>
+                            <span class="kpi-value" id="kpiTotalQtd">0,000</span>
+                            <iconify-icon icon="icon-park-outline:cube" class="kpi-bg-icon"></iconify-icon>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="kpi-card red">
+                            <span class="kpi-title">Perda Total (Custo)</span>
+                            <span class="kpi-value" id="kpiTotalCusto">R$ 0,00</span>
+                            <iconify-icon icon="icon-park-outline:trend-two" class="kpi-bg-icon"></iconify-icon>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="container-lojas">
+                    <div class="text-center muted" style="padding: 30px;">
+                        Selecione as lojas e o período para gerar o relatório.
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </div>
 </div>
 
-<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.18/js/bootstrap-select.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.18/js/i18n/defaults-pt_BR.min.js"></script>
-<script src="bsb/plugins/bootstrap-select/js/bootstrap-select.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
+    // Config
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const username = urlParams.get('username');
 
-    $(document).ready(function () {
-        // Configuração do selectpicker
-        $('#selectLojas').selectpicker({
-            noneSelectedText: 'Nenhuma loja selecionada',
-            noneResultsText: 'Nenhum resultado encontrado {0}',
-            selectAllText: 'Selecionar tudo',
-            deselectAllText: 'Desmarcar tudo',
-            width: 'fit'
+    // Helper: Skeleton Toggle
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#result-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#result-area').fadeIn();
+        }
+    }
+
+    // Helper: Formatter
+    function brNum(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 }); }
+    function brMoney(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    function formatDateBR(iso) {
+        if(!iso) return '-';
+        const [y,m,d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    $(document).ready(() => {
+        // Init Select2
+        $('#selectLojas').select2({
+            placeholder: 'Selecione as lojas...',
+            width: '100%',
+            closeOnSelect: false,
+            allowClear: true
         });
 
-        $('#selectLojas').on('changed.bs.select', function () {
-            const selected = $(this).val();
-            const count = selected ? selected.length : 0;
+        // Datas Iniciais
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const d = String(hoje.getDate()).padStart(2, '0');
 
-            if (count === 0) {
-                $('.dropdown-toggle .filter-option').text('Nenhuma loja selecionada');
-            } else if (count === 1) {
-                $('.dropdown-toggle .filter-option').text('1 loja selecionada');
+        // Default: inicio do mês até hoje
+        $('#dataInicial').val(`${y}-${m}-01`);
+        $('#dataFinal').val(`${y}-${m}-${d}`);
+
+        // Actions
+        $('#btnBuscar').click(buscarRelatorio);
+
+        // Load Initial Data
+        if (token && username) {
+            loadUnidades();
+        } else {
+            Swal.fire('Atenção', 'Parâmetros de URL ausentes.', 'warning');
+        }
+    });
+
+    async function loadUnidades() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getFiliaisByMatriz',
+                token: token,
+                data: { unit_matriz_id: username }
+            });
+
+            if (res.data) {
+                const select = $('#selectLojas');
+                select.empty();
+                res.data.forEach(filial => {
+                    select.append(new Option(filial.filial_nome, filial.filial_id));
+                });
+                // Select all by default? Optional. Let's select none to force user choice or select first.
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Falha ao carregar lojas.', 'error');
+        }
+    }
+
+    async function buscarRelatorio() {
+        const dtIni = $('#dataInicial').val();
+        const dtFim = $('#dataFinal').val();
+        const lojas = $('#selectLojas').val(); // Array
+        const visualizacao = $('#visualizacao').val();
+
+        if (!dtIni || !dtFim) return Swal.fire('Atenção', 'Informe o período.', 'warning');
+        if (!lojas || lojas.length === 0) return Swal.fire('Atenção', 'Selecione pelo menos uma loja.', 'warning');
+
+        toggleLoading(true);
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getDiferencasEstoque',
+                token: token,
+                data: {
+                    start_date: dtIni,
+                    end_date: dtFim,
+                    system_unit_id: lojas,
+                    tipo: visualizacao
+                }
+            });
+
+            if (res.data.status === 'success') {
+                processData(res.data.data, visualizacao);
             } else {
-                $('.dropdown-toggle .filter-option').text(`${count} lojas selecionadas`);
+                toggleLoading(false);
+                Swal.fire('Aviso', res.data.message || 'Erro ao carregar relatório.', 'error');
             }
-        });
+        } catch (error) {
+            console.error(error);
+            toggleLoading(false);
+            Swal.fire('Erro', 'Falha na comunicação.', 'error');
+        }
+    }
 
-        // Carregar unidades
-        async function loadUnidades() {
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'getFiliaisByMatriz',
-                    token: token,
-                    data: { unit_matriz_id: username }
-                });
+    function processData(data, visualizacao) {
+        const container = $('#container-lojas');
+        container.empty();
 
-                if (response.data) {
-                    const selectLojas = $('#selectLojas');
-                    selectLojas.empty();
-                    response.data.forEach(filial => {
-                        selectLojas.append(`<option value="${filial.filial_id}">${filial.filial_nome}</option>`);
-                    });
-                    selectLojas.selectpicker('refresh');
-                } else {
-                    Swal.fire('Erro', 'Não foi possível carregar as lojas.', 'error');
-                }
-            } catch (error) {
-                Swal.fire('Erro', error.message, 'error');
-            }
+        if (data.length === 0) {
+            container.html('<div class="alert alert-info text-center">Nenhuma diferença encontrada no período.</div>');
+            $('#kpiTotalQtd').text('0,000');
+            $('#kpiTotalCusto').text('R$ 0,00');
+            toggleLoading(false);
+            return;
         }
 
-        // Buscar relatório
-        async function buscarRelatorio() {
-            const dataInicial = $('#dataInicial').val();
-            const dataFinal = $('#dataFinal').val();
-            const lojas = $('#selectLojas').val();
-            const visualizacao = $('#visualizacao').val();
+        // Agrupar por Unidade
+        const grupos = data.reduce((acc, item) => {
+            const uid = item.system_unit_id;
+            if (!acc[uid]) acc[uid] = [];
+            acc[uid].push(item);
+            return acc;
+        }, {});
 
-            if (!dataInicial || !dataFinal || new Date(dataInicial) > new Date(dataFinal)) {
-                Swal.fire('Erro', 'Preencha as datas corretamente.', 'error');
-                return;
-            }
+        // Variáveis Globais
+        let grandTotalDiff = 0;
+        let grandTotalCost = 0;
 
-            if (!lojas || lojas.length === 0) {
-                Swal.fire('Erro', 'Selecione pelo menos uma loja.', 'error');
-                return;
-            }
+        // Renderizar cada grupo
+        Object.keys(grupos).forEach(uid => {
+            const itens = grupos[uid];
+            const nomeLoja = itens[0].nome_unidade || `Unidade ${uid}`;
 
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'getDiferencasEstoque',
-                    token: token,
-                    data: {
-                        start_date: dataInicial,
-                        end_date: dataFinal,
-                        system_unit_id: lojas,
-                        tipo: visualizacao
-                    }
-                });
+            // Totais da Loja
+            let storeDiff = 0;
+            let storeCost = 0;
 
-                if (response.data.status === 'success') {
-                    renderRelatorio(response.data.data, visualizacao);
-                } else {
-                    Swal.fire('Erro', response.data.message || 'Não foi possível carregar o relatório.', 'error');
-                }
-            } catch (error) {
-                Swal.fire('Erro', error.message, 'error');
-            }
-        }
+            let rows = '';
 
-        function renderRelatorio(data, visualizacao) {
-            const container = $('#relatorio');
-            container.empty();
+            itens.forEach(it => {
+                const diff = Number(it.diferenca || 0);
+                const cost = Number(it.perda_custo || 0);
 
-            if (data.length === 0) {
-                container.html('<div class="alert alert-info">Nenhum resultado encontrado para os filtros selecionados.</div>');
-                return;
-            }
+                storeDiff += diff;
+                storeCost += cost;
 
-            const unidades = groupBy(data, 'system_unit_id');
-
-            Object.keys(unidades).forEach(unitId => {
-                const unidade = unidades[unitId];
-                const nomeUnidade = unidade[0].nome_unidade;
-
-                const header = $(`
-                        <div class="unit-header" style="font-weight: bold; background-color: #d9eaf7; padding: 15px; margin-bottom: 5px; cursor: pointer; font-size: 14px; color: #094c79;">
-                            ${nomeUnidade} <span style="float: right;">+</span>
-                        </div>
-                    `);
-
-                const table = $(`
-                        <table class="table table-striped unit-table" style="display: none;">
-                            <thead>
-                                <tr>
-                                    ${visualizacao === 'resumido' ?
-                    '<th>Produto</th><th>Nome</th><th>Saldo Inicial</th><th>Entradas</th><th>Saídas</th><th>Contagem Ideal</th><th>Contagem Real</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>' :
-                    '<th>Data</th><th>Produto</th><th>Nome</th><th>Saldo Anterior</th><th>Entradas</th><th>Saídas</th><th>Contagem Ideal</th><th>Contagem Real</th><th>Diferença</th><th>Preço Custo</th><th>Perda Custo</th>'}
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    `);
-
-                let totalPerdaCusto = 0;
-                let totalDiferenca = 0;
+                const classDiff = diff < 0 ? 'text-danger' : 'text-success';
+                const classCost = cost < 0 ? 'text-danger' : '';
 
                 if (visualizacao === 'resumido') {
-                    // No modo resumido, cada item já contém os totais calculados
-                    unidade.forEach(item => {
-                        totalDiferenca += item.diferenca;
-                        totalPerdaCusto += item.perda_custo;
-
-                        const row = $(`
-                                <tr>
-                                    <td>${item.produto}</td>
-                                    <td>${item.nome_produto}</td>
-                                    <td>${formatNumber(item.saldo_anterior)}</td>
-                                    <td>${formatNumber(item.entradas)}</td>
-                                    <td>${formatNumber(item.saidas)}</td>
-                                    <td>${formatNumber(item.contagem_ideal)}</td>
-                                    <td>${formatNumber(item.contagem_realizada)}</td>
-                                    <td class="${item.diferenca < 0 ? 'text-danger' : ''}">${formatNumber(item.diferenca)}</td>
-                                    <td>${formatCurrency(item.preco_custo)}</td>
-                                    <td class="${item.perda_custo < 0 ? 'text-danger' : ''}">${formatCurrency(item.perda_custo)}</td>
-                                </tr>
-                            `);
-                        table.find('tbody').append(row);
-                    });
-                } else {
-                    // Modo detalhado - mostra todos os registros
-                    unidade.forEach(item => {
-                        totalDiferenca += item.diferenca;
-                        totalPerdaCusto += item.perda_custo;
-
-                        const row = $(`
-                                <tr>
-                                    <td>${formatDate(item.data)}</td>
-                                    <td>${item.produto}</td>
-                                    <td>${item.nome_produto}</td>
-                                    <td>${formatNumber(item.saldo_anterior)}</td>
-                                    <td>${formatNumber(item.entradas)}</td>
-                                    <td>${formatNumber(item.saidas)}</td>
-                                    <td>${formatNumber(item.contagem_ideal)}</td>
-                                    <td>${formatNumber(item.contagem_realizada)}</td>
-                                    <td class="${item.diferenca < 0 ? 'text-danger' : ''}">${formatNumber(item.diferenca)}</td>
-                                    <td>${formatCurrency(item.preco_custo)}</td>
-                                    <td class="${item.perda_custo < 0 ? 'text-danger' : ''}">${formatCurrency(item.perda_custo)}</td>
-                                </tr>
-                            `);
-                        table.find('tbody').append(row);
-                    });
-                }
-
-                // Adiciona linha de total
-                const footer = $(`
-                        <tr class="total-row">
-                            <td colspan="${visualizacao === 'resumido' ? '8' : '9'}" style="font-weight: bold;">Total</td>
-                            <td>${formatNumber(totalDiferenca)}</td>
-                            <td>${formatCurrency(totalPerdaCusto)}</td>
+                    rows += `
+                        <tr>
+                            <td>${it.produto}</td>
+                            <td>${it.nome_produto}</td>
+                            <td class="text-right">${brNum(it.saldo_anterior)}</td>
+                            <td class="text-right">${brNum(it.entradas)}</td>
+                            <td class="text-right">${brNum(it.saidas)}</td>
+                            <td class="text-right muted">${brNum(it.contagem_ideal)}</td>
+                            <td class="text-right"><strong>${brNum(it.contagem_realizada)}</strong></td>
+                            <td class="text-right ${classDiff}"><strong>${brNum(diff)}</strong></td>
+                            <td class="text-right muted">${brMoney(it.preco_custo)}</td>
+                            <td class="text-right ${classCost}">${brMoney(cost)}</td>
                         </tr>
-                    `);
-                table.find('tbody').append(footer);
-
-                container.append(header);
-                container.append(table);
-
-                header.on('click', function () {
-                    const isVisible = table.is(':visible');
-                    table.slideToggle(300);
-                    $(this).find('span').text(isVisible ? '+' : '-');
-                });
+                    `;
+                } else {
+                    // Detalhado
+                    rows += `
+                        <tr>
+                            <td>${formatDateBR(it.data)}</td>
+                            <td>${it.produto}</td>
+                            <td>${it.nome_produto}</td>
+                            <td class="text-right">${brNum(it.saldo_anterior)}</td>
+                            <td class="text-right">${brNum(it.entradas)}</td>
+                            <td class="text-right">${brNum(it.saidas)}</td>
+                            <td class="text-right muted">${brNum(it.contagem_ideal)}</td>
+                            <td class="text-right"><strong>${brNum(it.contagem_realizada)}</strong></td>
+                            <td class="text-right ${classDiff}"><strong>${brNum(diff)}</strong></td>
+                            <td class="text-right muted">${brMoney(it.preco_custo)}</td>
+                            <td class="text-right ${classCost}">${brMoney(cost)}</td>
+                        </tr>
+                    `;
+                }
             });
-        }
 
-        function groupBy(array, key) {
-            return array.reduce((result, currentValue) => {
-                (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
-                return result;
-            }, {});
-        }
+            grandTotalDiff += storeDiff;
+            grandTotalCost += storeCost;
 
-        function formatNumber(value) {
-            return parseFloat(value).toFixed(2).replace('.', ',');
-        }
+            const uniqueId = `store-${uid}`;
+            const headerHtml = `
+                <div class="unit-header collapsed" data-target="#${uniqueId}">
+                    <span>
+                        <iconify-icon icon="icon-park-outline:shop" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                        ${nomeLoja}
+                    </span>
+                    <span style="font-size: 12px; color: #666;">
+                        Dif: <b>${brNum(storeDiff)}</b> | Custo: <b>${brMoney(storeCost)}</b>
+                        <iconify-icon icon="icon-park-outline:down" style="margin-left: 10px; vertical-align: middle;"></iconify-icon>
+                    </span>
+                </div>
+            `;
 
-        function formatCurrency(value) {
-            return `R$ ${parseFloat(value).toFixed(2).replace('.', ',')}`;
-        }
+            const tableHtml = `
+                <div id="${uniqueId}" class="unit-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    ${visualizacao === 'detalhado' ? '<th>Data</th>' : ''}
+                                    <th>Cód</th>
+                                    <th>Produto</th>
+                                    <th class="text-right">S. Inicial</th>
+                                    <th class="text-right">Ent</th>
+                                    <th class="text-right">Sai</th>
+                                    <th class="text-right">Ideal</th>
+                                    <th class="text-right">Real</th>
+                                    <th class="text-right">Dif</th>
+                                    <th class="text-right">Custo Un.</th>
+                                    <th class="text-right">Perda Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td colspan="${visualizacao === 'detalhado' ? '8' : '7'}" class="text-right">TOTAL LOJA:</td>
+                                    <td class="text-right">${brNum(storeDiff)}</td>
+                                    <td></td>
+                                    <td class="text-right">${brMoney(storeCost)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
 
-        function formatDate(dateString) {
-            const [year, month, day] = dateString.split('-');
-            return `${day}/${month}/${year}`;
-        }
+            container.append(headerHtml + tableHtml);
+        });
 
-        $('#btnBuscar').on('click', buscarRelatorio);
-        loadUnidades();
-    });
+        // Atualizar KPIs Globais
+        $('#kpiTotalQtd').text(brNum(grandTotalDiff));
+        $('#kpiTotalCusto').text(brMoney(grandTotalCost));
+
+        // Evento Accordion
+        $('.unit-header').click(function() {
+            const target = $(this).data('target');
+            $(target).slideToggle(200);
+            $(this).toggleClass('collapsed');
+
+            const icon = $(this).find('iconify-icon[icon*="down"], iconify-icon[icon*="up"]');
+            if ($(this).hasClass('collapsed')) {
+                icon.attr('icon', 'icon-park-outline:down');
+                $(this).css('background-color', '#f5f5f5').css('color', '#666').css('border-color', '#ddd');
+            } else {
+                icon.attr('icon', 'icon-park-outline:up');
+                $(this).css('background-color', '#e3f2fd').css('color', 'var(--mrk-blue)').css('border-color', '#bbdefb');
+            }
+        });
+
+        toggleLoading(false);
+    }
 </script>
+
 </body>
 </html>
