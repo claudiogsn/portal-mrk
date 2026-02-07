@@ -4,124 +4,183 @@
   <meta charset="UTF-8">
   <title>Conferência COP entre Balanços</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
   <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
   <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
   <link href="bsb/css/style.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-  <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link href="style/mrk.css" rel="stylesheet">
+
   <style>
-      /* Modal fullscreen para Bootstrap 3 */
-      .modal-fullscreen .modal-dialog {
-          width: 100%;
-          height: 100%;
-          margin: 0;
-          padding: 0;
-      }
-      .modal-fullscreen .modal-content {
-          height: 100%;
-          border: 0;
-          border-radius: 0;
-      }
-      .modal-fullscreen .modal-body {
-          height: calc(100% - 55px);
-          padding: 0;
-          overflow: hidden;
-      }
-      .modal-fullscreen iframe {
-          width: 100%;
-          height: 100%;
-          border: 0;
-      }
-    .form-control { margin-bottom: 10px; }
-    .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
-    .table thead th { white-space: nowrap; }
-    .nowrap { white-space: nowrap; }
-    .muted { color: #777; }
-    .text-small { font-size: 12px; }
-    .badge-green { background: #2e7d32; }
-    .badge-red { background: #c62828; }
-    .badge-gray { background: #757575; }
-    @media (max-width: 768px) {
-      body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
+    body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+    /* Card Padrão */
+    .card {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border: 1px solid #eee;
+      border-top: 3px solid var(--mrk-blue) !important;
+      margin-bottom: 20px;
+      border-radius: 6px;
     }
+
+    /* Header e Filtros */
+    .header-flex { display: flex; align-items: center; justify-content: space-between; }
+    .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+    .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+    /* Tabela */
+    .table thead th {
+      font-family: 'Kanit', sans-serif;
+      color: var(--mrk-blue);
+      font-weight: 600;
+      font-size: 12px;
+      background-color: #f8f9fa;
+      border-bottom: 2px solid #e9ecef;
+      white-space: nowrap;
+    }
+    .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+    /* Badges de Divergência */
+    .badge-div {
+      padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block;
+    }
+    .bg-green-light { background: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+    .bg-red-light { background: #ffebee; color: var(--mrk-red); border: 1px solid #ffcdd2; }
+    .bg-gray-light { background: #f5f5f5; color: #777; border: 1px solid #ddd; }
+
+    /* Botão Ação Tabela */
+    .btn-action-icon {
+      color: var(--mrk-blue);
+      font-size: 18px;
+      transition: transform 0.2s;
+      cursor: pointer;
+      display: inline-flex;
+    }
+    .btn-action-icon:hover { transform: scale(1.1); color: var(--mrk-black); }
+
+    /* Rodapé de Totais */
+    .summary-footer {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px dashed #ddd;
+      text-align: right;
+      font-size: 12px;
+      color: #555;
+    }
+    .summary-footer b { color: var(--mrk-black); font-weight: 600; margin-left: 5px; }
+
+    /* Modal Header Custom */
+    .modal-header.bg-gray { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
   </style>
 </head>
 <body class="theme-blue">
+
 <div class="container-fluid">
-  <br>
 
   <div class="card">
-    <div class="header"><h2>Relatório de Auditoria - COP</h2></div>
-
-    <div class="row" style="margin: 15px 0;">
-      <div class="col-md-4">
-        <label class="muted">Data inicial</label>
-        <input type="date" id="dtInicio" class="form-control">
-      </div>
-      <div class="col-md-4">
-        <label class="muted">Data final</label>
-        <input type="date" id="dtFim" class="form-control">
-      </div>
-      <div class="col-md-4">
-        <label class="muted">Ações</label><br>
-        <button id="btnConsultar" class="btn btn-primary">
-          <i class="fa fa-search"></i> Consultar
-        </button>
-        <button id="btnExportPdf" class="btn btn-default">
-          <i class="fa fa-file-pdf"></i> Exportar PDF
-        </button>
-      </div>
-    </div>
-
-    <div class="row" style="margin: 5px 0 15px;">
-      <div class="col-md-6 text-right">
-        <span id="msgJanela" class="text-small muted"></span>
-      </div>
+    <div class="header header-flex">
+      <h2>
+        <iconify-icon icon="icon-park-outline:audit" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+        RELATÓRIO DE AUDITORIA - COP
+      </h2>
     </div>
 
     <div class="body">
+
+      <div class="filter-box">
+        <div class="row clearfix">
+          <div class="col-md-4">
+            <label class="muted">Data Inicial</label>
+            <div class="input-group">
+              <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+              <input type="date" id="dtInicio" class="form-control">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="muted">Data Final</label>
+            <div class="input-group">
+              <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+              <input type="date" id="dtFim" class="form-control">
+            </div>
+          </div>
+          <div class="col-md-4" style="margin-top: 22px;">
+            <div style="display: flex; gap: 10px;">
+              <button id="btnConsultar" class="btn btn-primary waves-effect" style="flex: 1;">
+                <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                CONSULTAR
+              </button>
+              <button id="btnExportPdf" class="btn btn-default waves-effect" style="flex: 1;">
+                <iconify-icon icon="icon-park-outline:file-pdf" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                PDF
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-12">
+            <input type="checkbox" id="chkSomenteDivergentes" class="chk-col-blue" />
+            <label for="chkSomenteDivergentes" class="muted" style="margin-bottom: 0;">Exibir apenas itens com divergência</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="msgJanela" class="alert alert-info text-small" style="display: none; margin-bottom: 15px;"></div>
+
       <div class="table-responsive">
-        <table class="table table-striped table-hover" id="tabela-resultado">
+        <table class="table table-hover" id="tabela-resultado">
           <thead>
           <tr>
-              <th class="nowrap">Detalhes</th>
-              <th>Insumo</th>
-            <th id="thSaldoInicial">Saldo Inicial</th>
-            <th>Entradas</th>
-            <th>Saídas</th>
-            <th>Saldo Estimado Final</th>
-            <th id="thBalancoFinal">Balanço Final</th>
-            <th>Diferença (quant.)</th>
-            <th>Custo Unitário (R$)</th>
-            <th>Valor Diferença (R$)</th>
+            <th class="text-center" width="50">Detalhes</th>
+            <th>Insumo</th>
+            <th class="text-right" id="thSaldoInicial">Saldo Inicial</th>
+            <th class="text-right">Entradas</th>
+            <th class="text-right">Saídas</th>
+            <th class="text-right">Saldo Estimado</th>
+            <th class="text-right" id="thBalancoFinal">Balanço Final</th>
+            <th class="text-center">Dif. (Qtd)</th>
+            <th class="text-right">Custo Unit.</th>
+            <th class="text-right">Dif. (R$)</th>
           </tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+          <tr><td colspan="10" class="text-center muted" style="padding: 30px;">Utilize os filtros acima para consultar.</td></tr>
+          </tbody>
         </table>
       </div>
-      <div id="resumoTotais" class="text-right muted text-small" style="margin-top:5px;"></div>
+
+      <div id="resumoTotais" class="summary-footer" style="display: none;"></div>
     </div>
   </div>
 </div>
-<!-- Modal Fullscreen para Detalhes do Insumo -->
-<div class="modal fade modal-fullscreen" id="modalExtrato" tabindex="-1" role="dialog" aria-labelledby="modalExtratoLabel">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header" style="padding:10px 15px;">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size:28px;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h4 class="modal-title" id="modalExtratoLabel">Detalhes do Insumo</h4>
-            </div>
-            <div class="modal-body">
-                <iframe id="iframeExtrato" src="about:blank"></iframe>
-            </div>
-        </div>
+
+<div class="modal fade" id="modalExtrato" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-fullscreen" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-gray">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+        <h4 class="modal-title" id="modalExtratoLabel" style="color: var(--mrk-black); font-family: 'Kanit', sans-serif;">
+          <iconify-icon icon="icon-park-outline:chart-line" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+          Detalhes do Insumo
+        </h4>
+      </div>
+      <div class="modal-body p-0">
+        <iframe id="iframeExtrato" class="modal-iframe" src="about:blank"></iframe>
+      </div>
     </div>
+  </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
   // ====== CONFIG ======
@@ -129,13 +188,13 @@
           ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
           : 'http://localhost/portal-mrk/api/v1/index.php';
 
-  const baseUrlredirect = window.location.hostname !== 'localhost' ?
-          'https://portal.mrksolucoes.com.br/external' :
-          'http://localhost/portal-mrk/external';
+  const baseUrlRedirect = window.location.hostname !== 'localhost'
+          ? 'https://portal.mrksolucoes.com.br/external'
+          : 'http://localhost/portal-mrk/external';
 
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
-  const system_unit_id = urlParams.get('system_unit_id'); // vem pela URL
+  const system_unit_id = urlParams.get('system_unit_id');
   const unit_name = urlParams.get('unit_name');
 
   // ====== STATE ======
@@ -143,10 +202,6 @@
   let itensFiltrados = [];
 
   // ====== UTILS ======
-  function brNumber(v) {
-    if (v === null || v === undefined || isNaN(v)) return '-';
-    return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
   function brQty(v) {
     if (v === null || v === undefined || isNaN(v)) return '-';
     return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -155,32 +210,28 @@
     if (v === null || v === undefined || isNaN(v)) return '-';
     return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
-  function badgeDivergencia(val) {
-    if (val === null || val === undefined || isNaN(val)) return '<span class="label label-xs badge-gray">n/a</span>';
-    if (Math.abs(val) < 1e-9) return '<span class="label label-xs label-success">0,00</span>';
-    const cls = val > 0 ? 'badge-green' : 'badge-red';
-    return `<span class="label label-xs ${cls}">${brQty(val)}</span>`;
-  }
-  function escapeHtml(s) {
-    if (s == null) return s;
-    return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-  }
   function formatDateBR(iso) {
     if (!iso) return '';
-    const d = String(iso).slice(0,10).split('-'); // YYYY-MM-DD
+    const d = String(iso).slice(0,10).split('-');
     if (d.length !== 3) return '';
     return `${d[2]}/${d[1]}/${d[0]}`;
+  }
+
+  // Badge estilo MRK
+  function badgeDivergencia(val) {
+    if (val === null || val === undefined || isNaN(val)) return '<span class="badge-div bg-gray-light">n/a</span>';
+    if (Math.abs(val) < 0.001) return '<span class="badge-div bg-green-light">OK</span>';
+
+    const cls = val > 0 ? 'bg-green-light' : 'bg-red-light';
+    const icon = val > 0 ? '+' : '';
+    return `<span class="badge-div ${cls}">${icon}${brQty(val)}</span>`;
   }
 
   // ====== BINDINGS ======
   $(document).ready(() => {
     $('#btnConsultar').on('click', onConsultar);
     $('#chkSomenteDivergentes').on('change', renderTabelaComFiltro);
+    $('#btnExportPdf').on('click', onExportPdf);
   });
 
   // ====== CONSULTA ======
@@ -199,7 +250,7 @@
 
     try {
       const res = await axios.post(baseUrl, {
-        method: 'extratoCopEntreBalancos', // ajuste se o nome no backend for outro
+        method: 'extratoCopEntreBalancos',
         token,
         data: {
           system_unit_id: Number(system_unit_id),
@@ -211,20 +262,25 @@
       Swal.close();
 
       if (res.data && res.data.error) {
-        $('#msgJanela').text('');
-        renderTabela([]); // limpa
+        $('#msgJanela').hide();
+        renderTabela([]);
         return Swal.fire('Atenção', res.data.error, 'warning');
       }
 
       ultimoPayload = res.data || {};
 
-      // Atualiza os títulos com as datas dos balanços, se vierem
+      // Headers Dinâmicos
       const ini = ultimoPayload?.janela?.data_inicial_balanco;
       const fim = ultimoPayload?.janela?.data_final_balanco;
       $('#thSaldoInicial').text(`Saldo Inicial${ini ? ' ('+ formatDateBR(ini) +')' : ''}`);
       $('#thBalancoFinal').text(`Balanço Final${fim ? ' ('+ formatDateBR(fim) +')' : ''}`);
 
-      $('#msgJanela').text(ultimoPayload.mensagem || '');
+      if(ultimoPayload.mensagem) {
+        $('#msgJanela').text(ultimoPayload.mensagem).show();
+      } else {
+        $('#msgJanela').hide();
+      }
+
       renderTabelaComFiltro();
 
     } catch (e) {
@@ -244,7 +300,7 @@
     let arr = ultimoPayload.itens.slice();
 
     if (somenteDiverg) {
-      arr = arr.filter(i => i.divergencia !== null && Math.abs(i.divergencia) > 1e-9);
+      arr = arr.filter(i => i.divergencia !== null && Math.abs(i.divergencia) > 0.001);
     }
 
     itensFiltrados = arr;
@@ -252,169 +308,129 @@
   }
 
   function renderTabela(itens) {
-      const $tbody = $('#tabela-resultado tbody');
-      $tbody.empty();
+    const $tbody = $('#tabela-resultado tbody');
+    $tbody.empty();
 
-      let totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDivQtd = 0, totalValDiff = 0;
+    if(itens.length === 0) {
+      $tbody.html('<tr><td colspan="10" class="text-center muted" style="padding: 20px;">Nenhum registro encontrado.</td></tr>');
+      $('#resumoTotais').hide();
+      return;
+    }
 
-      itens.forEach(item => {
-          const custo = item.custo_unitario != null ? Number(item.custo_unitario)
-              : (item.preco_custo != null ? Number(item.preco_custo) : null);
+    let totalIni = 0, totalEnt = 0, totalSai = 0, totalEsp = 0, totalFin = 0, totalDivQtd = 0, totalValDiff = 0;
 
-          const diverg = item.divergencia != null ? Number(item.divergencia) : null;
-          const valorDiferenca = (custo != null && diverg != null) ? (custo * diverg) : null;
+    itens.forEach(item => {
+      const custo = item.custo_unitario != null ? Number(item.custo_unitario) : (item.preco_custo != null ? Number(item.preco_custo) : null);
+      const diverg = item.divergencia != null ? Number(item.divergencia) : null;
+      const valorDiferenca = (custo != null && diverg != null) ? (custo * diverg) : null;
 
-          totalIni     += Number(item.saldo_inicial || 0);
-          totalEnt     += Number(item.entradas || 0);
-          totalSai     += Number(item.saidas || 0);
-          totalEsp     += Number(item.saldo_esperado || 0);
-          totalFin     += Number(item.saldo_final_balanco || 0);
-          totalDivQtd  += Number(diverg || 0);
-          totalValDiff += Number(valorDiferenca || 0);
+      totalIni     += Number(item.saldo_inicial || 0);
+      totalEnt     += Number(item.entradas || 0);
+      totalSai     += Number(item.saidas || 0);
+      totalEsp     += Number(item.saldo_esperado || 0);
+      totalFin     += Number(item.saldo_final_balanco || 0);
+      totalDivQtd  += Number(diverg || 0);
+      totalValDiff += Number(valorDiferenca || 0);
 
-          // tenta obter o id/codigo do insumo
-          const insumoId = item.produto;
-          const insumoName= item.nome_produto;
+      const insumoId = item.produto;
+      const insumoName = item.nome_produto || '';
 
-          const linkDetalhes = insumoId
-              ? `<a href="#modalExtrato"
-                    class="lnk-detalhes"
-                    data-toggle="modal"
-                    data-insumo="${insumoId}"
-                    data-insumo-name="${escapeHtml(insumoName)}"
-                    data-dt-inicio="${$('#dtInicio').val()}"
-                    data-dt-fim="${$('#dtFim').val()}"
-                    title="Ver detalhes do insumo">
-                    <i class="fa fa-search"></i>
-                 </a>`
-              : '<span class="text-muted">-</span>';
+      // Ícone de ação
+      const linkDetalhes = insumoId
+              ? `<a href="#" class="btn-action-icon"
+                      onclick="abrirModalExtrato(${insumoId}, '${insumoName.replace(/'/g, "\\'")}')"
+                      title="Ver extrato detalhado">
+                      <iconify-icon icon="icon-park-outline:preview-open"></iconify-icon>
+                   </a>`
+              : '<span class="muted">-</span>';
 
+      const tr = `
+            <tr>
+                <td class="text-center">${linkDetalhes}</td>
+                <td><strong>${insumoName}</strong></td>
+                <td class="text-right">${brQty(item.saldo_inicial)}</td>
+                <td class="text-right text-success">${brQty(item.entradas)}</td>
+                <td class="text-right text-danger">${brQty(item.saidas)}</td>
+                <td class="text-right muted">${brQty(item.saldo_esperado)}</td>
+                <td class="text-right"><strong>${item.saldo_final_balanco != null ? brQty(item.saldo_final_balanco) : '-'}</strong></td>
+                <td class="text-center">${badgeDivergencia(diverg)}</td>
+                <td class="text-right muted text-small">${custo != null ? brMoney(custo) : '-'}</td>
+                <td class="text-right"><strong>${valorDiferenca != null ? brMoney(valorDiferenca) : '-'}</strong></td>
+            </tr>`;
+      $tbody.append(tr);
+    });
 
-          const tr = `
-      <tr>
-        <td class="nowrap" style="width:70px;">${linkDetalhes}</td>
-        <td>${escapeHtml(item.nome_produto) || '-'}</td>
-        <td class="text-right">${brQty(item.saldo_inicial)}</td>
-        <td class="text-right">${brQty(item.entradas)}</td>
-        <td class="text-right">${brQty(item.saidas)}</td>
-        <td class="text-right">${brQty(item.saldo_esperado)}</td>
-        <td class="text-right">${item.saldo_final_balanco != null ? brQty(item.saldo_final_balanco) : '-'}</td>
-        <td class="text-right">${badgeDivergencia(diverg)}</td>
-        <td class="text-right">${custo != null ? brMoney(custo) : '-'}</td>
-        <td class="text-right">${valorDiferenca != null ? brMoney(valorDiferenca) : '-'}</td>
-      </tr>`;
-          $tbody.append(tr);
-      });
-
-      $('#resumoTotais').html(`
-    Totais &nbsp;|&nbsp;
-    Inicial: <b>${brQty(totalIni)}</b> &nbsp;·&nbsp;
-    Entradas: <b>${brQty(totalEnt)}</b> &nbsp;·&nbsp;
-    Saídas: <b>${brQty(totalSai)}</b> &nbsp;·&nbsp;
-    Esperado: <b>${brQty(totalEsp)}</b> &nbsp;·&nbsp;
-    Balanço Final: <b>${brQty(totalFin)}</b> &nbsp;·&nbsp;
-    Diferença (quant.): <b>${brQty(totalDivQtd)}</b> &nbsp;·&nbsp;
-    Valor Diferença: <b>${brMoney(totalValDiff)}</b>
-  `);
-
-      $('#modalExtrato').off('show.bs.modal').on('show.bs.modal', function (ev) {
-          const $a = $(ev.relatedTarget); // o <a> clicado
-
-          const insumoId   = $a.data('insumo');
-          const insumoName = $a.data('insumoName') || $a.attr('data-insumo-name') || '';
-
-          // Helpers de data
-          const parseToDate = (str) => {
-              if (!str) return null;
-              // YYYY-MM-DD
-              if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-                  const [y, m, d] = str.split('-').map(Number);
-                  return new Date(y, m - 1, d);
-              }
-              // DD/MM/YYYY
-              if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-                  const [d, m, y] = str.split('/').map(Number);
-                  return new Date(y, m - 1, d);
-              }
-              // fallback
-              return new Date(str);
-          };
-
-          const formatYMD = (date) => {
-              const y = date.getFullYear();
-              const m = String(date.getMonth() + 1).padStart(2, '0');
-              const d = String(date.getDate()).padStart(2, '0');
-              return `${y}-${m}-${d}`;
-          };
-
-          const addDays = (date, days) => {
-              const d = new Date(date.getFullYear(), date.getMonth(), date.getDate()); // normaliza sem hora
-              d.setDate(d.getDate() + days);
-              return d;
-          };
-
-          // datas originais
-          const dt_inicio_raw = $a.data('dt-inicio') || $('#dtInicio').val();
-          const dt_fim_raw    = $a.data('dt-fim')    || $('#dtFim').val();
-
-          // aplica -1 dia em dt_inicio
-          const dtInicioDate   = parseToDate(dt_inicio_raw);
-          const dtInicioMenos1 = dtInicioDate ? formatYMD(addDays(dtInicioDate, +1)) : dt_inicio_raw;
-
-          const qs = $.param({
-              token: token,
-              unit_id: system_unit_id,
-              insumo_id: insumoId,
-              dt_inicio: dtInicioMenos1,
-              dt_fim: dt_fim_raw,
-              redirect: 'true'
-          });
-
-          const url = `${baseUrlredirect}/extratoInsumo.html?${qs}`;
-          $('#iframeExtrato').attr('src', url);
-
-          // se precisar do nome no título:
-          $('#modalExtratoLabel').text(`Extrato - ${insumoName}`);
-      });
-
-
-
+    // Footer Totais
+    $('#resumoTotais').html(`
+            Inicial: <b>${brQty(totalIni)}</b> &nbsp;|&nbsp;
+            Entradas: <b>${brQty(totalEnt)}</b> &nbsp;|&nbsp;
+            Saídas: <b>${brQty(totalSai)}</b> &nbsp;|&nbsp;
+            Esperado: <b>${brQty(totalEsp)}</b> &nbsp;|&nbsp;
+            Final: <b>${brQty(totalFin)}</b> &nbsp;|&nbsp;
+            Diferença Qtd: <b style="color:${totalDivQtd < 0 ? 'var(--mrk-red)' : 'var(--mrk-green)'}">${brQty(totalDivQtd)}</b> &nbsp;|&nbsp;
+            Diferença Valor: <b style="color:${totalValDiff < 0 ? 'var(--mrk-red)' : 'var(--mrk-green)'}">${brMoney(totalValDiff)}</b>
+        `).show();
   }
-  $('#btnExportPdf').on('click', () => {
+
+  // ====== MODAL FUNÇÕES ======
+  window.abrirModalExtrato = function(insumoId, insumoName) {
+    // Datas Originais
+    const dt_inicio_raw = $('#dtInicio').val();
+    const dt_fim_raw    = $('#dtFim').val();
+
+    // Lógica de adicionar 1 dia não é ideal sem ver o fuso,
+    // mas mantendo a lógica original do seu código:
+    // Se a data for YYYY-MM-DD, cria objeto Date
+    const d = new Date(dt_inicio_raw + 'T00:00:00');
+    d.setDate(d.getDate() + 1); // +1 dia
+    const dtInicioAjustada = d.toISOString().split('T')[0];
+
+    const qs = $.param({
+      token: token,
+      unit_id: system_unit_id,
+      insumo_id: insumoId,
+      dt_inicio: dtInicioAjustada, // Usando a ajustada conforme original
+      dt_fim: dt_fim_raw,
+      redirect: 'true'
+    });
+
+    const url = `${baseUrlRedirect}/extratoInsumo.html?${qs}`;
+
+    $('#modalExtratoLabel').html(`<iconify-icon icon="icon-park-outline:chart-line" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon> ${insumoName}`);
+    $('#iframeExtrato').attr('src', url);
+    $('#modalExtrato').modal('show');
+  };
+
+  $('#modalExtrato').on('hidden.bs.modal', function () {
+    $('#iframeExtrato').attr('src', 'about:blank');
+  });
+
+  // ====== PDF EXPORT ======
+  function onExportPdf() {
     if (!ultimoPayload || !Array.isArray(ultimoPayload.itens) || ultimoPayload.itens.length === 0) {
       return Swal.fire('Atenção', 'Consulte primeiro para gerar o PDF.', 'warning');
     }
 
-    // Monta o pacote que o cop.html vai usar
     const pacote = {
-        unidade: {
-            id:   system_unit_id,
-            nome: unit_name
-        },
-      janela: {
-        data_inicial_balanco: ultimoPayload?.janela?.data_inicial_balanco || null,
-        doc_inicial:          ultimoPayload?.janela?.doc_inicial          || null,
-        data_final_balanco:   ultimoPayload?.janela?.data_final_balanco   || null,
-        doc_final:            ultimoPayload?.janela?.doc_final            || null
-      },
+      unidade: { id: system_unit_id, nome: unit_name },
+      janela: ultimoPayload?.janela,
       mensagem: ultimoPayload?.mensagem || '',
-      itens: (ultimoPayload.itens || []).map(x => ({
-        nome_produto:        x.nome_produto,
-        saldo_inicial:       Number(x.saldo_inicial || 0),
-        entradas:            Number(x.entradas || 0),
-        saidas:              Number(x.saidas || 0),
-        saldo_esperado:      Number(x.saldo_esperado || 0),
+      itens: ultimoPayload.itens.map(x => ({
+        nome_produto: x.nome_produto,
+        saldo_inicial: Number(x.saldo_inicial || 0),
+        entradas: Number(x.entradas || 0),
+        saidas: Number(x.saidas || 0),
+        saldo_esperado: Number(x.saldo_esperado || 0),
         saldo_final_balanco: (x.saldo_final_balanco != null ? Number(x.saldo_final_balanco) : null),
-        divergencia:         (x.divergencia != null ? Number(x.divergencia) : null),
-        custo_unitario:      (x.custo_unitario != null ? Number(x.custo_unitario) : null),
-        valor_diferenca:     (x.valor_diferenca != null ? Number(x.valor_diferenca) : null)
+        divergencia: (x.divergencia != null ? Number(x.divergencia) : null),
+        custo_unitario: (x.custo_unitario != null ? Number(x.custo_unitario) : null),
+        valor_diferenca: (x.valor_diferenca != null ? Number(x.valor_diferenca) : null)
       }))
     };
 
-    // grava no localStorage e abre a página do relatório
     localStorage.setItem('copPdfData', JSON.stringify(pacote));
-    window.open(`${baseUrlredirect}/reports/cop.html`, '_blank');
-  });
+    window.open(`${baseUrlRedirect}/reports/cop.html`, '_blank');
+  }
 </script>
 </body>
 </html>

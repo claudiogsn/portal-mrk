@@ -2,117 +2,184 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>Extrato do Insumo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Fonts e Ícones -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- CSS -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
-        .badge-tipo {
-            display: inline-block;
-            min-width: 70px;
+
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Badges de Movimentação */
+        .badge-mov {
+            padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; min-width: 80px; text-align: center;
         }
-        .badge-entrada { background: #d4edda; color: #155724; border: 1px solid #28a745; }
-        .badge-saida   { background: #ffe5b4; color: #7c4a03; border: 1px solid #ff9800; }
-        .badge-saldo   { background: #fefefe; color: #444;    border: 1px solid #6c757d; }
-        .badge-balanco { background: #e0f7ff; color: #014d76; border: 1px solid #007bff; }
-        .table-extrato td, .table-extrato th { vertical-align: middle !important; }
-        .nowrap { white-space: nowrap; }
+        .bg-entrada { background: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+        .bg-saida   { background: #ffebee; color: var(--mrk-red); border: 1px solid #ffcdd2; }
+        .bg-saldo   { background: #f5f5f5; color: #555; border: 1px solid #ddd; }
+        .bg-balanco { background: #e3f2fd; color: var(--mrk-blue); border: 1px solid #bbdefb; }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Skeleton Loader */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 45px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Saldo Inicial */
+        .saldo-destaque {
+            background: #fff8e1; color: var(--mrk-amber);
+            padding: 5px 10px; border-radius: 4px; font-weight: 600; font-size: 12px; border: 1px solid #ffecb3;
+        }
     </style>
 </head>
 
 <body class="theme-blue">
 <div class="container-fluid">
-    <div class="header-card">
-        <div class="row">
-            <div class="col-md-3">
-                <label for="dataInicial">Data Inicial</label>
-                <input type="date" id="dataInicial" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label for="dataFinal">Data Final</label>
-                <input type="date" id="dataFinal" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label for="item-description">Produto</label>
-                <input type="hidden" id="item-id" name="item_id">
-                <input type="text" id="item-description" class="form-control" readonly
-                       placeholder="Clique para selecionar um produto" data-toggle="modal" data-target="#itemModal">
-            </div>
-            <div class="col-md-1 text-right">
-                <button id="btnFiltrar" class="btn btn-primary" style="margin-top:24px;">Buscar</button>
+
+    <div class="card">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:transaction-order" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                EXTRATO DO INSUMO
+            </h2>
+            <div id="saldo_wrapper" style="display: none;">
+                <span class="muted">Saldo Inicial:</span>
+                <span id="saldo_inicial" class="saldo-destaque">0,00</span>
             </div>
         </div>
-    </div>
 
-    <!-- Modal para Seleção de Produto -->
-    <div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Selecionar Produto</h4>
+        <div class="body">
+
+            <div class="filter-box" id="area-filtros">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataInicial" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dataFinal" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="muted">Produto / Insumo</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:box"></iconify-icon></span>
+                            <input type="hidden" id="item-id">
+                            <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar..." style="cursor: pointer; background: #fff;">
+                        </div>
+                    </div>
+                    <div class="col-md-2" style="margin-top: 23px;">
+                        <button id="btnFiltrar" class="btn btn-primary btn-block waves-effect">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            BUSCAR
+                        </button>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição">
-                    <br />
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="tabela-area">
+                <table class="table table-hover" id="extrato-table">
+                    <thead>
+                    <tr>
+                        <th width="100">Data</th>
+                        <th width="100">Tipo</th>
+                        <th>Documento / Origem</th>
+                        <th class="text-right" width="120">Quantidade</th>
+                        <th>Observação</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr><td colspan="5" class="text-center muted" style="padding: 30px;">Selecione os filtros e clique em buscar.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="background: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" style="color: var(--mrk-black); font-family: 'Kanit', sans-serif;">
+                    <iconify-icon icon="icon-park-outline:box" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Selecionar Produto
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                    <input type="text" id="item-search" class="form-control" placeholder="Digite código ou descrição...">
+                </div>
+
+                <div style="height: 300px; overflow-y: auto;">
                     <table class="table table-striped table-hover" id="item-table">
                         <thead>
                         <tr>
                             <th>Código</th>
                             <th>Descrição</th>
-                            <th>Unidade</th>
-                            <th>Ação</th>
+                            <th>Und</th>
+                            <th width="50"></th>
                         </tr>
                         </thead>
-                        <tbody><!-- dinâmico --></tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="card">
-        <div class="header">
-            <h2>Extrato por Período</h2>
-            <small id="saldo_inicial" class="text-primary font-bold">Saldo inicial: -</small>
-        </div>
-        <div class="body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover table-extrato" id="extrato-table">
-                    <thead>
-                    <tr>
-                        <th class="nowrap">Data</th>
-                        <th>Tipo</th>
-                        <th>Documento</th>
-                        <th class="text-right nowrap">Quantidade</th>
-                        <th>Observação</th>
-                    </tr>
-                    </thead>
-                    <tbody><!-- dinâmico --></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- JS -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -128,43 +195,51 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token   = urlParams.get('token');
         const unitId  = urlParams.get('unit_id') || urlParams.get('system_unit_id');
-        const qsInsumoId = urlParams.get('insumo_id');        // opcional
-        const qsDtIni    = urlParams.get('dt_inicio');        // opcional
-        const qsDtFim    = urlParams.get('dt_fim');           // opcional
+        const qsInsumoId = urlParams.get('insumo_id');
+        const qsDtIni    = urlParams.get('dt_inicio');
+        const qsDtFim    = urlParams.get('dt_fim');
         const redirect   = (urlParams.get('redirect') || 'false').toLowerCase() === 'true';
 
-        function showLoader() { /* opcional: plugue seu loader se tiver */ }
-        function hideLoader() { /* opcional */ }
-
-        // Se redirect=true, esconde card de filtros (header-card) e deixa só a tabela
-        if (redirect) {
-            $('.header-card').hide();
+        // Helper: Toggling Loader
+        function toggleLoading(isLoading) {
+            if (isLoading) {
+                $('#tabela-area').hide();
+                $('#skeleton-area').show();
+            } else {
+                $('#skeleton-area').hide();
+                $('#tabela-area').fadeIn();
+            }
         }
 
-        // Se vieram parâmetros, preenche inputs
+        // Layout Ajustes
+        if (redirect) {
+            $('#area-filtros').hide();
+        }
+
+        // Preencher Filtros Iniciais
         if (qsDtIni) $('#dataInicial').val(qsDtIni);
         if (qsDtFim) $('#dataFinal').val(qsDtFim);
         if (qsInsumoId) {
             $('#item-id').val(qsInsumoId);
-            $('#item-description').val(`Insumo ${qsInsumoId}`); // opcional: texto amigável
-        }
-
-        // Carrega lista de itens ao clicar no campo (workflow manual)
-        $('#item-description').on('click', function () {
-            loadItems(unitId);
-        });
-
-        // Botão Buscar (workflow manual)
-        $('#btnFiltrar').on('click', buscarExtrato);
-
-        // Auto-buscar se todos os parâmetros necessários vierem pela URL
-        if (token && unitId && qsInsumoId && (qsDtIni || $('#dataInicial').val()) && (qsDtFim || $('#dataFinal').val())) {
-            buscarExtrato();
+            $('#item-description').val(`Carregando insumo ${qsInsumoId}...`);
+            // Busca nome se possível, ou deixa genérico até carregar
         } else {
-            // Datas padrão = hoje (somente se não vieram por QS)
             const hoje = new Date().toISOString().split('T')[0];
             if (!$('#dataInicial').val()) $('#dataInicial').val(hoje);
             if (!$('#dataFinal').val())   $('#dataFinal').val(hoje);
+        }
+
+        // Events
+        $('#item-description').on('click', () => {
+            $('#itemModal').modal('show');
+            loadItems(unitId);
+        });
+
+        $('#btnFiltrar').on('click', buscarExtrato);
+
+        // Auto-Run
+        if (token && unitId && qsInsumoId && (qsDtIni || $('#dataInicial').val()) && (qsDtFim || $('#dataFinal').val())) {
+            buscarExtrato();
         }
 
         async function buscarExtrato() {
@@ -172,20 +247,12 @@
             const dt_fim    = $('#dataFinal').val();
             const insumo_id = $('#item-id').val();
 
-            if (!token || !unitId) {
-                Swal.fire('Erro', 'Parâmetros ausentes: token e unidade.', 'error');
-                return;
-            }
-            if (!dt_inicio || !dt_fim) {
-                Swal.fire('Erro', 'Preencha as datas!', 'error');
-                return;
-            }
-            if (!insumo_id) {
-                Swal.fire('Erro', 'Selecione um produto.', 'error');
-                return;
-            }
+            if (!token || !unitId) return Swal.fire('Erro', 'Parâmetros de sistema ausentes.', 'error');
+            if (!dt_inicio || !dt_fim) return Swal.fire('Atenção', 'Informe o período.', 'warning');
+            if (!insumo_id) return Swal.fire('Atenção', 'Selecione um produto.', 'warning');
 
-            showLoader();
+            toggleLoading(true);
+
             try {
                 const response = await axios.post(baseUrl, {
                     method: 'extratoInsumo',
@@ -199,13 +266,21 @@
                 });
 
                 const result = response.data || {};
-                $('#saldo_inicial').text('Saldo inicial: ' + (result.saldo_inicial ?? '-'));
+
+                // Atualiza Header de Saldo
+                $('#saldo_inicial').text(brNum(result.saldo_inicial));
+                $('#saldo_wrapper').show();
+
+                // Se veio nome do produto, atualiza input
+                if(result.nome_produto) $('#item-description').val(result.nome_produto);
+
                 montarTabelaExtrato(result.extrato || []);
+
             } catch (err) {
-                Swal.fire('Erro', 'Não foi possível carregar o extrato.', 'error');
                 console.error(err);
+                Swal.fire('Erro', 'Falha ao carregar extrato.', 'error');
             } finally {
-                hideLoader();
+                toggleLoading(false);
             }
         }
 
@@ -213,83 +288,81 @@
             const $tb = $('#extrato-table tbody');
             $tb.empty();
 
+            if(extrato.length === 0) {
+                $tb.html('<tr><td colspan="5" class="text-center muted" style="padding:30px;">Nenhuma movimentação no período.</td></tr>');
+                return;
+            }
+
             extrato.forEach(dia => {
                 const diaFmt = formatarData(dia.data);
 
-                if (typeof dia.saldo_anterior !== 'undefined' && dia.saldo_anterior !== null) {
-                    $tb.append(linhaTabela(
-                        diaFmt,
-                        'Saldo Anterior',
-                        '',
-                        dia.saldo_anterior, // agora é um número
-                        'Saldo do início do dia',
-                        'saldo'
-                    ));
+                // Saldo Anterior (início do dia)
+                if (dia.saldo_anterior !== undefined && dia.saldo_anterior !== null) {
+                    $tb.append(linhaTabela(diaFmt, 'Saldo Anterior', '', dia.saldo_anterior, 'Início do dia', 'saldo'));
                 }
 
-
+                // Movimentações do dia
                 (dia.movimentacoes || []).forEach(mov => {
                     const tipoLabel = mov.tipo_mov === 'entrada' ? 'Entrada' : 'Saída';
-                    const sinal = mov.tipo_mov === 'entrada' ? '+' : '-';
+                    const sinal = mov.tipo_mov === 'entrada' ? 1 : -1;
+                    const qtd = parseFloat(mov.quantidade || 0);
+
                     $tb.append(linhaTabela(
                         diaFmt,
                         tipoLabel,
-                        mov.doc || '',
-                        (sinal === '-' ? -1 : 1) * parseFloat(mov.quantidade || 0),
+                        mov.doc || '-',
+                        sinal * qtd,
                         '',
                         mov.tipo_mov === 'entrada' ? 'entrada' : 'saida'
                     ));
                 });
 
-                if (typeof dia.saldo_estimado !== 'undefined' && dia.saldo_estimado !== null) {
-                    $tb.append(linhaTabela(
-                        diaFmt,
-                        'Saldo Estimado',
-                        '',
-                        dia.saldo_estimado,
-                        'Saldo projetado ao final do dia',
-                        'saldo'
-                    ));
-                }
-
+                // Balanço
                 if (dia.balanco) {
                     $tb.append(linhaTabela(
                         diaFmt,
                         'Balanço',
-                        dia.balanco.doc || '',
+                        dia.balanco.doc || 'Auditoria',
                         dia.balanco.quantidade,
-                        'Conferência de estoque',
+                        'Ajuste de Estoque',
                         'balanco'
                     ));
+                }
+
+                // Saldo Final Estimado do dia (opcional, visualmente ajuda)
+                if (dia.saldo_estimado !== undefined && dia.saldo_estimado !== null) {
+                    $tb.append(linhaTabela(diaFmt, 'Saldo Final', '', dia.saldo_estimado, 'Final do dia', 'saldo'));
                 }
             });
         }
 
         function linhaTabela(dataFmt, tipo, documento, quantidade, obs, classeTipo) {
-            const q = (quantidade === null || typeof quantidade === 'undefined' || isNaN(+quantidade))
-                ? ''
-                : Number(quantidade).toFixed(2);
+            let badgeClass = 'bg-saldo';
+            let icon = '';
 
-            const badgeClass =
-                classeTipo === 'entrada' ? 'badge-entrada' :
-                    classeTipo === 'saida'   ? 'badge-saida'   :
-                        classeTipo === 'balanco' ? 'badge-balanco' : 'badge-saldo';
+            if(classeTipo === 'entrada') { badgeClass = 'bg-entrada'; icon = '+'; }
+            else if(classeTipo === 'saida') { badgeClass = 'bg-saida'; icon = ''; } // já vem negativo ou tratamos visualmente
+            else if(classeTipo === 'balanco') { badgeClass = 'bg-balanco'; icon = '='; }
+
+            const qtdFmt = brNum(quantidade);
+            const qtdClass = quantidade < 0 ? 'text-danger' : (quantidade > 0 && classeTipo !== 'saldo' && classeTipo !== 'balanco' ? 'text-success' : '');
 
             return `
-      <tr>
-        <td class="nowrap">${dataFmt}</td>
-        <td><span class="badge badge-tipo ${badgeClass}">${tipo}</span></td>
-        <td>${documento || ''}</td>
-        <td class="text-right nowrap">${q}</td>
-        <td>${obs || ''}</td>
-      </tr>`;
+                <tr>
+                    <td>${dataFmt}</td>
+                    <td><span class="badge-mov ${badgeClass}">${icon} ${tipo}</span></td>
+                    <td>${documento}</td>
+                    <td class="text-right ${qtdClass}"><strong>${qtdFmt}</strong></td>
+                    <td class="muted">${obs}</td>
+                </tr>`;
         }
 
+        // --- Produtos Modal ---
         async function loadItems(unitId) {
-            if (!unitId) {
-                Swal.fire('Atenção', 'Selecione a unidade antes de buscar produtos.', 'warning');
-                return;
-            }
+            if (!unitId) return;
+
+            const tbody = $('#item-table tbody');
+            tbody.html('<tr><td colspan="4" class="text-center">Carregando...</td></tr>');
 
             try {
                 const response = await axios.post(baseUrl, {
@@ -300,35 +373,33 @@
 
                 if (response.data.success) {
                     const items = response.data.insumos || [];
-                    const tbody = $('#item-table tbody');
                     tbody.empty();
 
                     items.forEach(item => {
-                        const row = `
-            <tr>
-              <td>${item.codigo}</td>
-              <td>${item.nome}</td>
-              <td>${item.und || ''}</td>
-              <td>
-                <button class="btn btn-primary select-item"
-                        data-codigo="${item.codigo}"
-                        data-nome="${item.nome}">
-                  Selecionar
-                </button>
-              </td>
-            </tr>`;
-                        tbody.append(row);
+                        tbody.append(`
+                            <tr>
+                                <td><b>${item.codigo}</b></td>
+                                <td class="nome-prod">${item.nome}</td>
+                                <td>${item.und || ''}</td>
+                                <td class="text-right">
+                                    <button class="btn btn-default btn-xs select-item" data-codigo="${item.codigo}" data-nome="${item.nome}">
+                                        <iconify-icon icon="icon-park-outline:check"></iconify-icon>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
                     });
 
+                    // Filtro Local
                     $('#item-search').off('input').on('input', function () {
                         const termo = $(this).val().toLowerCase();
                         $('#item-table tbody tr').each(function () {
-                            const cod  = $(this).find('td:nth-child(1)').text().toLowerCase();
-                            const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
-                            $(this).toggle(cod.includes(termo) || nome.includes(termo));
+                            const texto = $(this).text().toLowerCase();
+                            $(this).toggle(texto.indexOf(termo) > -1);
                         });
                     });
 
+                    // Seleção
                     $('.select-item').off('click').on('click', function () {
                         const id = $(this).data('codigo');
                         const nome = $(this).data('nome');
@@ -337,12 +408,18 @@
                         $('#itemModal').modal('hide');
                     });
                 } else {
-                    Swal.fire('Erro', 'Não foi possível carregar os produtos.', 'error');
+                    tbody.html('<tr><td colspan="4" class="text-center text-danger">Erro ao carregar produtos.</td></tr>');
                 }
             } catch (error) {
                 console.error(error);
-                Swal.fire('Erro', 'Erro ao buscar produtos.', 'error');
+                tbody.html('<tr><td colspan="4" class="text-center text-danger">Falha na conexão.</td></tr>');
             }
+        }
+
+        // --- Utils ---
+        function brNum(v) {
+            if (v === null || v === undefined || isNaN(v)) return '-';
+            return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
         }
 
         function formatarData(dataStr) {
