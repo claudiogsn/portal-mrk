@@ -5,124 +5,186 @@
     <title>Gestão de Categorias</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control {
-            display: block; width: 100%; height: 34px; padding: 6px 12px; font-size: 14px;
-            color: #555; background-color: #fff; border: 1px solid #ccc; border-radius: 4px;
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-            transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-        }
-        .form-control:focus {
-            border-color: #66afe9; outline: 0;
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-        }
-        .blue { color: #2196F3; cursor: pointer; }
-        .red { color: #F44336; cursor: pointer; margin-left: 8px; }
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
-        /* Estilo do botão Outline (Borda Azul) */
-        .btn-outline {
-            background-color: transparent;
-            border: 1px solid #2196F3; /* Cor azul do tema */
-            color: #2196F3;
-            height: 34px; /* Mesma altura do input */
-            padding: 0 12px;
-            margin: 0;
-            transition: all 0.3s;
-        }
-        .btn-outline:hover {
-            background-color: #2196F3;
-            color: #fff;
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
-        /* Flex container para alinhar input e botão */
-        .input-row {
-            display: flex;
-            gap: 8px; /* Espaço entre o input e o botão */
-            align-items: center;
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
         }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Ações */
+        .btn-action {
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
+            margin: 0 5px;
+        }
+        .btn-action.edit { color: var(--mrk-blue); }
+        .btn-action.delete { color: var(--mrk-red); }
+        .btn-action:hover { transform: scale(1.2); }
+
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Modal */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; }
+
+        /* Botão Gerar Código */
+        .btn-addon-icon {
+            background: #fff; border: 1px solid #ddd; color: var(--mrk-blue); transition: all 0.2s;
+        }
+        .btn-addon-icon:hover { background: var(--mrk-blue); color: #fff; border-color: var(--mrk-blue); }
     </style>
 </head>
-<body class="theme-blue">
-<div class="container-fluid">
-    <br>
-    <div class="card">
-        <div class="header">
-            <h2>Gestão de Categorias</h2>
-        </div>
 
-        <div class="row" style="margin: 15px 0;">
-            <div class="col-md-2">
-                <input type="text" id="filtroCodigo" class="form-control" placeholder="Filtrar Código">
-            </div>
-            <div class="col-md-7">
-                <input type="text" id="filtroNome" class="form-control" placeholder="Filtrar por nome da categoria">
-            </div>
-            <div class="col-md-3">
-                <button class="btn btn-success btn-block" onclick="abrirModal()">
-                    <i class="fa fa-plus"></i> NOVA CATEGORIA
-                </button>
-            </div>
+<body class="theme-blue">
+
+<div class="container-fluid">
+
+    <div class="card">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:all-application" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                GESTÃO DE CATEGORIAS
+            </h2>
+            <button class="btn btn-success waves-effect" onclick="abrirModal()">
+                <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                NOVA CATEGORIA
+            </button>
         </div>
 
         <div class="body">
-            <table class="table table-striped" id="tabela-categorias">
-                <thead>
-                <tr>
-                    <th style="width: 80px;" class="text-center">Ações</th>
-                    <th style="width: 100px;">Código</th>
-                    <th>Nome da Categoria</th>
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Filtrar por Código</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:tag"></iconify-icon></span>
+                            <input type="text" id="filtroCodigo" class="form-control" placeholder="Ex: 10">
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <label class="muted">Filtrar por Nome</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                            <input type="text" id="filtroNome" class="form-control" placeholder="Digite o nome da categoria...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="tabela-categorias">
+                    <thead>
+                    <tr>
+                        <th style="width: 100px;" class="text-center">Ações</th>
+                        <th style="width: 120px;">Código</th>
+                        <th>Nome da Categoria</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr><td colspan="3" class="text-center muted" style="padding: 30px;">Carregando dados...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="modalCategoria" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
+        <div class="modal-content" style="border-radius: 8px; border:none;">
             <div class="modal-header">
-                <h4 class="modal-title" id="modalTitulo">Dados da Categoria</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" id="modalTitulo">
+                    <iconify-icon icon="icon-park-outline:edit" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                    Dados da Categoria
+                </h4>
             </div>
-            <div class="modal-body">
+
+            <div class="modal-body" style="padding: 20px;">
                 <input type="hidden" id="cat_id">
 
-                <div class="row">
+                <div class="row clearfix">
                     <div class="col-md-4">
-                        <label>Código</label>
-                        <div class="input-row">
-                            <input type="number" id="cat_codigo" class="form-control" placeholder="Ex: 10">
-
-                            <button type="button" class="btn btn-outline waves-effect" onclick="gerarCodigo()" title="Gerar Próximo Código">
-                                <i class="fa fa-plus"></i>
-                            </button>
+                        <label class="muted">Código</label>
+                        <div class="input-group">
+                            <input type="number" id="cat_codigo" class="form-control" placeholder="Automático">
+                            <span class="input-group-btn">
+                                <button class="btn btn-default btn-addon-icon" type="button" onclick="gerarCodigo()" title="Gerar Próximo Código">
+                                    <iconify-icon icon="icon-park-outline:refresh"></iconify-icon>
+                                </button>
+                            </span>
                         </div>
                     </div>
                     <div class="col-md-8">
-                        <label>Nome</label>
-                        <input type="text" id="cat_nome" class="form-control" placeholder="Ex: Bebidas">
+                        <label class="muted">Nome</label>
+                        <input type="text" id="cat_nome" class="form-control" placeholder="Ex: Bebidas, Limpeza...">
                     </div>
                 </div>
-
             </div>
+
             <div class="modal-footer">
-                <button id="salvarCategoria" class="btn btn-primary">Salvar</button>
-                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+                <button id="salvarCategoria" class="btn btn-primary waves-effect">
+                    <iconify-icon icon="icon-park-outline:check"></iconify-icon> SALVAR
+                </button>
+                <button class="btn btn-default waves-effect" data-dismiss="modal">CANCELAR</button>
             </div>
         </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -135,20 +197,40 @@
 
     let todasCategorias = [];
 
+    // Helper: Skeleton
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
     $(document).ready(() => {
+        if(!unit_id) {
+            Swal.fire('Erro', 'Unidade não identificada na URL.', 'error');
+            return;
+        }
+
         carregarCategorias();
         $('#filtroNome, #filtroCodigo').on('input', aplicarFiltros);
         $('#salvarCategoria').click(salvar);
+
+        // Focar no nome ao abrir modal se for novo
+        $('#modalCategoria').on('shown.bs.modal', function () {
+            if(!$('#cat_id').val()) $('#cat_codigo').focus();
+        });
     });
 
     async function gerarCodigo() {
         const input = $('#cat_codigo');
-        const originalPlaceholder = input.attr('placeholder');
-        input.attr('placeholder', '...');
+        const btn = $('.btn-addon-icon');
 
-        // Feedback visual no botão
-        const btn = $('.btn-outline');
-        btn.prop('disabled', true);
+        // Efeito visual de loading no botão
+        const iconOriginal = btn.html();
+        btn.html('<iconify-icon icon="icon-park-outline:loading-four" class="fa-spin"></iconify-icon>').prop('disabled', true);
 
         try {
             const res = await axios.post(baseUrl, {
@@ -159,33 +241,27 @@
 
             if (res.data.success) {
                 input.val(res.data.next_code);
-                // Flash visual no input
-                input.css('border-color', '#4CAF50');
-                setTimeout(() => input.css('border-color', '#ccc'), 1000);
+                input.addClass('focused'); // Simula foco para destacar
+                setTimeout(() => input.removeClass('focused'), 500);
             } else {
                 Swal.fire('Atenção', res.data.message, 'warning');
             }
         } catch (e) {
             Swal.fire('Erro', 'Não foi possível gerar o código.', 'error');
         } finally {
-            input.attr('placeholder', originalPlaceholder);
-            btn.prop('disabled', false);
+            btn.html(iconOriginal).prop('disabled', false);
         }
     }
 
     async function carregarCategorias() {
-        if(!unit_id) { Swal.fire('Erro', 'Unidade não identificada.', 'error'); return; }
+        toggleLoading(true);
 
         try {
-            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-
             const res = await axios.post(baseUrl, {
                 method: 'listarCategorias',
                 token,
                 data: { system_unit_id: unit_id }
             });
-
-            Swal.close();
 
             if(res.data.success) {
                 todasCategorias = res.data.data;
@@ -195,6 +271,8 @@
             }
         } catch (e) {
             Swal.fire('Erro', 'Falha ao carregar categorias.', 'error');
+        } finally {
+            toggleLoading(false);
         }
     }
 
@@ -211,36 +289,43 @@
         });
 
         if (filtrados.length === 0) {
-            tbody.append('<tr><td colspan="3" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
+            tbody.append('<tr><td colspan="3" class="text-center text-muted" style="padding:20px;">Nenhum registro encontrado.</td></tr>');
             return;
         }
 
-        for (const c of filtrados) {
+        filtrados.forEach(c => {
+            // Escapar aspas para o onclick
+            const nomeSafe = (c.nome || '').replace(/'/g, "\\'");
+            const codigoSafe = (c.codigo || '').toString().replace(/'/g, "\\'");
+
             tbody.append(`
             <tr>
                 <td class="text-center">
-                    <a href="#" title="Editar" onclick="abrirModal(${c.id}, '${c.codigo}', '${c.nome}')">
-                        <i class="far fa-edit blue"></i>
+                    <a class="btn-action edit" title="Editar" onclick="abrirModal('${c.id}', '${codigoSafe}', '${nomeSafe}')">
+                        <iconify-icon icon="icon-park-outline:edit"></iconify-icon>
                     </a>
-                    <a href="#" title="Excluir" onclick="excluir(${c.id})">
-                        <i class="far fa-trash-alt red"></i>
+                    <a class="btn-action delete" title="Excluir" onclick="excluir('${c.id}')">
+                        <iconify-icon icon="icon-park-outline:delete"></iconify-icon>
                     </a>
                 </td>
-                <td>${c.codigo}</td>
+                <td><strong>${c.codigo}</strong></td>
                 <td>${c.nome}</td>
             </tr>
             `);
-        }
+        });
     }
 
     function abrirModal(id = null, codigo = '', nome = '') {
         $('#cat_id').val(id || '');
         $('#cat_codigo').val(codigo);
         $('#cat_nome').val(nome);
-        $('#modalTitulo').text(id ? `Editar Categoria #${codigo}` : 'Nova Categoria');
+
+        const title = id ? 'Editar Categoria' : 'Nova Categoria';
+        const icon = id ? 'icon-park-outline:edit' : 'icon-park-outline:plus';
+
+        $('#modalTitulo').html(`<iconify-icon icon="${icon}" style="vertical-align: middle; margin-right: 5px; color: var(--mrk-blue);"></iconify-icon> ${title}`);
 
         $('#modalCategoria').modal('show');
-        setTimeout(() => $('#cat_codigo').focus(), 500);
     }
 
     async function salvar() {
@@ -272,7 +357,13 @@
 
             if (res.data.success) {
                 $('#modalCategoria').modal('hide');
-                Swal.fire('Sucesso', 'Salvo com sucesso!', 'success');
+                Swal.fire({
+                    title: 'Sucesso',
+                    text: 'Salvo com sucesso!',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
                 carregarCategorias();
             } else {
                 Swal.fire('Erro', res.data.message, 'error');
@@ -284,8 +375,8 @@
 
     function excluir(id) {
         Swal.fire({
-            title: 'Tem certeza?',
-            text: "Deseja excluir esta categoria?",
+            title: 'Excluir Categoria?',
+            text: "Esta ação não pode ser desfeita.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
