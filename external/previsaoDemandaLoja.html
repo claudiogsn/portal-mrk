@@ -23,6 +23,12 @@
     <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
     <link href="style/mrk.css" rel="stylesheet" />
+
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
 </head>
 <body class="theme-blue">
 
@@ -203,26 +209,12 @@
             try {
                 const res = await axios.post(baseUrl, { method: 'getFiliaisByMatriz', token: token, data: { unit_matriz_id: username } });
                 const select = document.getElementById('unit-select');
-
-                // Limpa e prepara
                 select.innerHTML = '<option value="">Selecione uma empresa</option>';
-
                 res.data.forEach(filial => {
                     select.appendChild(new Option(filial.filial_nome, filial.filial_id));
                 });
-
-                // Inicializa o Select2 APÓS carregar os dados
-                $('#unit-select').select2({
-                    placeholder: 'Pesquise a empresa...',
-                    allowClear: true,
-                    language: { noResults: () => "Nenhuma empresa encontrada" }
-                });
-
-                // Listener do Select2 para disparar o carregamento de modelos
-                $('#unit-select').on('select2:select', function (e) {
-                    loadModelos(e.params.data.id);
-                });
-
+                $('#unit-select').select2({ placeholder: 'Pesquise a empresa...', allowClear: true });
+                $('#unit-select').on('select2:select', function (e) { loadModelos(e.params.data.id); });
             } catch(e) {
                 console.error("Erro unidades", e);
                 $('#unit-select').html('<option>Erro ao carregar</option>');
@@ -251,7 +243,6 @@
         }
 
         async function calcularNecessidades() {
-            // Pega o valor do Select2
             const selectedUnitId = $('#unit-select').val();
             const allSelectedProducts = importedProductCodes;
             const isProjecao = document.getElementById('calc-method-toggle').checked;
@@ -301,7 +292,7 @@
             const tbody = $('#result-table tbody');
             tbody.empty();
             for (const categoria in itens) {
-                tbody.append(`<tr class="category-header"><td colspan="5">${categoria}</td></tr>`);
+                tbody.append(`<tr class="category-header"><td colspan="5" style="background-color: #f9f9f9; font-weight: bold;">${categoria}</td></tr>`);
                 itens[categoria].forEach(produto => {
                     tbody.append(`<tr>
                         <td>${produto.codigo}</td>
@@ -314,39 +305,177 @@
             }
         }
 
-        function printTable(columnsToHide = []) {
+        // ==========================================
+        // LÓGICA DE IMPRESSÃO CORRIGIDA E INTEGRADA
+        // ==========================================
+
+        function printFilteredTable(event) {
+            event.preventDefault();
             const table = document.getElementById('result-table');
-            const inputs = table.querySelectorAll('.recomendado-input');
-            inputs.forEach(input => {
-                input.parentElement.setAttribute('data-print-val', input.value);
-                input.parentElement.innerHTML = `<strong>${input.value}</strong>`;
+            const rows = Array.from(table.getElementsByTagName('tr'));
+
+            // 1. Aplica Filtro: Oculta linhas com Recomendado = 0
+            rows.forEach(row => {
+                if(row.classList.contains('category-header')) return; // Pula cabeçalhos por enquanto
+
+                const cells = row.getElementsByTagName('td');
+                // Coluna 4 (índice 4) é onde está o input
+                if (cells.length >= 5) {
+                    const input = cells[4].querySelector('input');
+                    const recomendado = input ? (parseFloat(input.value) || 0) : 0;
+
+                    if (recomendado === 0) {
+                        row.classList.add('temp-hidden');
+                        row.style.display = 'none';
+                    }
+                }
             });
-            const clone = table.cloneNode(true);
-            if(columnsToHide.length > 0) {
-                const rows = clone.rows;
-                for (let i = 0; i < rows.length; i++) {
-                    for (let j = columnsToHide.length - 1; j >= 0; j--) {
-                        if (rows[i].cells.length > columnsToHide[j]) rows[i].deleteCell(columnsToHide[j]);
+
+            // 2. Aplica Filtro: Oculta categorias vazias
+            // Percorre as linhas para ver se a categoria tem filhos visíveis
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].classList.contains('category-header')) {
+                    let hasVisibleProduct = false;
+                    for (let j = i + 1; j < rows.length; j++) {
+                        if (rows[j].classList.contains('category-header')) break; // Próxima categoria
+                        if (rows[j].style.display !== 'none') {
+                            hasVisibleProduct = true;
+                            break;
+                        }
+                    }
+                    if (!hasVisibleProduct) {
+                        rows[i].classList.add('temp-hidden');
+                        rows[i].style.display = 'none';
                     }
                 }
             }
-            const currentDateTime = new Date().toLocaleString('pt-BR');
-            const win = window.open('', '', 'height=700,width=900');
-            // Alterado "Unidade" para "Empresa" na impressão
-            win.document.write(`<html><head><title>Impressão</title><link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600&family=Poppins:wght@400;500&display=swap" rel="stylesheet"><link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet"><style>body{padding:20px; font-family: 'Poppins', sans-serif; color: #191F2A;} h3 { font-family: 'Kanit', sans-serif; color: #0B46AC; } table{width:100%; border-collapse:collapse; margin-top:15px;} td,th{border:1px solid #ccc; padding:6px; font-size: 12px;} .category-header td{background:#EBEBEB; font-family: 'Kanit', sans-serif; font-weight:bold; text-transform:uppercase;} .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;} .header img { height: 50px; }</style></head><body><div class="header"><div><h3>Portal MRK - Previsão de Demanda</h3><small>Empresa: ${unitName} | Gerado em: ${currentDateTime}</small></div><img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" /></div>${clone.outerHTML}<br><br><div style="border-top:1px solid #000; width:300px; text-align:center; padding-top:5px;">Responsável</div></body></html>`);
-            win.document.close();
-            setTimeout(() => { win.print(); win.close(); }, 500);
-            inputs.forEach(input => {
-                const val = input.parentElement.getAttribute('data-print-val');
-                input.parentElement.innerHTML = `<input type="number" step="0.01" class="form-control recomendado-input" value="${val}" />`;
+
+            // 3. Chama impressão escondendo colunas 2 e 3 (Vendas e Saldo)
+            printTable([2, 3]);
+
+            // 4. Restaura visualização
+            rows.forEach(row => {
+                if (row.classList.contains('temp-hidden')) {
+                    row.style.display = '';
+                    row.classList.remove('temp-hidden');
+                }
             });
         }
 
-        // Listeners
+        function printFullTable(event) {
+            event.preventDefault();
+            printTable([]); // Sem esconder colunas
+        }
+
+        function printTable(columnsToHide) {
+            const originalTable = document.getElementById('result-table');
+
+            // Cria um clone para manipular o HTML para impressão sem estragar a tela atual
+            const tableClone = originalTable.cloneNode(true);
+            const rows = Array.from(tableClone.getElementsByTagName('tr'));
+
+            // 1. Atualiza valores dos inputs no CLONE para texto (para imprimir bonito)
+            // Precisamos pegar os valores REAIS dos inputs da tabela original
+            const originalInputs = originalTable.querySelectorAll('input.recomendado-input');
+            const cloneInputs = tableClone.querySelectorAll('input.recomendado-input');
+
+            originalInputs.forEach((origInput, index) => {
+                if(cloneInputs[index]) {
+                    const parent = cloneInputs[index].parentElement;
+                    parent.innerHTML = `<strong>${origInput.value}</strong>`;
+                    parent.style.textAlign = 'center';
+                }
+            });
+
+            // 2. Remove linhas que estavam ocultas (display: none não vai no outerHTML as vezes dependendo do browser, melhor remover do clone)
+            // Mas como usamos outerHTML abaixo e o display:none está inline no clone (copiado do original manipulado), deve funcionar.
+            // Para garantir, vamos adicionar uma classe para esconder colunas.
+
+            // 3. Esconder Colunas Específicas (Vendas e Saldo)
+            if (columnsToHide.length > 0) {
+                // Header
+                const headerCells = tableClone.getElementsByTagName('th');
+                for (let i = 0; i < headerCells.length; i++) {
+                    if (columnsToHide.includes(i)) headerCells[i].classList.add('hide-print');
+                }
+                // Body
+                for (let i = 0; i < rows.length; i++) {
+                    const cells = rows[i].getElementsByTagName('td');
+                    for (let j = 0; j < cells.length; j++) {
+                        // Cuidado com colspan nas categorias
+                        if (!rows[i].classList.contains('category-header')) {
+                            if (columnsToHide.includes(j)) cells[j].classList.add('hide-print');
+                        } else {
+                            // Se for categoria, ajusta o colspan
+                            if(cells[0]) cells[0].setAttribute('colspan', 5 - columnsToHide.length);
+                        }
+                    }
+                }
+            }
+
+            const currentDateTime = new Date().toLocaleString('pt-BR');
+
+            const printContent = `
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Previsão de Demanda</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+                    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Poppins', sans-serif; margin: 20px; color: #000; }
+                        h3 { font-family: 'Kanit', sans-serif; color: #0B46AC; margin: 0; }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0B46AC; padding-bottom: 10px; margin-bottom: 20px; }
+                        .header img { max-height: 50px; }
+                        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+                        th { background-color: #f0f0f0; font-family: 'Kanit', sans-serif; }
+                        .category-header td { background-color: #e9e9e9; font-weight: bold; text-transform: uppercase; }
+                        .signature-line { margin-top: 60px; text-align: center; font-size: 14px; }
+                        .signature-line span { display: inline-block; margin-top: 10px; border-top: 1px solid #000; width: 300px; }
+                        .hide-print { display: none !important; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div>
+                            <h3>Portal MRK - Previsão de Demanda</h3>
+                            <p style="margin:0; font-size:12px;"><strong>Empresa:</strong> ${unitName}</p>
+                            <p style="margin:0; font-size:12px;"><strong>Responsável:</strong> ${userName}</p>
+                            <p style="margin:0; font-size:12px;"><strong>Data:</strong> ${currentDateTime}</p>
+                        </div>
+                        <div>
+                            <img id="logo-img" src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+                        </div>
+                    </div>
+                    ${tableClone.outerHTML}
+                    <div class="signature-line">
+                        <span>Assinatura do Responsável</span>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const win = window.open('', '_blank', 'height=700,width=900');
+            win.document.write(printContent);
+            win.document.close();
+
+            const logoImg = win.document.getElementById('logo-img');
+            if (logoImg) {
+                logoImg.onload = function() { win.print(); win.close(); };
+            } else {
+                setTimeout(() => { win.print(); win.close(); }, 500);
+            }
+        }
+
+        // Listeners Impressão
+        document.getElementById('print-filtered-button').addEventListener('click', printFilteredTable);
+        document.getElementById('print-full-button').addEventListener('click', printFullTable);
+
+        // Outros Listeners
         document.getElementById('modelos-select').addEventListener('change', function() { if (this.value) loadProdutosDoModelo(this.value); });
         document.getElementById('add-item').addEventListener('click', calcularNecessidades);
-        document.getElementById('print-full-button').addEventListener('click', (e) => { e.preventDefault(); printTable([]); });
-        document.getElementById('print-filtered-button').addEventListener('click', (e) => { e.preventDefault(); printTable([2, 3]); });
 
         loadUnidades();
     });
