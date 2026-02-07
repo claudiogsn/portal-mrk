@@ -12,9 +12,9 @@ class ClonarCadastros extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/migrations/index.hmtl?user_id={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/migrations/index.html?user_id={$username}&token={$token}&unit_id={$unit_id}";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/migrations/index.hmtl?user_id={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/migrations/index.html?user_id={$username}&token={$token}&unit_id={$unit_id}";
         }
 
                // ---- CONTAINER PRINCIPAL (TVBox) ----
