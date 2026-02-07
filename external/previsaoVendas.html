@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Projeção de Vendas</title>
+    <title>Definição de Projeção</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
@@ -16,46 +16,102 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
     <style>
-        /* Tabela Limpa */
-        .table-clean > thead > tr > th,
-        .table-clean > tbody > tr > td {
-            border-right: none !important;
-            border-left: none !important;
-            vertical-align: middle;
+        /* --- Identidade MRK --- */
+        :root {
+            --mrk-blue:  #0B46AC;
+            --mrk-green: #08A794;
+            --mrk-gray:  #EBEBEB;
+            --mrk-black: #191F2A;
+            --mrk-red:   #F44336;
         }
-        .table-clean > tbody > tr > td { padding: 8px 5px; }
 
-        /* Input de Quantidade */
-        .input-qty {
-            width: 100%; border: 1px solid #ddd; border-radius: 4px; padding: 6px;
-            text-align: center; font-weight: bold; color: #555; transition: all 0.3s;
-        }
-        .input-qty:focus { border-color: #2196F3; background-color: #e3f2fd; outline: none; }
+        body { background-color: #f1f2f7; font-family: 'Roboto', sans-serif; }
 
-        /* Animação de Linha Nova */
-        .highlight-row { animation: highlightFade 2s forwards; }
-        @keyframes highlightFade { 0% { background-color: #fff3e0; } 100% { background-color: transparent; } }
+        .card { border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 3px solid var(--mrk-blue); }
+        .card .header h2 { color: var(--mrk-black); font-weight: bold; font-size: 18px; }
+        .card .header h2 small { color: #777; font-size: 12px; margin-top: 5px; }
 
-        /* Select2 */
-        .select2-container .select2-selection--single { height: 40px !important; padding: 5px; border: 1px solid #ddd; }
-        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px !important; }
+        /* Botões Estilizados */
+        .btn-primary { background-color: var(--mrk-blue) !important; }
+        .btn-info { background-color: var(--mrk-black) !important; }
+        .btn-success { background-color: var(--mrk-green) !important; }
 
-        /* Cabeçalhos */
-        .th-day { text-align: center; color: #777; font-size: 12px; text-transform: uppercase; }
-        .td-prod { font-weight: bold; color: #333; font-size: 13px; }
-        .td-code { color: #999; font-size: 11px; }
-
-        /* --- NOVO: Botão Pendente (Pulsando) --- */
+        /* Botão Pendente (Pulsando) */
         .btn-pending {
-            background-color: #FF9800 !important; /* Laranja */
+            background-color: #f59e0b !important;
             color: #fff !important;
             animation: pulse-orange 2s infinite;
         }
         @keyframes pulse-orange {
-            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
         }
+
+        /* --- Tabela --- */
+        .table-clean > thead > tr > th {
+            border-bottom: 2px solid var(--mrk-blue);
+            color: var(--mrk-black);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .table-clean > tbody > tr > td {
+            vertical-align: middle;
+            padding: 8px 4px;
+            border-top: 1px solid #eee;
+        }
+
+        .table-striped > tbody > tr:nth-of-type(odd) { background-color: #f9fbfd; }
+        .table-striped > tbody > tr:hover { background-color: #eef2f8; }
+
+        /* Inputs na Tabela */
+        .input-qty {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 6px;
+            text-align: center;
+            font-weight: bold;
+            color: #555;
+            transition: all 0.3s;
+            background-color: #fff;
+        }
+        .input-qty:focus {
+            border-color: var(--mrk-blue);
+            background-color: #e3f2fd;
+            outline: none;
+            box-shadow: 0 0 5px rgba(11, 70, 172, 0.2);
+        }
+
+        /* Ícones de Ação (Links, não botões) */
+        .action-icon {
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+            display: inline-block;
+            padding: 5px;
+        }
+        .action-icon:hover { transform: scale(1.2); }
+        .icon-trash { color: #999; }
+        .icon-trash:hover { color: var(--mrk-red); }
+
+        .header-trash { color: var(--mrk-red); font-size: 18px; }
+
+        /* Select2 Custom */
+        .select2-container .select2-selection--single { height: 40px !important; padding: 5px; border: 1px solid #ddd; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px !important; }
+
+        /* Animação */
+        .highlight-row { animation: highlightFade 2s forwards; }
+        @keyframes highlightFade { 0% { background-color: #fff3e0; } 100% { background-color: transparent; } }
+
+        .th-left { text-align: left !important; padding-left: 15px !important; }
+        .td-code { color: #888; font-size: 11px; text-align: center; }
+        .td-prod { color: var(--mrk-black); font-weight: 500; font-size: 13px; }
     </style>
 </head>
 
@@ -64,13 +120,15 @@
     <br>
     <div class="card">
         <div class="header" style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>
-                Projeção de Vendas
-                <small>Defina a estimativa de vendas, para que a projecao seja realizada</small>
-            </h2>
             <div>
-                <button class="btn btn-info waves-effect" onclick="abrirModalImportacao()">
-                    <i class="fa fa-file-excel"></i> IMPORTAR EXCEL
+                <h2>
+                    <i class="fa fa-chart-line" style="color: var(--mrk-blue);"></i> PROJEÇÃO DE VENDAS
+                </h2>
+                <small>Defina a estimativa de vendas (meta) por dia da semana</small>
+            </div>
+            <div>
+                <button class="btn btn-info waves-effect" onclick="abrirModalImportacao()" style="margin-right: 5px;">
+                    <i class="fa fa-file-excel"></i> IMPORTAR
                 </button>
                 <button class="btn btn-success waves-effect" id="btnSalvarTudo">
                     <i class="fa fa-save"></i> SALVAR
@@ -78,14 +136,13 @@
             </div>
         </div>
 
-
         <div class="body">
 
-            <div class="row clearfix" style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
+            <div class="row clearfix" style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee;">
                 <div class="col-md-12">
-                    <label>Pesquisar Produto (Adicionar à lista)</label>
+                    <label style="color: var(--mrk-black);">Pesquisar Produto (Adicionar à lista)</label>
                     <select id="produto_select" class="form-control" style="width: 100%;">
-                        <option value="">Carregando lista de produtos...</option>
+                        <option value="">Carregando produtos...</option>
                     </select>
                 </div>
             </div>
@@ -95,15 +152,19 @@
                     <thead>
                     <tr>
                         <th width="5%">Cód.</th>
-                        <th width="25%">Produto</th>
-                        <th class="th-day">Segunda</th>
-                        <th class="th-day">Terça</th>
-                        <th class="th-day">Quarta</th>
-                        <th class="th-day">Quinta</th>
-                        <th class="th-day">Sexta</th>
-                        <th class="th-day">Sábado</th>
-                        <th class="th-day">Domingo</th>
-                        <th width="5%" class="text-center"><i class="fa fa-trash"></i></th>
+                        <th width="25%" class="th-left">Produto</th>
+                        <th>Segunda</th>
+                        <th>Terça</th>
+                        <th>Quarta</th>
+                        <th>Quinta</th>
+                        <th>Sexta</th>
+                        <th>Sábado</th>
+                        <th>Domingo</th>
+                        <th width="5%" class="text-center">
+                            <a href="javascript:void(0)" onclick="removerTudo()" title="Limpar Todas as Metas" class="action-icon header-trash">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </th>
                     </tr>
                     </thead>
                     <tbody id="tbodyProjecao">
@@ -111,19 +172,20 @@
                 </table>
             </div>
 
-            <div id="loading" class="text-center" style="display:none; padding: 20px;">
-                <i class="fa fa-spinner fa-spin fa-2x text-muted"></i>
-                <p>Carregando dados...</p>
+            <div id="loading" class="text-center" style="display:none; padding: 40px;">
+                <i class="fa fa-spinner fa-spin fa-2x" style="color: var(--mrk-blue);"></i>
+                <p style="margin-top: 10px; color: #777;">Carregando dados...</p>
             </div>
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="modalImportacao" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title">
-                    Importar Projeção
+        <div class="modal-content" style="border-radius: 8px;">
+            <div class="modal-header" style="background-color: var(--mrk-blue); color: white; border-radius: 8px 8px 0 0;">
+                <h4 class="modal-title" style="font-size: 16px;">
+                    <i class="fa fa-file-excel"></i> Importar Projeção via Excel
                 </h4>
             </div>
             <div class="modal-body">
@@ -136,20 +198,20 @@
                     </div>
                     <div class="col-md-6">
                         <button class="btn btn-primary btn-block waves-effect" onclick="baixarModelo(true)">
-                            <i class="fa fa-download"></i> Modelo Com Seus Produtos
+                            <i class="fa fa-download"></i> Modelo Preenchido
                         </button>
                     </div>
                 </div>
                 <hr>
-                <p><strong>Passo 2:</strong> Preencha e faça o upload.</p>
+                <p><strong>Passo 2:</strong> Faça o upload do arquivo preenchido.</p>
                 <input type="file" id="arquivoExcel" class="form-control" accept=".xlsx, .xls, .csv">
-                <small class="text-danger">* O arquivo deve conter a coluna <strong>CODIGO</strong> obrigatoriamente.</small>
+                <small class="text-danger" style="font-size: 11px;">* Obrigatório conter a coluna <strong>CODIGO</strong>.</small>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">CANCELAR</button>
-                <button type="button" class="btn btn-success waves-effect" onclick="processarArquivoExcel()">
-                    <i class="fa fa-upload"></i> PROCESSAR E SALVAR
-                </button>
+                <a href="javascript:void(0)" class="btn btn-link waves-effect" data-dismiss="modal" style="color: #666;">CANCELAR</a>
+                <a href="javascript:void(0)" class="btn btn-success waves-effect" onclick="processarArquivoExcel()">
+                    <i class="fa fa-upload"></i> PROCESSAR
+                </a>
             </div>
         </div>
     </div>
@@ -162,7 +224,7 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    // --- Configuração ---
+    // Configurações
     const urlParams = new URLSearchParams(window.location.search);
     const token     = urlParams.get('token');
     const unit_id   = urlParams.get('system_unit_id') || urlParams.get('unit_id');
@@ -171,38 +233,31 @@
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    // --- ESTADO DA PÁGINA ---
-    let alteracoesPendentes = false; // Controla se o usuário mexeu em algo
+    let alteracoesPendentes = false;
 
     $(document).ready(function(){
         inicializarTela();
 
         $('#btnSalvarTudo').click(salvarTudo);
 
-        // EVENTO 1: Detectar digitação em qualquer input da tabela
-        $(document).on('input', '.input-qty', function() {
-            marcarComoPendente();
-        });
+        // Detecta alterações
+        $(document).on('input', '.input-qty', function() { marcarComoPendente(); });
 
-        // EVENTO 2: Detectar tecla ENTER nos inputs da tabela
+        // Enter para salvar
         $(document).on('keypress', '.input-qty', function(e) {
-            if(e.which === 13) { // 13 = Enter
-                e.preventDefault(); // Evita comportamento padrão se houver
-                $('#btnSalvarTudo').click(); // Dispara o clique do botão salvar
-                $(this).blur(); // Remove foco do input
+            if(e.which === 13) {
+                e.preventDefault();
+                $('#btnSalvarTudo').click();
+                $(this).blur();
             }
         });
 
-        // EVENTO 3: Proteção ao sair da página
         window.onbeforeunload = function() {
-            if (alteracoesPendentes) {
-                return "Você tem alterações não salvas. Deseja realmente sair?";
-            }
+            if (alteracoesPendentes) return "Há alterações não salvas.";
         };
     });
 
-    // --- Funções Visuais de Estado ---
-
+    // --- UX Functions ---
     function marcarComoPendente() {
         if (!alteracoesPendentes) {
             alteracoesPendentes = true;
@@ -219,18 +274,14 @@
         btn.html('<i class="fa fa-save"></i> SALVAR');
     }
 
-    // --- Inicialização ---
-
+    // --- Cargas Iniciais ---
     async function inicializarTela() {
         $('#loading').show();
         try {
-            await Promise.all([
-                carregarProdutosParaSelect(),
-                carregarGridProjeccoes()
-            ]);
+            await Promise.all([carregarProdutosParaSelect(), carregarGridProjeccoes()]);
         } catch (e) {
             console.error(e);
-            Swal.fire('Erro', 'Falha ao carregar dados iniciais.', 'error');
+            Swal.fire('Erro', 'Falha ao carregar dados.', 'error');
         } finally {
             $('#loading').hide();
         }
@@ -239,77 +290,50 @@
     async function carregarProdutosParaSelect() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'listItemVenda',
-                token: token,
-                data: { unit_id: unit_id, search: '' }
+                method: 'listItemVenda', token: token, data: { unit_id: unit_id, search: '' }
             });
 
-            let listaProdutos = [];
-            if (res.data.success && Array.isArray(res.data.produtos)) {
-                listaProdutos = res.data.produtos;
-            } else if (Array.isArray(res.data)) {
-                listaProdutos = res.data;
-            }
+            let lista = (res.data.success && Array.isArray(res.data.produtos)) ? res.data.produtos : (Array.isArray(res.data) ? res.data : []);
 
-            if (listaProdutos.length > 0) {
-                const dadosFormatados = listaProdutos.map(p => ({
-                    id: p.codigo,
-                    text: `${p.codigo} - ${p.nome}`,
-                    nome_produto: p.nome
+            if (lista.length > 0) {
+                const dados = lista.map(p => ({
+                    id: p.codigo, text: `${p.codigo} - ${p.nome}`, nome_produto: p.nome
                 }));
 
                 $('#produto_select').empty().select2({
-                    data: dadosFormatados,
-                    placeholder: 'Digite código ou nome para filtrar...',
-                    allowClear: true,
-                    language: { noResults: () => "Produto não encontrado na lista" }
+                    data: dados, placeholder: 'Digite para filtrar...', allowClear: true,
+                    language: { noResults: () => "Nenhum produto encontrado" }
                 });
 
                 $('#produto_select').val(null).trigger('change');
-
                 $('#produto_select').on('select2:select', function(e){
-                    const data = e.params.data;
-                    adicionarOuMoverProduto(data.id, data.nome_produto);
+                    adicionarOuMoverProduto(e.params.data.id, e.params.data.nome_produto);
                     $(this).val(null).trigger('change');
                 });
             }
-        } catch (e) {
-            console.error("Erro select", e);
-        }
+        } catch (e) { console.error("Select error", e); }
     }
 
     async function carregarGridProjeccoes() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'getProjeccoes',
-                token: token,
-                data: { unit_id: unit_id }
+                method: 'getProjeccoes', token: token, data: { unit_id: unit_id }
             });
 
-            let lista = [];
-            if (Array.isArray(res.data)) {
-                lista = res.data;
-            } else if (res.data.success && Array.isArray(res.data.data)) {
-                lista = res.data.data;
-            }
+            let lista = Array.isArray(res.data) ? res.data : (res.data.success && Array.isArray(res.data.data) ? res.data.data : []);
 
             $('#tbodyProjecao').empty();
-
             if (lista.length > 0) {
                 lista.forEach(item => renderizarLinha(item, false));
             } else {
-                $('#tbodyProjecao').html('<tr><td colspan="10" class="text-center text-muted">Nenhuma projeção cadastrada.</td></tr>');
+                $('#tbodyProjecao').html('<tr><td colspan="10" class="text-center text-muted" style="padding:20px;">Nenhuma projeção definida. Adicione produtos acima.</td></tr>');
             }
-        } catch (error) {
-            console.error(error);
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // --- Manipulação da Tabela ---
-
+    // --- Renderização ---
     function adicionarOuMoverProduto(codigo, nome) {
         const linha = $(`tr[data-codigo="${codigo}"]`);
-
         if (linha.length > 0) {
             linha.prependTo('#tbodyProjecao');
             linha.removeClass('highlight-row');
@@ -317,311 +341,192 @@
             linha.addClass('highlight-row');
             linha.find('input').first().focus();
         } else {
-            const novoItem = {
-                codigo: codigo,
-                nome: nome,
-                segunda: 0, terca: 0, quarta: 0, quinta: 0, sexta: 0, sabado: 0, domingo: 0
-            };
-            renderizarLinha(novoItem, true);
-            marcarComoPendente(); // Adicionar produto novo é uma alteração pendente
+            // Remove mensagem de vazio se existir
+            if($('#tbodyProjecao td').length === 1) $('#tbodyProjecao').empty();
+
+            const novo = { codigo: codigo, nome: nome, segunda: 0, terca: 0, quarta: 0, quinta: 0, sexta: 0, sabado: 0, domingo: 0 };
+            renderizarLinha(novo, true);
+            marcarComoPendente();
         }
     }
 
     function renderizarLinha(item, isPrepend) {
-        const seg = item.segunda || 0;
-        const ter = item.terca || 0;
-        const qua = item.quarta || 0;
-        const qui = item.quinta || 0;
-        const sex = item.sexta || 0;
-        const sab = item.sabado || 0;
-        const dom = item.domingo || 0;
-
         const tr = `
             <tr data-codigo="${item.codigo}" class="${isPrepend ? 'highlight-row' : ''}">
                 <td class="td-code">${item.codigo}</td>
-                <td class="td-prod">${item.nome}</td>
-                ${gerarInput(seg, 'segunda')}
-                ${gerarInput(ter, 'terca')}
-                ${gerarInput(qua, 'quarta')}
-                ${gerarInput(qui, 'quinta')}
-                ${gerarInput(sex, 'sexta')}
-                ${gerarInput(sab, 'sabado')}
-                ${gerarInput(dom, 'domingo')}
+                <td class="td-prod text-left">${item.nome}</td>
+                ${gerarInput(item.segunda, 'segunda')}
+                ${gerarInput(item.terca, 'terca')}
+                ${gerarInput(item.quarta, 'quarta')}
+                ${gerarInput(item.quinta, 'quinta')}
+                ${gerarInput(item.sexta, 'sexta')}
+                ${gerarInput(item.sabado, 'sabado')}
+                ${gerarInput(item.domingo, 'domingo')}
                 <td class="text-center">
-                    <button class="btn btn-xs btn-danger" onclick="removerLinha(this, '${item.codigo}')" title="Remover">
+                    <a href="javascript:void(0)" class="action-icon icon-trash" onclick="removerLinha(this, '${item.codigo}')" title="Remover Item">
                         <i class="fa fa-times"></i>
-                    </button>
+                    </a>
                 </td>
             </tr>
         `;
-
-        if (isPrepend) {
-            $('#tbodyProjecao').prepend(tr);
-            $(`tr[data-codigo="${item.codigo}"]`).find('input').first().focus();
-        } else {
-            $('#tbodyProjecao').append(tr);
-        }
+        isPrepend ? $('#tbodyProjecao').prepend(tr) : $('#tbodyProjecao').append(tr);
+        if(isPrepend) $(`tr[data-codigo="${item.codigo}"]`).find('input').first().focus();
     }
 
     function gerarInput(valor, dia) {
-        return `<td>
-            <input inputmode="numeric" type="number" step="0.01" class="input-qty"
-                   data-dia="${dia}" value="${valor}"
-                   onfocus="this.select()">
-        </td>`;
+        return `<td><input type="number" step="0.01" class="input-qty" data-dia="${dia}" value="${valor || 0}" onfocus="this.select()"></td>`;
     }
 
-    // --- Salvar e Remover ---
-
+    // --- Ações ---
     async function salvarTudo() {
         const itens = [];
-        const linhas = $('#tbodyProjecao tr');
+        const linhas = $('#tbodyProjecao tr[data-codigo]');
 
         if (linhas.length === 0) return Swal.fire('Aviso', 'Nada para salvar.', 'info');
 
-        // Feedback visual
-        Swal.fire({
-            title: 'Salvando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         linhas.each(function(){
             const tr = $(this);
             const codigo = tr.data('codigo');
-
             tr.find('.input-qty').each(function(){
-                const input = $(this);
-                itens.push({
-                    product_codigo: codigo,
-                    day: input.data('dia'),
-                    qty: parseFloat(input.val()) || 0
-                });
+                itens.push({ product_codigo: codigo, day: $(this).data('dia'), qty: parseFloat($(this).val()) || 0 });
             });
         });
 
         try {
             const res = await axios.post(baseUrl, {
-                method: 'saveProjecaoBatch',
-                token: token,
-                data: { unit_id: unit_id, itens: itens }
+                method: 'saveProjecaoBatch', token: token, data: { unit_id: unit_id, itens: itens }
             });
 
             const success = res.data.success || (res.data.message && res.data.message.includes('sucesso'));
 
             if (success) {
-                marcarComoSalvo(); // Reseta o estado "Sujo"
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Salvo!',
-                    text: 'Projeções atualizadas.',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                marcarComoSalvo();
+                Swal.fire({ icon: 'success', title: 'Salvo!', text: 'Metas atualizadas.', timer: 1500, showConfirmButton: false });
             } else {
                 Swal.fire('Erro', res.data.message || 'Erro desconhecido', 'error');
             }
-        } catch (e) {
-            Swal.fire('Erro', 'Falha na conexão.', 'error');
-        }
+        } catch (e) { Swal.fire('Erro', 'Falha na conexão.', 'error'); }
     }
 
-    function removerLinha(btn, codigo) {
+    function removerLinha(element, codigo) {
         Swal.fire({
-            title: 'Remover produto?',
-            text: 'As metas deste produto serão zeradas.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Sim, remover'
+            title: 'Remover produto?', text: 'A meta será zerada.', icon: 'warning',
+            showCancelButton: true, confirmButtonColor: '#F44336', confirmButtonText: 'Remover'
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    const res = await axios.post(baseUrl, {
-                        method: 'clearProjecaoProduto',
-                        token: token,
+                    await axios.post(baseUrl, { method: 'clearProjecaoProduto', token: token, data: { unit_id: unit_id, product_codigo: codigo } });
+                    $(element).closest('tr').fadeOut(300, function(){ $(this).remove(); });
+                    Swal.fire({ icon: 'success', title: 'Removido', timer: 1000, showConfirmButton: false });
+                } catch (e) { Swal.fire('Erro', 'Falha na conexão.', 'error'); }
+            }
+        });
+    }
+
+    function removerTudo() {
+        const linhas = $('#tbodyProjecao tr[data-codigo]');
+        if(linhas.length === 0) return;
+
+        Swal.fire({
+            title: 'ATENÇÃO: Limpar Tudo?',
+            text: "Isso removerá a projeção de TODOS os produtos desta loja. Essa ação não pode ser desfeita.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#F44336',
+            confirmButtonText: 'SIM, LIMPAR TUDO'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Limpando...', didOpen: () => Swal.showLoading() });
+
+                // Opção 1: Loop (Mais seguro se não tiver endpoint de truncate)
+                // Opção 2: Se tiver endpoint, chamar truncateProjections(unit_id)
+
+                // Vou fazer via loop para garantir compatibilidade com seu backend atual
+                const promessas = [];
+                linhas.each(function(){
+                    const codigo = $(this).data('codigo');
+                    promessas.push(axios.post(baseUrl, {
+                        method: 'clearProjecaoProduto', token: token,
                         data: { unit_id: unit_id, product_codigo: codigo }
-                    });
+                    }));
+                });
 
-                    const success = res.data.success || (res.data.message && res.data.message.includes('limpas'));
-
-                    if (success) {
-                        $(btn).closest('tr').fadeOut(300, function(){ $(this).remove(); });
-                        // Remover linha não marca como pendente pois já foi salvo no banco direto via API de clear
-                        marcarComoSalvo(); // Opcional, depende da sua lógica, mas garante consistência
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Removido',
-                            text: 'Produto removido da projeção.',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire('Erro', res.data.message, 'error');
-                    }
-                } catch (e) {
-                    Swal.fire('Erro', 'Falha na conexão.', 'error');
+                try {
+                    await Promise.all(promessas);
+                    $('#tbodyProjecao').empty();
+                    $('#tbodyProjecao').html('<tr><td colspan="10" class="text-center text-muted" style="padding:20px;">Lista limpa.</td></tr>');
+                    marcarComoSalvo(); // Reset pois já salvou no banco
+                    Swal.fire('Limpo!', 'Todas as projeções foram removidas.', 'success');
+                } catch(e) {
+                    Swal.fire('Erro', 'Ocorreu um erro ao limpar alguns itens.', 'error');
                 }
             }
         });
     }
-    // --- IMPORTAÇÃO EXCEL ---
 
+    // --- Excel ---
     function abrirModalImportacao() {
-        $('#arquivoExcel').val(''); // Limpa input
+        $('#arquivoExcel').val('');
         $('#modalImportacao').modal('show');
     }
 
-    // Gera e baixa o XLS
     async function baixarModelo(comDados) {
         let dados = [];
-
         if (comDados) {
-            // Busca os produtos atuais para preencher o Excel
-            // Usa sua lista global se já estiver carregada ou busca da API
             try {
-                const res = await axios.post(baseUrl, {
-                    method: 'listItemVenda',
-                    token: token,
-                    data: { unit_id: unit_id, search: '' }
-                });
-
-                let produtos = [];
-                if (res.data.success && Array.isArray(res.data.produtos)) {
-                    produtos = res.data.produtos;
-                } else if (Array.isArray(res.data)) {
-                    produtos = res.data;
-                }
-
-                // Monta o array pro Excel
-                dados = produtos.map(p => ({
-                    "CODIGO": p.codigo,
-                    "NOME_PRODUTO": p.nome, // Apenas visual
-                    "SEGUNDA": 0, "TERCA": 0, "QUARTA": 0, "QUINTA": 0, "SEXTA": 0, "SABADO": 0, "DOMINGO": 0
-                }));
-
-            } catch (e) {
-                console.error(e);
-                alert('Erro ao buscar produtos para o modelo.');
-                return;
-            }
+                const res = await axios.post(baseUrl, { method: 'listItemVenda', token: token, data: { unit_id: unit_id, search: '' } });
+                const lista = (res.data.success && Array.isArray(res.data.produtos)) ? res.data.produtos : (Array.isArray(res.data) ? res.data : []);
+                dados = lista.map(p => ({ "CODIGO": p.codigo, "NOME_PRODUTO": p.nome, "SEGUNDA": 0, "TERCA": 0, "QUARTA": 0, "QUINTA": 0, "SEXTA": 0, "SABADO": 0, "DOMINGO": 0 }));
+            } catch (e) { alert('Erro ao buscar produtos.'); return; }
         } else {
-            // Modelo vazio de exemplo
-            dados = [
-                { "CODIGO": 10104, "NOME_PRODUTO": "Exemplo", "SEGUNDA": 10, "TERCA": 10, "QUARTA": 10, "QUINTA": 10, "SEXTA": 20, "SABADO": 30, "DOMINGO": 15 }
-            ];
+            dados = [{ "CODIGO": 10104, "NOME_PRODUTO": "Exemplo", "SEGUNDA": 10, "TERCA": 10, "QUARTA": 10, "QUINTA": 10, "SEXTA": 20, "SABADO": 30, "DOMINGO": 15 }];
         }
-
-        // Cria a planilha
         const ws = XLSX.utils.json_to_sheet(dados);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Projecao");
-
-        // Salva arquivo
-        XLSX.writeFile(wb, "Modelo_Projecao_Vendas.xlsx");
+        XLSX.writeFile(wb, "Modelo_Projecao.xlsx");
     }
 
-    // Lê o arquivo, transforma em JSON para API e envia
     function processarArquivoExcel() {
         const input = document.getElementById('arquivoExcel');
-        if (!input.files || input.files.length === 0) {
-            Swal.fire('Atenção', 'Selecione um arquivo primeiro.', 'warning');
-            return;
-        }
+        if (!input.files || input.files.length === 0) return Swal.fire('Atenção', 'Selecione um arquivo.', 'warning');
 
-        const file = input.files[0];
         const reader = new FileReader();
-
         reader.onload = async function(e) {
             try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const jsonExcel = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-                // Pega a primeira aba
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+                if (jsonExcel.length === 0) return Swal.fire('Erro', 'Planilha vazia.', 'error');
 
-                // Converte para JSON
-                const jsonExcel = XLSX.utils.sheet_to_json(worksheet);
-
-                if (jsonExcel.length === 0) {
-                    Swal.fire('Erro', 'Planilha vazia ou formato inválido.', 'error');
-                    return;
-                }
-
-                // Normaliza e modela para a API (Batch)
-                let itensParaSalvar = [];
-                let erros = 0;
+                const itens = [];
+                const diasMap = { 'SEGUNDA':'segunda', 'TERCA':'terca', 'TERÇA':'terca', 'QUARTA':'quarta', 'QUINTA':'quinta', 'SEXTA':'sexta', 'SABADO':'sabado', 'SÁBADO':'sabado', 'DOMINGO':'domingo' };
 
                 jsonExcel.forEach(linha => {
-                    // Tenta achar a chave do código (pode ser "CODIGO", "codigo", "Codigo")
-                    // Normaliza chaves para UpperCase para evitar erro de digitação
-                    const chaves = Object.keys(linha).reduce((acc, k) => {
-                        acc[k.toUpperCase().trim()] = linha[k];
-                        return acc;
-                    }, {});
-
-                    if (!chaves['CODIGO']) {
-                        erros++;
-                        return;
-                    }
-
-                    const codigo = chaves['CODIGO'];
-
-                    // Dias da semana
-                    const diasMap = {
-                        'SEGUNDA': 'segunda', 'TERCA': 'terca', 'TERÇA': 'terca',
-                        'QUARTA': 'quarta', 'QUINTA': 'quinta', 'SEXTA': 'sexta',
-                        'SABADO': 'sabado', 'SÁBADO': 'sabado', 'DOMINGO': 'domingo'
-                    };
-
-                    for (let [headerExcel, diaApi] of Object.entries(diasMap)) {
-                        if (chaves[headerExcel] !== undefined) {
-                            itensParaSalvar.push({
-                                product_codigo: codigo,
-                                day: diaApi,
-                                qty: parseFloat(chaves[headerExcel]) || 0
-                            });
-                        }
+                    const chaves = Object.keys(linha).reduce((acc, k) => { acc[k.toUpperCase().trim()] = linha[k]; return acc; }, {});
+                    if (!chaves['CODIGO']) return;
+                    for (let [header, dia] of Object.entries(diasMap)) {
+                        if (chaves[header] !== undefined) itens.push({ product_codigo: chaves['CODIGO'], day: dia, qty: parseFloat(chaves[header]) || 0 });
                     }
                 });
 
-                if (itensParaSalvar.length === 0) {
-                    Swal.fire('Erro', 'Nenhum dado válido encontrado. Verifique as colunas (CODIGO, SEGUNDA, TERCA...).', 'error');
-                    return;
-                }
+                if (itens.length === 0) return Swal.fire('Erro', 'Nenhum dado válido.', 'error');
 
-                // Envia para o Backend
                 $('#modalImportacao').modal('hide');
+                Swal.fire({ title: `Importando...`, didOpen: () => Swal.showLoading() });
 
-                Swal.fire({
-                    title: `Processando ${itensParaSalvar.length} registros...`,
-                    didOpen: () => Swal.showLoading()
-                });
-
-                const res = await axios.post(baseUrl, {
-                    method: 'saveProjecaoBatch',
-                    token: token,
-                    data: { unit_id: unit_id, itens: itensParaSalvar }
-                });
+                const res = await axios.post(baseUrl, { method: 'saveProjecaoBatch', token: token, data: { unit_id: unit_id, itens: itens } });
 
                 if (res.data.success || (res.data.message && res.data.message.includes('sucesso'))) {
-                    Swal.fire('Sucesso!', 'Dados importados com sucesso.', 'success').then(() => {
-                        // Recarrega a tela para mostrar os dados novos
-                        inicializarTela();
-                    });
+                    Swal.fire('Sucesso!', 'Dados importados.', 'success').then(() => inicializarTela());
                 } else {
-                    Swal.fire('Erro no Banco', res.data.message, 'error');
+                    Swal.fire('Erro', res.data.message, 'error');
                 }
-
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Erro', 'Falha ao processar arquivo. Verifique o formato.', 'error');
-            }
+            } catch (error) { Swal.fire('Erro', 'Falha ao processar arquivo.', 'error'); }
         };
-
-        reader.readAsArrayBuffer(file);
+        reader.readAsArrayBuffer(input.files[0]);
     }
 </script>
 </body>

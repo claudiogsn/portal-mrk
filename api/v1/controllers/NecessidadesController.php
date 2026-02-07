@@ -862,4 +862,6 @@ class NecessidadesController
             'consumos' => array_values($resultado)
         ];
     }
+
+
 }

@@ -636,11 +636,39 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
             case 'getInsumoConsumption':
+                // LÓGICA ANTIGA (Média Histórica)
+                // O Frontend manda: system_unit_id, dates, productCodes, username
                 if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes']) && isset($requestData['username'])) {
-                    $response = NecessidadesRefactorController::getInsumoConsumption($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);
+
+                    $response = NecessidadesRefactorController::getInsumoConsumption(
+                        $requestData['system_unit_id'],
+                        $requestData['dates'],
+                        $requestData['productCodes'],
+                        $requestData['username']
+                    );
+
                 } else {
                     http_response_code(400);
-                    $response = ['error' => 'Parâmetros system_unit_id, dates ou productCodes ausentes'];
+                    $response = ['error' => 'Parâmetros para consumo histórico ausentes'];
+                }
+                break;
+
+            case 'getInsumoProjection':
+                // LÓGICA NOVA (Meta Futura)
+                // O Frontend manda: system_unit_id, daysOfWeek, insumoIds, user_id
+                if (isset($requestData['system_unit_id']) && isset($requestData['daysOfWeek']) && isset($requestData['insumoIds'])) {
+
+                    // Nota: Verifique se o método está no NecessidadesRefactorController ou NecessidadesController
+                    $response = ProjecaoVendasController::getInsumoProjection(
+                        $requestData['system_unit_id'],
+                        $requestData['daysOfWeek'], // Array de inteiros [0, 1, 2...]
+                        $requestData['insumoIds'],  // Array de códigos
+                        $requestData['user_id'] ?? $requestData['username'] // Fallback caso o nome varie
+                    );
+
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, daysOfWeek ou insumoIds ausentes'];
                 }
                 break;
             case 'getInsumoConsumptionTop3':

@@ -225,4 +225,169 @@ class ProjecaoVendasController
         // Retorna apenas os valores (remove as chaves associativas do código)
         return array_values($resultado);
     }
+
+
+    /**
+     * PROJEÇÃO: Calcula necessidade baseada na meta definida (Explosão de Materiais)
+     * Segue o mesmo padrão de performance do getInsumoConsumption.
+     */
+    public static function getInsumoProjection($system_unit_id, $daysOfWeek, $insumoIds, $user_id): array
+    {
+        global $pdo;
+
+        // Busca nomes (Padronizado)
+        $unitName = '';
+        if ($system_unit_id) {
+            $stmt = $pdo->prepare("SELECT name FROM system_unit WHERE id = ?");
+            $stmt->execute([$system_unit_id]);
+            $unitName = $stmt->fetchColumn() ?: '';
+        }
+
+        $userName = '';
+        if ($user_id) {
+            $stmt = $pdo->prepare("SELECT name FROM system_users WHERE id = ?");
+            $stmt->execute([$user_id]);
+            $userName = $stmt->fetchColumn() ?: '';
+        }
+
+        // Mapeamento de Dias (Inteiro -> String do Banco)
+        $mapaDias = [0 => 'domingo', 1 => 'segunda', 2 => 'terca', 3 => 'quarta', 4 => 'quinta', 5 => 'sexta', 6 => 'sabado'];
+        $diasSolicitados = [];
+        foreach ($daysOfWeek as $d) {
+            if (isset($mapaDias[$d])) $diasSolicitados[] = $mapaDias[$d];
+        }
+
+        // Validações
+        $diasSolicitados = array_unique($diasSolicitados);
+        $insumoIds = array_unique($insumoIds);
+
+        if (empty($diasSolicitados) || empty($insumoIds)) {
+            return ['unidade' => $unitName, 'usuario' => $userName, 'consumos' => []];
+        }
+
+        // 1. Info Produtos (Batch) - Exatamente igual ao método de consumo
+        $placeholdersProds = implode(',', array_fill(0, count($insumoIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT p.codigo AS insumo_id, p.nome as nome, cc.nome as categoria, und as unidade
+            FROM products p
+            INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
+            WHERE p.codigo IN (" . $placeholdersProds . ") 
+            AND p.system_unit_id = ?
+        ");
+        $stmt->execute(array_merge($insumoIds, [$system_unit_id]));
+        $productsData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Saldo (Batch)
+        $saldos = NecessidadesRefactorController::getProductsStockBatch($system_unit_id, $insumoIds);
+
+        // 3. Projeção Total / Explosão (Batch)
+        // Aqui está a lógica específica deste método, mas isolada como o "fetchTotalConsumption"
+        $projecoesAgregadas = self::fetchTotalProjectionBatch($system_unit_id, $insumoIds, $diasSolicitados);
+
+        $insumoConsumption = [];
+
+        // Mapa para acesso rápido
+        $prodMap = [];
+        foreach ($productsData as $p) $prodMap[$p['insumo_id']] = $p;
+
+        foreach ($insumoIds as $insumo_id) {
+            if (!isset($prodMap[$insumo_id])) continue;
+
+            $pInfo = $prodMap[$insumo_id];
+
+            // Total Projetado (Soma das explosões dos dias solicitados)
+            $totalSales = isset($projecoesAgregadas[$insumo_id]) ? (float)$projecoesAgregadas[$insumo_id] : 0;
+
+            // Saldo Atual
+            $saldo = isset($saldos[$insumo_id]) ? (float)$saldos[$insumo_id] : 0;
+
+            // Lógica de Cálculo (Direta: Projeção - Estoque)
+            // Diferente da média, aqui não dividimos por 4, pois a projeção é absoluta para os dias selecionados
+            $calculo = $totalSales - $saldo;
+
+            $recomendado = 0;
+            if ($pInfo['unidade'] === 'UND') {
+                $recomendado = max(0, ceil($calculo));
+            } else {
+                $recomendado = max(0, round($calculo, 2));
+            }
+
+            $insumoConsumption[] = [
+                'codigo' => $insumo_id,
+                'sales' => number_format($totalSales, 2, '.', ''), // Mostra o total projetado
+                'margem' => '0.00',
+                'saldo' => number_format($saldo, 2, '.', ''),
+                'necessidade' => 0,
+                'unidade' => $pInfo['unidade'],
+                'nome' => $pInfo['nome'],
+                'categoria' => $pInfo['categoria'],
+                'recomendado' => $recomendado
+            ];
+        }
+
+        return [
+            'unidade' => $unitName,
+            'usuario' => $userName,
+            'consumos' => $insumoConsumption
+        ];
+    }
+
+    /**
+     * METODO AUXILIAR PRIVADO: Calcula a Explosão de Materiais + Venda Direta
+     * Isolado para manter o controller principal limpo.
+     */
+    private static function fetchTotalProjectionBatch($system_unit_id, $insumoIds, $diasSolicitados): array
+    {
+        global $pdo;
+
+        if (empty($insumoIds) || empty($diasSolicitados)) return [];
+
+        $placeholdersProds = implode(',', array_fill(0, count($insumoIds), '?'));
+        $placeholdersDias = implode(',', array_fill(0, count($diasSolicitados), '?'));
+
+        // Parâmetros para a query (usados 2x por causa do UNION)
+        // Ordem: unit, dias, insumos
+        $paramsBase = array_merge([$system_unit_id], $diasSolicitados, $insumoIds);
+        $paramsFinal = array_merge($paramsBase, $paramsBase);
+
+        $sql = "
+            SELECT 
+                final.insumo_id, 
+                SUM(final.total_demandado) as total_geral
+            FROM (
+                -- PARTE A: Demanda via Composição (Ingrediente dentro do Produto de Venda)
+                -- Ex: Carne dentro do Hamburguer
+                SELECT 
+                    c.insumo_id,
+                    SUM(proj.quantity * c.quantity) as total_demandado
+                FROM product_daily_projections proj
+                JOIN compositions c ON c.product_id = proj.product_codigo AND c.system_unit_id = proj.system_unit_id
+                WHERE proj.system_unit_id = ?
+                  AND proj.day_of_week IN ($placeholdersDias)
+                  AND c.insumo_id IN ($placeholdersProds)
+                  AND proj.deleted_at IS NULL
+                GROUP BY c.insumo_id
+
+                UNION ALL
+
+                -- PARTE B: Demanda Direta (O próprio produto é vendido e projetado)
+                -- Ex: Coca-Cola Lata
+                SELECT 
+                    proj.product_codigo as insumo_id,
+                    SUM(proj.quantity) as total_demandado
+                FROM product_daily_projections proj
+                WHERE proj.system_unit_id = ?
+                  AND proj.day_of_week IN ($placeholdersDias)
+                  AND proj.product_codigo IN ($placeholdersProds)
+                  AND proj.deleted_at IS NULL
+                GROUP BY proj.product_codigo
+            ) as final
+            GROUP BY final.insumo_id
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($paramsFinal);
+
+        return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
 }

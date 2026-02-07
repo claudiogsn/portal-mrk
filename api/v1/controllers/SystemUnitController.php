@@ -142,15 +142,20 @@ class SystemUnitController
         global $pdo;
 
         try {
-            // Consulta o grupo mais antigo associado à unidade
+
             $stmt = $pdo->prepare("
-            SELECT ge.*
+            SELECT 
+                ge.*,
+                su.previsao_vendas,
+                su.consolidacao_automatica
             FROM grupo_estabelecimento_rel ger
             INNER JOIN grupo_estabelecimento ge ON ge.id = ger.grupo_id
+            INNER JOIN system_unit su ON su.id = ger.system_unit_id
             WHERE ger.system_unit_id = :system_unit_id
             ORDER BY ge.id ASC
             LIMIT 1
         ");
+
             $stmt->bindParam(':system_unit_id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
 
