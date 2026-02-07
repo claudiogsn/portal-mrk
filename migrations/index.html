@@ -1,79 +1,148 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Clonador de Dados por Unidade</title>
+    <title>Clonador de Dados - MRK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://portal.mrksolucoes.com.br/external/bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
 
-    <!-- AdminBSB CSS -->
     <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.css" rel="stylesheet">
-    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/style.css" rel="stylesheet">
-    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.css" rel="stylesheet" />
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
 
-    <!-- Axios + SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/style.css" rel="stylesheet">
+    <link href="https://portal.mrksolucoes.com.br/external/bsb/css/themes/all-themes.css" rel="stylesheet" />
+
+    <style>
+        /* --- Identidade Visual MRK --- */
+        :root {
+            --mrk-blue:  #0B46AC;
+            --mrk-green: #08A794;
+            --mrk-gray:  #EBEBEB;
+            --mrk-black: #191F2A;
+            --mrk-red:   #F44336;
+        }
+
+        body { background-color: #f1f2f7; font-family: 'Roboto', sans-serif; }
+
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-top: 3px solid var(--mrk-blue);
+            background-color: #fff;
+        }
+
+        .card .header h2 { color: var(--mrk-black); font-weight: bold; font-size: 18px; }
+        .card .header h2 small { color: #777; font-size: 12px; margin-top: 5px; }
+
+        /* Botões */
+        .btn-primary { background-color: var(--mrk-blue) !important; color: #fff; }
+        .btn-primary:hover { background-color: #093a8f !important; }
+
+        /* Select2 Customization */
+        .select2-container .select2-selection--single {
+            height: 40px !important;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px !important;
+        }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: var(--mrk-blue);
+            color: white;
+        }
+
+        /* Alerta Customizado */
+        .alert-custom {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .alert-custom ul { margin-bottom: 0; padding-left: 20px; }
+
+        .step-icon {
+            font-size: 24px; color: var(--mrk-blue); vertical-align: middle; margin-right: 10px;
+        }
+    </style>
 </head>
 
 <body class="theme-blue">
 
 <div class="container-fluid">
     <div class="block-header">
-        <h2>CLONADOR DE DADOS ENTRE ESTABELECIMENTOS</h2>
+        <h2> </h2> <br>
     </div>
 
     <div class="row clearfix">
-        <div class="col-lg-8 col-md-10 col-sm-12 col-xs-12">
+        <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 col-sm-12 col-xs-12">
             <div class="card">
                 <div class="header">
                     <h2>
-                        Configuração da Clonagem
-                        <small>Replica dados cadastrais entre unidades</small>
+                        <i class="material-icons" style="color: var(--mrk-blue); vertical-align: bottom;">content_copy</i>
+                        CLONAR CADASTROS ENTRE UNIDADES
                     </h2>
+                    <small>Replica cadastros de produtos, fichas técnicas entre unidades</small>
                 </div>
 
                 <div class="body">
                     <form id="cloneForm">
 
-                        <div class="form-group">
-                            <label>Unidade de Origem</label>
-                            <select id="sourceUnit" class="form-control" required>
-                                <option value="">Selecione...</option>
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><b><i class="material-icons step-icon">output</i> Unidade de ORIGEM</b></p>
+                                <p class="text-muted" style="font-size: 12px; margin-top:-10px;">De onde os dados serão copiados</p>
+                                <select id="sourceUnit" class="form-control" style="width: 100%;" required>
+                                    <option value="">Selecione a origem...</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <p><b><i class="material-icons step-icon">input</i> Unidade de DESTINO</b></p>
+                                <p class="text-muted" style="font-size: 12px; margin-top:-10px;">Para onde os dados vão (serão apagados)</p>
+                                <select id="targetUnit" class="form-control" style="width: 100%;" required>
+                                    <option value="">Selecione o destino...</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <div class="form-group">
-                            <label>Unidade de Destino</label>
-                            <select id="targetUnit" class="form-control" required>
-                                <option value="">Selecione...</option>
-                            </select>
-                        </div>
+                        <hr>
 
-                        <div class="alert alert-warning">
-                            <strong>Atenção:</strong><br>
-                            - Os dados da unidade de destino serão <b>APAGADOS</b><br>
-                            - Serão clonadas as tabelas:
-                            <ul>
-                                <li>categorias</li>
-                                <li>products</li>
-                                <li>compositions</li>
-                                <li>productions</li>
-                                <li>modelos_balanco</li>
-                                <li>modelos_balanco_itens</li>
+                        <div class="alert-custom">
+                            <strong><i class="fa fa-exclamation-triangle"></i> Atenção: Perigo de Perda de Dados</strong>
+                            <br><br>
+                            Ao confirmar, o sistema realizará as seguintes ações na <b>Unidade de Destino</b>:
+                            <ol>
+                                <li>Apagará todos os dados atuais das tabelas listadas abaixo.</li>
+                                <li>Inserirá os dados copiados da Unidade de Origem.</li>
+                            </ol>
+                            <strong>Tabelas Afetadas:</strong>
+                            <ul style="margin-top: 5px; column-count: 2;">
+                                <li>categorias (Categorias)</li>
+                                <li>products (Produtos)</li>
+                                <li>compositions (Fichas de Técnicas)</li>
+                                <li>productions (Fichas de Produção)</li>
+                                <li>modelos_balanco (Modelos de Balanco)</li>
+                                <li>modelos_balanco_itens (Itens dos modelos de balanco)</li>
                             </ul>
                         </div>
 
-                        <button type="submit" class="btn btn-primary waves-effect">
-                            <i class="material-icons">content_copy</i>
-                            CLONAR DADOS
-                        </button>
+                        <div style="text-align: right; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary waves-effect btn-lg" style="padding: 10px 30px;">
+                                <i class="material-icons">content_copy</i> CLONAR DADOS
+                            </button>
+                        </div>
 
                     </form>
                 </div>
@@ -82,90 +151,187 @@
     </div>
 </div>
 
-<!-- AdminBSB JS -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/bootstrap/js/bootstrap.js"></script>
 <script src="https://portal.mrksolucoes.com.br/external/bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    /**
-     * 🔹 Carrega unidades
-     */
-    axios.get('http://localhost/portal-mrk/migrations/api/list-system-units.php')
-        .then(res => {
-            if (!res.data.success) return;
+    // --- Configuração da URL da API ---
+    const API_BASE_URL = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/migrations/api'
+        : 'http://localhost/portal-mrk/migrations/api';
 
-            const source = document.getElementById('sourceUnit');
-            const target = document.getElementById('targetUnit');
+    $(document).ready(function() {
+        // Inicializa Select2
+        $('#sourceUnit').select2({ placeholder: "Selecione a origem", allowClear: true });
+        $('#targetUnit').select2({ placeholder: "Selecione o destino", allowClear: true });
 
-            res.data.units.forEach(u => {
-                const label = `${u.name} (ID ${u.id})`;
-                source.add(new Option(label, u.id));
-                target.add(new Option(label, u.id));
+        // Validação Inicial: Verifica se tem parâmetros na URL ao carregar
+        checkAuthParams();
+
+        loadUnits();
+
+        // Validação visual de seleção igual
+        $('#sourceUnit, #targetUnit').on('change', validateUnits);
+    });
+
+    function checkAuthParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const userId = urlParams.get('user_id') || urlParams.get('username');
+
+        if (!token || !userId) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Acesso Negado',
+                text: 'Parâmetros de autenticação ausentes. Acesse através do sistema principal.',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                footer: '<a href="#" onclick="window.close()">Fechar Janela</a>'
             });
-        });
+            // Desabilita o formulário
+            $('button[type="submit"]').prop('disabled', true);
+            $('select').prop('disabled', true);
+            return false;
+        }
+        return true;
+    }
 
-    /**
-     * 🔹 Submit
-     */
+    function validateUnits() {
+        const source = $('#sourceUnit').val();
+        const target = $('#targetUnit').val();
+
+        if (source && target && source === target) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Seleção Inválida',
+                text: 'A unidade de origem e destino não podem ser a mesma!',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            $(this).val(null).trigger('change');
+        }
+    }
+
+    async function loadUnits() {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/list-system-units.php`);
+            if (res.data.success) {
+                const units = res.data.units;
+                units.forEach(u => {
+                    const option = new Option(`${u.id} - ${u.name}`, u.id, false, false);
+                    $('#sourceUnit').append(option.cloneNode(true));
+                    $('#targetUnit').append(option);
+                });
+            } else {
+                Swal.fire('Erro', 'Não foi possível carregar as unidades.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro de Conexão', 'Falha ao buscar unidades.', 'error');
+        }
+    }
+
     document.getElementById('cloneForm').addEventListener('submit', function (e) {
         e.preventDefault();
 
-        const source = sourceUnit.value;
-        const target = targetUnit.value;
+        // 1. Validação de Segurança (Params URL) ANTES DE TUDO
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const userId = urlParams.get('user_id') || urlParams.get('username');
 
-        if (!source || !target) {
-            Swal.fire('Erro', 'Selecione origem e destino', 'error');
+        if (!token || !userId) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro de Autenticação',
+                text: 'Não é possível enviar a requisição sem token e usuário.'
+            });
+            return; // 🛑 PARA AQUI
+        }
+
+        // 2. Validação do Formulário
+        const sourceVal = $('#sourceUnit').val();
+        const targetVal = $('#targetUnit').val();
+        const sourceText = $('#sourceUnit option:selected').text();
+        const targetText = $('#targetUnit option:selected').text();
+
+        if (!sourceVal || !targetVal) {
+            Swal.fire('Atenção', 'Selecione a origem e o destino.', 'warning');
             return;
         }
 
-        if (source === target) {
-            Swal.fire('Erro', 'Origem e destino não podem ser iguais', 'error');
+        if (sourceVal === targetVal) {
+            Swal.fire('Erro', 'Origem e destino são iguais.', 'error');
             return;
         }
 
+        // 3. Confirmação
         Swal.fire({
-            title: 'Confirmar clonagem?',
+            title: 'Confirmar Clonagem?',
             html: `
-            <b>Origem:</b> ${source}<br>
-            <b>Destino:</b> ${target}<br><br>
-            <span style="color:red">
-                Esta ação apagará os dados do destino.
-            </span>
-        `,
+                <div style="text-align: left; font-size: 14px; color: #555;">
+                    <p><b>De:</b> ${sourceText}</p>
+                    <p><b>Para:</b> ${targetText}</p>
+                    <hr>
+                    <p style="color: #D32F2F; font-weight: bold;">
+                        <i class="fa fa-times-circle"></i> OS DADOS DA UNIDADE DE DESTINO SERÃO APAGADOS PERMANENTEMENTE!
+                    </p>
+                    <p>Tem certeza absoluta?</p>
+                </div>
+            `,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Sim, clonar',
+            confirmButtonColor: '#0B46AC',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'SIM, CLONAR AGORA',
             cancelButtonText: 'Cancelar'
-        }).then(result => {
-            if (!result.isConfirmed) return;
-
-            Swal.fire({
-                title: 'Clonando dados...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            axios.post('http://localhost/portal-mrk/migrations/api/clone-unit-data.php', {
-                source_system_unit_id: source,
-                target_system_unit_id: target
-            })
-                .then(res => {
-                    Swal.close();
-
-                    if (res.data.success) {
-                        Swal.fire('Sucesso', res.data.message, 'success');
-                    } else {
-                        Swal.fire('Erro', res.data.message || 'Erro desconhecido', 'error');
-                    }
-                })
-                .catch(err => {
-                    Swal.close();
-                    Swal.fire('Erro', err.message, 'error');
-                });
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executeClone(sourceVal, targetVal, token, userId);
+            }
         });
     });
-</script>
 
+    async function executeClone(sourceId, targetId, token, userId) {
+        Swal.fire({
+            title: 'Clonando...',
+            html: 'Isso pode levar alguns segundos.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(`${API_BASE_URL}/clone-unit-data.php`, {
+                source_system_unit_id: sourceId,
+                target_system_unit_id: targetId,
+                token: token,   // Envia Token
+                user_id: userId // Envia UserID
+            });
+
+            Swal.close();
+
+            if (res.data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sucesso!',
+                    text: res.data.message || 'Dados clonados com sucesso.',
+                    confirmButtonColor: '#08A794'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erro',
+                    text: res.data.message || 'Erro ao clonar dados.'
+                });
+            }
+        } catch (err) {
+            Swal.close();
+            Swal.fire('Erro Crítico', err.message || 'Falha na comunicação com o servidor.', 'error');
+        }
+    }
+</script>
 </body>
 </html>

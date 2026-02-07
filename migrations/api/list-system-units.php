@@ -8,7 +8,7 @@ global $pdo;
 $stmt = $pdo->query("
     SELECT id, name, cnpj, status
     FROM system_unit
-    ORDER BY name
+    ORDER BY id
 ");
 
 echo json_encode([

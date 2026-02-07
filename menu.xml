@@ -274,6 +274,11 @@
           </menuitem>
         </menu>
       </menuitem>
+      <menuitem label="Clonar Dados de Estoque">
+        <action>ClonarCadastros</action>
+        <icon>fas:copy fa-fw</icon>
+      </menuitem>
+
     </menu>
   </menuitem>
   <menuitem label="_t{Administration}">

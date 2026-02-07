@@ -2413,13 +2413,20 @@ if (isset($data['method']) && isset($data['data'])) {
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
         }
-        UtilsController::trackApiToSqs(
-            $user,
-            $method ?? 'invalid_call',
-            $requestData ?? $json,
-            $response,
-            $startTime
-        );
+        if (isset($method) && !in_array($method, $noAuthMethods)) {
+
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+
+            UtilsController::trackApiToSqs(
+                $user,
+                $method,
+                $requestData ?? $json,
+                $response,
+                $startTime
+            );
+        }
     } catch (Exception $e) {
         http_response_code(500);
         $response = ['error' => 'Erro interno do servidor: ' . $e->getMessage()];
