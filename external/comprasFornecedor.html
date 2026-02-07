@@ -5,183 +5,199 @@
     <title>Relatório - Compras por Fornecedor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        .muted { color:#777; }
-        .nowrap { white-space: nowrap; }
-        .text-small { font-size: 12px; }
-        .text-right { text-align:right; }
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
-        .toolbar {
-            display:flex;
-            gap:8px;
-            align-items:center;
-            flex-wrap:wrap;
-            margin: 10px 0;
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
-        /* Estilo dos Totalizadores */
-        .totalizer-box {
-            background: #f4f6f9;
-            border-left: 4px solid #2196F3;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .totalizer-title { font-size: 11px; color: #666; text-transform: uppercase; font-weight: bold; }
-        .totalizer-value { font-size: 18px; color: #333; font-weight: bold; margin-top: 2px; }
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
 
-        /* Linha expansível */
-        td.cell-toggle {
-            width: 35px;
-            text-align: center;
-            cursor: pointer;
-            user-select:none;
-        }
-        td.cell-toggle i { font-size: 14px; }
-
-        tr.itens-row { display: none; }
-        tr.itens-row td { background: #fafafa; padding: 10px !important; }
-
-        .subtable { margin: 0; }
-        .subtable th, .subtable td { font-size: 12px; padding: 6px !important; }
-
-        /* Select2 */
-        .select2-container--default .select2-selection--multiple {
-            min-height: 34px;
-            border-radius: 0;
-            border: 1px solid #ccc;
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
             font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Linha Expansível */
+        td.cell-toggle { cursor: pointer; color: var(--mrk-blue); transition: transform 0.2s; }
+        td.cell-toggle:hover { color: var(--mrk-black); }
+        tr.itens-row { display: none; }
+        tr.itens-row td { background: #fdfdfd !important; padding: 15px !important; box-shadow: inset 0 3px 6px rgba(0,0,0,0.02); }
+
+        /* Subtabela */
+        .subtable { border: 1px solid #eee; margin-bottom: 0; background: #fff; }
+        .subtable th { background: #f1f1f1 !important; color: #666 !important; font-size: 11px !important; }
+
+        /* Select2 Custom */
+        .select2-container--default .select2-selection--multiple {
+            border: 1px solid #ccc; border-radius: 4px; min-height: 34px;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border-color: var(--mrk-blue);
         }
 
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
-            .toolbar { gap:6px; }
-            .totalizer-box { margin-bottom: 10px; }
-        }
+        /* Skeleton Loader */
+        .skeleton-wrapper { display: none; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        .sk-kpi { height: 80px; width: 100%; border-radius: 6px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 
 <body class="theme-blue">
 <div class="container-fluid">
-    <br>
 
     <div class="card">
-        <div class="header">
-            <h2>Relatório - Compras por Fornecedor</h2>
-        </div>
-
-        <div class="row" style="margin: 15px 0 5px;">
-            <div class="col-md-3">
-                <label class="muted">Data inicial</label>
-                <input type="date" id="dtInicio" class="form-control">
-            </div>
-
-            <div class="col-md-3">
-                <label class="muted">Data final</label>
-                <input type="date" id="dtFim" class="form-control">
-            </div>
-
-            <div class="col-md-3">
-                <label class="muted">Tipo de data</label>
-                <select id="tipoData" class="form-control">
-                    <option value="entrada">Entrada</option>
-                    <option value="emissao">Emissão</option>
-                </select>
-            </div>
-
-            <div class="col-md-3">
-                <label class="muted">Ações</label><br>
-                <button id="btnAtualizar" class="btn btn-primary btn-block">
-                    <i class="fa fa-sync"></i> Atualizar
-                </button>
-            </div>
-        </div>
-
-        <div class="row" style="margin: 5px 0 10px;">
-            <div class="col-md-6">
-                <label class="muted">Fornecedor (Filtro local)</label>
-                <select id="filtroFornecedor" class="form-control" multiple="multiple"></select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="muted">Busca Rápida (código/nome, nota, chave, produto)</label>
-                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar instantaneamente...">
-            </div>
-        </div>
-
-        <hr style="margin: 5px 0 15px 0;">
-
-        <div class="row" style="margin: 0;">
-            <div class="col-md-4">
-                <div class="totalizer-box">
-                    <div class="totalizer-title">Qtd. Notas</div>
-                    <div class="totalizer-value" id="totQtd">0</div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="totalizer-box" style="border-left-color: #4CAF50;">
-                    <div class="totalizer-title">Valor Total (R$)</div>
-                    <div class="totalizer-value" id="totValor">R$ 0,00</div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="totalizer-box" style="border-left-color: #FF9800;">
-                    <div class="totalizer-title">Ticket Médio</div>
-                    <div class="totalizer-value" id="totMedia">R$ 0,00</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row" style="margin: 0 0 10px;">
-            <div class="col-md-12">
-                <div class="toolbar">
-                    <button id="btnExpandirTudo" class="btn btn-default">
-                        <i class="fa fa-plus-square"></i> Expandir tudo
-                    </button>
-                    <button id="btnRecolherTudo" class="btn btn-default">
-                        <i class="fa fa-minus-square"></i> Recolher tudo
-                    </button>
-
-                    <span class="muted text-small" id="infoStatus" style="margin-left: 10px;"></span>
-                </div>
-            </div>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-solid:shopping-bag" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                COMPRAS POR FORNECEDOR
+            </h2>
         </div>
 
         <div class="body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="tabela-notas">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dtInicio" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Data Final</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dtFim" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Considerar Data de:</label>
+                        <select id="tipoData" class="form-control">
+                            <option value="entrada">Entrada</option>
+                            <option value="emissao">Emissão</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" style="margin-top: 22px;">
+                        <button id="btnAtualizar" class="btn btn-primary btn-block waves-effect">
+                            <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            ATUALIZAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row clearfix" style="margin-bottom: 20px;">
+                <div class="col-md-4">
+                    <div class="kpi gray">
+                        <small>Qtd. Notas</small>
+                        <h4 id="totQtd">0</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi green">
+                        <small>Valor Total (R$)</small>
+                        <h4 id="totValor">R$ 0,00</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="kpi orange">
+                        <small>Ticket Médio</small>
+                        <h4 id="totMedia">R$ 0,00</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row clearfix" style="margin-bottom: 15px;">
+                <div class="col-md-6">
+                    <label class="muted">Filtrar Fornecedor</label>
+                    <select id="filtroFornecedor" class="form-control" multiple="multiple"></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="muted">Busca Rápida</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                        <input type="text" id="filtroTexto" class="form-control" placeholder="Nota, Chave, Produto...">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <button id="btnExpandirTudo" class="btn btn-default btn-sm waves-effect">
+                        <iconify-icon icon="icon-park-outline:expand-down"></iconify-icon> Expandir
+                    </button>
+                    <button id="btnRecolherTudo" class="btn btn-default btn-sm waves-effect">
+                        <iconify-icon icon="icon-park-outline:expand-up"></iconify-icon> Recolher
+                    </button>
+                </div>
+                <span class="muted text-small" id="infoStatus"></span>
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="tabela-notas">
                     <thead>
                     <tr>
-                        <th style="width:35px;"></th>
+                        <th style="width:40px;"></th>
                         <th class="nowrap">Nota</th>
                         <th class="nowrap">Fornecedor</th>
-                        <th class="nowrap">Data Emissão</th>
-                        <th class="nowrap">Data Entrada</th>
-                        <th class="text-right nowrap">Valor Total (R$)</th>
+                        <th class="nowrap">Emissão</th>
+                        <th class="nowrap">Entrada</th>
+                        <th class="text-right nowrap">Valor Total</th>
                     </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                    <tr><td colspan="6" class="text-center muted" style="padding: 30px;">Clique em <b>ATUALIZAR</b> para carregar os dados.</td></tr>
+                    </tbody>
                 </table>
             </div>
-        </div>
 
+        </div>
     </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
     // ================= CONFIG =================
@@ -193,79 +209,61 @@
     const token = urlParams.get('token');
     const system_unit_id = urlParams.get('unit_id');
 
-    // Backend method
-    const METHOD_BACKEND = 'getComprasPorPeriodo';
-
     // ================= STATE =================
-    let dadosBrutos = [];      // notas retornadas do backend
-    let notasFiltradas = [];   // após filtros (tempo real)
-    let expandedSet = new Set(); // chave única da nota expandida
+    let dadosBrutos = [];
+    let notasFiltradas = [];
+    let expandedSet = new Set();
 
-    // ================= UTILS =================
+    // ================= HELPER FUNCTIONS =================
     function escapeHtml(s) {
         if (s == null) return '';
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
-    function brMoney(v) {
-        const n = Number(v || 0);
-        return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-    }
-
-    function normalizeIsoDate(dt) {
-        if (!dt) return '';
-        const s = String(dt);
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-        const d = new Date(s);
-        if (isNaN(d.getTime())) return '';
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const da = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${da}`;
-    }
+    function brMoney(v) { return Number(v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
 
     function formatBRDate(dt) {
-        const iso = normalizeIsoDate(dt);
-        if (!iso) return '';
-        const [y,m,d] = iso.split('-');
-        return `${d}/${m}/${y}`;
+        if (!dt) return '';
+        const s = String(dt).slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+            const [y, m, d] = s.split('-');
+            return `${d}/${m}/${y}`;
+        }
+        return '';
     }
 
     function makeNotaKey(n) {
-        // chave consistente pra expand/collapse
         const chave = (n.chave_acesso || '').trim();
         const nf = (n.numero_nf || '').trim();
         const serie = (n.serie || '').trim();
         return chave ? `CH:${chave}` : `NF:${nf}|${serie}|F:${n.fornecedor_id || ''}`;
     }
 
-    function lower(s){ return (s || '').toString().toLowerCase(); }
+    function toggleLoader(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
 
     function debounce(fn, ms){
-        let t;
-        return function(){
-            clearTimeout(t);
-            const args = arguments;
-            t = setTimeout(() => fn.apply(null, args), ms);
-        }
+        let t; return function(){ clearTimeout(t); const args = arguments; t = setTimeout(() => fn.apply(null, args), ms); }
     }
 
     // ================= INIT =================
     $(document).ready(() => {
-        // Select2 fornecedor
+        // Select2 Config
         $('#filtroFornecedor').select2({
-            placeholder: 'Todos os fornecedores',
+            placeholder: 'Selecione Fornecedores...',
             width: '100%',
             allowClear: true,
             closeOnSelect: false
         });
 
-        // datas padrão: últimos 7 dias
+        // Datas Padrão
         const hoje = new Date();
         const y = hoje.getFullYear();
         const m = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -278,31 +276,16 @@
         const d2 = String(ini.getDate()).padStart(2, '0');
         $('#dtInicio').val(`${y2}-${m2}-${d2}`);
 
-        // handlers
+        // Eventos
         $('#btnAtualizar').on('click', fetchBackend);
-
-        // REMOVIDO: Carregamento automático nas mudanças de data
-        // $('#dtInicio').on('change', debounce(fetchBackend, 300));
-        // $('#dtFim').on('change', debounce(fetchBackend, 300));
-        // $('#tipoData').on('change', debounce(fetchBackend, 300));
-
-        // filtros em tempo real (sem backend)
         $('#filtroFornecedor').on('change', applyFiltrosTempoReal);
-        $('#filtroTexto').on('input', debounce(applyFiltrosTempoReal, 120));
-
-        // expand/recolher tudo
+        $('#filtroTexto').on('input', debounce(applyFiltrosTempoReal, 300));
         $('#btnExpandirTudo').on('click', () => expandCollapseAll(true));
         $('#btnRecolherTudo').on('click', () => expandCollapseAll(false));
 
-        // valida token/unit
         if (!token || !system_unit_id) {
-            Swal.fire('Atenção', 'URL deve conter token e unit_id.', 'warning');
-            return;
+            Swal.fire('Atenção', 'URL inválida (token/unit_id).', 'warning');
         }
-
-        // REMOVIDO: fetchBackend() inicial. O usuário deve clicar em Atualizar.
-        renderTabela([]); // renderiza vazio inicialmente
-        renderTotalizadores([]); // zera totalizadores
     });
 
     // ================= BACKEND =================
@@ -312,19 +295,14 @@
         const tipoData  = $('#tipoData').val();
 
         if (!dt_inicio || !dt_fim) {
-            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+            return Swal.fire('Atenção', 'Informe o período.', 'warning');
         }
 
-        Swal.fire({
-            title: 'Consultando...',
-            text: 'Buscando notas fiscais...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        toggleLoader(true);
 
         try {
             const res = await axios.post(baseUrl, {
-                method: METHOD_BACKEND,
+                method: 'getComprasPorPeriodo',
                 token,
                 data: {
                     system_unit_id: Number(system_unit_id),
@@ -334,222 +312,154 @@
                 }
             });
 
-            Swal.close();
-
-            const api = res.data;
-            if (!api || api.success === false) {
+            if (!res.data || res.data.success === false) {
+                toggleLoader(false);
                 dadosBrutos = [];
-                expandedSet = new Set();
                 buildFiltroFornecedores([]);
-                // Aplica filtro vazio para limpar tabela e totais
                 applyFiltrosTempoReal();
                 $('#infoStatus').text('Nenhum dado retornado.');
-                return Swal.fire('Atenção', api && api.message ? api.message : 'Falha ao consultar ou nenhum registro encontrado.', 'warning');
+                return Swal.fire('Aviso', res.data?.message || 'Nenhum registro encontrado.', 'info');
             }
 
-            // Backend retorna "notas"
-            const notas = Array.isArray(api.notas) ? api.notas : [];
+            const notas = Array.isArray(res.data.notas) ? res.data.notas : [];
             dadosBrutos = notas;
-
-            // Reset de estado
             expandedSet = new Set();
 
-            // Monta select2 e aplica filtros iniciais
             buildFiltroFornecedores(notas);
             applyFiltrosTempoReal();
 
-            if (notas.length === 0) {
-                Swal.fire('Info', 'Nenhuma nota encontrada no período.', 'info');
-            }
+            toggleLoader(false);
 
         } catch (e) {
-            Swal.close();
             console.error(e);
-            Swal.fire('Erro', 'Não foi possível consultar os dados (Erro de conexão).', 'error');
+            toggleLoader(false);
+            Swal.fire('Erro', 'Falha na conexão.', 'error');
         }
     }
 
-    // ================= FILTRO FORNECEDORES =================
+    // ================= FILTROS & RENDER =================
     function buildFiltroFornecedores(notas){
-        const mapa = {}; // id => nome
-
+        const mapa = {};
         notas.forEach(n => {
             const id = n.fornecedor_id;
-            const nome = n.fornecedor_nome || '';
+            const nome = n.fornecedor_nome || 'Sem Nome';
             if (id && !mapa[id]) mapa[id] = nome;
         });
 
         const $sel = $('#filtroFornecedor');
-        // Salva seleção atual se houver, pra tentar manter
-        // const oldVal = $sel.val();
-
         $sel.empty();
 
-        const ids = Object.keys(mapa).sort((a,b) => Number(a) - Number(b));
-        ids.forEach(id => {
-            // Limita tamanho do nome se for muito grande
-            let nomeF = mapa[id] || '';
-            if(nomeF.length > 50) nomeF = nomeF.substring(0,50) + '...';
-            const label = `${nomeF}`; // Removi o ID do label visual pra ficar mais limpo, mas pode por de volta
-            $sel.append(`<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`);
+        Object.keys(mapa).sort((a,b) => Number(a) - Number(b)).forEach(id => {
+            let nomeF = mapa[id];
+            if(nomeF.length > 60) nomeF = nomeF.substring(0,60) + '...';
+            $sel.append(`<option value="${escapeHtml(id)}">${escapeHtml(nomeF)}</option>`);
         });
-
         $sel.val(null).trigger('change');
     }
 
-    // ================= FILTROS TEMPO REAL & TOTALIZADORES =================
     function applyFiltrosTempoReal(){
-        let arr = Array.isArray(dadosBrutos) ? dadosBrutos.slice() : [];
+        let arr = [...dadosBrutos];
+        const selFor = $('#filtroFornecedor').val() || [];
+        const termo = ($('#filtroTexto').val() || '').trim().toLowerCase();
 
-        const selFor = $('#filtroFornecedor').val() || []; // array strings
-        const filtroTxt = ($('#filtroTexto').val() || '').trim().toLowerCase();
-
-        // 1) fornecedores selecionados
+        // Filtro Fornecedor
         if (selFor.length > 0) {
             const setSel = new Set(selFor.map(String));
             arr = arr.filter(n => setSel.has(String(n.fornecedor_id || '')));
         }
 
-        // 2) texto
-        if (filtroTxt) {
+        // Filtro Texto (Deep Search)
+        if (termo) {
             arr = arr.filter(n => {
-                const camposNota = [
-                    n.fornecedor_id,
-                    n.fornecedor_nome,
-                    n.numero_nf,
-                    n.serie,
-                    n.chave_acesso
-                ].map(x => lower(x));
+                // Busca no cabeçalho
+                const headerMatch = [n.fornecedor_nome, n.numero_nf, n.chave_acesso]
+                    .some(field => String(field || '').toLowerCase().includes(termo));
 
-                let ok = camposNota.some(x => x.includes(filtroTxt));
-                if (ok) return true;
+                if (headerMatch) return true;
 
+                // Busca nos itens
                 const itens = Array.isArray(n.itens) ? n.itens : [];
-                return itens.some(it => {
-                    const camposItem = [
-                        it.produto,
-                        it.produto_nome,
-                        it.produto_unidade
-                    ].map(x => lower(x));
-                    return camposItem.some(x => x.includes(filtroTxt));
-                });
+                return itens.some(it =>
+                    String(it.produto_nome || '').toLowerCase().includes(termo) ||
+                    String(it.produto || '').toLowerCase().includes(termo)
+                );
             });
         }
 
         notasFiltradas = arr;
-
-        // Atualiza UI
         renderTotalizadores(arr);
         renderTabela(arr);
         renderInfoStatus();
     }
 
-    // Função NOVA para calcular totais
     function renderTotalizadores(notas) {
         let qtd = notas.length;
         let totalValor = 0;
-
-        notas.forEach(n => {
-            totalValor += Number(n.valor_total || 0);
-        });
-
+        notas.forEach(n => totalValor += Number(n.valor_total || 0));
         let media = qtd > 0 ? (totalValor / qtd) : 0;
 
-        // Animação simples ou update direto
         $('#totQtd').text(qtd);
         $('#totValor').text(brMoney(totalValor));
         $('#totMedia').text(brMoney(media));
     }
 
     function renderInfoStatus(){
-        const total = (dadosBrutos || []).length;
-        const filtrados = (notasFiltradas || []).length;
-
-        if (total === 0) {
-            $('#infoStatus').text('');
-            return;
-        }
-
-        if (filtrados !== total) {
-            $('#infoStatus').html(`Exibindo <b>${filtrados}</b> de <b>${total}</b> registros carregados.`);
-        } else {
-            $('#infoStatus').html(`Total de <b>${total}</b> registros.`);
-        }
+        const total = dadosBrutos.length;
+        const filtrados = notasFiltradas.length;
+        if(total > 0) $('#infoStatus').html(`Exibindo <b>${filtrados}</b> de <b>${total}</b> registros.`);
+        else $('#infoStatus').html('');
     }
 
-    // ================= RENDER TABELA =================
     function renderTabela(notas){
         const $tbody = $('#tabela-notas tbody');
         $tbody.empty();
 
-        if (!Array.isArray(notas) || notas.length === 0) {
-            $tbody.append(`
-                <tr>
-                  <td colspan="6" class="text-center text-small muted" style="padding: 20px;">
-                    ${dadosBrutos.length > 0 ? 'Nenhum registro corresponde aos filtros.' : 'Utilize os filtros e clique em Atualizar.'}
-                  </td>
-                </tr>
-            `);
+        if (notas.length === 0) {
+            $tbody.html('<tr><td colspan="6" class="text-center muted" style="padding: 20px;">Nenhum registro encontrado.</td></tr>');
             return;
         }
 
-        // Limita renderização se for muito grande para não travar o navegador
-        // Se precisar de paginação real, deve ser feita no backend ou usar lib Datatables
-        const limiteRender = 500;
+        // Limite para performance
+        const limiteRender = 300;
         const renderList = notas.slice(0, limiteRender);
 
         renderList.forEach(n => {
             const key = makeNotaKey(n);
             const isExpanded = expandedSet.has(key);
 
-            const fornecedor = `${escapeHtml(n.fornecedor_nome || '')}`;
-            const nf = escapeHtml(n.numero_nf || '');
-            const dtEmissao = formatBRDate(n.data_emissao);
-            const dtEntrada = formatBRDate(n.data_entrada);
-            const valor = brMoney(n.valor_total || 0);
+            // Icon Logic
+            const iconName = isExpanded ? 'icon-park-outline:down' : 'icon-park-outline:right';
 
-            const icon = isExpanded ? 'fa-chevron-down' : 'fa-chevron-right';
-
-            // linha principal
             $tbody.append(`
                 <tr class="nota-row" data-key="${escapeHtml(key)}">
-                  <td class="cell-toggle" data-key="${escapeHtml(key)}" title="Expandir/Recolher">
-                    <i class="fa ${icon}"></i>
+                  <td class="cell-toggle text-center" data-key="${escapeHtml(key)}">
+                    <iconify-icon icon="${iconName}" width="18" style="vertical-align: middle;"></iconify-icon>
                   </td>
-                  <td class="nowrap">${nf}</td>
-                  <td>${fornecedor}</td>
-                  <td class="nowrap">${escapeHtml(dtEmissao)}</td>
-                  <td class="nowrap">${escapeHtml(dtEntrada)}</td>
-                  <td class="text-right nowrap"><strong>${escapeHtml(valor)}</strong></td>
+                  <td class="nowrap"><strong>${escapeHtml(n.numero_nf || '-')}</strong></td>
+                  <td>${escapeHtml(n.fornecedor_nome || '')}</td>
+                  <td class="nowrap">${formatBRDate(n.data_emissao)}</td>
+                  <td class="nowrap">${formatBRDate(n.data_entrada)}</td>
+                  <td class="text-right nowrap"><strong>${brMoney(n.valor_total)}</strong></td>
                 </tr>
             `);
 
-            // linha itens (expansível)
-            const itensHtml = renderSubTabelaItens(n);
-            // Só renderiza o HTML interno se estiver expandido para otimizar performance (opcional)
-            $tbody.append(`
-                <tr class="itens-row" data-key="${escapeHtml(key)}" style="${isExpanded ? 'display: table-row;' : 'display:none;'}">
-                  <td colspan="6">
-                    ${itensHtml}
-                  </td>
-                </tr>
-            `);
+            if (isExpanded) {
+                const itensHtml = renderSubTabelaItens(n);
+                $tbody.append(`
+                    <tr class="itens-row" data-key="${escapeHtml(key)}" style="display: table-row;">
+                      <td colspan="6">${itensHtml}</td>
+                    </tr>
+                `);
+            }
         });
 
         if (notas.length > limiteRender) {
-            $tbody.append(`
-                <tr>
-                  <td colspan="6" class="text-center text-warning">
-                    Exibindo apenas os primeiros ${limiteRender} registros de ${notas.length}. Refine os filtros.
-                  </td>
-                </tr>
-            `);
+            $tbody.append(`<tr><td colspan="6" class="text-center text-warning">Exibindo os primeiros ${limiteRender} de ${notas.length}. Refine a busca.</td></tr>`);
         }
 
-        // Evento toggle
+        // Toggle Event
         $('.cell-toggle').off('click').on('click', function(e){
             e.preventDefault();
-            e.stopPropagation();
             const key = $(this).data('key');
             toggleRow(key);
         });
@@ -557,86 +467,58 @@
 
     function renderSubTabelaItens(nota){
         const itens = Array.isArray(nota.itens) ? nota.itens : [];
-        if (itens.length === 0) {
-            return `<div class="muted text-small" style="padding:10px;">Nenhum item encontrado.</div>`;
-        }
+        if (itens.length === 0) return '<div class="muted text-center p-2">Sem itens.</div>';
 
-        let rows = '';
-        itens.forEach(it => {
-            rows += `
-                <tr>
-                  <td class="nowrap">${escapeHtml(it.seq)}</td>
-                  <td class="nowrap">${escapeHtml(it.produto)}</td>
-                  <td>${escapeHtml(it.produto_nome || '')}</td>
-                  <td class="nowrap">${escapeHtml(it.produto_unidade || '')}</td>
-                  <td class="text-right nowrap">${escapeHtml(Number(it.quantidade || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 4}))}</td>
-                  <td class="text-right nowrap">${escapeHtml(brMoney(it.valor_unitario || 0))}</td>
-                  <td class="text-right nowrap"><strong>${escapeHtml(brMoney(it.valor_total || 0))}</strong></td>
-                </tr>
-            `;
-        });
+        let rows = itens.map(it => `
+            <tr>
+              <td>${it.seq || '-'}</td>
+              <td>${it.produto || ''}</td>
+              <td>${escapeHtml(it.produto_nome || '')}</td>
+              <td>${it.produto_unidade || ''}</td>
+              <td class="text-right">${Number(it.quantidade || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+              <td class="text-right">${brMoney(it.valor_unitario)}</td>
+              <td class="text-right"><strong>${brMoney(it.valor_total)}</strong></td>
+            </tr>
+        `).join('');
 
         return `
-            <div style="background: #fff; border:1px solid #ddd; padding:5px; border-radius:4px;">
-              <table class="table table-condensed table-striped subtable mb-0">
+            <div style="background: #fff; border:1px solid #eee; border-radius:4px; overflow:hidden;">
+              <table class="table subtable table-hover mb-0">
                 <thead>
-                  <tr style="background:#f0f0f0;">
-                    <th style="width:50px;">Seq</th>
-                    <th style="width:90px;">Cód.</th>
+                  <tr>
+                    <th width="50">#</th>
+                    <th width="80">Cód.</th>
                     <th>Produto</th>
-                    <th style="width:60px;">Unid</th>
-                    <th style="width:100px;" class="text-right">Qtd</th>
-                    <th style="width:120px;" class="text-right">Vlr Unit.</th>
-                    <th style="width:120px;" class="text-right">Total</th>
+                    <th width="60">Und</th>
+                    <th width="100" class="text-right">Qtd</th>
+                    <th width="120" class="text-right">Vlr Unit.</th>
+                    <th width="120" class="text-right">Total</th>
                   </tr>
                 </thead>
-                <tbody>
-                  ${rows}
-                </tbody>
+                <tbody>${rows}</tbody>
               </table>
             </div>
         `;
     }
 
-    // ================= EXPAND/COLLAPSE =================
     function toggleRow(key){
-        // Escape characters for jQuery selector
-        const selectorKey = cssEscape(key);
-        const $notaRow = $(`tr.nota-row[data-key="${selectorKey}"]`);
-        const $itensRow = $(`tr.itens-row[data-key="${selectorKey}"]`);
-
-        if ($notaRow.length === 0) return;
-
-        const expanded = expandedSet.has(key);
-
-        if (expanded) {
-            expandedSet.delete(key);
-            $itensRow.hide();
-            $notaRow.find('td.cell-toggle i').removeClass('fa-chevron-down').addClass('fa-chevron-right');
-        } else {
-            expandedSet.add(key);
-            $itensRow.show();
-            $notaRow.find('td.cell-toggle i').removeClass('fa-chevron-right').addClass('fa-chevron-down');
-        }
+        if (expandedSet.has(key)) expandedSet.delete(key);
+        else expandedSet.add(key);
+        // Re-renderiza para atualizar ícone e mostrar/ocultar linha
+        // (Poderia ser manipulado via DOM direto para ultra-performance, mas renderTabela é rápido o suficiente com paginação virtual)
+        renderTabela(notasFiltradas);
     }
 
     function expandCollapseAll(expandir){
-        const arr = Array.isArray(notasFiltradas) ? notasFiltradas : [];
         if (expandir) {
-            // Limita expandir tudo para evitar travamento se houver muitas notas
-            if(arr.length > 300) {
-                Swal.fire('Aviso', 'Muitos registros para expandir. Filtre mais dados antes.', 'warning');
-                return;
+            if(notasFiltradas.length > 500) {
+                return Swal.fire('Aviso', 'Muitos registros para expandir. Filtre mais dados antes.', 'warning');
             }
-            expandedSet = new Set(arr.map(makeNotaKey));
+            expandedSet = new Set(notasFiltradas.map(makeNotaKey));
         } else {
             expandedSet = new Set();
         }
-        renderTabela(arr);
-    }
-
-    function cssEscape(str){
-        return String(str).replace(/(["\\])/g, '\\$1');
+        renderTabela(notasFiltradas);
     }
 </script>
 
