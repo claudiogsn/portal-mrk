@@ -5,524 +5,538 @@
     <title>Relatório Curva ABC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- AdminBSB / Bootstrap -->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        .muted { color: #777; }
-        .nowrap { white-space: nowrap; }
-        .text-right { text-align:right; }
-        .text-small { font-size: 12px; }
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; }
 
-        /* Cards KPI */
-        .kpi {
-            text-align: center;
-            padding: 12px;
-            border-radius: 6px;
+        /* === CARD PADRÃO MRK === */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             border: 1px solid #eee;
-            margin-bottom: 10px;
-        }
-        .kpi h4 { margin: 4px 0 0 0; font-weight: 700; }
-        .kpi small { color: #333; opacity: .9; display: block; }
-
-        .kpi.blue  { background: #e3f2fd; border-color: #bbdefb; color: #1565c0; }
-        .kpi.green { background: #e8f5e9; border-color: #c8e6c9; color: #1b5e20; }
-        .kpi.orange{ background: #fff3e0; border-color: #ffe0b2; color: #e65100; }
-        .kpi.gray  { background: #f5f5f5; border-color: #e0e0e0; color: #424242; }
-
-        /* Labels ABC */
-        .label-xs { font-size: 11px; padding: 3px 6px; border-radius: 3px; }
-        .lblA { background:#1b5e20; color:#fff; }
-        .lblB { background:#e65100; color:#fff; }
-        .lblC { background:#424242; color:#fff; }
-
-        /* Resumo ABC box */
-        .resumo-box {
-            border:1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important; /* Identidade MRK */
+            margin-bottom: 20px;
             border-radius: 6px;
-            padding: 10px;
-            background: #fafafa;
-            margin-bottom: 10px;
         }
-        .resumo-linha {
-            display:flex;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 4px 0;
-            border-bottom:1px dashed #e6e6e6;
-        }
-        .resumo-linha:last-child { border-bottom:none; }
-        .resumo-linha b { font-weight: 700; }
 
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button { font-size: 12px !important; }
-            .kpi h4 { font-size: 14px; }
+        /* === KPIS MODERNOS === */
+        .kpi-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+
+        .kpi-icon {
+            width: 50px; height: 50px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+        .kpi-icon.blue { background: #e3f2fd; color: var(--mrk-blue); }
+        .kpi-icon.green { background: #e8f5e9; color: var(--mrk-green); }
+        .kpi-icon.orange { background: #fff3e0; color: var(--mrk-amber); }
+        .kpi-icon.gray { background: #f5f5f5; color: #666; }
+
+        .kpi-content { flex-grow: 1; }
+        .kpi-content h4 { margin: 0; font-size: 20px; font-weight: 600; font-family: 'Kanit', sans-serif; color: var(--mrk-black); }
+        .kpi-content small { color: #888; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* === BADGES CLASSE ABC === */
+        .badge-abc {
+            width: 28px; height: 28px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 6px; /* Soft Square */
+            font-weight: 700; font-family: 'Kanit', sans-serif;
+            font-size: 13px;
+        }
+        .abc-A { background-color: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+        .abc-B { background-color: #fff8e1; color: var(--mrk-amber); border: 1px solid #ffecb3; }
+        .abc-C { background-color: #f5f5f5; color: #9e9e9e; border: 1px solid #e0e0e0; }
+
+        /* === BOX DE RESUMO LATERAL === */
+        .summary-box {
+            background: #fcfcfc;
+            border: 1px solid #eee;
+            border-left: 3px solid var(--mrk-blue);
+            border-radius: 6px;
+            padding: 15px;
+        }
+        .summary-row {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px dashed #eee;
+            padding: 8px 0;
+            font-size: 13px;
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row b { color: var(--mrk-black); font-weight: 600; }
+
+        /* === SKELETON LOADING === */
+        .skeleton-wrapper { display: none; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 45px; width: 100%; margin-bottom: 10px; }
+        .sk-kpi { height: 90px; width: 100%; border-radius: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* === TABELA === */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 13px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
     </style>
 </head>
 
-<body class="theme-blue">
+<body>
+
 <div class="container-fluid">
-    <br>
 
     <div class="card">
-        <div class="header">
-            <h2>Relatório Curva ABC</h2>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-solid:chart-histogram" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                CURVA ABC
+            </h2>
+            <small class="muted hidden-xs">Análise de Pareto (80/15/5)</small>
         </div>
 
-        <!-- FILTROS PRINCIPAIS -->
-        <div class="row" style="margin: 15px 0 5px;">
-            <div class="col-md-3">
-                <label class="muted">Data inicial</label>
-                <input type="date" id="dtInicio" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="muted">Data final</label>
-                <input type="date" id="dtFim" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="muted">Tipo</label>
-                <select id="tipoRel" class="form-control">
-                    <option value="FATURAMENTO">Faturamento (vendas)</option>
-                    <option value="COMPRAS">Compras (insumos)</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="muted">Ações</label><br>
-                <button id="btnConsultar" class="btn btn-primary">
-                    <i class="fa fa-search"></i> Consultar
-                </button>
-                <button id="btnLimpar" class="btn btn-default">
-                    <i class="fa fa-eraser"></i> Limpar
-                </button>
-            </div>
-        </div>
-
-        <!-- FILTROS EM TEMPO REAL -->
-        <div class="row" style="margin: 5px 0 10px;">
-            <div class="col-md-4">
-                <label class="muted">Buscar Produto (código/nome)</label>
-                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para filtrar...">
-            </div>
-            <div class="col-md-2">
-                <label class="muted">Classe</label>
-                <select id="filtroClasse" class="form-control">
-                    <option value="">Todas</option>
-                    <option value="A">A (até 80%)</option>
-                    <option value="B">B (até 95%)</option>
-                    <option value="C">C (restante)</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <div class="resumo-box">
-                    <div class="text-small muted" style="margin-bottom:4px;">
-                        Regras: <b>A=80%</b> | <b>B=15%</b> | <b>C=5%</b> (por valor, ordenado desc)
-                    </div>
-                    <div class="resumo-linha">
-                        <span><span class="label label-xs lblA">A</span> Itens / Valor</span>
-                        <span><b id="resA">0</b> | <b id="resAValor">R$ 0,00</b> (<span id="resAPerc">0%</span>)</span>
-                    </div>
-                    <div class="resumo-linha">
-                        <span><span class="label label-xs lblB">B</span> Itens / Valor</span>
-                        <span><b id="resB">0</b> | <b id="resBValor">R$ 0,00</b> (<span id="resBPerc">0%</span>)</span>
-                    </div>
-                    <div class="resumo-linha">
-                        <span><span class="label label-xs lblC">C</span> Itens / Valor</span>
-                        <span><b id="resC">0</b> | <b id="resCValor">R$ 0,00</b> (<span id="resCPerc">0%</span>)</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TOTALIZADORES (KPIs) -->
-        <div class="row" style="margin: 0 0 5px;">
-            <div class="col-md-3">
-                <div class="kpi blue">
-                    <small>Total do período</small>
-                    <h4 id="kpiTotal">R$ 0,00</h4>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="kpi gray">
-                    <small>Quantidade total</small>
-                    <h4 id="kpiQtd">0,0000</h4>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="kpi green">
-                    <small>Itens (produtos)</small>
-                    <h4 id="kpiItens">0</h4>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="kpi orange">
-                    <small>Registros filtrados</small>
-                    <h4 id="kpiFiltrados">0</h4>
-                </div>
-            </div>
-        </div>
-
-        <!-- TABELA -->
         <div class="body">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="tabela-resultado">
-                    <thead>
-                    <tr>
-                        <th class="nowrap" style="width:60px;">#</th>
-                        <th class="nowrap" style="width:110px;">Código</th>
-                        <th>Produto</th>
-                        <th class="nowrap text-right" style="width:140px;">Quantidade</th>
-                        <th class="nowrap text-right" style="width:160px;">Valor (R$)</th>
-                        <th class="nowrap text-right" style="width:120px;">% no total</th>
-                        <th class="nowrap text-right" style="width:140px;">% acumulado</th>
-                        <th class="nowrap center" style="width:80px;">Classe</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr>
-                        <td colspan="8" class="text-center muted text-small">Informe o período e clique em Consultar.</td>
-                    </tr>
-                    </tbody>
-                </table>
+            <div class="row clearfix">
+                <div class="col-md-3">
+                    <label class="muted">Data Inicial</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                        <input type="date" id="dtInicio" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Data Final</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                        <input type="date" id="dtFim" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Tipo de Análise</label>
+                    <select id="tipoRel" class="form-control">
+                        <option value="FATURAMENTO">Faturamento (Vendas)</option>
+                        <option value="COMPRAS">Compras (Insumos)</option>
+                    </select>
+                </div>
+                <div class="col-md-3" style="margin-top: 22px;">
+                    <button id="btnConsultar" class="btn btn-primary waves-effect btn-block">
+                        <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                        CONSULTAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="skeleton-area" class="skeleton-wrapper">
+        <div class="row">
+            <div class="col-md-3"><div class="skeleton sk-kpi"></div></div>
+            <div class="col-md-3"><div class="skeleton sk-kpi"></div></div>
+            <div class="col-md-3"><div class="skeleton sk-kpi"></div></div>
+            <div class="col-md-3"><div class="skeleton sk-kpi"></div></div>
+        </div>
+        <br>
+        <div class="card" style="padding: 20px;">
+            <div class="skeleton sk-row"></div>
+            <div class="skeleton sk-row"></div>
+            <div class="skeleton sk-row"></div>
+            <div class="skeleton sk-row"></div>
+            <div class="skeleton sk-row"></div>
+        </div>
+    </div>
+
+    <div id="result-area" style="display: none;">
+
+        <div class="row clearfix">
+            <div class="col-md-3 col-sm-6">
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><iconify-icon icon="icon-park-outline:dollar"></iconify-icon></div>
+                    <div class="kpi-content">
+                        <small>Valor Total</small>
+                        <h4 id="kpiTotal">R$ 0,00</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="kpi-card">
+                    <div class="kpi-icon gray"><iconify-icon icon="icon-park-outline:cube"></iconify-icon></div>
+                    <div class="kpi-content">
+                        <small>Quantidade Total</small>
+                        <h4 id="kpiQtd">0</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><iconify-icon icon="icon-park-outline:list-numbers"></iconify-icon></div>
+                    <div class="kpi-content">
+                        <small>Itens Totais</small>
+                        <h4 id="kpiItens">0</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="kpi-card">
+                    <div class="kpi-icon orange"><iconify-icon icon="icon-park-outline:filter"></iconify-icon></div>
+                    <div class="kpi-content">
+                        <small>Itens Filtrados</small>
+                        <h4 id="kpiFiltrados">0</h4>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <div class="row clearfix" style="margin-top: 15px;">
+
+            <div class="col-md-8">
+                <div class="card" style="min-height: 200px;">
+                    <div class="header">
+                        <h2>Detalhamento dos Itens</h2>
+                    </div>
+                    <div class="body">
+                        <div class="row clearfix" style="margin-bottom: 15px;">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                                    <input type="text" id="filtroTexto" class="form-control" placeholder="Filtrar por código ou nome...">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select id="filtroClasse" class="form-control">
+                                    <option value="">Todas as Classes</option>
+                                    <option value="A">Classe A (80%)</option>
+                                    <option value="B">Classe B (15%)</option>
+                                    <option value="C">Classe C (5%)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="tabela-resultado">
+                                <thead>
+                                <tr>
+                                    <th class="text-center" width="50">#</th>
+                                    <th width="80">Código</th>
+                                    <th>Produto</th>
+                                    <th class="text-right">Qtd</th>
+                                    <th class="text-right">Valor Total</th>
+                                    <th class="text-right">%</th>
+                                    <th class="text-right">% Acum.</th>
+                                    <th class="text-center" width="80">Classe</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="header">
+                        <h2>Resumo por Classe</h2>
+                    </div>
+                    <div class="body">
+                        <div class="summary-box">
+                            <div class="summary-row">
+                                <span><span class="badge-abc abc-A">A</span> Alta Importância</span>
+                                <span class="text-right">
+                                    <b id="resA">0</b> itens<br>
+                                    <small id="resAValor" class="muted">R$ 0,00</small>
+                                </span>
+                            </div>
+                            <div class="summary-row">
+                                <span><span class="badge-abc abc-B">B</span> Média Importância</span>
+                                <span class="text-right">
+                                    <b id="resB">0</b> itens<br>
+                                    <small id="resBValor" class="muted">R$ 0,00</small>
+                                </span>
+                            </div>
+                            <div class="summary-row">
+                                <span><span class="badge-abc abc-C">C</span> Baixa Importância</span>
+                                <span class="text-right">
+                                    <b id="resC">0</b> itens<br>
+                                    <small id="resCValor" class="muted">R$ 0,00</small>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; font-size: 11px; color: #777; background: #f5f5f5; padding: 10px; border-radius: 4px;">
+                            <iconify-icon icon="icon-park-outline:info" style="vertical-align: middle; margin-right: 4px;"></iconify-icon>
+                            <strong>Conceito Pareto (80/20):</strong>
+                            <ul style="padding-left: 15px; margin-bottom: 0; margin-top: 5px;">
+                                <li><b>A:</b> Itens vitais. Representam 80% do valor movimentado.</li>
+                                <li><b>B:</b> Itens intermediários (15% do valor).</li>
+                                <li><b>C:</b> Itens triviais. Muitos itens, mas apenas 5% do valor.</li>
+                            </ul>
+                        </div>
+
+                        <button id="btnLimpar" class="btn btn-default waves-effect btn-block" style="margin-top: 20px;">
+                            <iconify-icon icon="icon-park-outline:clear" style="vertical-align: middle;"></iconify-icon>
+                            LIMPAR DADOS
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
 </div>
 
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 <script>
-    // ====== CONFIG ======
+    // URL da API
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const system_unit_id = Number(urlParams.get('system_unit_id') || urlParams.get('unit_id') || urlParams.get('unit') || 0);
+    const system_unit_id = Number(urlParams.get('system_unit_id') || urlParams.get('unit_id') || 0);
 
-    // ====== STATE ======
-    let dadosBrutos = [];    // retorno do backend normalizado (sem ABC)
-    let dadosABC = [];       // com % e classe calculados
-    let dadosFiltrados = []; // filtro em tempo real
+    // Estado Local
+    let dadosBrutos = [];
+    let dadosABC = [];
+    let dadosFiltrados = [];
 
-    // ====== UTILS ======
-    function brNumber(v, casas = 4) {
-        const n = Number(v || 0);
-        return n.toLocaleString('pt-BR', {
-            minimumFractionDigits: casas,
-            maximumFractionDigits: casas
-        });
+    // --- Helpers ---
+    const brMoney = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const brNum = (v, d=2) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+    function showSkeleton() {
+        $('#result-area').hide();
+        $('#skeleton-area').show();
     }
 
-    function brMoney(v) {
-        const n = Number(v || 0);
-        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    function hideSkeleton() {
+        $('#skeleton-area').hide();
+        $('#result-area').fadeIn();
     }
 
-    function escapeHtml(s) {
-        if (s == null) return '';
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    function swalLoading(title) {
-        Swal.fire({
-            title: title || 'Carregando...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-    }
-
-    // Normaliza o retorno do backend em um array com campos padronizados:
-    // { codigo, nome, quantidade, valor }
-    function normalizeItens(api) {
-        const payload = api?.data || api || {};
-        const arr =
-            payload?.itens ||
-            payload?.items ||
-            payload?.produtos ||
-            payload?.rows ||
-            [];
-
-        if (!Array.isArray(arr)) return [];
-
-        return arr.map(it => ({
-            codigo: it.codigo ?? it.cod_material ?? it.produto ?? it.product_codigo ?? it.product_id ?? '',
-            nome: it.nome ?? it.produto_nome ?? it.descricao ?? it.description ?? '',
-            quantidade: Number(it.quantidade ?? it.qtd ?? it.qtde ?? 0),
-            valor: Number(it.valor_total ?? it.valor ?? it.total ?? it.valor_liquido ?? it.valor_bruto ?? 0)
-        }));
-    }
-
-    // Calcula ABC (A=80%, B=15% (até 95%), C=restante), por VALOR.
+    // --- Lógica ABC ---
     function computeABC(itens) {
-        const arr = (Array.isArray(itens) ? itens : []).slice();
+        // Clona e ordena por Valor Decrescente
+        const arr = [...itens].sort((a,b) => Number(b.valor) - Number(a.valor));
+        const total = arr.reduce((sum, it) => sum + Number(it.valor), 0);
 
-        // ordena por valor desc
-        arr.sort((a,b) => (Number(b.valor||0) - Number(a.valor||0)));
-
-        const total = arr.reduce((sum, it) => sum + Number(it.valor || 0), 0);
         let acumulado = 0;
 
-        const out = arr.map((it, idx) => {
-            const v = Number(it.valor || 0);
-            const share = total > 0 ? (v / total) : 0;
-            acumulado += share;
+        return {
+            total,
+            itens: arr.map((it, idx) => {
+                const val = Number(it.valor);
+                const share = total > 0 ? (val / total) : 0;
+                acumulado += share;
 
-            // classe por % acumulado
-            let classe = 'C';
-            if (acumulado <= 0.80 + 1e-12) classe = 'A';
-            else if (acumulado <= 0.95 + 1e-12) classe = 'B';
+                let classe = 'C';
+                if (acumulado <= 0.80001) classe = 'A';
+                else if (acumulado <= 0.95001) classe = 'B';
 
-            return {
-                rank: idx + 1,
-                codigo: it.codigo,
-                nome: it.nome,
-                quantidade: Number(it.quantidade || 0),
-                valor: v,
-                perc: share,          // fração (0..1)
-                percAcum: acumulado,  // fração (0..1)
-                classe
-            };
-        });
-
-        return { itens: out, total };
+                return {
+                    ...it,
+                    rank: idx + 1,
+                    perc: share,
+                    percAcum: acumulado,
+                    classe
+                };
+            })
+        };
     }
 
-    function labelClasse(classe) {
-        if (classe === 'A') return '<span class="label label-xs lblA">A</span>';
-        if (classe === 'B') return '<span class="label label-xs lblB">B</span>';
-        return '<span class="label label-xs lblC">C</span>';
-    }
-
-    // ====== RENDER ======
+    // --- Renderização ---
     function renderTabela(itens) {
-        const $tbody = $('#tabela-resultado tbody');
-        $tbody.empty();
+        const tbody = $('#tabela-resultado tbody');
+        tbody.empty();
 
-        (itens || []).forEach(it => {
-            $tbody.append(`
+        if (itens.length === 0) {
+            tbody.html('<tr><td colspan="8" class="text-center muted" style="padding: 30px;">Nenhum dado encontrado para os filtros selecionados.</td></tr>');
+            return;
+        }
+
+        // Limita renderização para performance (Top 500)
+        const limit = 500;
+
+        itens.slice(0, limit).forEach(it => {
+            tbody.append(`
                 <tr>
-                    <td class="nowrap">${it.rank}</td>
-                    <td class="nowrap"><b>${escapeHtml(it.codigo)}</b></td>
-                    <td>${escapeHtml(it.nome || '')}</td>
-                    <td class="text-right nowrap">${brNumber(it.quantidade, 2)}</td>
-                    <td class="text-right nowrap"><b>${brMoney(it.valor)}</b></td>
-                    <td class="text-right nowrap">${(it.perc * 100).toFixed(2).replace('.', ',')}%</td>
-                    <td class="text-right nowrap">${(it.percAcum * 100).toFixed(2).replace('.', ',')}%</td>
-                    <td class="center nowrap">${labelClasse(it.classe)}</td>
+                    <td class="text-center text-small muted">${it.rank}</td>
+                    <td><strong>${it.codigo}</strong></td>
+                    <td>${it.nome}</td>
+                    <td class="text-right">${brNum(it.quantidade)}</td>
+                    <td class="text-right"><strong>${brMoney(it.valor)}</strong></td>
+                    <td class="text-right">${(it.perc * 100).toFixed(2)}%</td>
+                    <td class="text-right text-small muted">${(it.percAcum * 100).toFixed(2)}%</td>
+                    <td class="text-center"><span class="badge-abc abc-${it.classe}">${it.classe}</span></td>
                 </tr>
             `);
         });
 
-        if (!itens || itens.length === 0) {
-            $tbody.append(`
-                <tr>
-                    <td colspan="8" class="text-center muted text-small">
-                        Nenhum registro para os filtros atuais.
-                    </td>
-                </tr>
-            `);
+        if (itens.length > limit) {
+            tbody.append(`<tr><td colspan="8" class="text-center muted" style="padding:10px;">Exibindo os top ${limit} de ${itens.length} itens. Utilize os filtros para ver mais.</td></tr>`);
         }
     }
 
-    function renderKPIs(allItens, filteredItens, totalValorAll) {
-        const totalQtd = (allItens || []).reduce((s, it) => s + Number(it.quantidade || 0), 0);
-        const itensCount = (allItens || []).length;
-        const filtradosCount = (filteredItens || []).length;
+    function renderKPIs(all, filtered, totalVal) {
+        const totalQtd = all.reduce((acc, it) => acc + Number(it.quantidade), 0);
 
-        $('#kpiTotal').text(brMoney(totalValorAll || 0));
-        $('#kpiQtd').text(brNumber(totalQtd, 4));
-        $('#kpiItens').text(String(itensCount));
-        $('#kpiFiltrados').text(String(filtradosCount));
-    }
+        $('#kpiTotal').text(brMoney(totalVal));
+        $('#kpiQtd').text(brNum(totalQtd, 0));
+        $('#kpiItens').text(all.length);
+        $('#kpiFiltrados').text(filtered.length);
 
-    function renderResumoABC(itens, totalValor) {
-        const total = Number(totalValor || 0);
-
-        const grp = { A: {n:0, v:0}, B:{n:0, v:0}, C:{n:0, v:0} };
-        (itens || []).forEach(it => {
-            const c = it.classe || 'C';
-            if (!grp[c]) grp[c] = {n:0, v:0};
-            grp[c].n += 1;
-            grp[c].v += Number(it.valor || 0);
+        // Resumo ABC
+        const counts = { A: {n:0, v:0}, B: {n:0, v:0}, C: {n:0, v:0} };
+        all.forEach(it => {
+            if(counts[it.classe]) {
+                counts[it.classe].n++;
+                counts[it.classe].v += Number(it.valor);
+            }
         });
 
-        function pct(v) {
-            const p = total > 0 ? (v/total)*100 : 0;
-            return p.toFixed(2).replace('.', ',') + '%';
-        }
-
-        $('#resA').text(grp.A.n);
-        $('#resAValor').text(brMoney(grp.A.v));
-        $('#resAPerc').text(pct(grp.A.v));
-
-        $('#resB').text(grp.B.n);
-        $('#resBValor').text(brMoney(grp.B.v));
-        $('#resBPerc').text(pct(grp.B.v));
-
-        $('#resC').text(grp.C.n);
-        $('#resCValor').text(brMoney(grp.C.v));
-        $('#resCPerc').text(pct(grp.C.v));
+        // Atualiza Box Lateral
+        ['A', 'B', 'C'].forEach(c => {
+            $(`#res${c}`).text(counts[c].n);
+            $(`#res${c}Valor`).text(brMoney(counts[c].v));
+        });
     }
 
-    // ====== FILTROS EM TEMPO REAL ======
-    function applyFiltros() {
-        const texto = ($('#filtroTexto').val() || '').trim().toLowerCase();
-        const classe = ($('#filtroClasse').val() || '').trim().toUpperCase();
+    // --- Filtros em Tempo Real ---
+    function applyLocalFilters() {
+        const termo = $('#filtroTexto').val().toLowerCase();
+        const classe = $('#filtroClasse').val();
 
-        let arr = (dadosABC || []).slice();
+        dadosFiltrados = dadosABC.filter(it => {
+            const matchTermo = it.nome.toLowerCase().includes(termo) || String(it.codigo).includes(termo);
+            const matchClasse = classe === '' || it.classe === classe;
+            return matchTermo && matchClasse;
+        });
 
-        if (texto) {
-            arr = arr.filter(it => {
-                const campos = [
-                    it.codigo,
-                    it.nome
-                ].map(x => (x == null ? '' : String(x).toLowerCase()));
-                return campos.some(c => c.indexOf(texto) !== -1);
-            });
-        }
-
-        if (classe) {
-            arr = arr.filter(it => (it.classe === classe));
-        }
-
-        dadosFiltrados = arr;
-        renderTabela(arr);
-
-        // KPIs/Resumo sempre com BASE TOTAL (não filtrado) e também mostra qtd filtrada no KPI
-        const totalValorAll = (window.__abcTotalValor || 0);
-        renderKPIs(dadosBrutos, arr, totalValorAll);
-        renderResumoABC(dadosABC, totalValorAll);
+        renderTabela(dadosFiltrados);
+        $('#kpiFiltrados').text(dadosFiltrados.length);
     }
 
-    // ====== CONSULTA BACKEND ======
+    // --- API Calls ---
     async function onConsultar() {
-        const dt_inicio = $('#dtInicio').val();
-        const dt_fim = $('#dtFim').val();
-        const tipoRel = $('#tipoRel').val(); // FATURAMENTO | COMPRAS
+        const dtInicio = $('#dtInicio').val();
+        const dtFim = $('#dtFim').val();
+        const tipo = $('#tipoRel').val();
 
-        if (!token || !system_unit_id) {
-            return Swal.fire('Atenção', 'URL deve conter token e system_unit_id.', 'warning');
-        }
-        if (!dt_inicio || !dt_fim) {
-            return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
-        }
-        if (dt_inicio > dt_fim) {
-            return Swal.fire('Atenção', 'Data inicial não pode ser maior que a final.', 'warning');
+        if (!dtInicio || !dtFim) {
+            Swal.fire('Atenção', 'Selecione o período.', 'warning');
+            return;
         }
 
-        const method = (tipoRel === 'COMPRAS') ? 'getCurvaABCCompras' : 'getCurvaABCFaturamento';
-
-        swalLoading('Consultando...');
+        showSkeleton();
 
         try {
+            const method = (tipo === 'COMPRAS') ? 'getCurvaABCCompras' : 'getCurvaABCFaturamento';
+
             const res = await axios.post(baseUrl, {
-                method,
-                token,
+                method: method,
+                token: token,
                 data: {
-                    system_unit_id: Number(system_unit_id),
-                    dt_inicio,
-                    dt_fim
+                    system_unit_id: system_unit_id,
+                    dt_inicio: dtInicio,
+                    dt_fim: dtFim
                 }
             });
 
-            Swal.close();
-
-            const api = res.data;
-            if (!api || api.success === false) {
-                dadosBrutos = [];
-                dadosABC = [];
-                dadosFiltrados = [];
-                window.__abcTotalValor = 0;
-
-                renderTabela([]);
-                renderKPIs([], [], 0);
-                renderResumoABC([], 0);
-
-                return Swal.fire('Atenção', api?.message || 'Falha ao consultar.', 'warning');
+            if (!res.data || res.data.success === false) {
+                hideSkeleton();
+                Swal.fire('Aviso', res.data?.message || 'Nenhum dado retornado.', 'info');
+                return;
             }
 
-            // Normaliza itens
-            dadosBrutos = normalizeItens(api);
+            // Normaliza Dados
+            const raw = res.data.itens || res.data.produtos || [];
+            dadosBrutos = raw.map(it => ({
+                codigo: it.codigo || it.cod_material || it.product_id,
+                nome: it.nome || it.descricao || it.produto_nome,
+                quantidade: Number(it.quantidade || it.qtd || 0),
+                valor: Number(it.valor_total || it.valor || 0)
+            }));
 
-            // Calcula ABC
-            const { itens, total } = computeABC(dadosBrutos);
+            // Calcula Matemática ABC
+            const calculated = computeABC(dadosBrutos);
+            dadosABC = calculated.itens;
+            window.__totalValor = calculated.total;
 
-            dadosABC = itens;
-            window.__abcTotalValor = total;
-
-            // limpa filtros realtime
-            $('#filtroTexto').val('');
-            $('#filtroClasse').val('');
-
-            // render inicial
-            dadosFiltrados = itens.slice();
+            // Renderiza Inicial
+            dadosFiltrados = dadosABC;
+            renderKPIs(dadosABC, dadosFiltrados, window.__totalValor);
             renderTabela(dadosFiltrados);
-            renderKPIs(dadosBrutos, dadosFiltrados, total);
-            renderResumoABC(dadosABC, total);
+
+            hideSkeleton();
 
         } catch (e) {
-            Swal.close();
             console.error(e);
-            Swal.fire('Erro', 'Não foi possível consultar os dados.', 'error');
+            hideSkeleton();
+            Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
         }
     }
 
     function onLimpar() {
         $('#filtroTexto').val('');
         $('#filtroClasse').val('');
-        $('#tabela-resultado tbody').html(`
-            <tr><td colspan="8" class="text-center muted text-small">Informe o período e clique em Consultar.</td></tr>
-        `);
-
-        dadosBrutos = [];
+        $('#result-area').hide();
         dadosABC = [];
-        dadosFiltrados = [];
-        window.__abcTotalValor = 0;
-
-        renderKPIs([], [], 0);
-        renderResumoABC([], 0);
     }
 
-    // ====== INIT ======
+    // --- Init ---
     $(document).ready(() => {
-        // datas padrão (hoje e -7 dias)
-        const hoje = new Date();
-        const y = hoje.getFullYear();
-        const m = String(hoje.getMonth() + 1).padStart(2, '0');
-        const d = String(hoje.getDate()).padStart(2, '0');
-        $('#dtFim').val(`${y}-${m}-${d}`);
+        const date = new Date();
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+        const today = date.toISOString().split('T')[0];
 
-        const semana = new Date(hoje.getTime() - 7*24*60*60*1000);
-        const y2 = semana.getFullYear();
-        const m2 = String(semana.getMonth() + 1).padStart(2, '0');
-        const d2 = String(semana.getDate()).padStart(2, '0');
-        $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+        $('#dtInicio').val(firstDay);
+        $('#dtFim').val(today);
 
-        $('#btnConsultar').on('click', onConsultar);
-        $('#btnLimpar').on('click', onLimpar);
+        $('#btnConsultar').click(onConsultar);
+        $('#btnLimpar').click(onLimpar);
 
-        $('#filtroTexto').on('input', applyFiltros);
-        $('#filtroClasse').on('change', applyFiltros);
-        $('#tipoRel').on('change', () => {
-            // troca tipo só muda o método; não consulta automaticamente
-            onLimpar();
+        let timeout = null;
+        $('#filtroTexto').on('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(applyLocalFilters, 300);
         });
+
+        $('#filtroClasse').change(applyLocalFilters);
     });
+
 </script>
 </body>
 </html>
