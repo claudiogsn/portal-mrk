@@ -5,60 +5,137 @@
     <title>Modelos de Balanço</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- CSS / Libs iguais ao modelo -->
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
-    <!-- JS / Libs iguais ao modelo -->
-    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        /* Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Ações */
+        .btn-action {
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
+            margin: 0 3px;
+        }
+        .btn-action:hover { transform: scale(1.2); }
+        .action-blue { color: var(--mrk-blue); }
+        .action-green { color: var(--mrk-green); }
+        .action-red { color: var(--mrk-red); }
+        .action-purple { color: #9c27b0; }
+        .action-teal { color: #009688; }
+        .action-orange { color: var(--mrk-amber); }
+
+        /* Badges */
+        .badge-status { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .bg-green-light { background: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+        .bg-red-light { background: #ffebee; color: var(--mrk-red); border: 1px solid #ffcdd2; }
+
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Modal */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; }
+    </style>
 </head>
-<body class="theme-blue">
-<div class="container-fluid">
-    <br>
-    <div class="card">
-        <div class="header"><h2>Modelos de Balanço</h2></div>
-        <div class="body">
-            <div class="row">
-                <div class="col-md-6">
-                    <input type="text" id="filtroModelo" class="form-control mb-2" placeholder="Filtrar por nome ou tag">
-                </div>
-                <div class="col-md-6">
-                    <input type="checkbox" id="filtroApenasAtivos" class="chk-col-blue" checked>
-                    <label for="filtroApenasAtivos">Apenas Ativos</label>
-                </div>
 
-                <div class="col-md-6 text-right mb-2">
-                    <button id="btnNovoModelo" class="btn btn-success">Novo Modelo</button>
+<body class="theme-blue">
+
+<div class="container-fluid">
+
+    <div class="card">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:list-view" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                MODELOS DE BALANÇO
+            </h2>
+            <button id="btnNovoModelo" class="btn btn-success waves-effect">
+                <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                NOVO MODELO
+            </button>
+        </div>
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-6">
+                        <label class="muted">Filtrar Modelos</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                            <input type="text" id="filtroModelo" class="form-control" placeholder="Nome ou Tag...">
+                        </div>
+                    </div>
+                    <div class="col-md-6" style="margin-top: 25px;">
+                        <input type="checkbox" id="filtroApenasAtivos" class="chk-col-blue" checked>
+                        <label for="filtroApenasAtivos" class="muted">Exibir Apenas Ativos</label>
+                    </div>
                 </div>
             </div>
 
-            <div class="table-responsive mt-3">
-                <table class="table table-striped table-hover" id="tabela-modelos">
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="tabela-modelos">
                     <thead>
                     <tr>
-                        <th style="width: 18px;"></th> <!-- Detalhes -->
-                        <th style="width: 18px;"></th> <!-- Editar -->
-                        <th style="width: 18px;"></th> <!-- Realizar -->
-                        <th style="width: 18px;"></th> <!-- Ativar/Inativar -->
-                        <th style="width: 18px;"></th> <!-- Ativar/Inativar -->
-                        <th style="width: 18px;"></th> <!-- Replicar -->
+                        <th class="text-center" width="220">Ações</th>
                         <th>Tag</th>
                         <th>Nome</th>
-                        <th>URL</th>
                         <th>Itens</th>
-                        <th>Criado por</th>
-                        <th>Criado em</th>
-                        <th>Atualizado em</th>
-                        <th>Status</th>
+                        <th>Criado Por</th>
+                        <th>Data Criação</th>
+                        <th class="text-center">Status</th>
                     </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                    <tr><td colspan="7" class="text-center muted" style="padding: 30px;">Carregando...</td></tr>
+                    </tbody>
                 </table>
             </div>
 
@@ -66,78 +143,80 @@
     </div>
 </div>
 
-<!-- Modal Detalhes -->
 <div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+        <div class="modal-content" style="border-radius: 8px; border:none; max-height: 85vh;">
             <div class="modal-header">
-                <h4 class="modal-title" id="modalTitle">Detalhes do Balanço</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:preview-open" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    <span id="modalTitle">Detalhes do Balanço</span>
+                </h4>
             </div>
-            <div class="modal-body p-0">
+            <div class="modal-body p-0" style="overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover mb-0" id="detalhesTable">
                         <thead>
                         <tr>
-                            <th>Nome Produto</th>
+                            <th>Produto</th>
                             <th>Unidade</th>
-                            <th>Código Produto</th>
+                            <th>Código</th>
                         </tr>
                         </thead>
-                        <tbody><!-- dinâmico --></tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default waves-effect" data-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
 </div>
-<!-- Modal Replicação -->
-<div class="modal fade" id="modalReplicar" tabindex="-1" role="dialog" aria-labelledby="modalReplicarTitulo">
+
+<div class="modal fade" id="modalReplicar" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
+        <div class="modal-content" style="border-radius: 8px; border:none;">
             <div class="modal-header">
-                <h4 class="modal-title" id="modalReplicarTitulo">Replicar Modelo de Balanço</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:copy" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Replicar Modelo
+                </h4>
             </div>
-
             <div class="modal-body">
-                <!-- Origem -->
                 <div class="form-group">
-                    <label>Unidade de origem</label>
-                    <input type="text" id="replicaOrigem" class="form-control" readonly
-                           value="">
+                    <label class="muted">Unidade de Origem</label>
+                    <input type="text" id="replicaOrigem" class="form-control" readonly style="background-color: #f9f9f9;">
                 </div>
-
-                <!-- Modelo (somente ativos da tela) -->
                 <div class="form-group">
-                    <label>Modelo (apenas ativos)</label>
+                    <label class="muted">Modelo (Ativos)</label>
                     <select id="replicaModeloTag" class="form-control"></select>
                 </div>
-
-                <!-- Destino (unidades do mesmo grupo - apenas uma) -->
                 <div class="form-group">
-                    <label>Unidade de destino</label>
+                    <label class="muted">Unidade de Destino</label>
                     <select id="replicaDestino" class="form-control">
                         <option value="">Carregando...</option>
                     </select>
                 </div>
             </div>
-
             <div class="modal-footer">
-                <button class="btn btn-primary" id="btnConfirmarReplicacao">Replicar</button>
-                <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button class="btn btn-primary waves-effect" id="btnConfirmarReplicacao">
+                    <iconify-icon icon="icon-park-outline:check"></iconify-icon> CONFIRMAR
+                </button>
+                <button class="btn btn-default waves-effect" data-dismiss="modal">CANCELAR</button>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
-
+    // Configurações
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
@@ -152,29 +231,44 @@
 
     let modelosCache = [];
 
+    // Helper: Skeleton
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
+    // Helper: Date
     const brDate = (dateStr) => {
         if (!dateStr) return '';
         const d = new Date(dateStr);
         return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
     };
-    const makeURL = (tag) => `${baseUrlRedirect}/balanco/${encodeURIComponent(tag)}`;
 
     $(document).ready(() => {
+        if(!unitId) {
+            Swal.fire('Erro', 'Unidade não identificada.', 'error');
+            return;
+        }
+
         listarModelos();
 
         $('#filtroModelo').on('input', filtrarModelos);
         $('#filtroApenasAtivos').on('change', filtrarModelos);
 
         $('#btnNovoModelo').on('click', () => {
-            window.location.href =
-                `${baseUrlRedirect}/external/createBalanco.html?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}&unit_id=${encodeURIComponent(unitId)}`;
+            window.location.href = `${baseUrlRedirect}/external/createBalanco.html?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}&unit_id=${encodeURIComponent(unitId)}`;
         });
     });
 
     async function listarModelos() {
+        toggleLoading(true);
+
         try {
-            console.log('chamou')
-            // carrega todos e filtra local (para ficar idêntico ao modelo enviado)
             const res = await axios.post(baseUrl, {
                 method: 'listModelosWithProducts',
                 token,
@@ -182,31 +276,65 @@
             });
 
             if (!res.data || !res.data.success) {
+                toggleLoading(false);
                 return Swal.fire('Erro', 'Falha ao carregar modelos: ' + (res.data?.message || ''), 'error');
             }
 
             const lst = Array.isArray(res.data.modelos) ? res.data.modelos : [];
-            // normaliza itens count
             lst.forEach(m => { if (m && !Array.isArray(m.itens)) m.itens = m.itens || []; });
-            modelosCache = lst;
 
+            modelosCache = lst;
             montarTabela(lst);
-            filtrarModelos(); // aplica "apenas ativos" + texto
+            filtrarModelos();
+
+            toggleLoading(false);
+
         } catch (e) {
             console.error(e);
+            toggleLoading(false);
             Swal.fire('Erro', 'Erro ao carregar modelos.', 'error');
         }
     }
 
-    function isLinhaAtiva($tr) {
-        const val = ($tr.attr('data-ativo') || '').toString().toLowerCase().trim();
-        if (val === '1' || val === 'true') return true;
-        if (val === '0' || val === 'false') return false;
+    function montarTabela(lista) {
+        const tbody = $('#tabela-modelos tbody');
+        tbody.empty();
 
-        const status = ($tr.find('td').last().text() || '').toLowerCase().trim();
-        const temAtivo = status.includes('ativo');
-        const temInativo = status.includes('inativo');
-        return temAtivo && !temInativo;
+        if(lista.length === 0) {
+            tbody.html('<tr><td colspan="7" class="text-center muted" style="padding:20px;">Nenhum modelo encontrado.</td></tr>');
+            return;
+        }
+
+        lista.forEach(m => {
+            const ativo = (m.ativo === 1 || m.ativo === '1' || m.ativo === true || m.ativo === 'true');
+            const statusHtml = ativo
+                ? '<span class="badge-status bg-green-light">ATIVO</span>'
+                : '<span class="badge-status bg-red-light">INATIVO</span>';
+
+            const url = `${baseUrlRedirect}/balanco/${encodeURIComponent(m.tag)}`;
+
+            // Ações
+            const btnDetalhes = `<a class="btn-action action-green" onclick="abrirDetalhes('${m.tag}')" title="Detalhes"><iconify-icon icon="icon-park-outline:list"></iconify-icon></a>`;
+            const btnEditar   = `<a class="btn-action action-blue" onclick="editarModelo('${m.tag}')" title="Editar"><iconify-icon icon="icon-park-outline:edit"></iconify-icon></a>`;
+            const btnPlay     = `<a href="${url}" target="_blank" class="btn-action action-orange" title="Realizar Balanço"><iconify-icon icon="icon-park-outline:play"></iconify-icon></a>`;
+            const btnCopyUrl  = `<a class="btn-action action-purple" onclick="copiarTexto('${url}')" title="Copiar Link"><iconify-icon icon="icon-park-outline:copy-link"></iconify-icon></a>`;
+            const btnStatus   = `<a class="btn-action ${ativo ? 'action-red' : 'action-green'}" onclick="toggleStatus('${m.tag}', ${ativo ? 1 : 0})" title="${ativo ? 'Desativar' : 'Ativar'}"><iconify-icon icon="icon-park-outline:power"></iconify-icon></a>`;
+            const btnReplicar = `<a class="btn-action action-teal" onclick="abrirModalReplicar('${m.tag}')" title="Replicar"><iconify-icon icon="icon-park-outline:copy"></iconify-icon></a>`;
+
+            tbody.append(`
+                <tr data-nome="${(m.nome || '').toLowerCase()}" data-tagvalor="${(m.tag || '').toLowerCase()}" data-ativo="${ativo ? '1' : '0'}">
+                    <td class="text-center nowrap">
+                        ${btnDetalhes} ${btnEditar} ${btnPlay} ${btnCopyUrl} ${btnStatus} ${btnReplicar}
+                    </td>
+                    <td><strong>${m.tag || '-'}</strong></td>
+                    <td>${m.nome || '-'}</td>
+                    <td>${Array.isArray(m.itens) ? m.itens.length : 0}</td>
+                    <td>${m.usuario_login || '-'}</td>
+                    <td>${brDate(m.created_at)}</td>
+                    <td class="text-center">${statusHtml}</td>
+                </tr>
+            `);
+        });
     }
 
     function filtrarModelos() {
@@ -215,9 +343,9 @@
 
         $('#tabela-modelos tbody tr').each(function () {
             const $tr = $(this);
-            const nome = ($tr.data('nome') || '').toString().toLowerCase();
-            const tag = ($tr.data('tagvalor') || '').toString().toLowerCase();
-            const ativo = isLinhaAtiva($tr);
+            const nome = ($tr.data('nome') || '').toString();
+            const tag = ($tr.data('tagvalor') || '').toString();
+            const ativo = $tr.data('ativo') == '1';
 
             const matchTexto = nome.includes(termo) || tag.includes(termo);
             const matchStatus = !apenasAtivos || ativo;
@@ -226,57 +354,7 @@
         });
     }
 
-    function montarTabela(lista) {
-        const tbody = $('#tabela-modelos tbody');
-        tbody.empty();
-
-        lista.forEach(m => {
-            const ativo = (m.ativo === 1 || m.ativo === '1' || m.ativo === true || m.ativo === 'true');
-            const statusHtml = ativo
-                ? '<span class="label label-success">Ativo</span>'
-                : '<span class="label label-danger">Inativo</span>';
-
-            const url = `${baseUrlRedirect}/balanco/${encodeURIComponent(m.tag)}`;
-
-            tbody.append(`
-      <tr data-nome="${(m.nome || '').toLowerCase()}" data-tagvalor="${(m.tag || '').toLowerCase()}" data-ativo="${ativo ? '1' : '0'}">
-        <!-- Ações -->
-        <td class="text-center">
-          <a href="#" onclick="abrirDetalhes('${m.tag}')" title="Ver Detalhes"><i class="fa fa-list green"></i></a>
-        </td>
-        <td class="text-center">
-          <a href="#" onclick="editarModelo('${m.tag}')" title="Editar"><i class="fa fa-edit blue"></i></a>
-        </td>
-        <td class="text-center">
-          <a href="${url}" target="_blank" title="Realizar Balanço"><i class="fa fa-play orange"></i></a>
-        </td>
-        <td class="text-center">
-          <a href="#" onclick="copiarTexto('${url}')" title="Copiar URL"><i class="fa fa-clone purple"></i></a>
-        </td>
-        <td class="text-center">
-          <a href="#" onclick="toggleStatus('${m.tag}', ${ativo ? 1 : 0})" title="${ativo ? 'Desativar' : 'Ativar'}">
-            <i class="fa fa-power-off ${ativo ? 'red' : 'green'}"></i>
-          </a>
-        </td>
-        <td class="text-center">
-          <a href="#" onclick="abrirModalReplicar('${m.tag}')" title="Replicar Modelo">
-            <i class="fa fa-copy teal"></i>
-          </a>
-        </td>
-
-        <!-- Colunas de dados -->
-        <td>${m.tag || '-'}</td>
-        <td>${m.nome || '-'}</td>
-        <td><a href="${url}" target="_blank" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:280px;">${url}</a></td>
-        <td>${Array.isArray(m.itens) ? m.itens.length : 0}</td>
-        <td>${m.usuario_login || '-'}</td>
-        <td>${brDate(m.created_at)}</td>
-        <td>${brDate(m.updated_at)}</td>
-        <td>${statusHtml}</td>
-      </tr>
-    `);
-        });
-    }
+    // --- Ações ---
 
     function copiarTexto(text) {
         const input = document.createElement('input');
@@ -285,56 +363,50 @@
         input.select();
         document.execCommand('copy');
         document.body.removeChild(input);
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: 'success',
-            title: 'URL copiada!',
-            showConfirmButton: false,
-            timer: 1000
-        });
+
+        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+        Toast.fire({ icon: 'success', title: 'URL copiada!' });
     }
 
     function editarModelo(tag) {
-        const href = `${baseUrlRedirect}/external/editBalanco.html?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}&unit_id=${encodeURIComponent(unitId)}&tag=${encodeURIComponent(tag)}`;
-        window.location.href = href;
+        window.location.href = `${baseUrlRedirect}/external/editBalanco.html?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}&unit_id=${encodeURIComponent(unitId)}&tag=${encodeURIComponent(tag)}`;
     }
 
     async function toggleStatus(tag, statusAtual) {
-        const confirmacao = await Swal.fire({
+        const result = await Swal.fire({
             title: statusAtual ? 'Desativar modelo?' : 'Ativar modelo?',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sim',
             cancelButtonText: 'Cancelar'
         });
-        if (!confirmacao.isConfirmed) return;
 
-        try {
-            await axios.post(baseUrl, {
-                method: 'toggleModeloStatus',
-                token,
-                data: { unit_id: unitId, tag, status: statusAtual ? 0 : 1 }
-            });
+        if (result.isConfirmed) {
+            try {
+                await axios.post(baseUrl, {
+                    method: 'toggleModeloStatus',
+                    token,
+                    data: { unit_id: unitId, tag, status: statusAtual ? 0 : 1 }
+                });
 
-            // Atualiza o cache e a tabela sem recarregar tudo
-            const idx = modelosCache.findIndex(x => x.tag === tag);
-            if (idx > -1) {
-                modelosCache[idx].ativo = statusAtual ? 0 : 1;
+                const idx = modelosCache.findIndex(x => x.tag === tag);
+                if (idx > -1) modelosCache[idx].ativo = statusAtual ? 0 : 1;
+
+                montarTabela(modelosCache);
+                filtrarModelos();
+
+            } catch (e) {
+                Swal.fire('Erro', 'Erro ao alterar status.', 'error');
             }
-            montarTabela(modelosCache);
-            filtrarModelos();
-        } catch (e) {
-            Swal.fire('Erro', 'Erro ao alterar status.', 'error');
         }
     }
 
     async function abrirDetalhes(tag) {
-        try {
-            $('#modalTitle').text('Detalhes do Balanço');
-            $('#detalhesTable tbody').html('<tr><td colspan="3">Carregando...</td></tr>');
-            $('#modalDetalhes').modal('show');
+        $('#modalTitle').text(`Detalhes: ${tag}`);
+        $('#detalhesTable tbody').html('<tr><td colspan="3" class="text-center">Carregando...</td></tr>');
+        $('#modalDetalhes').modal('show');
 
+        try {
             const response = await axios.post(baseUrl, {
                 method: 'getModelByTag',
                 token,
@@ -342,86 +414,50 @@
             });
 
             if (!response.data || !response.data.success) {
-                $('#detalhesTable tbody').html('<tr><td colspan="3">Erro ao carregar detalhes.</td></tr>');
+                $('#detalhesTable tbody').html('<tr><td colspan="3" class="text-center text-danger">Erro ao carregar.</td></tr>');
                 return;
             }
 
-            const modelo = response.data.modelo;
             const itens = response.data.itens || {};
-            $('#modalTitle').text(`Detalhes do Balanço: ${modelo.tag}`);
-
             const tbody = $('#detalhesTable tbody');
             tbody.empty();
 
             for (const categoria in itens) {
-                tbody.append(`
-          <tr>
-            <td colspan="3" style="font-weight:bold;background:#f5f5f5;">${categoria}</td>
-          </tr>
-        `);
+                tbody.append(`<tr><td colspan="3" style="background:#f1f1f1; font-weight:600; color:var(--mrk-blue);">${categoria}</td></tr>`);
                 itens[categoria].forEach(item => {
-                    tbody.append(`
-            <tr>
-              <td>${item.nome_produto || ''}</td>
-              <td>${item.und_produto || ''}</td>
-              <td>${item.codigo_produto || ''}</td>
-            </tr>
-          `);
+                    tbody.append(`<tr><td>${item.nome_produto}</td><td>${item.und_produto}</td><td>${item.codigo_produto}</td></tr>`);
                 });
             }
         } catch (e) {
-            $('#detalhesTable tbody').html('<tr><td colspan="3">Erro ao carregar detalhes.</td></tr>');
+            $('#detalhesTable tbody').html('<tr><td colspan="3" class="text-center text-danger">Falha na conexão.</td></tr>');
         }
     }
 
+    // --- Replicação ---
+
     async function abrirModalReplicar(tagSelecionada) {
-        try {
-            // mostra unidade de origem
-            $('#replicaOrigem').val(unitId);
+        $('#replicaOrigem').val(`Unidade ID: ${unitId}`);
+        popularModelosAtivos(tagSelecionada);
+        carregarUnidadesDestino();
 
-            // popula select de modelos (apenas ativos da tela)
-            popularModelosAtivos(tagSelecionada);
+        $('#btnConfirmarReplicacao').off('click').on('click', replicarModelo);
+        $('#modalReplicar').on('hidden.bs.modal', listarModelos); // Recarrega ao fechar
 
-            // carrega unidades destino (mesmo grupo, sem incluir a atual)
-            await carregarUnidadesDestino();
-
-            // bind do botão confirmar (evita múltiplos binds)
-            $('#btnConfirmarReplicacao').off('click').on('click', replicarModelo);
-
-            // ao fechar, recarrega a tela (como você pediu)
-            $('#modalReplicar').off('hidden.bs.modal').on('hidden.bs.modal', function () {
-                listarModelos();
-            });
-
-            $('#modalReplicar').modal('show');
-        } catch (e) {
-            Swal.fire('Erro', 'Não foi possível abrir o modal de replicação.', 'error');
-        }
+        $('#modalReplicar').modal('show');
     }
 
     function popularModelosAtivos(tagSelecionada) {
         const $sel = $('#replicaModeloTag');
         $sel.empty();
-
-        const ativos = (modelosCache || []).filter(m => (m.ativo === 1 || m.ativo === '1' || m.ativo === true || m.ativo === 'true'));
+        const ativos = modelosCache.filter(m => (m.ativo == 1 || m.ativo === true));
 
         if (!ativos.length) {
-            $sel.append('<option value="">Não há modelos ativos</option>');
-            $sel.prop('disabled', true);
+            $sel.append('<option value="">Sem modelos ativos</option>').prop('disabled', true);
             return;
         }
-
         $sel.prop('disabled', false);
-
-        // Exibir "tag - nome" para facilitar
-        ativos.forEach(m => {
-            const optText = `${m.tag} — ${m.nome || ''}`.trim();
-            $sel.append(`<option value="${m.tag}">${optText}</option>`);
-        });
-
-        if (tagSelecionada) {
-            $sel.val(tagSelecionada);
-        }
+        ativos.forEach(m => $sel.append(`<option value="${m.tag}">${m.tag} — ${m.nome}</option>`));
+        if (tagSelecionada) $sel.val(tagSelecionada);
     }
 
     async function carregarUnidadesDestino() {
@@ -436,17 +472,14 @@
             });
 
             $sel.empty();
-
-            if (resp.data && resp.data.success && Array.isArray(resp.data.unidades) && resp.data.unidades.length) {
-                $sel.append('<option value="">Selecione uma unidade</option>');
-                resp.data.unidades.forEach(u => {
-                    $sel.append(`<option value="${u.id}">${u.id} — ${u.name || '(sem nome)'}</option>`);
-                });
+            if (resp.data?.success && resp.data.unidades?.length) {
+                $sel.append('<option value="">Selecione...</option>');
+                resp.data.unidades.forEach(u => $sel.append(`<option value="${u.id}">${u.id} — ${u.name}</option>`));
             } else {
                 $sel.append('<option value="">Nenhuma unidade disponível</option>');
             }
         } catch (e) {
-            $sel.empty().append('<option value="">Erro ao carregar unidades</option>');
+            $sel.empty().append('<option value="">Erro ao carregar</option>');
         }
     }
 
@@ -454,12 +487,11 @@
         const tag = $('#replicaModeloTag').val();
         const destino = $('#replicaDestino').val();
 
-        if (!tag)   return Swal.fire('Atenção', 'Selecione um modelo.', 'warning');
-        if (!destino) return Swal.fire('Atenção', 'Selecione a unidade de destino.', 'warning');
+        if (!tag || !destino) return Swal.fire('Aviso', 'Selecione o modelo e o destino.', 'warning');
+
+        Swal.fire({ title: 'Replicando...', didOpen: () => Swal.showLoading() });
 
         try {
-            Swal.fire({ title: 'Replicando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
             const resp = await axios.post(baseUrl, {
                 method: 'replicateModelo',
                 token,
@@ -472,15 +504,14 @@
 
             Swal.close();
 
-            if (resp.data && resp.data.success) {
-                Swal.fire('Sucesso', 'Modelo replicado com sucesso.', 'success');
-                // fecha modal -> o hidden.bs.modal já chama listarModelos()
+            if (resp.data?.success) {
+                Swal.fire('Sucesso', 'Modelo replicado!', 'success');
                 $('#modalReplicar').modal('hide');
             } else {
                 Swal.fire('Erro', resp.data?.message || 'Falha na replicação.', 'error');
             }
         } catch (e) {
-            Swal.fire('Erro', 'Erro ao replicar o modelo.', 'error');
+            Swal.fire('Erro', 'Erro de conexão.', 'error');
         }
     }
 

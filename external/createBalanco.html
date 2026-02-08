@@ -1,512 +1,543 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-  <title>Balanço de Estoque</title>
+  <title>Criar Modelo de Balanço</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
-  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
   <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-  <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
-  <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+  <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
   <link href="bsb/css/style.css" rel="stylesheet">
-  <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
+  <link href="style/mrk.css" rel="stylesheet">
+
   <style>
-    .form-control {
-      margin-bottom: 10px;
-    }
-    table {
-      margin-top: 20px;
-    }
-    th, td {
-      text-align: left;
-    }
-    .modal-body {
-      max-height: 500px;
-      overflow-y: auto;
-    }
-    .form-control {
-      display: block;
-      width: 100%;
-      height: 34px;
-      padding: 6px 12px;
-      font-size: 14px;
-      line-height: 1.42857143;
-      color: #555;
-      background-color: #fff;
-      background-image: none;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-      box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-      -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
-      -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-      transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-    }
-    .form-control:focus {
-      border-color: #66afe9;
-      outline: 0;
-      -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-      box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-    }
-    .btn-toggle-group .btn-categoria.active {
-      background-color: #007bff;
-      color: white;
-      border-color: #007bff;
-    }
-    .btn-toggle-group .btn-produto.active {
-      background-color: #28a745;
-      color: white;
-      border-color: #28a745;
+    body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+    /* Card Principal */
+    .card {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border: 1px solid #eee;
+      border-top: 3px solid var(--mrk-blue) !important;
+      margin-bottom: 20px;
+      border-radius: 6px;
     }
 
+    /* Header e Filtros */
+    .header-flex { display: flex; align-items: center; justify-content: space-between; }
+    .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+    .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
 
+    /* Tabela */
+    .table thead th {
+      font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; font-size: 12px;
+      background-color: #f8f9fa; border-bottom: 2px solid #e9ecef; white-space: nowrap;
+    }
+    .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+    /* Botões de Ação */
+    .btn-icon-only { padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; background: #fff; color: #555; }
+    .btn-icon-only:hover { background: #eee; }
+
+    /* Modal Custom */
+    .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+    .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+    .modal-body { padding: 0; }
+    .modal-footer { border-top: 1px solid #eee; background: #fff; padding: 15px; }
+
+    /* Toggle Custom (Modal) */
+    .toggle-group { display: flex; border-bottom: 1px solid #eee; }
+    .toggle-btn {
+      flex: 1; text-align: center; padding: 15px; cursor: pointer; font-weight: 500; color: #777; background: #f9f9f9;
+      border-right: 1px solid #eee; transition: all 0.2s;
+    }
+    .toggle-btn:last-child { border-right: none; }
+    .toggle-btn.active { background: #fff; color: var(--mrk-blue); border-bottom: 3px solid var(--mrk-blue); font-weight: 700; }
+    .toggle-btn:hover { background: #f0f4f8; }
+
+    /* Lista de Seleção (Modal) */
+    .selection-list { max-height: 400px; overflow-y: auto; padding: 10px; }
+    .selection-item {
+      padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center;
+    }
+    .selection-item:hover { background-color: #f5f5f5; }
+    .selection-item input[type="checkbox"] { margin-right: 10px; transform: scale(1.2); }
+    .selection-item label { cursor: pointer; font-weight: 400; margin: 0; width: 100%; }
+
+    /* Skeleton */
+    .skeleton-wrapper { display: none; margin-top: 20px; }
+    .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+    .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
   </style>
 </head>
-<body class="theme-blue">
-<!-- Form -->
-<div class="container-fluid">
-  <div class="block-header">
-    <h2></h2>
-    <br>
-  </div>
 
-  <!-- Formulário de Transferência -->
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="header">
-          <h2>Modelo de Balanço</h2>
-        </div>
-        <div class="body">
-          <div class="row">
-            <div class="col-md-2">
-              <label for="modelName">Nome do Modelo:</label>
-              <input type="text" id="modelName" class="form-control" autocomplete="off" oninput="generateTag()">
-            </div>
-            <div class="col-md-2">
-              <label for="modelTag">Tag:</label>
-              <input type="text" id="modelTag" class="form-control" autocomplete="off" readonly>
-              <span id="tagValidationMessage" style="color: red; display: none;">Tag já existe. Escolha outro nome.</span>
-            </div>
-            <div class="col-md-5">
-              <label for="modelUrl">URL:</label>
-              <input type="text" id="modelUrl" class="form-control" readonly>
-            </div>
-            <div class="col-md-3">
-              <label>&nbsp;</label>
-              <div>
-                <button id="btnCopyUrl" class="btn btn-secondary" type="button">Copiar</button>
-                <button id="btnShareWhatsapp" class="btn btn-success" type="button">Compartilhar</button>
-                <button id="btnListModelo" class="btn btn-primary waves-effect" type="button">Lista de Modelos</button>
-              </div>
+<body class="theme-blue">
+
+<div class="container-fluid">
+
+  <div class="card">
+    <div class="header header-flex">
+      <h2>
+        <iconify-icon icon="icon-park-outline:add-web" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+        CRIAR MODELO DE BALANÇO
+      </h2>
+      <button id="btnListModelo" class="btn btn-default waves-effect">
+        <iconify-icon icon="icon-park-outline:list" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+        VER LISTA
+      </button>
+    </div>
+
+    <div class="body">
+
+      <div class="filter-box">
+        <div class="row clearfix">
+          <div class="col-md-3">
+            <label class="muted">Nome do Modelo</label>
+            <input type="text" id="modelName" class="form-control" placeholder="Ex: Bebidas Fim de Ano" oninput="generateTag()">
+          </div>
+          <div class="col-md-3">
+            <label class="muted">Tag (Identificador Único)</label>
+            <input type="text" id="modelTag" class="form-control" readonly style="background-color: #eee;">
+            <small id="tagValidationMessage" class="text-danger" style="display: none; font-size: 11px;">Tag já existe!</small>
+          </div>
+          <div class="col-md-6">
+            <label class="muted">URL Gerada</label>
+            <div class="input-group">
+              <input type="text" id="modelUrl" class="form-control" readonly style="background-color: #fff;">
+              <span class="input-group-btn">
+                                <button class="btn btn-default btn-icon-only" type="button" id="btnCopyUrl" title="Copiar URL">
+                                    <iconify-icon icon="icon-park-outline:copy"></iconify-icon>
+                                </button>
+                                <button class="btn btn-default btn-icon-only" type="button" id="btnShareWhatsapp" title="Enviar WhatsApp" style="color: #25D366;">
+                                    <iconify-icon icon="icon-park-outline:whatsapp"></iconify-icon>
+                                </button>
+                            </span>
             </div>
           </div>
-          <div class="row" style="margin-top: 15px;">
-            <div class="col-md-12">
-              <button id="btnAddCategory" class="btn btn-primary">Adicionar Categorias ou Produtos</button>
-            </div>
+        </div>
+
+        <div class="row clearfix mt-2">
+          <div class="col-md-12">
+            <button id="btnAddCategory" class="btn btn-primary waves-effect">
+              <iconify-icon icon="icon-park-outline:add-three" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+              ADICIONAR PRODUTOS / CATEGORIAS
+            </button>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Tabela de Balanço -->
-  <div class="card">
-    <div class="row">
-      <div class="col-md-12">
-        <table id="balancoTable" class="table table-striped">
+      <div id="skeleton-area" class="skeleton-wrapper">
+        <div class="skeleton sk-row"></div>
+        <div class="skeleton sk-row"></div>
+        <div class="skeleton sk-row"></div>
+      </div>
+
+      <div class="table-responsive mt-4" id="table-area">
+        <table class="table table-hover" id="balancoTable">
           <thead>
           <tr>
-            <th>Código</th>
-            <th>Categoria</th>
-            <th>Unidade</th>
-            <th>Ação</th>
+            <th width="100">Código</th>
+            <th>Produto / Insumo</th>
+            <th width="100">Unidade</th>
+            <th width="80" class="text-center">Ação</th>
           </tr>
           </thead>
           <tbody>
+          <tr><td colspan="4" class="text-center muted" style="padding: 30px;">Nenhum item adicionado ainda.</td></tr>
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
 
-  <div class="footer text-right">
-    <button id="limparBalanco" class="btn btn-warning">Limpar</button>
-    <button id="finalizarLancamento" class="btn btn-success" disabled>Criar Modelo</button>
+      <div class="row clearfix" style="margin-top: 30px; border-top: 1px dashed #ddd; padding-top: 20px;">
+        <div class="col-md-6 text-left">
+          <button id="limparBalanco" class="btn btn-warning waves-effect">
+            <iconify-icon icon="icon-park-outline:delete"></iconify-icon> LIMPAR TUDO
+          </button>
+        </div>
+        <div class="col-md-6 text-right">
+          <button id="finalizarLancamento" class="btn btn-success waves-effect" disabled>
+            <iconify-icon icon="icon-park-outline:check"></iconify-icon> SALVAR MODELO
+          </button>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
-<div><br><br></div>
-
-<!-- Modal de Categoria/Produto -->
 <div class="modal fade" id="modalCategoriaProduto" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
+    <div class="modal-content" style="border-radius: 8px; border:none; height: 80vh; display: flex; flex-direction: column;">
+
       <div class="modal-header">
-        <h4 class="modal-title">Selecionar Categorias ou Produtos</h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">
+          <iconify-icon icon="icon-park-outline:shopping-bag" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+          Selecionar Itens
+        </h4>
       </div>
-      <div class="modal-body">
-        <!-- Toggle -->
-        <div class="form-group">
-          <label>Como deseja selecionar?</label><br>
-          <div class="btn-group btn-toggle-group btn-group-toggle" data-toggle="buttons">
-            <label class="btn btn-outline-primary btn-categoria active">
-              <input type="radio" name="select-mode" value="categoria" autocomplete="off" checked> Por Categoria
-            </label>
-            <label class="btn btn-outline-success btn-produto">
-              <input type="radio" name="select-mode" value="produto" autocomplete="off"> Por Produto
-            </label>
-          </div>
-        </div>
 
-        <div class="form-group">
-          <label for="searchSelect">Buscar por nome ou categoria:</label>
-          <input type="text" id="searchSelect" class="form-control" placeholder="Digite para filtrar...">
+      <div class="toggle-group">
+        <div class="toggle-btn active" data-mode="categoria" onclick="setSelectMode('categoria')">
+          POR CATEGORIA
         </div>
-
-        <!-- Select Categoria -->
-        <div id="selectCategoriaWrapper">
-          <select multiple id="selectCategoria" class="form-control" style="height: 200px;"></select>
-        </div>
-
-        <!-- Select Produto -->
-        <div id="selectProdutoWrapper" style="display: none;">
-          <select multiple id="selectProduto" class="form-control" style="height: 200px;"></select>
+        <div class="toggle-btn" data-mode="produto" onclick="setSelectMode('produto')">
+          POR PRODUTO
         </div>
       </div>
+
+      <div style="padding: 15px; background: #fff; border-bottom: 1px solid #eee;">
+        <input type="text" id="searchSelect" class="form-control" placeholder="Buscar..." oninput="filterList()">
+      </div>
+
+      <div class="modal-body" style="flex: 1; overflow-y: auto; background: #fff;">
+        <div id="list-container" class="selection-list">
+        </div>
+      </div>
+
       <div class="modal-footer">
-        <button type="button" class="btn btn-link waves-effect" data-dismiss="modal">Fechar</button>
-        <button id="btnConfirmarAdicionar" type="button" class="btn btn-primary">Adicionar</button>
+                <span class="pull-left muted" style="margin-top: 8px;">
+                    Selecionados: <b id="countSelected">0</b>
+                </span>
+        <button type="button" class="btn btn-default waves-effect" data-dismiss="modal">Fechar</button>
+        <button id="btnConfirmarAdicionar" type="button" class="btn btn-primary waves-effect">ADICIONAR</button>
       </div>
     </div>
   </div>
 </div>
-</body>
 
-
-<!-- Scripts -->
-<!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="bsb/plugins/node-waves/waves.js"></script>
-<script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-<script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
-    <script>
-      $(document).ready(function () {
-        const baseUrl = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-                'http://localhost/portal-mrk/api/v1/index.php';
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-        const baseUrlRedirect = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br' :
-                'http://localhost/portal-mrk';
+<script>
+  // Configurações
+  const baseUrl = window.location.hostname !== 'localhost'
+          ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+          : 'http://localhost/portal-mrk/api/v1/index.php';
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const unitId = urlParams.get('unit_id');
-        const username = urlParams.get('username');
+  const baseUrlRedirect = window.location.hostname !== 'localhost'
+          ? 'https://portal.mrksolucoes.com.br'
+          : 'http://localhost/portal-mrk';
 
-        let categories = [];
-        let productsInBalance = [];
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const unitId = urlParams.get('unit_id');
+  const username = urlParams.get('username');
 
-        async function loadCategories() {
-          try {
-            const response = await axios.post(baseUrl, {
-              method: 'listProductsByCategory',
-              token: token,
-              data: { unit_id: unitId }
-            });
+  let allCategories = []; // Dados brutos da API
+  let productsInBalance = []; // Itens já adicionados à tabela
+  let currentMode = 'categoria'; // 'categoria' ou 'produto'
 
-            if (response.data && response.data.success) {
-              categories = response.data.products_by_category;
-            }
-          } catch (error) {
-            console.error('Erro ao carregar categorias:', error);
-          }
-        }
-        function renderSelectOptions() {
-          const categoriaSelect = $('#selectCategoria');
-          const produtoSelect = $('#selectProduto');
-          categoriaSelect.empty();
-          produtoSelect.empty();
+  // Helper: Skeleton
+  function toggleLoading(isLoading) {
+    if (isLoading) {
+      $('#table-area').hide();
+      $('#skeleton-area').show();
+    } else {
+      $('#skeleton-area').hide();
+      $('#table-area').fadeIn();
+    }
+  }
 
-          categories.forEach(cat => {
-            categoriaSelect.append(`<option value="${cat.id}">${cat.categoria}</option>`);
-            cat.itens.forEach(prod => {
-              produtoSelect.append(`<option value="${cat.id}|${prod.codigo}">${prod.nome} (${cat.categoria})</option>`);
-            });
-          });
+  $(document).ready(() => {
+    // Validação Inicial
+    if (!token || !unitId) {
+      Swal.fire('Atenção', 'Parâmetros de URL ausentes.', 'warning');
+      return;
+    }
 
-          $('#selectCategoria').multiSelect('refresh');
-          $('#selectProduto').multiSelect('refresh');
-        }
+    // Carrega dados iniciais
+    loadData();
 
-        $('#searchSelect').on('input', function () {
-          const termo = $(this).val().toLowerCase();
+    // Eventos
+    $('#btnListModelo').click(() => {
+      window.location.href = `${baseUrlRedirect}/external/listModelBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
+    });
 
-          // Detectar se está em modo categoria ou produto
-          const modo = $('input[name="select-mode"]:checked').val();
-          const seletor = modo === 'categoria' ? '#selectCategoria' : '#selectProduto';
+    $('#btnAddCategory').click(() => {
+      $('#searchSelect').val('');
+      renderList();
+      $('#modalCategoriaProduto').modal('show');
+      setTimeout(() => $('#searchSelect').focus(), 500);
+    });
 
-          // Resetar os selects
-          $(seletor + ' option').each(function () {
-            const texto = $(this).text().toLowerCase();
-            if (texto.includes(termo)) {
-              $(this).show();
-            } else {
-              $(this).hide();
-            }
-          });
+    $('#btnConfirmarAdicionar').click(addSelectedItems);
+    $('#limparBalanco').click(clearAll);
+    $('#finalizarLancamento').click(saveModel);
 
-          // Forçar o multi-select a atualizar
-          $(seletor).multiSelect('refresh');
-        });
+    // Copy / Share
+    $('#btnCopyUrl').click(() => {
+      const url = $('#modelUrl').val();
+      if(!url) return;
+      navigator.clipboard.writeText(url);
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Copiado!', timer: 1500, showConfirmButton: false });
+    });
 
-        $(document).on('change', 'input[name="select-mode"]', function () {
-          const modo = $(this).val();
-          // Ativa/desativa visualmente os botões
-          $('.btn-toggle-group label').removeClass('active');
-          $(this).closest('label').addClass('active');
+    $('#btnShareWhatsapp').click(() => {
+      const url = $('#modelUrl').val();
+      if(!url) return;
+      window.open(`https://wa.me/?text=${encodeURIComponent('Modelo de Balanço: ' + url)}`, '_blank');
+    });
+  });
 
-          // Alterna os selects
-          $('#selectCategoriaWrapper').toggle(modo === 'categoria');
-          $('#selectProdutoWrapper').toggle(modo === 'produto');
-        });
+  // --- Lógica de Dados ---
 
-
-
-        $('#btnAddCategory').click(async function () {
-          Swal.fire({
-            title: 'Carregando...',
-            text: 'Buscando categorias e produtos disponíveis.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-              Swal.showLoading();
-            }
-          });
-
-          try {
-            await loadCategories();
-            renderSelectOptions();
-            $('#selectCategoria').multiSelect();
-            $('#selectProduto').multiSelect();
-
-            // Limpa o campo de busca
-            $('#searchSelect').val('');
-
-            Swal.close(); // Fecha o loader
-            $('#modalCategoriaProduto').modal('show');
-            $('#modalCategoriaProduto').on('shown.bs.modal', function () {
-              $('#searchSelect').focus();
-            });
-          } catch (error) {
-            Swal.close();
-            Swal.fire('Erro', 'Não foi possível carregar os dados. Tente novamente.', 'error');
-          }
-        });
-
-        $('#btnConfirmarAdicionar').click(function () {
-          const modo = $('input[name="select-mode"]:checked').val();
-          const itemsToAdd = [];
-
-          if (modo === 'categoria') {
-            const categoriasSelecionadas = $('#selectCategoria').val() || [];
-            categories.forEach(cat => {
-              if (categoriasSelecionadas.includes(String(cat.id))) {
-                cat.itens.forEach(prod => itemsToAdd.push(prod));
-              }
-            });
-          } else {
-            const produtosSelecionados = $('#selectProduto').val() || [];
-            produtosSelecionados.forEach(val => {
-              const [catId, prodCod] = val.split('|');
-              const categoria = categories.find(c => c.id == catId);
-              if (categoria) {
-                const prod = categoria.itens.find(p => p.codigo == prodCod);
-                if (prod) itemsToAdd.push(prod);
-              }
-            });
-          }
-
-          itemsToAdd.forEach(item => {
-            if (!productsInBalance.some(p => p.codigo === item.codigo)) {
-              productsInBalance.push(item);
-              $('#balancoTable tbody').append(`
-            <tr>
-              <td>${item.codigo}</td>
-              <td>${item.nome}</td>
-              <td>${item.und || ''}</td>
-              <td><button class="btn btn-danger remove-product" data-codigo="${item.codigo}">Remover</button></td>
-            </tr>
-          `);
-            }
-          });
-
-          $('#modalCategoriaProduto').modal('hide');
-        });
-
-        async function validateTag(tag) {
-          try {
-            const response = await axios.post(baseUrl, {
-              method: 'validateTagExists',
-              token: token,
-              data: { tag: tag }
-            });
-            return response.data.success;
-          } catch (error) {
-            console.error('Erro ao validar a tag:', error);
-            return false;
-          }
-        }
-        // Geração de tag
-        window.generateTag = async function () {
-          const modelName = $('#modelName').val().trim();
-          const modelTag = `${unitId}-${modelName.toLowerCase().replace(/\s+/g, '-')}`;
-          const modelUrl = `${baseUrlRedirect}/balanco/${modelTag}`;
-          $('#modelTag').val(modelTag);
-          $('#modelUrl').val(modelUrl);
-
-          const isValid = await validateTag(modelTag);
-          if (!isValid) {
-            $('#tagValidationMessage').show();
-            $('#finalizarLancamento').prop('disabled', true);
-          } else {
-            $('#tagValidationMessage').hide();
-            $('#finalizarLancamento').prop('disabled', false);
-          }
-        };
-
-        $('#btnCopyUrl').click(function () {
-          const url = $('#modelUrl').val();
-          navigator.clipboard.writeText(url).then(() => {
-            alert('URL copiada para a área de transferência');
-          }).catch(err => {
-            console.error('Erro ao copiar URL:', err);
-          });
-        });
-
-        $('#btnShareWhatsapp').click(function () {
-          const url = $('#modelUrl').val();
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent('Confira o modelo de balanço: ' + url)}`;
-          window.open(whatsappUrl, '_blank');
-        });
-
-        $('#finalizarLancamento').click(async function () {
-          if (productsInBalance.length === 0) {
-            Swal.fire('Aviso', 'Adicione ao menos um produto antes de finalizar.', 'warning');
-            return;
-          }
-
-          const modelName = $('#modelName').val();
-          const modelTag = $('#modelTag').val();
-
-          if (!modelName || !modelTag) {
-            Swal.fire('Aviso', 'Preencha o nome do modelo e gere a tag.', 'warning');
-            return;
-          }
-
-          const confirm = await Swal.fire({
-            title: 'Confirmar Lançamento?',
-            text: 'Deseja realmente finalizar este modelo de balanço?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#aaa',
-            confirmButtonText: 'Sim, finalizar',
-            cancelButtonText: 'Cancelar'
-          });
-
-          if (!confirm.isConfirmed) return;
-
-          Swal.fire({
-            title: 'Processando...',
-            text: 'Aguarde enquanto finalizamos o lançamento.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-              Swal.showLoading();
-            }
-          });
-
-          try {
-            const response = await axios.post(baseUrl, {
-              method: 'createModelo',
-              token: token,
-              data: {
-                system_unit_id: unitId,
-                nome: modelName,
-                tag: modelTag,
-                usuario_id: username,
-                itens: productsInBalance
-              }
-            });
-
-            if (response.data.success) {
-              Swal.fire('Sucesso!', 'Lançamento finalizado com sucesso!', 'success').then(() => {
-                // Resetar
-                $('#balancoTable tbody').empty();
-                $('#modelName').val('');
-                $('#modelTag').val('');
-                $('#modelUrl').val('');
-                productsInBalance = [];
-                $('#finalizarLancamento').prop('disabled', true);
-
-                window.location.href = `${baseUrlRedirect}/external/listModelBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
-              });
-            } else {
-              Swal.fire('Erro!', response.data.message || 'Erro ao finalizar lançamento.', 'error');
-            }
-          } catch (error) {
-            console.error('Erro:', error);
-            Swal.fire('Erro!', 'Ocorreu um erro inesperado.', 'error');
-          }
-        });
-
-        $('#btnListModelo').click(function () {
-          window.location.href = `${baseUrlRedirect}/external/listModelBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
-        });
-        // Remover item da grid ao clicar no botão "Remover"
-        $(document).on('click', '.remove-product', function () {
-          const codigo = $(this).data('codigo');
-          const linha = $(this).closest('tr');
-
-          Swal.fire({
-            title: 'Tem certeza?',
-            text: 'Deseja realmente remover este item da lista?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#aaa',
-            confirmButtonText: 'Sim, remover',
-            cancelButtonText: 'Cancelar'
-          }).then((result) => {
-            if (result.isConfirmed) {
-              // Remove do array
-              productsInBalance = productsInBalance.filter(prod => prod.codigo !== codigo);
-              // Remove da tabela
-              linha.remove();
-            }
-          });
-        });
-
-        $('#limparBalanco').click(function () {
-          $('#balancoTable tbody').empty();
-          $('#modelName').val('');
-          $('#modelTag').val('');
-          $('#modelUrl').val('');
-          productsInBalance = [];
-          $('#finalizarLancamento').prop('disabled', true);
-        });
-
-        loadCategories();
+  async function loadData() {
+    try {
+      // Pode demorar, mas carrega tudo de uma vez para o modal ser rápido
+      const res = await axios.post(baseUrl, {
+        method: 'listProductsByCategory',
+        token: token,
+        data: { unit_id: unitId }
       });
-    </script>
+
+      if (res.data && res.data.success) {
+        allCategories = res.data.products_by_category || [];
+      }
+    } catch (e) {
+      console.error(e);
+      Swal.fire('Erro', 'Falha ao carregar produtos.', 'error');
+    }
+  }
+
+  // --- Modal Logic ---
+
+  window.setSelectMode = function(mode) {
+    currentMode = mode;
+    $('.toggle-btn').removeClass('active');
+    $(`.toggle-btn[data-mode="${mode}"]`).addClass('active');
+    renderList();
+  }
+
+  window.filterList = function() {
+    const term = $('#searchSelect').val().toLowerCase();
+    $('.selection-item').each(function() {
+      const text = $(this).text().toLowerCase();
+      $(this).toggle(text.includes(term));
+    });
+  }
+
+  function renderList() {
+    const container = $('#list-container');
+    container.empty();
+    $('#countSelected').text('0');
+
+    if (currentMode === 'categoria') {
+      allCategories.forEach(cat => {
+        const html = `
+                    <div class="selection-item">
+                        <input type="checkbox" id="cat_${cat.id}" value="${cat.id}" class="chk-item">
+                        <label for="cat_${cat.id}">
+                            <strong>${cat.categoria}</strong>
+                            <span class="text-muted text-small">(${cat.itens ? cat.itens.length : 0} itens)</span>
+                        </label>
+                    </div>
+                `;
+        container.append(html);
+      });
+    } else {
+      // Modo Produto (Flattened)
+      allCategories.forEach(cat => {
+        if (cat.itens) {
+          cat.itens.forEach(prod => {
+            const val = `${cat.id}|${prod.codigo}`; // ID composto para recuperar depois
+            const html = `
+                            <div class="selection-item">
+                                <input type="checkbox" id="prod_${prod.codigo}" value="${val}" class="chk-item">
+                                <label for="prod_${prod.codigo}">
+                                    <strong>${prod.nome}</strong>
+                                    <span class="text-muted text-small">[${prod.codigo}] - ${cat.categoria}</span>
+                                </label>
+                            </div>
+                        `;
+            container.append(html);
+          });
+        }
+      });
+    }
+
+    // Bind Checkbox Count
+    $('.chk-item').change(function() {
+      $('#countSelected').text($('.chk-item:checked').length);
+    });
+  }
+
+  function addSelectedItems() {
+    const selected = [];
+    $('.chk-item:checked').each(function() {
+      selected.push($(this).val());
+    });
+
+    if (selected.length === 0) {
+      $('#modalCategoriaProduto').modal('hide');
+      return;
+    }
+
+    let newItems = [];
+
+    if (currentMode === 'categoria') {
+      // Adiciona todos os produtos das categorias selecionadas
+      selected.forEach(catId => {
+        const cat = allCategories.find(c => c.id == catId);
+        if (cat && cat.itens) {
+          newItems = newItems.concat(cat.itens);
+        }
+      });
+    } else {
+      // Adiciona produtos específicos
+      selected.forEach(val => {
+        const [catId, prodCod] = val.split('|');
+        const cat = allCategories.find(c => c.id == catId);
+        if (cat && cat.itens) {
+          const prod = cat.itens.find(p => p.codigo == prodCod);
+          if (prod) newItems.push(prod);
+        }
+      });
+    }
+
+    // Merge evitando duplicatas
+    newItems.forEach(item => {
+      if (!productsInBalance.some(p => p.codigo === item.codigo)) {
+        productsInBalance.push(item);
+      }
+    });
+
+    renderTable();
+    $('#modalCategoriaProduto').modal('hide');
+    validateForm();
+  }
+
+  // --- Tabela Principal ---
+
+  function renderTable() {
+    const tbody = $('#balancoTable tbody');
+    tbody.empty();
+
+    if (productsInBalance.length === 0) {
+      tbody.html('<tr><td colspan="4" class="text-center muted" style="padding: 30px;">Nenhum item adicionado ainda.</td></tr>');
+      return;
+    }
+
+    productsInBalance.forEach(item => {
+      tbody.append(`
+                <tr>
+                    <td><strong>${item.codigo}</strong></td>
+                    <td>${item.nome}</td>
+                    <td>${item.und || '-'}</td>
+                    <td class="text-center">
+                        <button class="btn btn-default btn-xs" onclick="removeItem('${item.codigo}')" title="Remover">
+                            <iconify-icon icon="icon-park-outline:delete" style="color: var(--mrk-red);"></iconify-icon>
+                        </button>
+                    </td>
+                </tr>
+            `);
+    });
+  }
+
+  window.removeItem = function(codigo) {
+    productsInBalance = productsInBalance.filter(p => p.codigo != codigo); // Loose equality para garantir
+    renderTable();
+    validateForm();
+  }
+
+  function clearAll() {
+    productsInBalance = [];
+    renderTable();
+    $('#modelName').val('');
+    $('#modelTag').val('');
+    $('#modelUrl').val('');
+    validateForm();
+  }
+
+  // --- Lógica de Tag e Salvar ---
+
+  window.generateTag = async function() {
+    const name = $('#modelName').val().trim();
+    if (!name) {
+      $('#modelTag').val('');
+      $('#modelUrl').val('');
+      validateForm();
+      return;
+    }
+
+    const tag = `${unitId}-${name.toLowerCase().replace(/\s+/g, '-')}`;
+    const url = `${baseUrlRedirect}/balanco/${tag}`;
+
+    $('#modelTag').val(tag);
+    $('#modelUrl').val(url);
+
+    // Debounce Validation
+    clearTimeout(window.tagTimeout);
+    window.tagTimeout = setTimeout(async () => {
+      try {
+        const res = await axios.post(baseUrl, {
+          method: 'validateTagExists',
+          token: token,
+          data: { tag }
+        });
+
+        if (!res.data.success) {
+          $('#tagValidationMessage').show();
+          $('#modelTag').css('border-color', 'var(--mrk-red)');
+          $('#finalizarLancamento').prop('disabled', true);
+        } else {
+          $('#tagValidationMessage').hide();
+          $('#modelTag').css('border-color', '#ccc');
+          validateForm();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 500);
+  }
+
+  function validateForm() {
+    const hasName = $('#modelName').val().trim().length > 0;
+    const hasItems = productsInBalance.length > 0;
+    const tagError = $('#tagValidationMessage').is(':visible');
+
+    $('#finalizarLancamento').prop('disabled', !(hasName && hasItems && !tagError));
+  }
+
+  async function saveModel() {
+    const nome = $('#modelName').val().trim();
+    const tag = $('#modelTag').val().trim();
+
+    if (!nome || !tag || productsInBalance.length === 0) return;
+
+    Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+
+    try {
+      const res = await axios.post(baseUrl, {
+        method: 'createModelo',
+        token: token,
+        data: {
+          system_unit_id: unitId,
+          nome: nome,
+          tag: tag,
+          usuario_id: username,
+          itens: productsInBalance
+        }
+      });
+
+      if (res.data.success) {
+        await Swal.fire('Sucesso!', 'Modelo criado com sucesso.', 'success');
+        window.location.href = `${baseUrlRedirect}/external/listModelBalanco.html?username=${username}&token=${token}&unit_id=${unitId}`;
+      } else {
+        Swal.fire('Erro', res.data.message || 'Erro ao criar modelo.', 'error');
+      }
+    } catch (e) {
+      Swal.fire('Erro', 'Falha na conexão.', 'error');
+    }
+  }
+
+</script>
+</body>
 </html>
