@@ -5,157 +5,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Balanço de Itens</title>
 
-    <!-- Favicon-->
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- Bootstrap Core Css -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
-    <!-- Waves Effect Css -->
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
-    <!-- Animation Css -->
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-
-    <!-- DataTable (skin do AdminBSB) -->
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-
-    <!-- SweetAlert Css -->
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
-
-    <!-- Custom Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        table { margin-top: 20px; }
-        th, td { text-align: left; }
-        .modal-body { max-height: 500px; overflow-y: auto; }
-        .remove-item { padding: 2px 8px; }
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Botão Ação */
+        .btn-action-delete {
+            color: var(--mrk-red);
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+        .btn-action-delete:hover { transform: scale(1.2); }
+
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Modal */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
     </style>
 </head>
 <body class="theme-blue">
 
 <div class="container-fluid">
-    <div class="block-header">
-        <h2></h2>
-        <br />
-    </div>
 
-    <!-- Card principal -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="header">
-                    <h2>Balanço de Itens</h2>
-                </div>
-                <div class="body">
-                    <form id="balanceForm">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <label for="balance-date">Data do Balanço</label>
-                                <input type="date" id="balance-date" class="form-control" required />
-                            </div>
-
-                            <div class="col-md-5">
-                                <label for="unit-id">Unidade</label>
-                                <select id="unit-id" class="form-control" required>
-                                    <option value="">Selecione</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-5">
-                                <label for="item-description">Produto</label>
-                                <input type="hidden" id="item-codigo" />
-                                <input type="hidden" id="item-unit" />
-                                <input type="text"
-                                       id="item-description"
-                                       class="form-control"
-                                       readonly
-                                       placeholder="Clique para selecionar um produto"
-                                       data-toggle="modal"
-                                       data-target="#itemModal" />
-                            </div>
-
-                            <div class="col-md-3">
-                                <label for="item-quantity">Quantidade</label>
-                                <input type="text" inputmode="numeric" id="item-quantity" class="form-control" placeholder="Digite a quantidade" />
-                            </div>
-
-                            <div class="col-md-1">
-                                <label>&nbsp;</label>
-                                <button type="button" id="add-item" class="form-control btn btn-primary waves-effect" style="color:#fff">Adicionar</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div><!-- card -->
-        </div>
-    </div>
-
-    <!-- Grid de Itens -->
     <div class="card">
-        <div class="row">
-            <div class="col-md-12">
-                <table id="result-table" class="table table-striped table-hover">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:check-one" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                BALANÇO DE ITENS
+            </h2>
+        </div>
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data do Balanço</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="balance-date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="muted">Unidade / Loja</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:shop"></iconify-icon></span>
+                            <select id="unit-id" class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row clearfix" style="margin-bottom: 20px; align-items: flex-end;">
+                <div class="col-md-6">
+                    <label class="muted">Produto / Insumo</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:box"></iconify-icon></span>
+                        <input type="hidden" id="item-codigo">
+                        <input type="hidden" id="item-unit">
+                        <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar..." style="cursor: pointer; background-color: #fff;">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Quantidade</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calculator"></iconify-icon></span>
+                        <input type="text" inputmode="numeric" id="item-quantity" class="form-control" placeholder="0,000">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" id="add-item" class="btn btn-primary btn-block waves-effect" style="margin-bottom: 20px;">
+                        <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                        ADICIONAR ITEM
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover" id="result-table">
                     <thead>
                     <tr>
-                        <th>Cod.</th>
+                        <th width="80">Cód.</th>
                         <th>Descrição</th>
-                        <th>Quant</th>
-                        <th>Ações</th>
+                        <th width="120" class="text-right">Quantidade</th>
+                        <th width="60" class="text-center">Ações</th>
                     </tr>
                     </thead>
-                    <tbody><!-- linhas dinamicamente --></tbody>
+                    <tbody>
+                    </tbody>
                 </table>
+
+                <div id="empty-msg" class="text-center muted" style="padding: 30px;">
+                    Nenhum item adicionado ao balanço.
+                </div>
             </div>
+
+            <div class="row clearfix" style="margin-top: 30px;">
+                <div class="col-md-4 col-md-offset-4">
+                    <button type="button" id="balance-button" class="btn btn-success btn-lg btn-block waves-effect" disabled>
+                        <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                        SALVAR BALANÇO
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
-
-    <center>
-        <button type="button" id="balance-button" class="btn btn-success waves-effect">Salvar Balanço</button>
-    </center>
 </div>
 
-<div><br /><br /></div>
-
-<!-- Modal de Itens -->
-<div class="modal fade" id="itemModal" tabindex="-1" role="dialog" aria-labelledby="itemModalLabel">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 8px;">
             <div class="modal-header">
-                <h4 class="modal-title" id="itemModalLabel">Selecionar Item</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" style="color: var(--mrk-black);">
+                    <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Selecionar Item
+                </h4>
             </div>
             <div class="modal-body">
-                <div>
-                    <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição" />
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                    <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição...">
                 </div>
-                <table id="item-table" class="table table-striped table-hover">
-                    <thead>
-                    <tr>
-                        <th>Cod.</th>
-                        <th>Descrição</th>
-                        <th>Ações</th>
-                    </tr>
-                    </thead>
-                    <tbody><!-- preenchido via JS --></tbody>
-                </table>
+
+                <div style="height: 300px; overflow-y: auto;">
+                    <table class="table table-striped table-hover" id="item-table">
+                        <thead>
+                        <tr>
+                            <th width="80">Cód.</th>
+                            <th>Descrição</th>
+                            <th width="80" class="text-right">Ação</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Libs -->
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
@@ -167,276 +203,219 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
-        // captura do user pela URL: aceita ?user= e fallback para ?username=
         const userId = parseInt(urlParams.get('user') || urlParams.get('username'));
 
-        const balanceDateInput = document.getElementById('balance-date');
-
-        // Define data máxima (hoje) e valor padrão = hoje
+        // Init Data
         const today = new Date().toISOString().split('T')[0];
-        balanceDateInput.setAttribute('max', today);
-        balanceDateInput.value = today;
+        $('#balance-date').val(today).attr('max', today);
 
-        // Carregar unidades (mesma lógica da tela anterior)
+        // Load Units
+        loadUnidades();
+
+        // Eventos
+        $('#item-description').click(() => {
+            const unitId = $('#unit-id').val();
+            if(!unitId) return Swal.fire('Aviso', 'Selecione a unidade primeiro.', 'warning');
+
+            $('#itemModal').modal('show');
+            loadItems(unitId);
+        });
+
+        $('#add-item').click(addItemToGrid);
+        $('#balance-button').click(sendBalance);
+
+        // Formatter Input Qtd
+        $('#item-quantity').on('input', function() {
+            let val = $(this).val().replace(/[^0-9,]/g, '');
+            $(this).val(val);
+        });
+
+        // --- Functions ---
+
         async function loadUnidades() {
             try {
-                const response = await fetch(baseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        method: 'getFiliaisByMatriz',
-                        token: token,
-                        data: { unit_matriz_id: userId } // mantém padrão anterior
-                    })
+                const res = await axios.post(baseUrl, {
+                    method: 'getFiliaisByMatriz',
+                    token: token,
+                    data: { unit_matriz_id: userId }
                 });
 
-                if (!response.ok) throw new Error('Erro ao carregar unidades');
-
-                const filiais = await response.json();
-                const unitSelect = document.getElementById('unit-id');
-                unitSelect.innerHTML = '<option value="">Selecione</option>';
-
-                // (Opcional) adicionar manual se quiser manter o exemplo anterior
-                // const manual = new Option('RED Burguer - Produção', '10');
-                // unitSelect.appendChild(manual);
-
-                filiais.forEach(f => {
-                    const opt = new Option(f.filial_nome, f.filial_id);
-                    unitSelect.appendChild(opt);
-                });
+                if (res.data) {
+                    const select = $('#unit-id');
+                    select.empty().append('<option value="">Selecione...</option>');
+                    res.data.forEach(f => {
+                        select.append(`<option value="${f.filial_id}">${f.filial_nome}</option>`);
+                    });
+                }
             } catch (e) {
-                Swal.fire('Erro', e.message, 'error');
+                Swal.fire('Erro', 'Falha ao carregar unidades.', 'error');
             }
         }
 
-        // Carrega itens para a unidade selecionada
         async function loadItems(unitId) {
-            if (!unitId) {
-                Swal.fire('Atenção', 'Selecione a unidade antes de buscar itens.', 'warning');
-                return;
-            }
+            const tbody = $('#item-table tbody');
+            tbody.html('<tr><td colspan="3" class="text-center">Carregando...</td></tr>');
 
             try {
-                const { data } = await axios.post(baseUrl, {
+                const res = await axios.post(baseUrl, {
                     method: 'listInsumos',
                     token: token,
                     data: { unit_id: unitId }
                 });
 
-                if (!data?.success) {
-                    Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
-                    return;
-                }
+                if (res.data.success) {
+                    tbody.empty();
+                    const items = res.data.insumos || [];
 
-                const tbody = $('#item-table tbody');
-                tbody.empty();
-
-                data.insumos.forEach(item => {
-                    const tr = `
-                    <tr>
-                        <td>${item.codigo}</td>
-                        <td>${item.nome}</td>
-                        <td>
-                            <button class="btn btn-primary select-item"
-                                    data-codigo="${item.codigo}"
-                                    data-nome="${item.nome}"
-                                    data-und="${item.und}">
-                                Inserir
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                    tbody.append(tr);
-                });
-
-                $('#item-search').off('input').on('input', function () {
-                    const searchValue = $(this).val().toLowerCase();
-                    $('#item-table tbody tr').each(function () {
-                        const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
-                        const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
-                        $(this).toggle(codigo.includes(searchValue) || nome.includes(searchValue));
+                    items.forEach(item => {
+                        tbody.append(`
+                            <tr>
+                                <td><strong>${item.codigo}</strong></td>
+                                <td>${item.nome}</td>
+                                <td class="text-right">
+                                    <button class="btn btn-primary btn-xs select-item"
+                                            data-cod="${item.codigo}"
+                                            data-nome="${item.nome}"
+                                            data-und="${item.und}">
+                                        <iconify-icon icon="icon-park-outline:check"></iconify-icon>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
                     });
-                });
 
-                $('.select-item').off('click').on('click', function () {
-                    const codigo = $(this).data('codigo');
-                    const nome = $(this).data('nome');
-                    const und = $(this).data('und');
+                    // Search Filter
+                    $('#item-search').off('input').on('input', function() {
+                        const term = $(this).val().toLowerCase();
+                        $('#item-table tbody tr').each(function() {
+                            const text = $(this).text().toLowerCase();
+                            $(this).toggle(text.includes(term));
+                        });
+                    });
 
-                    $('#item-codigo').val(codigo);
-                    $('#item-description').val(nome);
-                    $('#item-unit').val(und);
-                    $('#itemModal').modal('hide');
-                    // foca na quantidade para acelerar o fluxo
-                    $('#item-quantity').focus();
-                });
-            } catch (err) {
-                console.error(err);
-                Swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
+                    // Select Item
+                    $('.select-item').off('click').click(function() {
+                        const cod = $(this).data('cod');
+                        const nome = $(this).data('nome');
+                        const und = $(this).data('und');
+
+                        $('#item-codigo').val(cod);
+                        $('#item-description').val(nome);
+                        $('#item-unit').val(und);
+                        $('#itemModal').modal('hide');
+                        setTimeout(() => $('#item-quantity').focus(), 300);
+                    });
+
+                } else {
+                    tbody.html('<tr><td colspan="3" class="text-center text-danger">Erro ao carregar itens.</td></tr>');
+                }
+            } catch (e) {
+                tbody.html('<tr><td colspan="3" class="text-center text-danger">Falha na conexão.</td></tr>');
             }
         }
 
-        // Quantidade: se unidade for KG/LT/L, permite decimais em milésimos (exibição com vírgula)
-        $('#item-quantity').on('input', function () {
-            const unidade = $('#item-unit').val();
-            if (['KG', 'LT', 'L'].includes((unidade || '').toUpperCase())) {
-                let val = $(this).val().replace(/[^\d]/g, '');
-                val = (parseInt(val || '0', 10) / 1000).toFixed(3); // exibe 3 casas
-                // exibição com vírgula (usuário BR)
-                $(this).val(val.replace('.', ','));
-            } else {
-                // Somente inteiros
-                $(this).val($(this).val().replace(/[^\d]/g, ''));
-            }
-        });
+        function addItemToGrid() {
+            const cod = $('#item-codigo').val();
+            const desc = $('#item-description').val();
+            const qtd = $('#item-quantity').val();
 
-        // Abrir modal de itens (carregar itens da unidade selecionada)
-        $('#item-description').on('click', function () {
-            const unitId = $('#unit-id').val();
-            loadItems(unitId);
-        });
+            if (!cod || !qtd) return Swal.fire('Atenção', 'Selecione o produto e informe a quantidade.', 'warning');
 
-        // Adiciona a linha ao grid
-        $('#add-item').on('click', function () {
-            const codigo = $('#item-codigo').val();
-            const descricao = $('#item-description').val();
-            const quantidade = $('#item-quantity').val();
+            $('#empty-msg').hide();
+            $('#result-table tbody').append(`
+                <tr>
+                    <td><strong>${cod}</strong></td>
+                    <td>${desc}</td>
+                    <td class="text-right">${qtd}</td>
+                    <td class="text-center">
+                        <a class="btn-action-delete remove-row" title="Remover">
+                            <iconify-icon icon="icon-park-outline:delete"></iconify-icon>
+                        </a>
+                    </td>
+                </tr>
+            `);
 
-            if (!codigo || !descricao || !quantidade) {
-                Swal.fire('Erro', 'Selecione um produto e informe a quantidade.', 'error');
-                return;
-            }
-
-            const row = `
-            <tr>
-                <td>${codigo}</td>
-                <td>${descricao}</td>
-                <td>${quantidade}</td>
-                <td><button class="btn btn-danger remove-item">X</button></td>
-            </tr>
-        `;
-            $('#result-table tbody').append(row);
-
-            // Limpa campos
+            // Reset Fields
             $('#item-codigo').val('');
             $('#item-description').val('');
-            $('#item-unit').val('');
             $('#item-quantity').val('');
+            $('#balance-button').prop('disabled', false);
 
-            // Remover item
-            $('.remove-item').off('click').on('click', function () {
+            // Bind Remove
+            $('.remove-row').off('click').click(function() {
                 $(this).closest('tr').remove();
+                if($('#result-table tbody tr').length === 0) {
+                    $('#empty-msg').show();
+                    $('#balance-button').prop('disabled', true);
+                }
             });
-        });
+        }
 
-        // Enviar balanço
         async function sendBalance() {
-            const dateBalance = $('#balance-date').val();
-            const unitId = $('#unit-id').val();
-
-            if (!dateBalance) {
-                Swal.fire('Erro', 'Selecione uma data válida para o balanço.', 'error');
-                return;
-            }
-            if (!unitId) {
-                Swal.fire('Erro', 'Selecione a unidade.', 'error');
-                return;
-            }
-            if (!userId) {
-                Swal.fire('Erro', 'Usuário não identificado na URL (?user=).', 'error');
-                return;
-            }
+            const date = $('#balance-date').val();
+            const unit = $('#unit-id').val();
 
             const itens = [];
-            $('#result-table tbody tr').each(function (index, row) {
-                const codigo = $(row).find('td:eq(0)').text().trim();
-                let quantidade = $(row).find('td:eq(2)').text().trim();
-
-                if (!codigo || !quantidade) return;
-
-                // Converte vírgula para ponto na hora de ENVIAR
-                quantidade = quantidade.replace(/\./g, '').replace(',', '.'); // se usuário digitar "1.000,123", vira "1000.123"
-                // se veio como "1,000" de entrada decimal, acima normaliza para ponto
+            $('#result-table tbody tr').each(function(idx) {
+                const cod = $(this).find('td:eq(0)').text().trim();
+                let qtd = $(this).find('td:eq(2)').text().trim();
+                qtd = qtd.replace(/\./g, '').replace(',', '.'); // Normalize
 
                 itens.push({
-                    codigo: parseInt(codigo, 10),
-                    seq: index + 1,
-                    quantidade: quantidade
+                    codigo: parseInt(cod),
+                    seq: idx + 1,
+                    quantidade: qtd
                 });
             });
 
-            if (itens.length === 0) {
-                Swal.fire('Erro', 'Adicione ao menos um item ao balanço.', 'error');
-                return;
-            }
+            if(itens.length === 0) return;
 
             const confirm = await Swal.fire({
-                title: 'Confirmar Balanço?',
-                text: 'Você está prestes a salvar o balanço de itens.',
-                icon: 'warning',
+                title: 'Salvar Balanço?',
+                text: `${itens.length} itens serão registrados.`,
+                icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Sim, Salvar',
                 cancelButtonText: 'Cancelar'
             });
 
-            if (!confirm.isConfirmed) return;
+            if (confirm.isConfirmed) {
+                Swal.fire({ title: 'Enviando...', didOpen: () => Swal.showLoading() });
 
-            Swal.fire({
-                title: 'Enviando...',
-                text: 'Por favor, aguarde.',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                const { data } = await axios.post(baseUrl, {
-                    method: 'saveBalanceItems',
-                    token: token,
-                    data: {
-                        system_unit_id: parseInt(unitId, 10),
-                        date_balance: dateBalance,
-                        itens,
-                        user: userId
-                    }
-                });
-
-                Swal.close();
-
-                if (data?.success) {
-                    const doc = data?.balanco || '-';
-                    await Swal.fire({
-                        title: 'Balanço salvo!',
-                        html: `Documento: <b>${doc}</b><br/>${data?.message || ''}`,
-                        icon: 'success',
-                        confirmButtonText: 'OK'
+                try {
+                    const res = await axios.post(baseUrl, {
+                        method: 'saveBalanceItems',
+                        token: token,
+                        data: {
+                            system_unit_id: parseInt(unit),
+                            date_balance: date,
+                            itens: itens,
+                            user: userId
+                        }
                     });
 
-                    // 👉 Abre a impressão numa nova aba (usa o template balanco.html)
-                    const printUrl = `./reports/balanco.html?token=${encodeURIComponent(token)}&unit=${encodeURIComponent(unitId)}&doc=${encodeURIComponent(doc)}`;
-                    window.open(printUrl, '_blank', 'width=1024,height=768,scrollbars=yes,resizable=yes');
+                    Swal.close();
 
-                    // limpa o grid/campos (mantém data e unidade)
-                    $('#result-table tbody').empty();
-                    $('#item-codigo').val('');
-                    $('#item-description').val('');
-                    $('#item-unit').val('');
-                    $('#item-quantity').val('');
-                } else {
-                    Swal.fire('Erro', data?.message || 'Falha ao salvar o balanço.', 'error');
+                    if (res.data.success) {
+                        const doc = res.data.balanco;
+                        await Swal.fire('Sucesso', `Balanço <b>${doc}</b> salvo!`, 'success');
+
+                        // Open Print
+                        const printUrl = `./reports/balanco.html?token=${encodeURIComponent(token)}&unit=${encodeURIComponent(unit)}&doc=${encodeURIComponent(doc)}`;
+                        window.open(printUrl, '_blank');
+
+                        // Reset Grid
+                        $('#result-table tbody').empty();
+                        $('#empty-msg').show();
+                        $('#balance-button').prop('disabled', true);
+                    } else {
+                        Swal.fire('Erro', res.data.message, 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Erro', 'Falha ao salvar.', 'error');
                 }
-
-            } catch (err) {
-                console.error(err);
-                Swal.close();
-                Swal.fire('Erro', 'Ocorreu um erro ao enviar os dados.', 'error');
             }
         }
-
-        // Botão principal
-        $('#balance-button').on('click', sendBalance);
-
-        // Inicializações
-        loadUnidades();
     });
 </script>
 </body>
