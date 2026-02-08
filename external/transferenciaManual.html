@@ -2,332 +2,401 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transferência de Itens</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-theme/0.1.0-beta.10/select2-bootstrap.min.css">
-
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        table { margin-top: 20px; }
-        .select2-container--bootstrap .select2-selection {
-            border-radius: 0;
-            border: none;
-            border-bottom: 1px solid #ddd;
-            box-shadow: none;
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
-        .card { padding: 20px; }
-        #transfer-button { margin-top: 20px; padding: 10px 30px; }
+
+        /* Filtros */
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Select2 Custom */
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #ccc; border-radius: 4px; height: 34px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 32px; font-size: 13px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 32px;
+        }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; font-size: 12px;
+            background-color: #f8f9fa; border-bottom: 2px solid #e9ecef; white-space: nowrap;
+        }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Botão Ação */
+        .btn-action-delete {
+            color: var(--mrk-red);
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+        .btn-action-delete:hover { transform: scale(1.2); }
+
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
 
 <body class="theme-blue">
 
 <div class="container-fluid">
-    <div class="block-header">
-        <br>
-    </div>
-
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="header">
-                    <h2>Transferência de Itens</h2>
-                </div>
-                <div class="body">
-                    <form id="transferForm">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <label for="transfer-date">Data</label>
-                                <input type="date" id="transfer-date" class="form-control" required>
-                            </div>
-                            <div class="col-md-5">
-                                <label for="origin-unit">Unidade de Origem</label>
-                                <select id="origin-unit" class="form-control" required>
-                                    <option value="">Selecione a Origem</option>
-                                </select>
-                            </div>
-                            <div class="col-md-5">
-                                <label for="destination-unit">Unidade de Destino</label>
-                                <select id="destination-unit" class="form-control" required>
-                                    <option value="">Selecione o Destino</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-8">
-                                <label for="item-select">Produto (Código, Nome ou EAN)</label>
-                                <select id="item-select" class="form-control select2">
-                                    <option value="">Selecione a Unidade de Origem primeiro</option>
-                                </select>
-                                <input type="hidden" id="item-codigo">
-                                <input type="hidden" id="item-unit">
-                                <input type="hidden" id="item-nome">
-                            </div>
-                            <div class="col-md-2">
-                                <label for="item-quantity">Quantidade</label>
-                                <input type="text" inputmode="numeric" id="item-quantity" class="form-control" placeholder="0,000">
-                            </div>
-                            <div class="col-md-2">
-                                <label>&nbsp;</label>
-                                <button type="button" id="add-item" class="btn btn-primary btn-block waves-effect">ADICIONAR</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="card">
-        <div class="row">
-            <div class="col-md-12">
-                <table id="result-table" class="table table-striped table-hover">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:transfer-data" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                TRANSFERÊNCIA DE ITENS
+            </h2>
+        </div>
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-3">
+                        <label class="muted">Data da Transferência</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="transfer-date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="muted">Unidade de Origem</label>
+                        <select id="origin-unit" class="form-control">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="muted">Unidade de Destino</label>
+                        <select id="destination-unit" class="form-control">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row clearfix" style="margin-bottom: 20px; align-items: flex-end;">
+                <div class="col-md-6">
+                    <label class="muted">Produto (Buscar por Código, Nome ou EAN)</label>
+                    <select id="item-select" class="form-control" style="width: 100%;">
+                        <option value="">Selecione a origem primeiro</option>
+                    </select>
+                    <input type="hidden" id="item-codigo">
+                    <input type="hidden" id="item-unit">
+                    <input type="hidden" id="item-nome">
+                </div>
+                <div class="col-md-3">
+                    <label class="muted">Quantidade</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calculator"></iconify-icon></span>
+                        <input type="text" inputmode="numeric" id="item-quantity" class="form-control" placeholder="0,000">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" id="add-item" class="btn btn-primary btn-block waves-effect" style="margin-bottom: 20px;">
+                        <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                        ADICIONAR ITEM
+                    </button>
+                </div>
+            </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="result-table">
                     <thead>
                     <tr>
-                        <th width="15%">Cod.</th>
-                        <th>Descrição</th>
-                        <th width="15%">Quant</th>
-                        <th width="10%">Ações</th>
+                        <th width="100">Código</th>
+                        <th>Descrição do Produto</th>
+                        <th width="150" class="text-right">Quantidade</th>
+                        <th width="80" class="text-center">Ações</th>
                     </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                    <tr><td colspan="4" class="text-center muted" style="padding: 30px;">Nenhum item adicionado.</td></tr>
+                    </tbody>
                 </table>
             </div>
+
+            <div class="row clearfix" style="margin-top: 30px;">
+                <div class="col-md-4 col-md-offset-4">
+                    <button type="button" id="transfer-button" class="btn btn-success btn-lg btn-block waves-effect" disabled>
+                        <iconify-icon icon="icon-park-outline:check-one" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                        REALIZAR TRANSFERÊNCIA
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
-
-    <center>
-        <button type="button" id="transfer-button" class="btn btn-success btn-lg waves-effect">REALIZAR TRANSFERÊNCIA</button>
-    </center>
 </div>
 
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const baseUrl = window.location.hostname !== 'localhost' ?
-            'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-            'http://localhost/portal-mrk/api/v1/index.php';
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const username = urlParams.get('username');
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const username = urlParams.get('username');
 
-        // Inicializar Select2
+    // Helper: Skeleton
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
+    $(document).ready(() => {
+        // Init Select2
         $('#item-select').select2({
-            theme: "bootstrap",
             placeholder: "Busque por código, nome ou EAN",
             allowClear: true,
             width: '100%'
         });
 
-        // Configurar data de hoje
+        // Data Default
         const today = new Date().toISOString().split('T')[0];
         $('#transfer-date').val(today).attr('max', today);
 
-        // Carregar Unidades
-        async function loadUnidades() {
-            try {
-                const response = await fetch(baseUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        method: 'getFiliaisByMatriz',
-                        token: token,
-                        data: { unit_matriz_id: username }
-                    })
-                });
-                const filiais = await response.json();
-                const originSelect = $('#origin-unit');
-                const destinationSelect = $('#destination-unit');
+        loadUnidades();
 
-                originSelect.append(new Option('RED Burguer - Produção', '10'));
+        // Eventos
+        $('#origin-unit').change(loadProducts);
 
-                filiais.forEach(filial => {
-                    originSelect.append(new Option(filial.filial_nome, filial.filial_id));
-                    destinationSelect.append(new Option(filial.filial_nome, filial.filial_id));
-                });
-            } catch (error) {
-                Swal.fire('Erro', 'Erro ao carregar unidades', 'error');
-            }
-        }
-
-        // Carregar Itens no Select2 quando mudar origem
-        $('#origin-unit').on('change', async function() {
-            const unitId = $(this).val();
-            if (!unitId) return;
-
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'listInsumos',
-                    token: token,
-                    data: { unit_id: unitId }
-                });
-
-                if (response.data.success) {
-                    const select = $('#item-select');
-                    select.empty().append('<option value="">Selecione um produto</option>');
-
-                    response.data.insumos.forEach(item => {
-                        // Criamos o texto que permite busca por código, nome ou ean
-                        const text = `${item.codigo} - ${item.nome} ${item.ean ? '['+item.ean+']' : ''}`;
-                        const newOption = new Option(text, item.codigo, false, false);
-
-                        // Guardamos os dados úteis no elemento
-                        $(newOption).data('und', item.und);
-                        $(newOption).data('nome', item.nome);
-
-                        select.append(newOption);
-                    });
-                    select.trigger('change');
-                }
-            } catch (error) {
-                Swal.fire('Erro', 'Não foi possível carregar os itens desta unidade.', 'error');
-            }
-        });
-
-        // Ao selecionar item no Select2, atualizar campos ocultos
         $('#item-select').on('select2:select', function (e) {
             const data = $(e.params.data.element);
             $('#item-codigo').val(e.params.data.id);
             $('#item-unit').val(data.data('und'));
             $('#item-nome').val(data.data('nome'));
+            $('#item-quantity').focus();
         });
 
-        // Máscara básica para quantidade (KG/LT)
-        $('#item-quantity').on('input', function () {
-            const unidade = $('#item-unit').val();
-            if (['KG', 'LT', 'L'].includes(unidade)) {
-                let valor = $(this).val().replace(/[^\d]/g, '');
-                valor = (valor / 1000).toFixed(3);
-                $(this).val(valor.replace('.', ','));
-            } else {
-                $(this).val($(this).val().replace(/[^\d]/g, ''));
-            }
+        // Mask Input
+        $('#item-quantity').on('input', function() {
+            let val = $(this).val();
+            // Permite virgula para decimais
+            val = val.replace(/[^0-9,]/g, '');
+            $(this).val(val);
         });
 
-        // Adicionar Item à Tabela
-        $('#add-item').click(function () {
-            const codigo = $('#item-codigo').val();
-            const nome = $('#item-nome').val();
-            const quantidade = $('#item-quantity').val();
+        $('#add-item').click(addItemToGrid);
+        $('#transfer-button').click(sendTransfer);
+    });
 
-            if (!codigo || !quantidade || quantidade === "0,000") {
-                Swal.fire('Atenção', 'Selecione o produto e informe a quantidade.', 'warning');
-                return;
+    async function loadUnidades() {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getFiliaisByMatriz',
+                token: token,
+                data: { unit_matriz_id: username }
+            });
+
+            if(res.data) {
+                const origin = $('#origin-unit');
+                const dest = $('#destination-unit');
+
+                // Opção Manual Fixa (Exemplo)
+                origin.append(new Option('RED Burguer - Produção', '10'));
+
+                res.data.forEach(f => {
+                    origin.append(new Option(f.filial_nome, f.filial_id));
+                    dest.append(new Option(f.filial_nome, f.filial_id));
+                });
             }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha ao carregar unidades.', 'error');
+        }
+    }
 
-            const row = `
+    async function loadProducts() {
+        const unitId = $(this).val();
+        const select = $('#item-select');
+
+        if (!unitId) {
+            select.empty().append('<option value="">Selecione a origem</option>');
+            return;
+        }
+
+        try {
+            // Loading state no select2
+            select.prop('disabled', true);
+
+            const res = await axios.post(baseUrl, {
+                method: 'listInsumos',
+                token: token,
+                data: { unit_id: unitId }
+            });
+
+            select.empty().append('<option value="">Selecione um produto</option>');
+
+            if (res.data.success) {
+                res.data.insumos.forEach(item => {
+                    const text = `${item.codigo} - ${item.nome} ${item.ean ? '['+item.ean+']' : ''}`;
+                    const opt = new Option(text, item.codigo, false, false);
+                    $(opt).data('und', item.und).data('nome', item.nome);
+                    select.append(opt);
+                });
+            }
+        } catch (e) {
+            Swal.fire('Erro', 'Erro ao carregar produtos.', 'error');
+        } finally {
+            select.prop('disabled', false);
+        }
+    }
+
+    function addItemToGrid() {
+        const cod = $('#item-codigo').val();
+        const nome = $('#item-nome').val();
+        const qtd = $('#item-quantity').val();
+
+        if (!cod || !qtd || qtd === "0,000") {
+            Swal.fire('Atenção', 'Selecione o produto e informe a quantidade.', 'warning');
+            return;
+        }
+
+        // Remove placeholder se for o primeiro
+        if ($('#result-table tbody tr td.muted').length > 0) {
+            $('#result-table tbody').empty();
+        }
+
+        const row = `
             <tr>
-                <td>${codigo}</td>
+                <td><strong>${cod}</strong></td>
                 <td>${nome}</td>
-                <td>${quantidade}</td>
-                <td><button type="button" class="btn btn-danger btn-xs remove-item">Remover</button></td>
+                <td class="text-right">${qtd}</td>
+                <td class="text-center">
+                    <a class="btn-action-delete remove-item" title="Remover">
+                        <iconify-icon icon="icon-park-outline:delete"></iconify-icon>
+                    </a>
+                </td>
             </tr>
         `;
 
-            $('#result-table tbody').append(row);
+        $('#result-table tbody').append(row);
 
-            // Limpar campos e resetar Select2
-            $('#item-select').val(null).trigger('change');
-            $('#item-codigo').val('');
-            $('#item-nome').val('');
-            $('#item-unit').val('');
-            $('#item-quantity').val('');
+        // Reset Inputs
+        $('#item-select').val(null).trigger('change');
+        $('#item-codigo').val('');
+        $('#item-nome').val('');
+        $('#item-unit').val('');
+        $('#item-quantity').val('');
 
-            // Focar no Select2 novamente para facilitar a próxima busca
-            $('#item-select').select2('open');
-        });
+        $('#transfer-button').prop('disabled', false);
 
-        // Remover item da tabela
-        $(document).on('click', '.remove-item', function () {
+        // Bind Remove
+        $('.remove-item').off('click').click(function() {
             $(this).closest('tr').remove();
+            if ($('#result-table tbody tr').length === 0) {
+                $('#result-table tbody').html('<tr><td colspan="4" class="text-center muted" style="padding: 30px;">Nenhum item adicionado.</td></tr>');
+                $('#transfer-button').prop('disabled', true);
+            }
+        });
+    }
+
+    async function sendTransfer() {
+        const date = $('#transfer-date').val();
+        const origin = $('#origin-unit').val();
+        const dest = $('#destination-unit').val();
+        const items = [];
+
+        $('#result-table tbody tr').each(function(idx, row) {
+            const cod = $(row).find('td:eq(0)').text().trim();
+            const qtd = $(row).find('td:eq(2)').text().trim();
+            if(cod) items.push({ codigo: cod, seq: idx+1, quantidade: qtd });
         });
 
-        // Finalizar Transferência
-        $('#transfer-button').click(async function () {
-            const transferDate = $('#transfer-date').val();
-            const originUnit = $('#origin-unit').val();
-            const destinationUnit = $('#destination-unit').val();
-            const items = [];
+        if (!origin || !dest || items.length === 0) {
+            return Swal.fire('Atenção', 'Preencha as unidades e adicione itens.', 'warning');
+        }
+        if (origin === dest) {
+            return Swal.fire('Atenção', 'Origem e destino não podem ser iguais.', 'warning');
+        }
 
-            $('#result-table tbody tr').each(function(index, row) {
-                items.push({
-                    codigo: $(row).find('td:eq(0)').text(),
-                    seq: index + 1,
-                    quantidade: $(row).find('td:eq(2)').text()
-                });
-            });
+        const confirm = await Swal.fire({
+            title: 'Confirmar Transferência?',
+            text: `${items.length} itens serão transferidos.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, Transferir',
+            cancelButtonText: 'Cancelar'
+        });
 
-            if (!originUnit || !destinationUnit || items.length === 0) {
-                Swal.fire('Erro', 'Preencha as unidades e adicione ao menos um item.', 'error');
-                return;
-            }
+        if (confirm.isConfirmed) {
+            Swal.fire({ title: 'Enviando...', didOpen: () => Swal.showLoading() });
 
-            if (originUnit === destinationUnit) {
-                Swal.fire('Erro', 'Origem e destino não podem ser iguais.', 'error');
-                return;
-            }
-
-            const confirm = await Swal.fire({
-                title: 'Confirmar Transferência?',
-                text: `Total de ${items.length} itens serão transferidos.`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Confirmar',
-                cancelButtonText: 'Cancelar'
-            });
-
-            if (confirm.isConfirmed) {
-                Swal.showLoading();
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'createTransferItems',
-                        token: token,
-                        data: {
-                            system_unit_id: originUnit,
-                            system_unit_id_destino: destinationUnit,
-                            transfer_date: transferDate,
-                            itens: items,
-                            usuario_id: username
-                        }
-                    });
-
-                    if (response.data.success) {
-                        Swal.fire('Sucesso!', 'Transferência concluída.', 'success').then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire('Erro', response.data.message, 'error');
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'createTransferItems',
+                    token: token,
+                    data: {
+                        system_unit_id: origin,
+                        system_unit_id_destino: dest,
+                        transfer_date: date,
+                        itens: items,
+                        usuario_id: username
                     }
-                } catch (error) {
-                    Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+                });
+
+                Swal.close();
+
+                if (res.data.success) {
+                    await Swal.fire('Sucesso!', 'Transferência realizada com sucesso.', 'success');
+                    location.reload();
+                } else {
+                    Swal.fire('Erro', res.data.message || 'Falha ao transferir.', 'error');
                 }
+            } catch (e) {
+                Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
             }
-        });
-
-        loadUnidades();
-    });
+        }
+    }
 </script>
-
 </body>
 </html>
