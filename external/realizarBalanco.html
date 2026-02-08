@@ -1,456 +1,399 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <title>Realizar Balanço</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
-    <!-- Bootstrap Core Css -->
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
-    <!-- Waves Effect Css -->
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
-    <!-- Animation Css -->
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-
-    <!-- JQuery DataTable Css -->
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-
-    <!-- SweetAlert Css -->
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
-
-    <!-- Custom Css -->
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Principal */
         .card {
-            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
         }
 
-        .header {
-            margin-bottom: 15px;
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela */
+        .table thead th {
+            font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; font-size: 12px;
+            background-color: #f8f9fa; border-bottom: 2px solid #e9ecef; white-space: nowrap;
         }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
 
-        .page-loader-wrapper {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.9);
-            z-index: 9999;
-            display: none;
-        }
+        /* Acordeão de Categorias */
+        .category-header { cursor: pointer; transition: background 0.2s; }
+        .category-header:hover { background-color: #e3f2fd !important; }
+        .category-header td { background-color: #f1f1f1; font-weight: 600; color: var(--mrk-blue); border-top: 2px solid #fff; }
+        .toggle-icon { margin-right: 10px; font-weight: bold; }
 
-        .page-loader-wrapper .loader {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
+        /* Inputs na Tabela */
+        .form-control-sm { height: 30px; padding: 2px 8px; font-size: 13px; }
 
-        @media (max-width: 768px) {
-            .header h2 {
-                font-size: 18px;
-                text-align: center;
-            }
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 20px; }
+        .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
-            .card {
-                margin: 0 5px;
-            }
-
-            .container-fluid {
-                padding: 0;
-            }
-
-            .table-responsive {
-                overflow-x: auto;
-            }
-
-            .form-control {
-                font-size: 14px;
-            }
-
-            table {
-                font-size: 14px;
-            }
-
-            .card {
-                margin-top: 20px;
-            }
-
-            .header {
-                margin-bottom: 15px;
-            }
-        }
-
-        .footer {
-            text-align: center;
-            margin-bottom: 25px;
-        }
+        /* Modal */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-black); font-weight: 600; }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; padding: 15px; }
     </style>
 </head>
 
-<body class="theme-red">
+<body class="theme-blue">
 
-    <!-- Modal de Login -->
-    <div id="loginModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Login Necessário</h5>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="loginUsername">Usuário</label>
-                        <input type="text" id="loginUsername" class="form-control" placeholder="Digite seu usuário">
-                    </div>
-                    <div class="form-group">
-                        <label for="loginPassword">Senha</label>
-                        <input type="password" id="loginPassword" class="form-control" placeholder="Digite sua senha">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" id="loginButton" class="btn btn-primary">Entrar</button>
-                </div>
-            </div>
+<div class="container-fluid">
+
+    <div class="card">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:check-one" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                REALIZAR BALANÇO <span id="pageTitle" class="muted text-small" style="font-weight:400; margin-left:10px;"></span>
+            </h2>
         </div>
-    </div>
 
-    <!-- Page Loader -->
-    <div class="page-loader-wrapper" id="pageLoader">
-        <div class="loader">
-            <div class="preloader">
-                <div class="spinner-layer pl-blue">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-            </div>
-            <p>Carregando...</p>
-        </div>
-    </div>
+        <div class="body">
 
-    <div class="container-fluid">
-        <div class="row clearfix">
-            <div class="col-lg-12 col-md-12 col-sm-12">
-                <div class="card">
-                    <div class="header">
-                       
-                        <h2 id="pageTitle">Realizar Balanço</h2>
-                        <br>
-                        <div>
-                            <label for="dateBalance">Contagem do Movimento:</label>
-                            <select id="dateBalance" class="form-control" style="width: 200px; margin-right: 10px;">
-                                <!-- As opções serão preenchidas dinamicamente -->
-                            </select>
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-4">
+                        <label class="muted">Data de Referência (Movimento)</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <select id="dateBalance" class="form-control"></select>
                         </div>
                     </div>
-                    <div class="body table-responsive">
-                        <table id="itensTable" class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Nome do Produto</th>
-                                    <th>Unidade</th>
-                                    <th>Quantidade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Conteúdo Dinâmico -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="footer">
-                        <button id="btnEnviar" class="btn btn-primary waves-effect btnEnviar">Enviar</button>
-                        <br>
-                        <br>
-                        <br>
+                    <div class="col-md-8 text-right" style="margin-top: 25px;">
+                        <button id="btnEnviar" class="btn btn-primary waves-effect btn-lg">
+                            <iconify-icon icon="icon-park-outline:send" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            ENVIAR CONTAGEM
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="itensTable">
+                    <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th width="100" class="text-center">Unid.</th>
+                        <th width="150" class="text-right">Quantidade</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr><td colspan="3" class="text-center muted" style="padding: 30px;">Aguardando login...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
         </div>
     </div>
+</div>
 
-    <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <!-- Bootstrap Core Js -->
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <!-- Axios CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <!-- JQuery Mask Plugin -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
-    <!-- Waves Effect Plugin Js -->
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <!-- SweetAlert Plugin Js -->
-    <script src="bsb/plugins/sweetalert/sweetalert.min.js"></script>
+<div class="modal fade" id="loginModal" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius: 8px; border:none;">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:lock" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Acesso Restrito
+                </h4>
+            </div>
+            <div class="modal-body" style="padding: 30px;">
+                <div class="form-group">
+                    <label class="muted">Usuário</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:user"></iconify-icon></span>
+                        <input type="text" id="loginUsername" class="form-control" placeholder="Seu usuário">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="muted">Senha</label>
+                    <div class="input-group">
+                        <span class="input-group-addon"><iconify-icon icon="icon-park-outline:key"></iconify-icon></span>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Sua senha">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="loginButton" class="btn btn-primary btn-block waves-effect">ENTRAR</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- Custom Js -->
-    <script>
-        $(document).ready(function () {
-            const baseUrl = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-                'http://localhost/portal-mrk/api/v1/index.php';
-    
-            let isAuthenticated = false;
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
-            let loggedUser = '';
-            let loggedUserId = '';
-    
-            function showLoader() {
-                $('#pageLoader').fadeIn();
+<script>
+    // Configurações
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    let isAuthenticated = false;
+    let loggedUserId = '';
+    let system_unit_id = '';
+
+    // Mock Users
+    const users = {
+        "alan.lima": { user_id: 12, password: "1" },
+        "aline": { user_id: 13, password: "2" },
+        "ana.cristina": { user_id: 14, password: "3" },
+        "beatriz.borges": { user_id: 15, password: "4" },
+        "claudiane.de.jesus": { user_id: 16, password: "5" },
+        "davi.guedes": { user_id: 17, password: "6" },
+        "diana.souza.silva": { user_id: 18, password: "7" },
+        "herbert": { user_id: 19, password: "8" },
+        "ilmara": { user_id: 20, password: "9" },
+        "jessica.sena": { user_id: 21, password: "10" },
+        "johnantan.sales": { user_id: 22, password: "11" },
+        "liliana.lima": { user_id: 23, password: "12" },
+        "manuelle.santos": { user_id: 24, password: "13" },
+        "matheus.hellwig": { user_id: 25, password: "14" },
+        "robert": { user_id: 11, password: "15" },
+        "rodrigo.marcio": { user_id: 27, password: "16" },
+        "suzana": { user_id: 28, password: "17" },
+        "tatiane.de.jesus": { user_id: 29, password: "18" },
+        "luciene.portela": { user_id: 6, password: "19" },
+        "paula.portela": { user_id: 3, password: "20" },
+        "sulivan.gomes": { user_id: 32, password: "21" },
+        "edno.alves": { user_id: 9, password: "22" },
+        "guilherme": { user_id: 34, password: "23" },
+        "lider": { user_id: 37, password: "lider" },
+        "1": { user_id: 35, password: "1" }
+    };
+
+    // Helper: Skeleton
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
+    $(document).ready(() => {
+        populateDateSelect();
+        extractSystemUnitId();
+
+        // Show Login
+        $('#loginModal').modal('show');
+
+        // Login Logic
+        $('#loginButton').click(() => {
+            const username = $('#loginUsername').val().toLowerCase();
+            const password = $('#loginPassword').val();
+
+            if (users[username] && users[username].password === password) {
+                isAuthenticated = true;
+                loggedUserId = users[username].user_id;
+                $('#loginModal').modal('hide');
+                loadItemsByTag();
+            } else {
+                Swal.fire('Erro', 'Usuário ou senha inválidos', 'error');
             }
-    
-            function hideLoader() {
-                $('#pageLoader').fadeOut();
-            }
+        });
 
-             // Função para preencher o campo de data
-            function populateDateSelect() {
-                const today = new Date();
-                const yesterday = new Date();
-                yesterday.setDate(today.getDate() - 1);
+        // Enviar
+        $('#btnEnviar').click(sendBalance);
+    });
 
-                const todayFormatted = today.toLocaleDateString('pt-BR');
-                const yesterdayFormatted = yesterday.toLocaleDateString('pt-BR');
+    function populateDateSelect() {
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
 
-                $('#dateBalance').append(new Option(`${todayFormatted}`, today.toISOString().split('T')[0]));
-                $('#dateBalance').append(new Option(`${yesterdayFormatted}`, yesterday.toISOString().split('T')[0]));
-            }
+        const fmt = d => d.toLocaleDateString('pt-BR');
+        const iso = d => d.toISOString().split('T')[0];
 
-    
-            function checkAuthentication() {
-                if (!isAuthenticated) {
-                    $('#loginModal').modal('show');
-                }
-            }
+        $('#dateBalance').append(new Option(`Hoje (${fmt(today)})`, iso(today)));
+        $('#dateBalance').append(new Option(`Ontem (${fmt(yesterday)})`, iso(yesterday)));
+    }
 
-            const users = {
-                "alan.lima": { user_id: 12, password: "1" },
-                "aline": { user_id: 13, password: "2" },
-                "ana.cristina": { user_id: 14, password: "3" },
-                "beatriz.borges": { user_id: 15, password: "4" },
-                "claudiane.de.jesus": { user_id: 16, password: "5" },
-                "davi.guedes": { user_id: 17, password: "6" },
-                "diana.souza.silva": { user_id: 18, password: "7" },
-                "herbert": { user_id: 19, password: "8" },
-                "ilmara": { user_id: 20, password: "9" },
-                "jessica.sena": { user_id: 21, password: "10" },
-                "johnantan.sales": { user_id: 22, password: "11" },
-                "liliana.lima": { user_id: 23, password: "12" },
-                "manuelle.santos": { user_id: 24, password: "13" },
-                "matheus.hellwig": { user_id: 25, password: "14" },
-                "robert": { user_id: 11, password: "15" },
-                "rodrigo.marcio": { user_id: 27, password: "16" },
-                "suzana": { user_id: 28, password: "17" },
-                "tatiane.de.jesus": { user_id: 29, password: "18" },
-                "luciene.portela": { user_id: 6, password: "19" },
-                "paula.portela": { user_id: 3, password: "20" },
-                "sulivan.gomes": { user_id: 32, password: "21" },
-                "edno.alves": { user_id: 9, password: "22" },
-                "guilherme": { user_id: 34, password: "23" },
-                "lider": { user_id: 37, password: "lider" },
-                "1": { user_id: 35, password: "1" }
-            };
+    function extractSystemUnitId() {
+        const params = new URLSearchParams(window.location.search);
+        const tag = params.get('tag');
+        if (tag) {
+            const [id] = tag.split('-');
+            system_unit_id = parseInt(id, 10);
+        }
+    }
 
+    async function loadItemsByTag() {
+        const params = new URLSearchParams(window.location.search);
+        const tag = params.get('tag');
 
-            // Evento do botão de login
-            $('#loginButton').click(function () {
-                const username = $('#loginUsername').val().toLowerCase(); // Converter para minúsculas
-                const password = $('#loginPassword').val();
+        if (!tag) {
+            Swal.fire('Erro', 'Tag não identificada na URL.', 'error');
+            return;
+        }
 
-                // Verificar autenticação
-                if (users[username] && users[username].password === password) {
-                    isAuthenticated = true;
-                    loggedUser = username;
-                    loggedUserId = users[username].user_id; // Obtém o user_id
-                    $('#loginModal').modal('hide');
-                    loadItemsByTag();
-                } else {
-                    swal("Erro", "Usuário ou senha inválidos", "error");
-                }
+        toggleLoading(true);
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getModelByTag',
+                data: { tag }
             });
 
-
-
-            function extractSystemUnitId() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const tag = urlParams.get('tag');
-                if (tag) {
-                    const [id] = tag.split('-');
-                    system_unit_id = parseInt(id, 10); // Armazena o system_unit_id extraído
-                }
-                console.log('system_unit_id:', system_unit_id);
+            if (res.data && res.data.success) {
+                const { modelo, itens } = res.data;
+                $('#pageTitle').text(`- ${modelo.system_unit_name}`);
+                renderItens(itens);
+            } else {
+                toggleLoading(false);
+                Swal.fire('Erro', 'Falha ao carregar itens: ' + res.data.message, 'error');
             }
-    
-            // Carregar os itens do modelo de balanço pela tag
-            async function loadItemsByTag() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const tag = urlParams.get('tag');
-    
-                if (!tag) {
-                    swal("Erro", "Tag não encontrada.", "error");
-                    return;
-                }
-    
-                showLoader();
-    
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'getModelByTag',
-                        data: { tag }
-                    });
-    
-                    if (response.data && response.data.success) {
-                        const { modelo, itens } = response.data;
-                        $('#pageTitle').text(`Realizar Balanço - ${modelo.system_unit_name}`);
-                        renderItensByCategory(itens);
-                    } else {
-                        swal("Erro", "Falha ao carregar itens: " + response.data.message, "error");
-                    }
-                } catch (error) {
-                    console.error('Erro ao carregar itens:', error);
-                    swal("Erro", "Erro ao carregar itens. Tente novamente.", "error");
-                } finally {
-                    hideLoader();
-                }
-            }
+        } catch (error) {
+            console.error(error);
+            toggleLoading(false);
+            Swal.fire('Erro', 'Erro ao carregar itens.', 'error');
+        } finally {
+            toggleLoading(false);
+        }
+    }
 
-            function renderItensByCategory(itens) {
-                const tbody = $('#itensTable tbody');
-                tbody.empty();
+    function renderItens(itens) {
+        const tbody = $('#itensTable tbody');
+        tbody.empty();
 
-                const categoriasOrdenadas = Object.keys(itens).sort((a, b) =>
-                    a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
-                );
+        const categorias = Object.keys(itens).sort();
 
-                categoriasOrdenadas.forEach((categoria, categoriaIndex) => {
-                    const categoriaId = `categoria-${categoriaIndex}`;
+        categorias.forEach((cat, idx) => {
+            const catId = `cat-${idx}`;
 
-                    // Linha da categoria com botão de recolher
-                    tbody.append(`
-            <tr class="category-header" data-categoria="${categoriaId}" style="cursor: pointer;">
-                <td colspan="3" style="font-weight: bold; background-color: #f5f5f5;">
-                    <span class="toggle-icon" style="margin-right: 10px;">➖</span>${categoria}
-                </td>
-            </tr>
-        `);
-
-                    const itensOrdenados = itens[categoria].sort((a, b) =>
-                        a.nome_produto.localeCompare(b.nome_produto, 'pt-BR', { sensitivity: 'base' })
-                    );
-
-                    itensOrdenados.forEach((item, index) => {
-                        tbody.append(`
-                <tr class="item-row" data-parent="${categoriaId}">
-                    <td>${item.nome_produto}</td>
-                    <td>${item.und_produto}</td>
-                    <td><input type="text" inputmode="numeric" class="form-control quantidade" data-id="${item.codigo_produto}" data-seq="${index + 1}" /></td>
+            // Header da Categoria
+            tbody.append(`
+                <tr class="category-header" data-target="#${catId}">
+                    <td colspan="3">
+                        <span class="toggle-icon"><iconify-icon icon="icon-park-outline:minus"></iconify-icon></span>
+                        ${cat}
+                    </td>
                 </tr>
             `);
-                    });
-                });
 
-                // Lógica de recolher/expandir
-                $('.category-header').on('click', function () {
-                    const categoriaId = $(this).data('categoria');
-                    const icon = $(this).find('.toggle-icon');
-                    const isOpen = icon.text() === '➖';
+            // Itens
+            itens[cat].sort((a,b) => a.nome_produto.localeCompare(b.nome_produto)).forEach((item, i) => {
+                tbody.append(`
+                    <tr class="item-row ${catId}">
+                        <td>${item.nome_produto}</td>
+                        <td class="text-center"><span class="badge" style="background:#eee; color:#555;">${item.und_produto}</span></td>
+                        <td>
+                            <input type="text" inputmode="decimal" class="form-control form-control-sm quantidade text-right"
+                                   data-id="${item.codigo_produto}" data-seq="${i + 1}" placeholder="0,000" />
+                        </td>
+                    </tr>
+                `);
+            });
+        });
 
-                    if (isOpen) {
-                        icon.text('➕');
-                        $(`tr[data-parent="${categoriaId}"]`).hide();
-                    } else {
-                        icon.text('➖');
-                        $(`tr[data-parent="${categoriaId}"]`).show();
-                    }
-                });
+        // Bind Toggle
+        $('.category-header').click(function() {
+            const target = $(this).data('target');
+            const icon = $(this).find('iconify-icon');
+            const isVisible = $(`.${target.replace('#', '')}`).is(':visible');
 
-                // Lógica para formatação dos inputs
-                $('.quantidade').each(function () {
-                    const unidade = $(this).closest('tr').find('td:nth-child(2)').text();
-                    if (['KG', 'LT', 'L'].includes(unidade)) {
-                        $(this).on('input', function () {
-                            let valor = $(this).val().replace(/\D/g, '');
-                            valor = (valor / 1000).toFixed(3);
-                            $(this).val(valor.replace('.', ','));
-                        });
-                    } else {
-                        $(this).on('input', function () {
-                            $(this).val($(this).val().replace(/\D/g, ''));
-                        });
-                    }
+            $(`.${target.replace('#', '')}`).toggle();
+
+            if (isVisible) icon.attr('icon', 'icon-park-outline:plus');
+            else icon.attr('icon', 'icon-park-outline:minus');
+        });
+
+        // Mask & Input Logic
+        $('.quantidade').on('input', function() {
+            let val = $(this).val();
+            // Permite apenas numeros e virgula
+            val = val.replace(/[^0-9,]/g, '');
+            $(this).val(val);
+        });
+    }
+
+    async function sendBalance() {
+        const date_balance = $('#dateBalance').val();
+
+        // Coleta itens com valor > 0 ou preenchidos
+        const itens = [];
+        $('.quantidade').each(function() {
+            let qtd = $(this).val();
+            if (qtd === '') qtd = '0'; // Envia 0 se vazio (zerar estoque?) ou ignora? O original enviava 0.
+
+            // Converte 1.000,00 -> 1000.00
+            qtd = qtd.replace(/\./g, '').replace(',', '.');
+
+            if(qtd) {
+                itens.push({
+                    codigo: $(this).data('id'),
+                    seq: $(this).data('seq'),
+                    quantidade: qtd
                 });
             }
+        });
 
+        if (itens.length === 0) return Swal.fire('Aviso', 'Nenhum item para enviar.', 'warning');
 
+        Swal.fire({ title: 'Enviando...', didOpen: () => Swal.showLoading() });
 
-
-            $('#btnEnviar').click(async function () {
-                // Atribui "0" a todos os campos vazios
-                $('.quantidade').each(function () {
-                    if ($(this).val() === '') {
-                        $(this).val('0');
-                    }
-                });
-    
-                showLoader();
-    
-                const itens = [];
-                $('.quantidade').each(function () {
-                    const codigo_produto = $(this).data('id');
-                    const quantidade = $(this).val();
-                    const seq = $(this).data('seq');
-                    if (quantidade) {
-                        itens.push({ codigo: codigo_produto, seq, quantidade: quantidade.replace(',', '.') });
-                    }
-                });
-
-                 const date_balance = $('#dateBalance').val();
-    
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'saveBalanceItems',
-                        data: {
-                            system_unit_id: parseInt(system_unit_id, 10),
-                            date_balance: date_balance,
-                            itens: itens,
-                            user: loggedUserId
-                        }
-                    });
-    
-                    if (response.data && response.data.success) {
-                        swal("Sucesso", `Itens enviados com sucesso! Foi gerado o balanço ${response.data.balanco}`, "success");
-                        $('.quantidade').each(function () {
-                            $(this).val('');
-                        });
-                    } else {
-                        swal("Erro", "Erro ao enviar itens: " + response.data.message, "error");
-                    }
-                } catch (error) {
-                    console.error('Erro ao enviar itens:', error);
-                    swal("Erro", "Erro ao enviar itens. Tente novamente.", "error");
-                } finally {
-                    hideLoader();
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'saveBalanceItems',
+                data: {
+                    system_unit_id: parseInt(system_unit_id, 10),
+                    date_balance: date_balance,
+                    itens: itens,
+                    user: loggedUserId
                 }
             });
-    
-            extractSystemUnitId();
-            checkAuthentication();
-            populateDateSelect();
-        });
-    </script>
-    
-</body>
 
+            Swal.close();
+
+            if (res.data && res.data.success) {
+                await Swal.fire('Sucesso', `Balanço <b>${res.data.balanco}</b> gerado com sucesso!`, 'success');
+                // Limpa campos
+                $('.quantidade').val('');
+            } else {
+                Swal.fire('Erro', res.data.message || 'Falha ao salvar.', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Erro', 'Falha na conexão.', 'error');
+        }
+    }
+
+</script>
+</body>
 </html>
