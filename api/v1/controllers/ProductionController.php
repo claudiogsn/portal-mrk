@@ -166,7 +166,7 @@ class ProductionController {
                 ) AS tem_ficha
             FROM products p
             WHERE p.system_unit_id = :unit_id
-              AND p.codigo >= 10000
+              AND p.insumo = 1
         ");
             $stmt->execute([':unit_id' => $system_unit_id]);
 
