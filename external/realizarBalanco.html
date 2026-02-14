@@ -364,32 +364,51 @@
         applyInputMasks();
     }
 
-    function applyInputMasks() {
+        function applyInputMasks() {
         $('.quantidade').each(function() {
-            const unidade = $(this).closest('tr').find('.unit-badge').text().trim().toUpperCase();
+            const row = $(this).closest('tr');
+            const unidade = row.find('.unit-badge').text().trim().toUpperCase();
 
-            // Unidades fracionadas
+            // Unidades fracionadas (KG, LT, etc) - 3 casas decimais
+            // Limite: 5 dígitos inteiros + 3 decimais = 8 dígitos numéricos totais
             if (['KG', 'LT', 'L', 'M', 'M2', 'M3'].includes(unidade)) {
-                // Evento input manual para garantir 3 casas decimais estilo "ATM" ou livre com virgula
                 $(this).on('input', function() {
-                    let v = $(this).val().replace(/\D/g, ''); // Remove tudo que não é dígito
-                    if (v === '') { $(this).val(''); return; }
+                    let v = $(this).val().replace(/\D/g, ''); // Apenas números
 
-                    // Converte para decimal (divide por 1000) e troca ponto por vírgula
-                    // Ex: digita 1 -> 0,001 | digita 1200 -> 1,200
-                    v = (parseInt(v) / 1000).toFixed(3).replace('.', ',');
-                    $(this).val(v);
+                    if (v === '') {
+                        $(this).val('');
+                        return;
+                    }
+
+                    // Limita a 8 dígitos no total (corresponde a 99999,999)
+                    if (v.length > 8) {
+                        v = v.substring(0, 8);
+                    }
+
+                    // Converte para decimal (divide por 1000)
+                    let valorDecimal = (parseInt(v) / 1000).toFixed(3);
+
+                    // Troca ponto por vírgula para exibição BR
+                    $(this).val(valorDecimal.replace('.', ','));
                 });
-            } else {
-                // Unidades inteiras (UN, CX, FD, etc)
+            }
+                // Unidades Inteiras (UN, CX, etc)
+            // Limite: 5 dígitos totais
+            else {
                 $(this).on('input', function() {
-                    // Apenas números, remove zeros a esquerda se quiser
-                    let v = $(this).val().replace(/\D/g, '');
+                    let v = $(this).val().replace(/\D/g, ''); // Apenas números
+
+                    // Limita a 5 dígitos
+                    if (v.length > 5) {
+                        v = v.substring(0, 5);
+                    }
+
                     $(this).val(v);
                 });
             }
         });
     }
+
 
     async function sendBalance() {
         const date_balance = $('#dateBalance').val();
