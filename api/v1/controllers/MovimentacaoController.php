@@ -589,7 +589,7 @@ class MovimentacaoController
             SELECT 
                 -- Cabeçalho / metadados
                 m.doc,
-                DATE(m.created_at) AS date_balance,
+                m.data AS date_balance,
                 MIN(m.created_at) OVER (PARTITION BY m.system_unit_id, m.doc) AS created_at_first,
                 m.usuario_id,
                 
