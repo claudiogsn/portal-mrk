@@ -671,6 +671,11 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id, daysOfWeek ou insumoIds ausentes'];
                 }
                 break;
+
+            case 'getInsumoProjectionMatriz':
+                $response = ProjecaoVendasController::getInsumoProjectionMatriz($requestData);
+                break;
+
             case 'getInsumoConsumptionTop3':
                 if (isset($requestData['system_unit_id']) && isset($requestData['dates']) && isset($requestData['productCodes']) && isset($requestData['username'])) {
                     $response = NecessidadesRefactorController::getInsumoConsumptionTop3($requestData['system_unit_id'], $requestData['dates'], $requestData['productCodes'], $requestData['username']);

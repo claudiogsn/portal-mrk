@@ -390,4 +390,107 @@ class ProjecaoVendasController
 
         return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
+
+    public static function getInsumoProjectionMatriz($data): array
+    {
+        global $pdo;
+
+        // Extração dos parâmetros a partir do array $data
+        $matriz_id  = $data['matriz_id'] ?? null;
+        $daysOfWeek = $data['daysOfWeek'] ?? []; // Ex: [0, 1, 2]
+        $insumoIds  = $data['insumoIds'] ?? [];
+        $user_id    = $data['user_id'] ?? null;
+
+        if (!$matriz_id || empty($insumoIds)) {
+            return [];
+        }
+
+        // Passo 1: Obter filiais vinculadas à matriz
+        $stmt = $pdo->prepare("SELECT unit_filial FROM system_unit_rel WHERE unit_matriz = ?");
+        $stmt->execute([$matriz_id]);
+        $filiais = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($filiais)) {
+            return [];
+        }
+
+        // Passo 2: Obter metadados dos insumos (Nome/Categoria) priorizando a Matriz
+        $all_unit_ids = array_merge([$matriz_id], $filiais);
+        $insumoPlaceholders = implode(',', array_fill(0, count($insumoIds), '?'));
+        $unitPlaceholders = implode(',', array_fill(0, count($all_unit_ids), '?'));
+
+        $stmt = $pdo->prepare("
+        SELECT p.codigo AS insumo_id, p.nome as nome, p.system_unit_id as system_unit_id, cc.nome as categoria
+        FROM products p
+        INNER JOIN categorias cc ON p.categoria = cc.codigo and cc.system_unit_id = p.system_unit_id
+        WHERE p.codigo IN ($insumoPlaceholders) 
+        AND p.system_unit_id IN ($unitPlaceholders)
+        ORDER BY p.system_unit_id = ? DESC
+    ");
+
+        $params = array_merge($insumoIds, $all_unit_ids, [$matriz_id]);
+        $stmt->execute($params);
+
+        $produtosInfo = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $codigo = $row['insumo_id'];
+            // Garante que pegamos a info da matriz se disponível, senão da primeira filial que aparecer
+            if (!isset($produtosInfo[$codigo]) || $row['system_unit_id'] == $matriz_id) {
+                $produtosInfo[$codigo] = $row;
+            }
+        }
+
+        // Busca Saldo atual da Matriz (Batch)
+        $saldosMatriz = NecessidadesRefactorController::getProductsStockBatch($matriz_id, $insumoIds);
+
+        // Inicializar a estrutura de retorno
+        $insumoConsumption = [];
+        foreach ($insumoIds as $insumo_id) {
+            $info = $produtosInfo[$insumo_id] ?? ['nome' => 'N/A', 'categoria' => 'N/A'];
+            $insumoConsumption[$insumo_id] = [
+                'codigo'       => $insumo_id,
+                'sales'        => 0, // Representará a Projeção Total (Soma das filiais)
+                'saldo_lojas'  => 0,
+                'saldo_matriz' => $saldosMatriz[$insumo_id] ?? 0,
+                'nome'         => $info['nome'],
+                'categoria'    => $info['categoria'],
+            ];
+        }
+
+        // Passo 3: Consolidar a Projeção (Explosão) de cada filial
+        foreach ($filiais as $filial_id) {
+            // Chama o método individual que calcula a projeção baseada nos dias da semana
+            $dadosFilial = self::getInsumoProjection($filial_id, $daysOfWeek, $insumoIds, $user_id);
+
+            if (empty($dadosFilial['consumos'])) continue;
+
+            foreach ($dadosFilial['consumos'] as $insumo) {
+                $id = $insumo['codigo'] ?? null;
+                if ($id && isset($insumoConsumption[$id])) {
+                    $insumoConsumption[$id]['sales']       += (float)$insumo['sales'];
+                    $insumoConsumption[$id]['saldo_lojas'] += (float)$insumo['saldo'];
+                }
+            }
+        }
+
+        // Passo 4: Consolidação e formatação final
+        foreach ($insumoConsumption as &$insumo) {
+            $projecaoTotal   = $insumo['sales'];
+            $saldoTotalGeral = $insumo['saldo_lojas'] + $insumo['saldo_matriz'];
+
+            $insumo['saldo_total'] = number_format($saldoTotalGeral, 2, '.', '');
+
+            // Recomendação: O que falta para cobrir a projeção
+            $recomendado = max(0, ceil($projecaoTotal - $saldoTotalGeral));
+
+            $insumo['sales']        = number_format($projecaoTotal, 2, '.', '');
+            $insumo['saldo_lojas']  = number_format($insumo['saldo_lojas'], 2, '.', '');
+            $insumo['saldo_matriz'] = number_format($insumo['saldo_matriz'], 2, '.', '');
+            $insumo['recomendado']  = $recomendado;
+            $insumo['margem']       = '0.00'; // Mantido para compatibilidade de colunas no front
+        }
+
+        return array_values($insumoConsumption);
+    }
+
 }
