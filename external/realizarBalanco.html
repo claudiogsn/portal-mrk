@@ -64,7 +64,6 @@
 <body class="theme-blue">
 
 <div class="container-fluid">
-
     <div class="card">
         <div class="header header-flex">
             <h2>
@@ -74,7 +73,6 @@
         </div>
 
         <div class="body">
-
             <div class="filter-box">
                 <div class="row clearfix">
                     <div class="col-md-4">
@@ -115,7 +113,6 @@
                     </tbody>
                 </table>
             </div>
-
         </div>
     </div>
 </div>
@@ -130,6 +127,9 @@
                 </h4>
             </div>
             <div class="modal-body" style="padding: 30px;">
+                <div class="alert alert-danger" id="loginError" style="display: none;">
+                    <strong>Erro!</strong> Usuário ou senha incorretos.
+                </div>
                 <div class="form-group">
                     <label class="muted">Usuário</label>
                     <div class="input-group">
@@ -159,45 +159,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
 <script>
-    // Configurações
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
+    // Configurações de API
+    const isLocalhost = window.location.hostname === 'localhost';
+    const baseUrl = isLocalhost
+        ? 'http://localhost/portal-mrk/api/v1/index.php'
+        : 'https://portal.mrksolucoes.com.br/api/v1/index.php';
 
-    let isAuthenticated = false;
+    // Endpoint específico para Login
+    const loginUrl = isLocalhost
+        ? 'http://localhost/portal-mrk/api/v1/login.php'
+        : 'https://portal.mrksolucoes.com.br/api/v1/login.php';
+
     let loggedUserId = '';
     let system_unit_id = '';
 
-    // Mock Users
-    const users = {
-        "alan.lima": { user_id: 12, password: "1" },
-        "aline": { user_id: 13, password: "2" },
-        "ana.cristina": { user_id: 14, password: "3" },
-        "beatriz.borges": { user_id: 15, password: "4" },
-        "claudiane.de.jesus": { user_id: 16, password: "5" },
-        "davi.guedes": { user_id: 17, password: "6" },
-        "diana.souza.silva": { user_id: 18, password: "7" },
-        "herbert": { user_id: 19, password: "8" },
-        "ilmara": { user_id: 20, password: "9" },
-        "jessica.sena": { user_id: 21, password: "10" },
-        "johnantan.sales": { user_id: 22, password: "11" },
-        "liliana.lima": { user_id: 23, password: "12" },
-        "manuelle.santos": { user_id: 24, password: "13" },
-        "matheus.hellwig": { user_id: 25, password: "14" },
-        "robert": { user_id: 11, password: "15" },
-        "rodrigo.marcio": { user_id: 27, password: "16" },
-        "suzana": { user_id: 28, password: "17" },
-        "tatiane.de.jesus": { user_id: 29, password: "18" },
-        "luciene.portela": { user_id: 6, password: "19" },
-        "paula.portela": { user_id: 3, password: "20" },
-        "sulivan.gomes": { user_id: 32, password: "21" },
-        "edno.alves": { user_id: 9, password: "22" },
-        "guilherme": { user_id: 34, password: "23" },
-        "lider": { user_id: 37, password: "lider" },
-        "1": { user_id: 35, password: "1" }
-    };
-
-    // Helper: Skeleton
+    // Helper: Skeleton Loader
     function toggleLoading(isLoading) {
         if (isLoading) {
             $('#table-area').hide();
@@ -212,26 +188,71 @@
         populateDateSelect();
         extractSystemUnitId();
 
-        // Show Login
+        // Exibir Modal de Login
         $('#loginModal').modal('show');
 
-        // Login Logic
-        $('#loginButton').click(() => {
-            const username = $('#loginUsername').val().toLowerCase();
+        // Handler do Botão Entrar
+        $('#loginButton').click(async () => {
+            const username = $('#loginUsername').val();
             const password = $('#loginPassword').val();
+            const btn = $('#loginButton');
+            const errorAlert = $('#loginError');
 
-            if (users[username] && users[username].password === password) {
-                isAuthenticated = true;
-                loggedUserId = users[username].user_id;
-                $('#loginModal').modal('hide');
-                loadItemsByTag();
-            } else {
-                Swal.fire('Erro', 'Usuário ou senha inválidos', 'error');
+            if (!username || !password) {
+                Swal.fire('Atenção', 'Preencha usuário e senha.', 'warning');
+                return;
+            }
+
+            // Feedback visual
+            btn.text('Verificando...').prop('disabled', true);
+            errorAlert.hide();
+
+            try {
+                const res = await axios.post(loginUrl, {
+                    login: username,
+                    password: password
+                });
+
+                if (res.data && res.data.token) {
+                    // Login Sucesso
+                    loggedUserId = res.data.user.id;
+                    $('#loginModal').modal('hide');
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: `Olá, ${res.data.user.name}`,
+                        text: 'Acesso autorizado.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+
+                    // Carrega os dados
+                    loadItemsByTag();
+                } else {
+                    // Resposta veio, mas sem token (erro lógico)
+                    errorAlert.text('Credenciais inválidas ou usuário inativo.').show();
+                    btn.text('ENTRAR').prop('disabled', false);
+                }
+
+            } catch (e) {
+                // Erro HTTP (401, 500, etc)
+                console.error(e);
+                let msg = 'Erro ao conectar ao servidor.';
+                if (e.response && e.response.status === 401) {
+                    msg = 'Usuário ou senha incorretos.';
+                }
+                errorAlert.text(msg).show();
+                btn.text('ENTRAR').prop('disabled', false);
             }
         });
 
-        // Enviar
+        // Enviar Balanço
         $('#btnEnviar').click(sendBalance);
+
+        // Enter no campo de senha dispara o login
+        $('#loginPassword').keypress(function(e) {
+            if(e.which == 13) $('#loginButton').click();
+        });
     });
 
     function populateDateSelect() {
@@ -310,10 +331,14 @@
 
             // Itens
             itens[cat].sort((a,b) => a.nome_produto.localeCompare(b.nome_produto)).forEach((item, i) => {
+                const badgeStyle = "background:#eee; color:#555;";
+
                 tbody.append(`
                     <tr class="item-row ${catId}">
                         <td>${item.nome_produto}</td>
-                        <td class="text-center"><span class="badge" style="background:#eee; color:#555;">${item.und_produto}</span></td>
+                        <td class="text-center">
+                            <span class="badge unit-badge" style="${badgeStyle}">${item.und_produto}</span>
+                        </td>
                         <td>
                             <input type="text" inputmode="decimal" class="form-control form-control-sm quantidade text-right"
                                    data-id="${item.codigo_produto}" data-seq="${i + 1}" placeholder="0,000" />
@@ -323,7 +348,7 @@
             });
         });
 
-        // Bind Toggle
+        // Toggle Acordeão
         $('.category-header').click(function() {
             const target = $(this).data('target');
             const icon = $(this).find('iconify-icon');
@@ -335,37 +360,58 @@
             else icon.attr('icon', 'icon-park-outline:minus');
         });
 
-        // Mask & Input Logic
-        $('.quantidade').on('input', function() {
-            let val = $(this).val();
-            // Permite apenas numeros e virgula
-            val = val.replace(/[^0-9,]/g, '');
-            $(this).val(val);
+        // Configurar Máscara/Inputs
+        applyInputMasks();
+    }
+
+    function applyInputMasks() {
+        $('.quantidade').each(function() {
+            const unidade = $(this).closest('tr').find('.unit-badge').text().trim().toUpperCase();
+
+            // Unidades fracionadas
+            if (['KG', 'LT', 'L', 'M', 'M2', 'M3'].includes(unidade)) {
+                // Evento input manual para garantir 3 casas decimais estilo "ATM" ou livre com virgula
+                $(this).on('input', function() {
+                    let v = $(this).val().replace(/\D/g, ''); // Remove tudo que não é dígito
+                    if (v === '') { $(this).val(''); return; }
+
+                    // Converte para decimal (divide por 1000) e troca ponto por vírgula
+                    // Ex: digita 1 -> 0,001 | digita 1200 -> 1,200
+                    v = (parseInt(v) / 1000).toFixed(3).replace('.', ',');
+                    $(this).val(v);
+                });
+            } else {
+                // Unidades inteiras (UN, CX, FD, etc)
+                $(this).on('input', function() {
+                    // Apenas números, remove zeros a esquerda se quiser
+                    let v = $(this).val().replace(/\D/g, '');
+                    $(this).val(v);
+                });
+            }
         });
     }
 
     async function sendBalance() {
         const date_balance = $('#dateBalance').val();
 
-        // Coleta itens com valor > 0 ou preenchidos
         const itens = [];
         $('.quantidade').each(function() {
             let qtd = $(this).val();
-            if (qtd === '') qtd = '0'; // Envia 0 se vazio (zerar estoque?) ou ignora? O original enviava 0.
 
-            // Converte 1.000,00 -> 1000.00
+            if (qtd === '') qtd = '0'; // Envia 0 se vazio para indicar que foi contado (opcional, regra de negócio)
+
+            // Converte formato BR (1.234,56) para float JS (1234.56)
+            // Remove pontos de milhar se houver, troca virgula decimal por ponto
             qtd = qtd.replace(/\./g, '').replace(',', '.');
 
-            if(qtd) {
-                itens.push({
-                    codigo: $(this).data('id'),
-                    seq: $(this).data('seq'),
-                    quantidade: qtd
-                });
-            }
+            itens.push({
+                codigo: $(this).data('id'),
+                seq: $(this).data('seq'),
+                quantidade: qtd
+            });
         });
 
-        if (itens.length === 0) return Swal.fire('Aviso', 'Nenhum item para enviar.', 'warning');
+        if (itens.length === 0) return Swal.fire('Aviso', 'Nenhum item carregado.', 'warning');
 
         Swal.fire({ title: 'Enviando...', didOpen: () => Swal.showLoading() });
 
@@ -383,8 +429,8 @@
             Swal.close();
 
             if (res.data && res.data.success) {
-                await Swal.fire('Sucesso', `Balanço <b>${res.data.balanco}</b> gerado com sucesso!`, 'success');
-                // Limpa campos
+                await Swal.fire('Sucesso', `Balanço <b>${res.data.balanco}</b> salvo com sucesso!`, 'success');
+                // Limpa campos visualmente
                 $('.quantidade').val('');
             } else {
                 Swal.fire('Erro', res.data.message || 'Falha ao salvar.', 'error');
@@ -393,7 +439,6 @@
             Swal.fire('Erro', 'Falha na conexão.', 'error');
         }
     }
-
 </script>
 </body>
 </html>

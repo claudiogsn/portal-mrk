@@ -1724,17 +1724,6 @@ class ProductController {
         }
     }
 
-    /**
-     * Atualiza o EAN de produtos em lote para uma unidade específica.
-     * Estrutura esperada:
-     * [
-     * "system_unit_id" => 9,
-     * "itens" => [
-     * ["codigo" => 123, "ean" => "789001"],
-     * ["codigo" => 456, "ean" => "789002"]
-     * ]
-     * ]
-     */
     public static function updateEanBatchByUnit($data) {
         global $pdo;
 
