@@ -4,586 +4,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Lista de Movimentações Pendentes</title>
-    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <title>Movimentações Pendentes | Portal MRK</title>
 
-    <!-- Fonts e Ícones -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- CSS Principais -->
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
+        /* ====== ESTILO SKELETON ====== */
+        .skeleton {
+            background-color: #e2e5e7;
+            background-image: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+            background-size: 200px 100%;
+            background-repeat: no-repeat;
+            display: inline-block;
+            width: 100%;
+            height: 15px;
+            border-radius: 4px;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: -200px 0; }
+            100% { background-position: calc(200px + 100%) 0; }
         }
 
-        .spinner {
-            display: none;
+        /* ====== AJUSTES GERAIS MRK ====== */
+        body { background-color: #F4F7F6; font-family: 'Poppins', sans-serif; }
+        .card {
+            border-top: 2px solid var(--mrk-blue) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        }
+        .card .header h2 {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        /* Tabela e Ações */
+        .table thead th {
+            background-color: #f8f9fa;
+            color: var(--mrk-blue);
+            font-family: 'Kanit', sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .col-action { width: 50px; text-align: center !important; }
+        .action-icon {
+            font-size: 20px;
+            transition: transform 0.2s;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            text-decoration: none !important;
+        }
+        .action-icon:hover { transform: scale(1.2); }
+        .icon-blue { color: var(--mrk-blue); }
+        .icon-green { color: var(--mrk-green); }
+        .icon-red { color: var(--mrk-red); }
+        .icon-amber { color: var(--mrk-amber); }
+
+        /* ====== MODAL CORRIGIDO (X NO TOPO DIREITO) ====== */
+        .modal-content { border-radius: 12px; border: none; overflow: hidden; }
+        .modal-header {
+            position: relative;
+            background: #fff;
+            border-bottom: 2px solid var(--mrk-blue);
+            padding: 18px 25px;
+        }
+        .modal-title {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            padding-right: 30px; /* Segurança para não bater no X */
+        }
+        .btn-close-mrk {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
+            top: 15px;
+            right: 15px;
+            color: var(--mrk-red);
+            font-size: 26px;
+            background: none;
+            border: none;
+            outline: none !important;
+            cursor: pointer;
+            line-height: 1;
         }
+        .btn-close-mrk:hover { transform: scale(1.1); opacity: 0.8; }
 
-        .selected-row {
-            background-color: rgba(0, 123, 255, 0.2);
-        }
+        /* Tooltip fix */
+        .tooltip-inner { font-family: 'Poppins', sans-serif; font-size: 11px; }
     </style>
 </head>
 
 <body class="theme-blue">
 
-    <!-- Carregador -->
-    <div class="page-loader-wrapper">
-        <div class="loader">
-            <div class="preloader">
-                <div class="spinner-layer pl-blue">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-            </div>
-            <p>Aguarde...</p>
+<div class="container-fluid">
+    <div class="block-header"><br></div>
+
+    <div class="card">
+        <div class="header">
+            <h2>
+                <iconify-icon icon="icon-park-outline:transfer-data" width="24"></iconify-icon>
+                MOVIMENTAÇÕES PENDENTES
+            </h2>
         </div>
-    </div>
-
-    <!-- Conteúdo Principal -->
-    <div class="container-fluid">
-        <!-- Tabela -->
-        <div class="card">
-            <div class="header">
-                <h2>Movimentações Pendentes</h2>
-            </div>
-            <div class="body table-responsive">
-                <div class="table-container position-relative">
-                    <div class="spinner">
-                        <div class="preloader pl-size-xs">
-                            <div class="spinner-layer pl-blue">
-                                <div class="circle-clipper left">
-                                    <div class="circle"></div>
-                                </div>
-                                <div class="circle-clipper right">
-                                    <div class="circle"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <table id="movimentacoesTable" class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Doc</th>
-                                <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Usuário</th>
-                                <th>Origem</th>
-                                <th>Destino</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Conteúdo Dinâmico -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal -->
-    <div id="movimentacaoModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Detalhes da Movimentação</h5>
-                    <button class="btn btn-secondary" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th>Quantidade</th>
-                            </tr>
-                        </thead>
-                        <tbody id="detalhesMovimentacao">
-                            <!-- Conteúdo Dinâmico -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
-                    <button id="btnEfetivarModal" class="btn btn-success">Efetivar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Alterara DAta -->
-    <div id="dataModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Alterar Data</h5>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="dataAlteracao">Nova Data:</label>
-                        <select id="dataAlteracao" class="form-control">
-                            <!-- As opções serão preenchidas dinamicamente -->
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-danger" data-dismiss="modal">Fechar</button>
-                    <button id="btnAlterDataModal" class="btn btn-success">Alterar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="bsb/plugins/node-waves/waves.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="bsb/plugins/jquery-datatable/jquery.dataTables.js"></script>
-    <script src="bsb/plugins/jquery-datatable/skin/bootstrap/js/dataTables.bootstrap.js"></script>
-
-
-
-    <script>
-        $(document).ready(function () {
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const unitId = urlParams.get('unit_id');
-    const username = urlParams.get('username');
-
-    function showLoader() {
-        $('.page-loader-wrapper').fadeIn();
-    }
-
-    function hideLoader() {
-        $('.page-loader-wrapper').fadeOut();
-    }
-
-    // Carregar movimentações
-    async function loadMovements() {
-        showLoader();
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'listarMovimentacoesPendentes',
-                token: token,
-                data: {
-                    system_unit_id: unitId,
-                }
-            });
-
-            if (response.data) {
-                renderMovements(response.data);
-            } else {
-                swal("Erro", "Erro ao carregar movimentações.", "error");
-            }
-        } catch (error) {
-            console.error('Erro ao carregar movimentações:', error);
-        } finally {
-            hideLoader();
-        }
-    }
-
-    function renderMovements(movements) {
-        const tbody = $('#movimentacoesTable tbody');
-        tbody.empty();
-
-        movements.forEach(movement => {
-            const formatarData = (data) => {
-                if (!data) return 'N/A'; // Caso a data seja nula ou indefinida
-                const [ano, mes, dia] = data.split("-");
-                return `${dia}/${mes}/${ano}`;
-            };
-
-            const row = $(`
+        <div class="body table-responsive">
+            <table id="movimentacoesTable" class="table table-hover">
+                <thead>
                 <tr>
-                    <td>${movement.doc}</td>
-                    <td>${formatarData(movement.data)}</td>
-                    <td>${movement.tipo_movimentacao}</td>
-                    <td>${movement.username}</td>
-                    <td>${movement.nome_unidade_origem || 'NA'}</td>
-                    <td>${movement.nome_unidade_destino || 'NA'}</td>
-                    <td>
-                        <button class="btn btn-info btnDetalhes" data-doc="${movement.doc}">Ver Detalhes</button>
-                        <button class="btn btn-success btnEfetivar" data-doc="${movement.doc}">Efetivar</button>
-                        <button class="btn btn-danger btnRejeitar" data-doc="${movement.doc}">Rejeitar</button>
-                        <button class="btn btn-warning btnEditar" data-doc="${movement.doc}">Editar</button>
-                    </td>
+                    <th class="col-action"></th>
+                    <th class="col-action"></th>
+                    <th class="col-action"></th>
+                    <th class="col-action"></th>
+                    <th style="text-align: left;">Documento</th>
+                    <th style="text-align: left;">Data</th>
+                    <th style="text-align: left;">Tipo</th>
+                    <th style="text-align: left;">Usuário</th>
+                    <th style="text-align: left;">Origem</th>
+                    <th style="text-align: left;">Destino</th>
                 </tr>
-            `);
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-            tbody.append(row);
-
-            // Evento para exibir detalhes
-            row.find('.btnDetalhes').on('click', function () {
-                const doc = $(this).data('doc');
-                loadMovementDetails(doc);
-            });
-
-            // Evento para efetivar transação
-            row.find('.btnEfetivar').on('click', function () {
-                const doc = $(this).data('doc');
-                confirmarEfetivacao(doc);
-            });
-
-            // Evento para efetivar transação
-            row.find('.btnRejeitar').on('click', function () {
-                const doc = $(this).data('doc');
-                confirmarRejeicao(doc);
-            });
-
-            // Evento para efetivar transação
-            row.find('.btnEditar').on('click', function () {
-                const doc = $(this).data('doc');
-                alterarData(doc);
-            });
-        });
-    }
-    // Alterar Data
-            // Alterar Data
-            async function alterarData(doc) {
-                Swal.fire({
-                    title: 'Carregando...',
-                    html: 'Buscando datas disponíveis...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'getDatesByDoc',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            doc: doc
-                        }
-                    });
-
-                    if (response.data) {
-                        Swal.close(); // Fecha o loading
-                        renderDataModal(response.data, doc);
-                        $('#dataModal').modal('show');
-                    } else {
-                        Swal.close();
-                        Swal.fire("Erro", "Erro ao carregar detalhes da movimentação.", "error");
-                    }
-                } catch (error) {
-                    Swal.close();
-                    console.error('Erro ao carregar detalhes:', error);
-                    Swal.fire("Erro", "Erro ao carregar os dados da movimentação.", "error");
-                }
-            }
-
-            function renderDataModal(datas, doc) {
-                const select = $('#dataAlteracao');
-                select.empty();
-
-                if (Array.isArray(datas)) {
-                    $('#dataModal .modal-title').text(`Alterando data do balanço: ${doc}`);
-                    $('#btnAlterDataModal').data('doc', doc); // Armazena o `doc` no botão Alterar
-
-                    datas.forEach(item => {
-                        const option = $(`<option value="${item}">${item}</option>`);
-                        select.append(option);
-                    });
-
-                    // Evento de click no botão Alterar
-                    $('#btnAlterDataModal').off('click').on('click', function () {
-                        const doc = $(this).data('doc');
-                        const novaData = select.val();
-                        confirmarAlteracaoData(doc, novaData);
-                    });
-                } else {
-                    console.error('Estrutura de dados inesperada:', datas);
-                    Swal.fire("Erro", "Formato de dados inesperado para os detalhes.", "error");
-                }
-            }
-
-            function confirmarAlteracaoData(doc, novaData) {
-                Swal.fire({
-                    title: 'Confirmar Alteração de Data',
-                    text: `Deseja realmente alterar a data para ${novaData}?`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sim, alterar',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        efetivarAlteracaoData(doc, novaData);
-                    }
-                });
-            }
-
-// Efetivar alteração de data
-            async function efetivarAlteracaoData(doc, novaData) {
-                Swal.fire({
-                    title: 'Salvando...',
-                    html: 'Aguarde enquanto alteramos a data...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                try {
-                    const response = await axios.post(baseUrl, {
-                        method: 'updateDataByDoc',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            doc: doc,
-                            data: novaData,
-                        }
-                    });
-
-                    Swal.close();
-
-                    if (response.status === 200) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Sucesso!',
-                            text: 'Data alterada com sucesso.',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro',
-                            text: 'Falha ao alterar a data.',
-                        });
-                    }
-                } catch (error) {
-                    Swal.close();
-                    console.error('Erro ao alterar data:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Ocorreu um erro ao tentar alterar a data.',
-                    });
-                }
-            }
-
-            // Perguntar antes de rejeitar a transação
-    function confirmarRejeicao(doc) {
-        Swal.fire({
-            title: 'Confirmar Rejeição',
-            text: 'Deseja realmente rejeitar esta transação?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, efetivar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                rejeitarMovimentacao(doc);
-            }
-        });
-    }
-
-    // rejeitarMovimentacao
-    async function rejeitarMovimentacao(doc) {
-        showLoader();
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'rejeitarMovimentacao',
-                token: token,
-                data: {
-                    system_unit_id: unitId,
-                    doc: doc,
-                    usuario_id: username
-                }
-            });
-
-            if (response.status === 200) {
-                hideLoader();
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Sucesso!',
-                    text: 'Transação efetivada com sucesso.',
-                    confirmButtonText: 'OK'
-                });
-
-                // Recarregar página ao fechar o alerta
-                location.reload();
-            } else {
-                hideLoader();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Falha ao efetivar a transação.',
-                });
-            }
-        } catch (error) {
-            hideLoader();
-            console.error('Erro ao efetivar transação:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro',
-                text: 'Ocorreu um erro ao tentar efetivar a transação.',
-            });
-        } finally {
-            hideLoader();
-        }
-    }
-
-    // Perguntar antes de efetivar a transação
-    function confirmarEfetivacao(doc) {
-        Swal.fire({
-            title: 'Confirmar Efetivação',
-            text: 'Deseja realmente efetivar esta transação?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, efetivar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                efetivarTransacao(doc);
-            }
-        });
-    }
-
-    // Efetivar transação
-    async function efetivarTransacao(doc) {
-        showLoader();
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'efetivarTransacoes',
-                token: token,
-                data: {
-                    system_unit_id: unitId,
-                    doc: doc,
-                    usuario_id: username
-                }
-            });
-
-            if (response.status === 200) {
-                hideLoader();
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Sucesso!',
-                    text: 'Transação efetivada com sucesso.',
-                    confirmButtonText: 'OK'
-                });
-
-                // Recarregar página ao fechar o alerta
-                location.reload();
-            } else {
-                hideLoader();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Falha ao efetivar a transação.',
-                });
-            }
-        } catch (error) {
-            hideLoader();
-            console.error('Erro ao efetivar transação:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro',
-                text: 'Ocorreu um erro ao tentar efetivar a transação.',
-            });
-        } finally {
-            hideLoader();
-        }
-    }
-
-    // Carregar detalhes de uma movimentação
-    async function loadMovementDetails(doc) {
-        showLoader();
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'getMovimentacao',
-                token: token,
-                data: {
-                    system_unit_id: unitId,
-                    doc: doc
-                }
-            });
-
-            if (response.data) {
-                renderDetailsModal(response.data);
-                $('#movimentacaoModal').modal('show');
-            } else {
-                swal("Erro", "Erro ao carregar detalhes da movimentação.", "error");
-            }
-        } catch (error) {
-            console.error('Erro ao carregar detalhes:', error);
-        } finally {
-            hideLoader();
-        }
-    }
-
-    function renderDetailsModal(movements) {
-        const tbody = $('#detalhesMovimentacao');
-        tbody.empty();
-
-        if (Array.isArray(movements)) {
-            const doc = movements[0].doc; // Assumindo que `doc` está no primeiro item do array
-
-            $('#movimentacaoModal .modal-title').text(`Detalhes da Movimentação - Doc: ${doc}`);
-            $('#btnEfetivarModal').data('doc', doc); // Armazena o `doc` no botão Efetivar
-
-            movements.forEach(item => {
-                const row = $(` 
+<div id="movimentacaoModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Itens da Movimentação</h5>
+                <button class="btn-close-mrk" data-dismiss="modal" title="Fechar">
+                    <iconify-icon icon="icon-park-outline:close-small"></iconify-icon>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead style="background: #fdfdfd;">
                     <tr>
-                        <td>${item.produto} - ${item.product_name}</td>
-                        <td>${item.quantidade}</td>
+                        <th style="text-align: left; padding-left: 25px;">Produto / Insumo</th>
+                        <th style="text-align: right; padding-right: 25px;">Quantidade</th>
                     </tr>
-                `);
-                tbody.append(row);
-            });
+                    </thead>
+                    <tbody id="detalhesMovimentacao"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-link waves-effect" data-dismiss="modal" style="color: #666;">FECHAR</button>
+                <button id="btnEfetivarModal" class="btn btn-success" style="background-color: var(--mrk-green) !important;">EFETIVAR AGORA</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-            // Adiciona o evento de click ao botão Efetivar
-            $('#btnEfetivarModal').off('click').on('click', function () {
-                const doc = $(this).data('doc');
-                confirmarEfetivacao(doc);
-            });
-        } else {
-            console.error('Estrutura de dados inesperada:', movements);
-            swal("Erro", "Formato de dados inesperado para os detalhes.", "error");
+<div id="dataModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajustar Data</h5>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-0">
+                    <label style="font-family: 'Kanit';">Selecione a nova data disponível:</label>
+                    <select id="dataAlteracao" class="form-control" style="width: 100%; border-radius: 6px;"></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-link waves-effect" data-dismiss="modal" style="color: #666;">CANCELAR</button>
+                <button id="btnAlterDataModal" class="btn btn-primary" style="background-color: var(--mrk-blue) !important;">SALVAR ALTERAÇÃO</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    'use strict';
+
+    $(document).ready(function () {
+        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token'), unitId = params.get('unit_id'), username = params.get('username');
+
+        function showSkeletons() {
+            const tbody = $('#tableBody').empty();
+            for (let i = 0; i < 6; i++) {
+                tbody.append(`<tr><td class="col-action"><div class="skeleton" style="width:20px;height:20px;border-radius:50%;"></div></td><td class="col-action"><div class="skeleton" style="width:20px;height:20px;border-radius:50%;"></div></td><td class="col-action"><div class="skeleton" style="width:20px;height:20px;border-radius:50%;"></div></td><td class="col-action"><div class="skeleton" style="width:20px;height:20px;border-radius:50%;"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>`);
+            }
         }
-    }
 
+        async function loadMovements() {
+            showSkeletons();
+            try {
+                const res = await axios.post(baseUrl, { method: 'listarMovimentacoesPendentes', token, data: { system_unit_id: unitId } });
+                renderMovements(res.data || []);
+            } catch (e) { Swal.fire("Erro", "Falha ao carregar.", "error"); }
+        }
 
-    loadMovements();
-});
+        function renderMovements(movements) {
+            const tbody = $('#tableBody').empty();
+            if (!movements.length) {
+                tbody.append('<tr><td colspan="10" class="text-center text-muted" style="padding:40px;">Nada pendente.</td></tr>');
+                return;
+            }
 
-    </script>
+            movements.forEach(m => {
+                const dataFmt = m.data ? m.data.split("-").reverse().join("/") : 'N/A';
+                tbody.append(`
+                <tr>
+                    <td class="col-action"><a class="action-icon icon-blue btnDetalhes" data-doc="${m.doc}" data-toggle="tooltip" title="Ver Detalhes"><iconify-icon icon="icon-park-outline:info"></iconify-icon></a></td>
+                    <td class="col-action"><a class="action-icon icon-green btnEfetivar" data-doc="${m.doc}" data-toggle="tooltip" title="Efetivar"><iconify-icon icon="icon-park-outline:check-one"></iconify-icon></a></td>
+                    <td class="col-action"><a class="action-icon icon-red btnRejeitar" data-doc="${m.doc}" data-toggle="tooltip" title="Rejeitar"><iconify-icon icon="icon-park-outline:delete-five"></iconify-icon></a></td>
+                    <td class="col-action"><a class="action-icon icon-amber btnEditar" data-doc="${m.doc}" data-toggle="tooltip" title="Alterar Data"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></a></td>
+                    <td><b>${m.doc}</b></td>
+                    <td>${dataFmt}</td>
+                    <td><span class="badge" style="background:#f5f5f5;color:#666;font-size:10px;">${m.tipo_movimentacao}</span></td>
+                    <td>${m.username}</td>
+                    <td>${m.nome_unidade_origem || '-'}</td>
+                    <td>${m.nome_unidade_destino || '-'}</td>
+                </tr>`);
+            });
 
+            // Inicializa Tooltips do Bootstrap
+            $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+
+            $('.btnDetalhes').click(function() { loadDetails($(this).data('doc')); });
+            $('.btnEfetivar').click(function() { action($(this).data('doc'), 'efetivar'); });
+            $('.btnRejeitar').click(function() { action($(this).data('doc'), 'rejeitar'); });
+            $('.btnEditar').click(function() { openDateModal($(this).data('doc')); });
+        }
+
+        async function action(doc, tipo) {
+            const isEf = tipo === 'efetivar';
+            const res = await Swal.fire({ title: isEf ? 'Efetivar?' : 'Rejeitar?', text: `Documento: ${doc}`, icon: isEf ? 'question' : 'warning', showCancelButton: true, confirmButtonText: 'Sim', confirmButtonColor: isEf ? '#2e7d32' : '#d32f2f' });
+            if (res.isConfirmed) {
+                Swal.fire({ title: 'Aguarde...', didOpen: () => Swal.showLoading() });
+                try {
+                    await axios.post(baseUrl, { method: isEf ? 'efetivarTransacoes' : 'rejeitarMovimentacao', token, data: { system_unit_id: unitId, doc, usuario_id: username } });
+                    Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1500, showConfirmButton: false });
+                    loadMovements();
+                } catch (e) { Swal.fire("Erro", "Falha na operação.", "error"); }
+            }
+        }
+
+        async function openDateModal(doc) {
+            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+            try {
+                const res = await axios.post(baseUrl, { method: 'getDatesByDoc', token, data: { system_unit_id: unitId, doc } });
+                Swal.close();
+                const sel = $('#dataAlteracao').empty();
+                res.data.forEach(d => sel.append(`<option value="${d}">${d}</option>`));
+                $('#dataModal .modal-title').text(`Ajustar Data: ${doc}`);
+                $('#btnAlterDataModal').off('click').on('click', async () => {
+                    $('#dataModal').modal('hide');
+                    Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+                    await axios.post(baseUrl, { method: 'updateDataByDoc', token, data: { system_unit_id: unitId, doc, data: sel.val() } });
+                    Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1200, showConfirmButton: false });
+                    loadMovements();
+                });
+                $('#dataModal').modal('show');
+            } catch (e) { Swal.fire("Erro", "Falha ao carregar datas.", "error"); }
+        }
+
+        async function loadDetails(doc) {
+            Swal.fire({ title: 'Buscando...', didOpen: () => Swal.showLoading() });
+            try {
+                const res = await axios.post(baseUrl, { method: 'getMovimentacao', token, data: { system_unit_id: unitId, doc } });
+                Swal.close();
+                const tb = $('#detalhesMovimentacao').empty();
+                res.data.forEach(i => tb.append(`<tr><td style="padding-left:25px;"><b>${i.produto}</b> - ${i.product_name}</td><td class="text-right" style="padding-right:25px;">${i.quantidade}</td></tr>`));
+                $('#movimentacaoModal .modal-title').text(`Itens: ${doc}`);
+                $('#btnEfetivarModal').off('click').on('click', () => { $('#movimentacaoModal').modal('hide'); action(doc, 'efetivar'); });
+                $('#movimentacaoModal').modal('show');
+            } catch (e) { Swal.fire("Erro", "Falha ao carregar itens.", "error"); }
+        }
+
+        loadMovements();
+    });
+</script>
 
 </body>
-
 </html>

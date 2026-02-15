@@ -12,24 +12,29 @@ class MovimentacaoController
 
         $stmt = $pdo->prepare("
         SELECT 
-            movimentacao.*, 
+            movimentacao.*,
+            -- quantidade formatada com vírgula (ex: 1,500)
+            FORMAT(
+                CAST(REPLACE(movimentacao.quantidade, ',', '.') AS DECIMAL(18,3)),
+                3,
+                'de_DE'
+            ) AS quantidade,
             products.nome AS product_name
-        FROM 
-            movimentacao
-        INNER JOIN 
-            products 
-        ON 
-            movimentacao.produto = products.codigo AND movimentacao.system_unit_id = products.system_unit_id
-        WHERE 
-            movimentacao.system_unit_id = :system_unit_id 
-        AND 
-            movimentacao.doc = :doc
+        FROM movimentacao
+        INNER JOIN products 
+            ON movimentacao.produto = products.codigo
+           AND movimentacao.system_unit_id = products.system_unit_id
+        WHERE movimentacao.system_unit_id = :system_unit_id
+          AND movimentacao.doc = :doc
     ");
+
         $stmt->bindParam(":system_unit_id", $system_unit_id, PDO::PARAM_INT);
         $stmt->bindParam(":doc", $doc);
         $stmt->execute();
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public static function getMovsByProd($unit_id, $data, $produto): false|array
     {
