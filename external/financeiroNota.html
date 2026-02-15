@@ -4,98 +4,194 @@
     <meta charset="UTF-8">
     <title>Inclusão Financeiro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
+
     <style>
-        body { background: #fff; padding: 15px; overflow-x: hidden; }
-        .select2-container { width: 100% !important; }
-        .text-right { text-align: right; }
-        .label-danger { background-color: #f44336; color: white; padding: 2px 5px; border-radius: 3px; }
-        hr { margin-top: 15px; margin-bottom: 15px; border-top: 1px solid #eee; }
-        .form-control { margin-bottom: 5px; }
+        /* ====== AJUSTES DE IFRAME ====== */
+        html, body { background: transparent !important; }
+        body.theme-blue { background: transparent !important; }
+        .container-fluid { background: transparent !important; padding-bottom: 20px; }
+
+        /* Card Transparente */
+        .card {
+            background: rgba(255, 255, 255, 0.98) !important;
+            box-shadow: none !important;
+            border: 1px solid #eee;
+            margin-bottom: 0;
+        }
+
+        .card .header {
+            border-bottom: 2px solid var(--mrk-blue);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .card .header h2 { margin: 0; font-size: 18px; color: var(--mrk-blue); display: flex; align-items: center; gap: 8px; }
+
+        /* KPI Total */
+        .kpi-total {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: right;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .kpi-total span { font-size: 18px; font-weight: 700; font-family: 'Kanit', sans-serif; }
+        .kpi-total small { font-size: 12px; text-transform: uppercase; color: #555; }
+
+        /* Tabela */
+        .table thead th {
+            background-color: #f5f5f5;
+            color: var(--mrk-blue);
+            font-family: 'Kanit', sans-serif;
+            font-weight: 600;
+            font-size: 12px;
+            border-bottom: 2px solid #ddd;
+        }
+        .form-control { height: 34px; font-family: 'Poppins', sans-serif; }
+
+        /* Select2 */
+        .select2-container .select2-selection--single { height: 34px !important; border: 1px solid #ccc !important; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 34px !important; color: #555; }
+
+        label { font-family: 'Kanit', sans-serif; font-weight: 500; font-size: 12px; color: #666; margin-bottom: 4px; }
+
+        .text-danger { color: var(--mrk-red) !important; font-weight: 600; }
+
+        /* Input Monetário */
+        .money-input { text-align: right; font-weight: 600; color: var(--mrk-black); }
+
+        /* Alerta Divergência */
+        .alert-divergence {
+            color: var(--mrk-red);
+            font-weight: bold;
+            padding: 12px;
+            background: #ffebee;
+            border-radius: 4px;
+            border: 1px solid #ffcdd2;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
-<body>
+<body class="theme-blue">
 
 <div class="container-fluid">
-    <input type="hidden" id="finFornecedorId">
-    <input type="hidden" id="finChaveAcesso">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>
+                <iconify-icon icon="icon-park-outline:finance" width="24"></iconify-icon>
+                INCLUSÃO FINANCEIRO (CONTAS A PAGAR)
+            </h2>
+        </div>
 
-    <div class="row">
-        <div class="col-md-12">
-            <label>Fornecedor</label>
-            <input type="text" id="finFornecedorNome" class="form-control" readonly>
-        </div>
-        <div class="col-md-4">
-            <label>Documento</label>
-            <input type="text" id="finDocumento" class="form-control">
-        </div>
-        <div class="col-md-4">
-            <label>Emissão</label>
-            <input type="date" id="finEmissao" class="form-control">
-        </div>
-        <div class="col-md-4">
-            <label>Vencimento Inicial</label>
-            <input type="date" id="finVencimento" class="form-control">
-        </div>
-        <div class="col-md-4">
-            <label>Valor Total</label>
-            <input type="text" id="finValor" class="form-control">
-        </div>
-        <div class="col-md-4">
-            <label>Parcelas</label>
-            <input type="number" id="finParcelas" class="form-control" min="1" value="1">
-        </div>
-        <div class="col-md-6">
-            <label>Forma de Pagamento</label>
-            <select id="finForma" class="form-control"></select>
-        </div>
-        <div class="col-md-6">
-            <label>Plano de Contas</label>
-            <select id="finPlano" class="form-control"></select>
-        </div>
-        <div class="col-md-12" style="margin-top:10px;">
-            <label>Observação</label>
-            <textarea id="finObs" class="form-control" rows="2"></textarea>
-        </div>
-    </div>
+        <div class="body">
+            <input type="hidden" id="finFornecedorId">
+            <input type="hidden" id="finChaveAcesso">
 
-    <hr>
-    <div class="table-responsive">
-        <table class="table table-striped" id="tblParcelas">
-            <thead>
-            <tr>
-                <th style="width: 90px;">Parcela</th>
-                <th>Vencimento</th>
-                <th>Valor</th>
-            </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
+            <div class="row clearfix">
+                <div class="col-md-12 mb-2">
+                    <label>Fornecedor</label>
+                    <input type="text" id="finFornecedorNome" class="form-control" readonly style="background-color: #f9f9f9;">
+                </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <small id="avisoParcelas" class="text-danger" style="display:none;">A soma das parcelas difere do valor total da nota.</small>
-        </div>
-        <div class="col-md-6 text-right">
-            <strong>Total das parcelas: <span id="finTotalParcelas">R$ 0,00</span></strong>
-        </div>
-    </div>
+                <div class="col-md-3 mb-2">
+                    <label>Nº Documento</label>
+                    <input type="text" id="finDocumento" class="form-control">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label>Data Emissão</label>
+                    <input type="date" id="finEmissao" class="form-control">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label>1º Vencimento</label>
+                    <input type="date" id="finVencimento" class="form-control">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label>Valor Total (R$)</label>
+                    <input type="text" id="finValor" class="form-control money-input" placeholder="R$ 0,00">
+                </div>
+            </div>
 
-    <div class="row" style="margin-top: 25px; margin-bottom: 20px;">
-        <div class="col-md-12 text-right">
-            <button type="button" class="btn btn-primary btn-lg" id="btnGravarFinanceiro">
-                <i class="fa fa-save"></i> Gravar Lançamentos
-            </button>
+            <div class="row clearfix">
+                <div class="col-md-2 mb-2">
+                    <label>Nº Parcelas</label>
+                    <input type="number" id="finParcelas" class="form-control" min="1" value="1">
+                </div>
+                <div class="col-md-5 mb-2">
+                    <label>Forma de Pagamento</label>
+                    <select id="finForma" class="form-control" style="width: 100%;"></select>
+                </div>
+                <div class="col-md-5 mb-2">
+                    <label>Plano de Contas</label>
+                    <select id="finPlano" class="form-control" style="width: 100%;"></select>
+                </div>
+                <div class="col-md-12 mb-2">
+                    <label>Observação</label>
+                    <textarea id="finObs" class="form-control" rows="2" style="height: auto;"></textarea>
+                </div>
+            </div>
+
+            <hr style="border-top: 1px dashed #ddd; margin: 20px 0;">
+
+            <h5 style="font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-size: 14px; margin-bottom: 15px;">
+                <iconify-icon icon="icon-park-outline:list-numbers" style="vertical-align: -2px;"></iconify-icon> PARCELAMENTO
+            </h5>
+
+            <div class="table-responsive">
+                <table class="table table-hover" id="tblParcelas">
+                    <thead>
+                    <tr>
+                        <th style="width: 80px; text-align: center;">Parc.</th>
+                        <th>Vencimento</th>
+                        <th>Valor da Parcela</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="row mt-3 align-items-center">
+                <div class="col-md-7">
+                    <div id="avisoParcelas" class="alert-divergence" style="display:none;">
+                        <iconify-icon icon="icon-park-outline:attention" style="font-size: 20px;"></iconify-icon>
+                        <span>A soma das parcelas difere do valor total da nota. Corrija os valores antes de gravar.</span>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="kpi-total">
+                        <small>Total Parcelas</small>
+                        <span id="finTotalParcelas">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-right" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                <button type="button" class="btn btn-primary btn-lg" id="btnGravarFinanceiro" style="background-color: var(--mrk-blue) !important; width: 200px;">
+                    <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                    GRAVAR
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -120,41 +216,61 @@
         if(fornecedor_url) {
             $('#finFornecedorNome').val(fornecedor_url);
         }
+
         init();
 
-        // Listeners originais
+        // Listeners Principais
         $('#finParcelas, #finVencimento').on('input change', function() {
             rebuildParcelasGrid($('#finParcelas').val(), $('#finVencimento').val());
         });
 
-        $(document).on('input', '.parc-valor', recalcTotaisParcelas);
+        // Recalcular ao mudar o valor total da nota
+        $('#finValor').on('input', function() {
+            setupMoneyMask(this);
+            rebuildParcelasGrid($('#finParcelas').val(), $('#finVencimento').val());
+        });
+
+        // Listener dinâmico para inputs de parcela (máscara + recálculo)
+        $(document).on('input', '.parc-valor', function() {
+            setupMoneyMask(this);
+            recalcTotaisParcelas();
+        });
 
         $('#btnGravarFinanceiro').click(gravarFinanceiro);
     });
 
     async function init() {
-        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
         await carregarPlanosFinanceiro();
         await carregarDadosNota();
         Swal.close();
     }
 
-    // --- LÓGICA DE NEGÓCIO ORIGINAL ---
+    // ==========================================
+    // MÁSCARA MONETÁRIA INTELIGENTE
+    // ==========================================
 
-    function toNumberBR(v) {
-        if (v === null || v === undefined) return 0;
-        if (typeof v === 'number') return v;
-        let s = String(v).trim().replace(/[^\d.,-]/g, '');
-        if (s.indexOf(',') >= 0) {
-            s = s.replace(/\./g, '').replace(',', '.');
-        }
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
+    function setupMoneyMask(input) {
+        let value = input.value.replace(/\D/g, "");
+        if (value === "") { input.value = ""; return; }
+        let amount = parseFloat(value) / 100;
+        input.value = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
-    function toBRL(n) {
-        return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    function parseMoneyBR(str) {
+        if (!str) return 0;
+        let clean = str.replace(/[^\d,]/g, '');
+        clean = clean.replace(',', '.');
+        return parseFloat(clean) || 0;
     }
+
+    function formatMoneyBR(val) {
+        return (val || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    // ==========================================
+    // LÓGICA DE NEGÓCIO
+    // ==========================================
 
     function addDaysISO(dateStr, days) {
         if (!dateStr) return '';
@@ -164,71 +280,63 @@
         return d.toISOString().substr(0,10);
     }
 
-    function sortPlanosHierarquico(lista) {
-        const planos = lista.slice();
-        const grupos = {};
-        planos.forEach(p => {
-            const codigo = String(p.codigo || '');
-            if (!codigo) return;
-            const raiz = codigo.substring(0, 2);
-            if (!grupos[raiz]) grupos[raiz] = [];
-            grupos[raiz].push(p);
-        });
-        const raizesOrdenadas = Object.keys(grupos).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-        const ordenado = [];
-        raizesOrdenadas.forEach(raiz => {
-            const arr = grupos[raiz];
-            arr.sort((a, b) => {
-                const ca = String(a.codigo || '');
-                const cb = String(b.codigo || '');
-                if (ca.length !== cb.length) return ca.length - cb.length;
-                return ca.localeCompare(cb, 'pt-BR', { numeric: true });
-            });
-            ordenado.push(...arr);
-        });
-        return ordenado;
-    }
-
     async function carregarPlanosFinanceiro() {
         try {
             const res = await axios.post(baseUrlFinanceiro, {
-                method: 'listPlanos',
-                token,
-                data: { system_unit_id: Number(unit_id) }
+                method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) }
             });
             let lista = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            lista = sortPlanosHierarquico(lista);
+            // Ordenação
+            const planos = lista.slice();
+            const grupos = {};
+            planos.forEach(p => {
+                const codigo = String(p.codigo || '');
+                if (!codigo) return;
+                const raiz = codigo.substring(0, 2);
+                if (!grupos[raiz]) grupos[raiz] = [];
+                grupos[raiz].push(p);
+            });
+            const raizesOrdenadas = Object.keys(grupos).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+            const ordenado = [];
+            raizesOrdenadas.forEach(raiz => {
+                const arr = grupos[raiz];
+                arr.sort((a, b) => {
+                    const ca = String(a.codigo || '');
+                    const cb = String(b.codigo || '');
+                    if (ca.length !== cb.length) return ca.length - cb.length;
+                    return ca.localeCompare(cb, 'pt-BR', { numeric: true });
+                });
+                ordenado.push(...arr);
+            });
+
             const $sel = $('#finPlano').empty().append('<option value="">Selecione...</option>');
-            lista.forEach(p => {
+            ordenado.forEach(p => {
                 const nivel = Math.floor((String(p.codigo).length - 2) / 2);
                 const indent = '\u00A0'.repeat(Math.max(0, nivel) * 4);
                 $sel.append(new Option(`${indent}${p.codigo} - ${p.descricao || p.nome || ''}`, p.codigo));
             });
-            $sel.select2({ placeholder: 'Selecione...' });
+            $sel.select2({ placeholder: 'Selecione o plano...' });
         } catch (e) { console.error(e); }
     }
 
     async function carregarDadosNota() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'getNotaFinanceiroPayload',
-                token,
-                data: { system_unit_id: Number(unit_id), chave_acesso: chave_url, id: id_url }
+                method: 'getNotaFinanceiroPayload', token, data: { system_unit_id: Number(unit_id), chave_acesso: chave_url, id: id_url }
             });
 
             if (res.data.success) {
                 const d = res.data.data;
                 $('#finFornecedorId').val(d.fornecedor_id);
                 $('#finChaveAcesso').val(chave_url);
-                // $('#finFornecedorNome').val(d.fornecedor_razao || '');
                 $('#finDocumento').val(d.documento || '');
                 $('#finEmissao').val(d.emissao || '');
-                $('#finValor').val(Number(d.valor_total || 0).toFixed(2).replace('.', ','));
+                $('#finValor').val(formatMoneyBR(Number(d.valor_total || 0)));
 
                 const $forma = $('#finForma').empty().append('<option value="">Selecione...</option>');
                 const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (d.formas_de_pagamento || []);
                 formas.forEach(f => $forma.append(new Option(f.descricao || f.nome, f.id)));
-                $forma.select2();
+                $forma.select2({ placeholder: 'Selecione a forma...' });
 
                 let qtd = 1, v0 = '';
                 if(d.duplicatas?.length > 0) {
@@ -237,6 +345,7 @@
                 }
                 $('#finParcelas').val(qtd);
                 $('#finVencimento').val(v0);
+
                 rebuildParcelasGrid(qtd, v0);
             }
         } catch (e) { console.error(e); }
@@ -245,9 +354,8 @@
     function rebuildParcelasGrid(qtd, vencIni) {
         const $tb = $('#tblParcelas tbody').empty();
         const n = Math.max(1, parseInt(qtd || 1));
-        const total = toNumberBR($('#finValor').val());
+        const total = parseMoneyBR($('#finValor').val());
 
-        // Cálculo de distribuição de centavos original
         const cents = Math.round(total * 100);
         const baseCents = Math.floor(cents / n);
         let restoCents = cents - (baseCents * n);
@@ -262,9 +370,9 @@
             const venc = vencIni ? addDaysISO(vencIni, i * 30) : '';
 
             $tb.append(`<tr>
-                <td class="text-center">${i + 1}/${n}</td>
+                <td class="text-center"><b>${i + 1}/${n}</b></td>
                 <td><input type="date" class="form-control parc-venc" value="${venc}"></td>
-                <td><input type="text" class="form-control parc-valor" value="${toBRL(valorFinal).replace('R$','').trim()}"></td>
+                <td><input type="text" class="form-control parc-valor money-input" value="${formatMoneyBR(valorFinal)}"></td>
             </tr>`);
         }
         recalcTotaisParcelas();
@@ -273,34 +381,54 @@
     function recalcTotaisParcelas() {
         let soma = 0;
         $('.parc-valor').each(function() {
-            const $inp = $(this);
-            const num = toNumberBR($inp.val());
-            $inp.off('blur').on('blur', function(){
-                $(this).val( toBRL(toNumberBR($(this).val())).replace('R$','').trim() );
-            });
-            soma += num;
+            soma += parseMoneyBR($(this).val());
         });
-        $('#finTotalParcelas').text(toBRL(soma));
-        const totalNota = toNumberBR($('#finValor').val());
-        Math.abs(soma - totalNota) >= 0.01 ? $('#avisoParcelas').show() : $('#avisoParcelas').hide();
+
+        $('#finTotalParcelas').text(formatMoneyBR(soma));
+
+        const totalNota = parseMoneyBR($('#finValor').val());
+
+        // Verifica divergência (com tolerância mínima para float)
+        if (Math.abs(soma - totalNota) > 0.01) {
+            $('#avisoParcelas').slideDown();
+            return false; // Divergente
+        } else {
+            $('#avisoParcelas').slideUp();
+            return true; // OK
+        }
     }
 
     async function gravarFinanceiro() {
         try {
+            // 1. Validação de Soma
+            const totalNota = parseMoneyBR($('#finValor').val());
+            let somaParcelas = 0;
             const linhas = [];
+
             $('#tblParcelas tbody tr').each(function(i) {
+                const v = parseMoneyBR($(this).find('.parc-valor').val());
+                somaParcelas += v;
                 linhas.push({
                     indice: i + 1,
                     vencimento: $(this).find('.parc-venc').val(),
-                    valor: toNumberBR($(this).find('.parc-valor').val())
+                    valor: v
                 });
             });
+
+            if (Math.abs(somaParcelas - totalNota) > 0.01) {
+                return Swal.fire({
+                    icon: 'warning',
+                    title: 'Valores divergentes',
+                    text: `A soma das parcelas (${formatMoneyBR(somaParcelas)}) não confere com o valor total da nota (${formatMoneyBR(totalNota)}). Ajuste os valores.`,
+                    confirmButtonColor: '#0B46AC'
+                });
+            }
 
             if(!$('#finPlano').val() || !$('#finForma').val()) {
                 return Swal.fire('Atenção', 'Selecione o Plano e a Forma de Pagamento.', 'warning');
             }
 
-            Swal.fire({ title: 'Gravando...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'Gravando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
             const contas = linhas.map(ln => ({
                 fornecedor_id: $('#finFornecedorId').val(),
@@ -321,13 +449,23 @@
             });
 
             if(res.data.success) {
-                Swal.fire('Sucesso', 'Lançamentos realizados!', 'success').then(() => {
-                    window.parent.$('#modalFinanceiroIframe').modal('hide');
+                await Swal.fire({
+                    title: 'Sucesso',
+                    text: 'Lançamentos realizados!',
+                    icon: 'success',
+                    confirmButtonColor: '#0B46AC'
                 });
+
+                if (window.parent && window.parent.$) {
+                    window.parent.$('#modalFinanceiroIframe').modal('hide');
+                }
             } else {
                 Swal.fire('Erro', res.data.error || 'Erro ao gravar', 'error');
             }
-        } catch (e) { Swal.fire('Erro', 'Falha na comunicação', 'error'); }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha na comunicação', 'error');
+        }
     }
 </script>
 </body>

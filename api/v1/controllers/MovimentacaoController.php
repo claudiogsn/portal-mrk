@@ -1087,6 +1087,7 @@ class MovimentacaoController
                 "data_hora" => date("d/m/Y H:i:s"),
                 "usuario" => $nome_user,
                 "itens" => $itensComDetalhes,
+                "transfer_key" => $transferKey,
             ];
         } catch (Exception $e) {
             // Rollback em caso de erro

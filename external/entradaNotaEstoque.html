@@ -2,350 +2,272 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
-    <title>Compra – Entrada de Nota</title>
+    <title>Entrada de Nota (Estoque)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Bootstrap / Tema -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/css/style.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
+        /* ====== AJUSTES DE IFRAME ====== */
+        html, body { background: transparent !important; }
+        body.theme-blue { background: transparent !important; }
+        .container-fluid { background: transparent !important; padding-bottom: 20px; }
 
-        /* ====== FUNDO TRANSPARENTE PARA IFRAME ====== */
-        html, body {
-            background: transparent !important;
-        }
+        /* Card Transparente */
+        .card { background: rgba(255, 255, 255, 0.98) !important; box-shadow: none !important; border: 1px solid #eee; margin-bottom: 0; }
+        .card .header { border-bottom: 2px solid var(--mrk-blue); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .card .header h2 { margin: 0; font-size: 18px; color: var(--mrk-blue); display: flex; align-items: center; gap: 8px; }
 
-        /* AdminBSB costuma pintar o body pelo tema */
-        body.theme-blue,
-        body.theme-red,
-        body.theme-green,
-        body.theme-purple,
-        body.theme-black {
-            background: transparent !important;
-        }
+        /* Campos Readonly */
+        .readonly-field { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 6px 12px; border-radius: 4px; min-height: 34px; line-height: 20px; color: #555; font-family: 'Poppins', sans-serif; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* Evita “placa cinza” atrás do conteúdo */
-        .container-fluid,
-        .tab-content {
-            background: transparent !important;
-        }
+        /* Box de Sincronização */
+        .sync-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.03); position: relative; }
+        .sync-box h5 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); margin-top: 0; margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
 
-        /* Se quiser manter os cards bem “clean” */
-        .card,
-        .card .body {
-            background: rgba(255, 255, 255, 0.98) !important;
-        }
-        /* fullscreen já existe, complemento para garantir 100vh do iframe */
-        .modal-iframe-full { width:100%; height:calc(100vh - 56px); border:0; }
-        /* (fallback para headers maiores/menores) */
-        @media (max-width: 768px){
-            .modal-iframe-full { height:calc(100vh - 52px); }
-        }
-        .select2-container { width: 100% !important; }
-        .select2-dropdown { z-index: 9999; }
-        .card { border-radius: 8px; }
-        .badge-pill { border-radius: 50px; padding: 6px 10px; }
-        .table thead th { white-space: nowrap; }
-        .readonly-field { background:#fafafa; border:1px solid #eee; padding:8px; border-radius:6px; min-height:34px; }
-        .row-pendente { background:#ffecec !important; }
-        .row-pendente-selected { background:#ffd7b3 !important; }
-        .row-ok-selected { background:#bfe4ff !important; }
-        .legend-dot { display:inline-block; width:14px; height:14px; border-radius:3px; margin-right:6px; vertical-align:middle; }
-        .dot-pend { background:#ffb3b3; border:1px solid #f4c2c2; }
-        .dot-pend-sel { background:#ffcc99; border:1px solid #f7d6b6; }
-        .dot-ok { background:#d9d9d9; border:1px solid #cfcfcf; }
-        .dot-ok-sel { background:#7ec3ff; border:1px solid #59aff3; }
-        .sync-box { border:1px solid #e0e0e0; border-radius:8px; padding:12px; height:100%; }
-        .sync-box h5 { margin-top:0; }
-        .k-hint { color:#777; font-size:12px; }
-        .status-flag { font-weight:600; }
-        .calc-eq{display:flex;gap:8px;align-items:baseline;font-family:monospace}
-        .eq-val{font-weight:700;padding:2px 6px;background:#f5f5f5;border-radius:4px}
-        .eq-op{font-weight:700;padding:0 6px}
-        .eq-unit{opacity:.8}
-        .calc-strip .readonly-field { min-height: 38px; }
-        /* Operadores (× e =) com fundo azul */
-        :root { --brand-blue: #59AFF3FF; } /* mesmo tom usado na sua .kpi.blue */
+        /* Calculadora Visual */
+        .calc-strip { background: #fcfcfc; border: 1px solid #eee; border-radius: 6px; padding: 10px; margin-top: 15px; }
+        .calc-eq { display: flex; gap: 6px; align-items: baseline; font-family: 'Poppins', monospace; font-size: 12px; color: #666; justify-content: center; margin-top: 5px; }
+        .eq-val { font-weight: 700; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
+        .eq-op { color: var(--mrk-blue); font-weight: bold; }
 
-        .op-col{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-        }
+        /* Tabela de Itens */
+        .table-items thead th { background-color: #f5f5f5; color: var(--mrk-blue); font-family: 'Kanit', sans-serif; font-weight: 600; font-size: 12px; border-bottom: 2px solid #ddd; }
+        .row-pendente { background-color: #fff8e1 !important; }
+        .row-pendente-selected { background-color: #ffe0b2 !important; border-left: 4px solid var(--mrk-amber); }
+        .row-ok-selected { background-color: #e3f2fd !important; border-left: 4px solid var(--mrk-blue); }
+        .status-icon { font-size: 18px; vertical-align: middle; }
+        .icon-pendente { color: var(--mrk-amber); }
+        .icon-ok { color: var(--mrk-green); }
 
-        .op-pill{
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            width:38px;
-            height:38px;
-            border-radius:50%;
-            background: var(--brand-blue);
-            color:#fff;                        /* ícone branco */
-            box-shadow: 0 2px 6px rgba(21,101,192,.25);
-            transform: translateY(20px);        /* ajusta alinhamento vertical */
-            transition: filter .15s ease, transform .15s ease;
-        }
-        .op-pill i{ font-size:16px; line-height:1; }
+        /* Transfer Alert */
+        .transfer-hint { margin-top: 5px; padding: 8px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 4px; font-size: 12px; display: none; font-family: 'Poppins', sans-serif; }
+        .transfer-alert .select2-selection { border-color: #ffc107 !important; box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25); }
 
-        .op-pill:hover{ filter: brightness(1.08); }
-        .op-pill:active{ transform: translateY(5px); }
+        /* Dados Transferencia Realizada */
+        .transfer-details { background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; padding: 10px; border-radius: 4px; font-size: 12px; margin-top: 5px; display: none; }
+        .transfer-details strong { font-weight: 600; }
 
-        .calc-input { font-weight:600; }
-        .calc-eq{display:flex;gap:8px;align-items:baseline;font-family:monospace}
-        .eq-val{font-weight:700;padding:2px 6px;background:#f5f5f5;border-radius:4px}
-        .eq-op{font-weight:700;padding:0 6px}
-        .eq-unit{opacity:.8}
+        /* Select2 */
+        .select2-container .select2-selection--single { height: 34px !important; border: 1px solid #ccc !important; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 34px !important; color: #555; }
 
-        /* Opcional: deixa o bloco 100% da largura do container */
-        .sync-box .input-group { width: 100%; }
-
-        #btnNovoInsumo { margin-left: 4px; }
-
-        /* === ALERTA VISUAL DE TRANSFERÊNCIA === */
-        .transfer-alert {
-            box-shadow:
-                    0 0 0 2px rgba(255, 193, 7, 0.9),
-                    0 0 12px rgba(255, 193, 7, 0.8),
-                    0 0 24px rgba(255, 193, 7, 0.6);
-            border-radius: 6px;
-            transition: box-shadow .3s ease;
-        }
-
-        /* Badge explicativo abaixo do select */
-        .transfer-hint {
-            margin-top: 6px;
-            padding: 6px 10px;
-            font-size: 12px;
-            border-radius: 6px;
-            background: rgba(255, 193, 7, 0.15);
-            color: #8a6d00;
-            border: 1px solid rgba(255, 193, 7, 0.6);
-            display: none;
-        }
-
-
+        label { font-family: 'Kanit', sans-serif; font-weight: 500; font-size: 12px; color: #666; margin-bottom: 4px; }
+        .k-hint { font-size: 11px; color: #999; display: block; margin-top: 2px; }
     </style>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
     <br/>
     <div class="card">
-        <div class="header d-flex justify-content-between align-items-center">
-            <span id="flagEstoque" class="badge badge-pill"></span>
-
+        <div class="header">
+            <h2>
+                <iconify-icon icon="icon-park-outline:dolly" width="24"></iconify-icon>
+                ENTRADA DE NOTA
+            </h2>
+            <span id="flagEstoque" class="badge bg-grey">Carregando status...</span>
         </div>
 
         <div class="body">
-            <!-- Cabeçalho da Nota -->
             <div class="row">
-                <div class="col-md-6">
-                    <div class="row">
-                        <div class="col-md-12">
+                <div class="col-md-7">
+                    <div class="row clearfix">
+                        <div class="col-md-12 mb-2">
                             <label>Fornecedor</label>
-                            <div id="notaFornecedor" class="readonly-field"></div>
+                            <div id="notaFornecedor" class="readonly-field">-</div>
                         </div>
-                        <div class="col-md-6">
-                            <label>Nº Nota Fiscal</label>
-                            <div id="notaNumero" class="readonly-field"></div>
+                        <div class="col-md-4 mb-2">
+                            <label>Nº Nota</label>
+                            <div id="notaNumero" class="readonly-field">-</div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-2 mb-2">
                             <label>Série</label>
-                            <div id="notaSerie" class="readonly-field"></div>
+                            <div id="notaSerie" class="readonly-field">-</div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3 mb-2">
+                            <label>Emissão</label>
+                            <div id="notaEmissao" class="readonly-field">-</div>
+                        </div>
+                        <div class="col-md-3 mb-2">
                             <label>Data Entrada</label>
-                            <input type="date" id="notaDataEntrada" class="form-control" />
+                            <input type="date" id="notaDataEntrada" class="form-control">
                         </div>
-                        <div class="col-md-6">
-                            <label>Data Emissão</label>
-                            <div id="notaEmissao" class="readonly-field"></div>
-                        </div>
-                        <div class="col-md-12">
+                        <div class="col-md-12 mb-2">
                             <label>Chave de Acesso</label>
-                            <div id="notaChave" class="readonly-field"></div>
-                        </div>
-                        <div class="col-md-12" style="margin-top:8px;">
-                            <label>Loja de Destino dos Itens</label>
-                            <select id="selLojaDestino" class="form-control"></select>
-                            <span id="transferHint" class="transfer-hint">
-                                ⚠️ Os itens desta nota serão transferidos automaticamente para a loja selecionada
-                            </span>
-
+                            <div id="notaChave" class="readonly-field" style="font-family: monospace; font-size: 11px;">-</div>
                         </div>
 
+                        <div class="col-md-12 mt-2">
+                            <label style="color: var(--mrk-blue);">
+                                <iconify-icon icon="icon-park-outline:shop" style="vertical-align: -2px;"></iconify-icon>
+                                Loja de Destino (Estoque)
+                            </label>
+                            <select id="selLojaDestino" class="form-control" style="width: 100%;"></select>
+
+                            <div id="transferHint" class="transfer-hint">
+                                <iconify-icon icon="icon-park-outline:attention" style="vertical-align: -2px;"></iconify-icon>
+                                <b>Atenção:</b> Os itens serão transferidos automaticamente para a loja selecionada.
+                            </div>
+
+                            <div id="boxTransferenciaInfo" class="transfer-details">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>
+                                        <iconify-icon icon="icon-park-outline:check-one" style="vertical-align: -2px;"></iconify-icon>
+                                        <b>Transferência Realizada!</b>
+                                    </span>
+                                    <small id="txtDataTransferencia" style="opacity: 0.8;"></small>
+                                </div>
+                                <hr style="margin: 5px 0; border-top: 1px solid #a5d6a7;">
+                                <div class="row">
+                                    <div class="col-xs-6">Doc. Saída: <strong id="txtDocSaida">-</strong></div>
+                                    <div class="col-xs-6">Doc. Entrada: <strong id="txtDocEntrada">-</strong></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Painel de Sincronização -->
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <div class="sync-box">
-                        <h5>Sincronizar Item</h5>
+                        <h5>
+                            <iconify-icon icon="icon-park-outline:connection" style="vertical-align: -2px;"></iconify-icon>
+                            SINCRONIZAR ITEM
+                        </h5>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label>Item da Nota</label>
-                                <div id="syncNotaInfo" class="readonly-field">
-                                    <span class="k-hint">Selecione um item pendente e clique “Sincronizar Item”</span>
-                                </div>
+                        <label>Produto no Sistema</label>
+                        <div class="input-group">
+                            <select id="selInsumo" class="form-control" style="width: 100%;"></select>
+                            <span class="input-group-btn">
+                                <button id="btnNovoInsumo" class="btn btn-success" type="button" title="Cadastrar Novo" style="height: 34px;">
+                                    <iconify-icon icon="icon-park-outline:plus"></iconify-icon>
+                                </button>
+                            </span>
+                        </div>
+
+                        <div class="row clearfix" style="margin-top: 5px;">
+                            <div class="col-xs-4">
+                                <small class="text-muted">Código</small>
+                                <div id="insumoCodigo" style="font-weight: bold; font-size: 12px;">-</div>
                             </div>
-                            <div class="col-md-6">
-                                <label>Produto Estoque</label>
-                                <div class="input-group">
-                                    <select id="selInsumo" class="form-control"></select>
+                            <div class="col-xs-4">
+                                <small class="text-muted">Unidade</small>
+                                <div id="insumoUn" style="font-weight: bold; font-size: 12px;">-</div>
+                            </div>
+                            <div class="col-xs-12 mt-1">
+                                <small class="text-muted">Descrição</small>
+                                <div id="insumoNome" style="font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                            </div>
+                        </div>
 
-                                    <span class="input-group-btn">
-                                        <button
-                                                id="btnNovoInsumo"
-                                                class="btn btn-success"
-                                                type="button"
-                                                data-toggle="tooltip"
-                                                data-placement="left"
-                                                title="Adicionar novo produto/insumo"
-                                        >
-                                          <i class="fa fa-plus"></i>
-                                        </button>
-                                  </span>
-                                </div>
-                                <div class="row" style="margin-top:6px;">
-                                    <div class="col-md-5">
-                                        <label>Código</label>
-                                        <div id="insumoCodigo" class="readonly-field">-</div>
-                                    </div>
-                                    <div class="col-md-7">
-                                        <label>Unidade</label>
-                                        <div id="insumoUn" class="readonly-field">-</div>
-                                    </div>
-                                </div>
-                                <div class="row" style="margin-top:6px;">
-                                    <div class="col-md-12">
-                                        <label>Nome</label>
-                                        <div id="insumoNome" class="readonly-field">-</div>
+                        <div class="calc-strip">
+                            <div class="row clearfix">
+                                <div class="col-xs-4">
+                                    <label>Qtd. Nota</label>
+                                    <div class="readonly-field text-center" style="background: #fff;">
+                                        <span id="qtdNotaPreviewVal" style="font-weight: bold;">-</span>
+                                        <small id="qtdNotaPreviewUnit" class="text-muted" style="font-size: 10px;"></small>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="row align-items-end calc-strip mt-2">
-                            <div class="col-md-3">
-                                <label>Quantidade NF</label>
-                                <div id="qtdNotaPreview" class="calc-input readonly-field d-flex justify-content-between">
-                                    <span id="qtdNotaPreviewVal">-</span>
-                                    <small id="qtdNotaPreviewUnit" class="text-muted"></small>
+                                <div class="col-xs-4">
+                                    <label>Fator Conv.</label>
+                                    <input type="number" step="0.000001" min="0.000001" id="fatorConv" class="form-control text-center" value="1" style="font-weight: bold; color: var(--mrk-blue);">
+                                </div>
+                                <div class="col-xs-4">
+                                    <label>Qtd. Estoque</label>
+                                    <div class="readonly-field text-center" style="background: #e3f2fd; color: var(--mrk-blue);">
+                                        <span id="qtdInternaPreview" style="font-weight: bold;">-</span>
+                                        <small id="qtdInternaUnit" style="font-size: 10px; opacity: 0.8;"></small>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div class="col-md-1 text-center op-col">
-                                <span class="op-pill"><i class="fa fa-times" aria-hidden="true"></i></span>
-                            </div>
-
-                            <div class="col-md-3">
-                                <label>Fator de Conversão</label>
-                                <input type="number" step="0.000001" min="0.000001" id="fatorConv" class="form-control" value="1" />
-                            </div>
-
-                            <div class="col-md-1 text-center op-col">
-                                <span class="op-pill"><i class="fa fa-equals" aria-hidden="true"></i></span>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label>Quantidade Interna</label>
-                                <div class="calc-input readonly-field d-flex justify-content-between">
-                                    <span id="qtdInternaPreview">-</span>
-                                    <small id="qtdInternaUnit" class="text-muted"></small>
-                                </div>
-                            </div>
+                            <div id="formulaPreview" class="text-center"></div>
                         </div>
 
-
-                        <div class="row" style="margin-top: 8px;">
-                            <div class="col-md-12">
-                                <p id="formulaPreview"></p>
-                            </div>
+                        <div id="syncNotaInfo" style="margin-top: 10px; padding: 8px; background: #fff8e1; border-radius: 4px; font-size: 11px; color: #666; border: 1px solid #ffecb3;">
+                            <iconify-icon icon="icon-park-outline:info" style="vertical-align: -2px;"></iconify-icon>
+                            Selecione um item na tabela abaixo para vincular.
                         </div>
+                        <br/>
 
-                        <div class="text-right" style="margin-top:10px;">
-                            <button class="btn btn-primary" id="btnGravarVinculo" disabled>
-                                <i class="fa fa-check"></i> Sincronizar
-                            </button>
-                        </div>
+                        <button class="btn btn-primary btn-block mt-2" id="btnGravarVinculo" disabled style="background-color: var(--mrk-blue) !important;">
+                            <iconify-icon icon="icon-park-outline:check-one" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                            CONFIRMAR VÍNCULO
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Legenda -->
-            <div class="row" style="margin-top:10px;">
-                <div class="col-md-12">
-                    <span class="legend-dot dot-pend"></span> Item para Sincronizar &nbsp;&nbsp;
-                    <span class="legend-dot dot-pend-sel"></span> Item para Sincronizar Selecionado &nbsp;&nbsp;
-                    <span class="legend-dot dot-ok-sel"></span> Item OK Selecionado &nbsp;&nbsp;
-                    <span class="legend-dot dot-ok"></span> Item OK
+            <div class="row" style="margin-top: 20px; margin-bottom: 5px;">
+                <div class="col-md-12" style="font-size: 11px; color: #777;">
+                    <span style="display:inline-block; width:10px; height:10px; background:#fff8e1; border:1px solid #ddd; margin-right:5px;"></span> Pendente
+                    <span style="display:inline-block; width:10px; height:10px; background:#fff; border:1px solid #ddd; margin-left:15px; margin-right:5px;"></span> Vinculado
                 </div>
             </div>
 
-            <!-- Grid -->
-            <div class="row" style="margin-top:8px;">
-                <div class="col-md-12">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover" id="tabelaItens">
-                            <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Cód. NF</th>
-                                <th>Descricao NF</th>
-                                <th>UN NF</th>
-                                <th>Qtd NF</th>
-                                <th>P. Unit NF</th>        <!-- ✅ NOVO -->
-                                <th>Cód. Estoque</th>
-                                <th>Descricao Estoque</th>
-                                <th>UN Estoque</th>
-                                <th>Qtd Estoque</th>
-                                <th>P Unit</th>            <!-- ✅ NOVO -->
-                                <th style="width:48px;">&nbsp;</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr><td colspan="12" class="text-center">Carregando...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-items" id="tabelaItens">
+                    <thead>
+                    <tr>
+                        <th colspan="6" class="text-center" style="border-right: 1px solid #ddd;">DADOS DA NOTA</th>
+                        <th colspan="5" class="text-center" style="background-color: #e3f2fd; color: var(--mrk-blue);">DADOS DO SISTEMA</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <th>#</th>
+                        <th>Cód.</th>
+                        <th>Descrição</th>
+                        <th>UN</th>
+                        <th>Qtd</th>
+                        <th style="border-right: 1px solid #ddd;">Unit.</th>
+
+                        <th style="background-color: #f1f8ff;">Cód.</th>
+                        <th style="background-color: #f1f8ff;">Descrição Interna</th>
+                        <th style="background-color: #f1f8ff;">UN</th>
+                        <th style="background-color: #f1f8ff;">Qtd</th>
+                        <th style="background-color: #f1f8ff;">Unit.</th>
+
+                        <th class="text-center" style="width: 50px;">Ação</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr><td colspan="12" class="text-center text-muted" style="padding: 20px;">Carregando itens...</td></tr>
+                    </tbody>
+                </table>
             </div>
+
             <br>
-            <center>
-            <div class="d-flex justify-content-end mb-2" style="gap:8px;">
-                <button class="btn btn-danger" id="btnFecharTela" style="border-width:2px;">
-                    <i class="fa fa-times"></i>&nbsp;Fechar
+
+            <div class="text-center" style="border-top: 1px solid #eee; padding-top: 20px;">
+                <button class="btn btn-danger" id="btnFecharTela" style="margin-right: 10px; background-color: var(--mrk-red) !important;">
+                    <iconify-icon icon="icon-park-outline:close" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> FECHAR
                 </button>
 
-                <button class="btn btn-success" id="btnGravarNota" disabled>
-                    <i class="fa fa-save"></i>&nbsp;Gravar Nota (Entrada no Estoque)
+                <button class="btn btn-success" id="btnGravarNota" disabled style="background-color: var(--mrk-green) !important; padding: 8px 30px;">
+                    <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                    LANÇAR NO ESTOQUE
                 </button>
             </div>
-            </center>
 
-        </div><!-- /body -->
-    </div><!-- /card -->
-</div>
+        </div></div></div>
 
-<!-- Modal que embute o formulário de novo produto -->
-<div class="modal fade" id="modalNovoInsumoIframe" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" style="width:95%;max-width:980px;">
+<div class="modal fade" id="modalNovoInsumoIframe" tabindex="-1" role="dialog">
+    <div class="modal-dialog" style="width:95%; max-width:980px;">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title">Novo Produto</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h4 class="modal-title" style="font-family: 'Kanit', sans-serif;">Novo Produto</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body" style="padding:0; height:80vh;">
                 <iframe id="iframeNovoProduto" src="" style="width:100%;height:100%;border:0;"></iframe>
@@ -354,9 +276,16 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
-    // ===== Configs base =====
+    'use strict';
+
+    // ===== Configs =====
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
@@ -365,23 +294,20 @@
         ? 'https://portal.mrksolucoes.com.br/external'
         : 'http://localhost/portal-mrk/external';
 
-    // URL params
     const params = new URLSearchParams(window.location.search);
     const system_unit_id = params.get('system_unit_id');
-    const chave_acesso   = params.get('chave_acesso');
-    const fornecedor_id  = params.get('fornecedor_id');
-    const token          = params.get('token');
-    const usuario_id     = params.get('usuario_id');
+    const chave_acesso = params.get('chave_acesso');
+    const fornecedor_id = params.get('fornecedor_id');
+    const token = params.get('token');
+    const usuario_id = params.get('usuario_id');
 
     // Estado
     let nota = null;
     let itens = [];
     let insumos = [];
     let selectedIndex = null;
-    let lojasDestino = [];
 
-
-    // === Helpers de unidade/quantidade (ATUALIZADOS) ===
+    // ===== Helpers =====
     const INT_UNITS = ['UN', 'U', 'UND', 'PC', 'PÇ', 'PÇS'];
     const isIntUnit = u => INT_UNITS.includes(String(u || '').toUpperCase());
 
@@ -390,116 +316,70 @@
         if (!isFinite(n)) return '';
         return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
-    const hasFraction = x => Math.abs((Number(x) || 0) - Math.round(Number(x) || 0)) > 1e-9;
-
-    function normalizeQtyByUnit(unit, val){
-        const x = Number(val) || 0;
-        if (isIntUnit(unit)) return hasFraction(x) ? Math.round(x * 1000) / 1000 : Math.round(x);
-        return Math.round(x * 1000) / 1000;
-    }
 
     function formatQtyByUnit(unit, val){
         const x = Number(val) || 0;
         if (isIntUnit(unit)) {
-            if (hasFraction(x)) return (Math.round(x * 1000) / 1000).toFixed(3).replace('.', ',');
             return String(Math.round(x));
         }
         return (Math.round(x * 1000) / 1000).toFixed(3).replace('.', ',');
     }
 
-    // Helpers
-    const fmtDate = s => (!s ? '' : s.substring(0,10));
-
     function fmtDateBR(s){
         if (!s) return '';
-        if (typeof s === 'string') {
-            const t = s.trim();
-            let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-            m = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-            if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-        }
         const d = new Date(s);
-        if (!isNaN(d)) {
-            const dd = String(d.getDate()).padStart(2,'0');
-            const mm = String(d.getMonth()+1).padStart(2,'0');
-            const yy = d.getFullYear();
-            return `${dd}/${mm}/${yy}`;
-        }
-        return '';
+        return isNaN(d) ? '' : d.toLocaleDateString('pt-BR');
     }
 
     const allSynced = () => itens.every(it => it.codigo_produto_interno !== null && it.unidade_interno && Number(it.fator_conversao) > 0);
 
-    function setFlagEstoque(n){
-        const el = $('#flagEstoque');
-        if (Number(n?.incluida_estoque) === 1) {
-            el.removeClass().addClass('badge bg-green').text('Incluída no estoque');
-            $('#btnGravarNota').prop('disabled', true);
-        } else {
-            el.removeClass().addClass('badge bg-orange').text('Ainda não incluída no estoque');
-        }
-    }
-
+    // ===== Init =====
     $(document).ready(function () {
         if (!system_unit_id || !chave_acesso || !fornecedor_id || !token) {
-            Swal.fire('Erro', 'Parâmetros ausentes na URL: system_unit_id, chave_acesso, fornecedor_id e token.', 'error');
+            Swal.fire('Erro', 'Parâmetros de URL inválidos.', 'error');
             return;
         }
 
-        $('#selInsumo').select2({ placeholder: 'Selecione um insumo...', allowClear: true });
+        $('#selInsumo').select2({ placeholder: 'Pesquise o produto...', allowClear: true, width: '100%' });
 
         $('#fatorConv').on('input', atualizarPreviewConversao);
         $('#selInsumo').on('change', onChangeInsumo);
         $('#btnGravarVinculo').on('click', gravarVinculo);
         $('#btnGravarNota').on('click', gravarNota);
         $('#btnFecharTela').on('click', fecharTelaConfirm);
-
-        // abre modal + iframe de novo produto
         $('#btnNovoInsumo').on('click', abrirNovoProdutoModalViaIframe);
 
-        // quando fechar o modal, limpamos o src do iframe (evita cache/estado antigo)
+        $('#selLojaDestino').on('change', function () {
+            const dest = String($(this).val());
+            const $container = $(this).next('.select2-container');
+            if (dest && dest !== String(system_unit_id)) {
+                $container.parent().addClass('transfer-alert');
+                $('#transferHint').slideDown();
+            } else {
+                $container.parent().removeClass('transfer-alert');
+                $('#transferHint').slideUp();
+            }
+        });
+
         $('#modalNovoInsumoIframe').on('hidden.bs.modal', function () {
             $('#iframeNovoProduto').attr('src', '');
         });
 
-        carregarNotaEItens();
-        carregarInsumos(); // primeira carga
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+        });
+
+        // Carregamento inicial em cadeia para garantir que lojas estejam prontas antes de setar valor
+        carregarLojasDestino().then(() => {
+            carregarNotaEItens();
+        });
+
+        carregarInsumos();
     });
 
-    function closeParentModal(){
-        try {
-            if (window.parent && window.parent.$) {
-                window.parent.$('#modalEntradaEstoque').modal('hide');
-                return;
-            }
-        } catch (e) {}
-        try {
-            const modalEl = window.parent.document.getElementById('modalEntradaEstoque');
-            if (modalEl && window.parent.bootstrap) {
-                const inst = window.parent.bootstrap.Modal.getInstance(modalEl)
-                    || new window.parent.bootstrap.Modal(modalEl);
-                inst.hide();
-            }
-        } catch (e) {}
-    }
-
-    function fecharTelaConfirm(){
-        const pendente = Number(nota?.incluida_estoque) !== 1;
-        Swal.fire({
-            icon: pendente ? 'warning' : 'question',
-            title: pendente ? 'Fechar sem lançar no estoque?' : 'Fechar tela?',
-            text: pendente
-                ? 'A nota ainda NÃO foi incluída no estoque. Tem certeza que deseja fechar e voltar?'
-                : 'Tem certeza que deseja fechar e voltar?',
-            showCancelButton: true,
-            confirmButtonText: pendente ? 'Sim, fechar' : 'Fechar',
-            cancelButtonText: 'Cancelar'
-        }).then((res) => { if (res.isConfirmed) closeParentModal(); });
-    }
-
+    // ===== Core Logic =====
     async function carregarNotaEItens(){
-        Swal.fire({ title:'Carregando...', didOpen:()=>Swal.showLoading() });
+        Swal.fire({ title:'Carregando Nota...', didOpen:()=>Swal.showLoading() });
         try{
             const res = await axios.post(baseUrl, {
                 method: 'getNotaItensFornecedorPayload',
@@ -510,77 +390,97 @@
                     fornecedor_id: Number(fornecedor_id)
                 }
             });
-            if (!res.data.success) throw new Error(res.data.error || 'Falha ao carregar');
 
-            nota  = res.data.data.nota;
+            if (!res.data.success) throw new Error(res.data.error);
+
+            nota = res.data.data.nota;
             itens = res.data.data.itens || [];
 
-            $('#notaFornecedor').text(nota.fornecedor_nome || nota.fornecedor_razao || '');
-            $('#notaNumero').text(nota.numero_nf || '');
-            $('#notaSerie').text(nota.serie || '');
+            // Preenche Header
+            $('#notaFornecedor').text(nota.fornecedor_nome || nota.fornecedor_razao || '-');
+            $('#notaNumero').text(nota.numero_nf || '-');
+            $('#notaSerie').text(nota.serie || '-');
             $('#notaEmissao').text(fmtDateBR(nota.data_emissao));
-            $('#notaChave').text(nota.chave_acesso || '');
+            $('#notaChave').text(nota.chave_acesso || '-');
+
             setFlagEstoque(nota);
 
-            const hoje = new Date();
-            const y = hoje.getFullYear(), m = String(hoje.getMonth()+1).padStart(2,'0'), d = String(hoje.getDate()).padStart(2,'0');
-            $('#notaDataEntrada').val(nota.data_entrada ? fmtDate(nota.data_entrada) : `${y}-${m}-${d}`);
+            // Data entrada default
+            const hoje = new Date().toISOString().split('T')[0];
+            $('#notaDataEntrada').val(nota.data_entrada ? nota.data_entrada.substring(0,10) : hoje);
+
+            // ===== Lógica de Transferência e Bloqueio =====
+            const info = nota.transferencia_info || {};
+            const lojaAtual = Number(system_unit_id);
+            const lojaDestino = info.destino_id ? Number(info.destino_id) : lojaAtual;
+
+            // Seta o select
+            $('#selLojaDestino').val(String(lojaDestino)).trigger('change');
+
+            // REGRA: Só permite mudar se NÃO foi transferida OU se o destino for a própria loja (estorno lógico/transferência para si mesmo)
+            const isLocked = (info.foi_transferida === true && lojaDestino !== lojaAtual);
+
+            if (isLocked) {
+                $('#selLojaDestino').prop('disabled', true);
+
+                // Mostra painel de detalhes
+                $('#boxTransferenciaInfo').slideDown();
+                $('#txtDataTransferencia').text(fmtDateBR(info.data_saida));
+                $('#txtDocSaida').text(info.doc_saida || '-');
+                $('#txtDocEntrada').text(info.doc_entrada || '-');
+
+                // Esconde hint de atenção pois já foi feito
+                $('#transferHint').hide();
+            } else {
+                $('#selLojaDestino').prop('disabled', false);
+                $('#boxTransferenciaInfo').hide();
+            }
 
             renderTabela();
             toggleGravarNota();
             Swal.close();
         }catch(e){
             console.error(e);
-            Swal.fire('Erro', e.message || 'Erro ao carregar', 'error');
+            Swal.fire('Erro', e.message || 'Erro ao carregar nota.', 'error');
         }
     }
 
-    // <<< AJUSTADO: aceita selectCodigo para pré-selecionar recém-criado >>>
+    async function carregarLojasDestino(){
+        try {
+            const res = await axios.post(baseUrl, { method: 'getGroupByUser', token, data: { user_id: Number(usuario_id) } });
+            if(res.data?.lojas_por_grupo){
+                const $sel = $('#selLojaDestino');
+                $sel.empty();
+                // Flatten lojas
+                const lojas = [];
+                Object.values(res.data.lojas_por_grupo).forEach(g => g.forEach(l => lojas.push(l)));
+                // Unique
+                const uniqueLojas = [...new Map(lojas.map(item => [item['id'], item])).values()];
+
+                uniqueLojas.forEach(l => $sel.append(new Option(l.name, l.id)));
+
+                // Pré-seleciona loja atual por padrão
+                $sel.select2({width:'100%'}).val(String(system_unit_id)).trigger('change');
+            }
+        } catch(e){ console.error(e); }
+    }
+
     async function carregarInsumos(selectCodigo = null){
         try{
             const res = await axios.post(baseUrl, {
-                method: 'listInsumos',
-                token,
-                data: { unit_id: String(system_unit_id) }
+                method: 'listInsumos', token, data: { unit_id: String(system_unit_id) }
             });
-            if (!res.data?.success) throw new Error('Falha ao carregar insumos');
-
             insumos = res.data.insumos || [];
 
             const $sel = $('#selInsumo');
-
-            if ($sel.hasClass('select2-hidden-accessible')) $sel.select2('destroy');
-
             $sel.empty().append('<option value=""></option>');
+
             insumos.forEach(i => {
-                const text = `${i.codigo} - ${i.nome}`;
-                $sel.append(new Option(text, String(i.codigo), false, false));
+                $sel.append(new Option(`${i.codigo} - ${i.nome}`, String(i.codigo)));
             });
 
-            $sel.select2({ placeholder:'Selecione um insumo...', allowClear:true, width:'resolve' });
-
-            // zera painéis laterais
-            $('#insumoCodigo').text('-');
-            $('#insumoUn').text('-');
-            $('#insumoNome').text('-');
-
-            if (selectCodigo) {
-                const exists = insumos.some(i => String(i.codigo) === String(selectCodigo));
-                if (!exists) {
-                    // fallback: injeta opção temporária para permitir seleção imediata
-                    $sel.append(new Option(String(selectCodigo), String(selectCodigo), false, false));
-                }
-                // aguarda o select2 montar antes de selecionar
-                setTimeout(() => {
-                    $sel.val(String(selectCodigo)).trigger('change'); // chama onChangeInsumo()
-                }, 0);
-            } else {
-                $sel.val(null).trigger('change');
-            }
-        }catch(e){
-            console.error(e);
-            Swal.fire('Erro', e.message || 'Erro ao carregar insumos', 'error');
-        }
+            if (selectCodigo) $sel.val(String(selectCodigo)).trigger('change');
+        }catch(e){ console.error(e); }
     }
 
     function renderTabela(){
@@ -588,452 +488,289 @@
         tbody.empty();
 
         if (!itens.length) {
-            tbody.append('<tr><td colspan="12" class="text-center">Sem itens.</td></tr>');
+            tbody.append('<tr><td colspan="12" class="text-center text-muted" style="padding:20px;">Nota sem itens.</td></tr>');
             return;
         }
 
         itens.forEach((it, idx) => {
-            const pend = (it.codigo_produto_interno === null || !it.unidade_interno || !(Number(it.fator_conversao) > 0));
+            const pendente = (it.codigo_produto_interno === null || !it.unidade_interno || !(Number(it.fator_conversao) > 0));
 
-            const unInt = String(it.unidade_interno || '').trim();
-            const qtdIntCalc = Number(
-                it.quantidade_interno ?? (Number(it.quantidade_nota || 0) * Number(it.fator_conversao || 1))
-            );
-            const qtdIntFmt = formatQtyByUnit(unInt, qtdIntCalc);
+            // Dados NF
+            const qtdNF = Number(it.quantidade_nota || 0);
+            const vUnitNF = fmtMoneyBR(it.valor_unitario_nota);
 
-            const pUnitNF = (it.valor_unitario_nota != null) ? fmtMoneyBR(Number(it.valor_unitario_nota)) : '';
-            let pUnitConvertido = '';
-            if (!pend && Number(it.fator_conversao) > 0 && it.valor_unitario_nota != null) {
-                pUnitConvertido = fmtMoneyBR(Number(it.valor_unitario_nota) / Number(it.fator_conversao));
+            // Dados Sistema (Calculados)
+            const fator = Number(it.fator_conversao || 1);
+            const qtdInt = Number(it.quantidade_interno ?? (qtdNF * fator));
+            const unInt = String(it.unidade_interno || '-');
+            const qtdIntFmt = formatQtyByUnit(unInt, qtdInt);
+
+            let vUnitInt = '-';
+            if (!pendente && fator > 0 && it.valor_unitario_nota != null) {
+                vUnitInt = fmtMoneyBR(Number(it.valor_unitario_nota) / fator);
             }
 
-            const trClass = pend ? 'row-pendente' : '';
-            const actionHtml = `
-        <a href="#" title="Sincronizar Item" onclick="abrirSync(${idx}); return false;">
-          <i class="fa ${pend ? 'fa-exclamation-triangle text-danger' : 'fa-link text-primary'}"></i>
-        </a>`;
+            const trClass = pendente ? 'row-pendente' : '';
+            const iconStatus = pendente
+                ? '<iconify-icon icon="icon-park-outline:attention" class="status-icon icon-pendente" title="Pendente"></iconify-icon>'
+                : '<iconify-icon icon="icon-park-solid:check-one" class="status-icon icon-ok" title="Sincronizado"></iconify-icon>';
 
             tbody.append(`
-        <tr class="${trClass}" data-idx="${idx}">
-          <td>${it.numero_item_nota}</td>
-          <td>${it.codigo_produto_nota ?? ''}</td>
-          <td>${it.descricao_nota ?? ''}</td>
-          <td>${it.unidade_nota ?? ''}</td>
-          <td>${it.quantidade_nota ?? ''}</td>
-          <td>${pUnitNF}</td>
-          <td>${it.codigo_produto_interno ?? ''}</td>
-          <td>${it.descricao_interno ?? ''}</td>
-          <td>${unInt}</td>
-          <td>${qtdIntFmt}</td>
-          <td>${pUnitConvertido}</td>
-          <td class="text-center">${actionHtml}</td>
-        </tr>
-      `);
+            <tr class="${trClass}" data-idx="${idx}" style="cursor:pointer;">
+            <td>${it.numero_item_nota}</td>
+            <td><b>${it.codigo_produto_nota}</b></td>
+            <td>${it.descricao_nota}</td>
+            <td>${it.unidade_nota}</td>
+            <td>${qtdNF}</td>
+            <td style="border-right: 1px solid #ddd;">${vUnitNF}</td>
+
+            <td style="background-color: ${pendente ? 'transparent' : '#f1f8ff'};"><b>${it.codigo_produto_interno ?? '-'}</b></td>
+            <td style="background-color: ${pendente ? 'transparent' : '#f1f8ff'};">${it.descricao_interno ?? '-'}</td>
+            <td style="background-color: ${pendente ? 'transparent' : '#f1f8ff'};">${unInt}</td>
+            <td style="background-color: ${pendente ? 'transparent' : '#f1f8ff'};">${pendente ? '-' : qtdIntFmt}</td>
+            <td style="background-color: ${pendente ? 'transparent' : '#f1f8ff'};">${vUnitInt}</td>
+
+            <td class="text-center">${iconStatus}</td>
+            </tr>
+            `);
         });
 
-        $('#tabelaItens tbody').off('click', 'tr').on('click', 'tr', function () {
-            const i = Number($(this).data('idx'));
-            marcarSelecionado(i);
-        });
-    }
-
-    function marcarSelecionado(i){
-        selectedIndex = i;
-        $('#tabelaItens tbody tr').each(function(){
-            const idx = Number($(this).data('idx'));
-            const it = itens[idx];
-            const pend = (it.codigo_produto_interno === null || !it.unidade_interno || !(Number(it.fator_conversao) > 0));
-            $(this).removeClass('row-pendente-selected row-ok-selected');
-            if (idx === i) $(this).addClass(pend ? 'row-pendente-selected' : 'row-ok-selected');
+        $('#tabelaItens tbody tr').click(function() {
+            const idx = $(this).data('idx');
+            carregarParaEdicao(idx);
         });
     }
 
-    window.abrirSync = function(index){
-        marcarSelecionado(index);
+    function carregarParaEdicao(index){
+        selectedIndex = index;
         const it = itens[index];
 
+        // Marca linha
+        $('#tabelaItens tbody tr').removeClass('row-pendente-selected row-ok-selected');
+        const tr = $(`#tabelaItens tbody tr[data-idx="${index}"]`);
+        const pend = (it.codigo_produto_interno === null);
+        tr.addClass(pend ? 'row-pendente-selected' : 'row-ok-selected');
+
+        // Preenche Info do Item Nota
         $('#syncNotaInfo').html(`
-      <div><b>Item:</b> ${it.numero_item_nota}</div>
-      <div><b>Cód. Nota:</b> ${it.codigo_produto_nota ?? ''}</div>
-      <div><b>Descrição:</b> ${it.descricao_nota ?? ''}</div>
-      <div><b>UN NF:</b> ${it.unidade_nota ?? ''}</div>
-      <div><b>Qtd NF:</b> ${it.quantidade_nota ?? ''}</div>
-    `);
+        <b>Item ${it.numero_item_nota}:</b> ${it.descricao_nota} (${it.quantidade_nota} ${it.unidade_nota})
+        `).css({'background': '#e3f2fd', 'color': '#0d47a1', 'border-color': '#90caf9'});
 
-        $('#selInsumo').val(null).trigger('change');
-        $('#insumoCodigo').text('-');
-        $('#insumoUn').text('-');
-        $('#insumoNome').text('-');
-
-        if (it.codigo_produto_interno) {
-            const found = insumos.find(x => Number(x.codigo) === Number(it.codigo_produto_interno));
-            if (found) $('#selInsumo').val(String(found.codigo)).trigger('change');
+        // Preenche Formulário
+        if(it.codigo_produto_interno) {
+            $('#selInsumo').val(String(it.codigo_produto_interno)).trigger('change');
+        } else {
+            $('#selInsumo').val(null).trigger('change');
         }
 
         $('#fatorConv').val(Number(it.fator_conversao || 1));
+
+        // Preview inicial
         atualizarPreviewConversao();
         $('#btnGravarVinculo').prop('disabled', false);
-    };
+    }
 
     function onChangeInsumo(){
         const codigo = $('#selInsumo').val();
-        if (!codigo) {
+        if(!codigo){
             $('#insumoCodigo').text('-'); $('#insumoUn').text('-'); $('#insumoNome').text('-');
-            atualizarPreviewConversao();
             return;
         }
         const ins = insumos.find(x => String(x.codigo) === String(codigo));
-        $('#insumoCodigo').text(ins ? ins.codigo : '-');
-        $('#insumoUn').text(ins ? (ins.und || '-') : '-');
-        $('#insumoNome').text(ins ? ins.nome : '-');
-        atualizarPreviewConversao();
+        if(ins){
+            $('#insumoCodigo').text(ins.codigo);
+            $('#insumoUn').text(ins.und);
+            $('#insumoNome').text(ins.nome);
+            atualizarPreviewConversao();
+        }
     }
 
     function atualizarPreviewConversao(){
-        if (selectedIndex === null) return;
-        const it      = itens[selectedIndex];
-        const fator   = Number($('#fatorConv').val() || 1);
+        if(selectedIndex === null) return;
+        const it = itens[selectedIndex];
+        const fator = Number($('#fatorConv').val() || 1);
         const qtdNota = Number(it.quantidade_nota || 0);
 
-        const unNota  = String(it.unidade_nota || '');
-        const unIntSel = String($('#insumoUn').text() || '').trim();
-        const unIntItm = String(it.unidade_interno || '').trim();
-        const unInt    = unIntSel || unIntItm || '';
+        const unInt = $('#insumoUn').text() !== '-' ? $('#insumoUn').text() : (it.unidade_interno || '');
+        const qtdFinal = qtdNota * fator;
 
-        const qtdIntRaw  = qtdNota * (fator > 0 ? fator : 0);
-        const qtdIntNorm = normalizeQtyByUnit(unInt, qtdIntRaw);
+        $('#qtdNotaPreviewVal').text(qtdNota);
+        $('#qtdNotaPreviewUnit').text(it.unidade_nota);
 
-        $('#qtdNotaPreviewVal').text(isIntUnit(unNota) ? String(Math.round(qtdNota)) : String(qtdNota).replace('.', ','));
-        $('#qtdNotaPreviewUnit').text(unNota);
-        $('#qtdInternaPreview').text(formatQtyByUnit(unInt, qtdIntNorm));
+        $('#qtdInternaPreview').text(formatQtyByUnit(unInt, qtdFinal));
         $('#qtdInternaUnit').text(unInt);
 
-        const html = `
-      <div class="calc-eq">
-        <span class="eq-term"><span class="eq-val">${qtdNota}</span> <span class="eq-unit">${unNota}</span></span>
+        // Fórmula Visual
+        $('#formulaPreview').html(`
+        <div class="calc-eq">
+        <span class="eq-val">${qtdNota} ${it.unidade_nota}</span>
         <span class="eq-op">×</span>
-        <span class="eq-term"><span class="eq-val">${fator}</span></span>
+        <span class="eq-val">${fator}</span>
         <span class="eq-op">=</span>
-        <span class="eq-term"><span class="eq-val">${formatQtyByUnit(unInt, qtdIntNorm)}</span> <span class="eq-unit">${unInt}</span></span>
-      </div>
-      <div class="k-hint">Quantidade da nota × Fator de conversão = Quantidade interna</div>`;
-        $('#formulaPreview').html(html);
-    }
-
-    function toggleGravarNota(){
-        $('#btnGravarNota').prop('disabled', !(allSynced() && Number(nota?.incluida_estoque) !== 1));
+        <span class="eq-val" style="background:#c8e6c9; color:#2e7d32;">${formatQtyByUnit(unInt, qtdFinal)} ${unInt}</span>
+        </div>
+        `);
     }
 
     async function gravarVinculo(){
-        if (selectedIndex === null) return Swal.fire('Atenção', 'Selecione um item.', 'warning');
-
+        if (selectedIndex === null) return;
         const it = itens[selectedIndex];
-        const codigo = $('#selInsumo').val();
-        const fator  = Number($('#fatorConv').val() || 0);
-        const ins = insumos.find(x => String(x.codigo) === String(codigo));
+        const codProd = $('#selInsumo').val();
+        const fator = Number($('#fatorConv').val());
+        const ins = insumos.find(x => String(x.codigo) === String(codProd));
 
-        if (!codigo || !ins) return Swal.fire('Atenção', 'Selecione um insumo.', 'warning');
-        if (!(fator > 0))    return Swal.fire('Atenção', 'Informe um fator de conversão válido (> 0).', 'warning');
+        if (!ins) return Swal.fire('Atenção', 'Selecione um produto do sistema.', 'warning');
+        if (fator <= 0) return Swal.fire('Atenção', 'Fator deve ser maior que zero.', 'warning');
 
-        const unidadeInterna = String(ins.und || '');
-        const qtdInternaNorm = normalizeQtyByUnit(unidadeInterna, (Number(it.quantidade_nota || 0) * fator));
+        try {
+            Swal.showLoading();
+            const res = await axios.post(baseUrl, {
+                method: 'vincularItemNotaFornecedor',
+                token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    fornecedor_id: Number(fornecedor_id),
+                    produto_codigo: Number(ins.codigo),
+                    codigo_nota: String(it.codigo_produto_nota),
+                    descricao_nota: String(it.descricao_nota),
+                    unidade_nota: String(it.unidade_nota),
+                    fator_conversao: fator,
+                    unidade_item: ins.und
+                }
+            });
 
-        const payload = {
-            method: 'vincularItemNotaFornecedor',
-            token,
-            data: {
-                system_unit_id: Number(system_unit_id),
-                fornecedor_id: Number(fornecedor_id),
-                produto_codigo: Number(ins.codigo),
-                codigo_nota: String(it.codigo_produto_nota || ''),
-                descricao_nota: String(it.descricao_nota || ''),
-                unidade_nota: String(it.unidade_nota || ''),
-                fator_conversao: fator,
-                unidade_item: unidadeInterna
-            }
-        };
+            if(!res.data.success) throw new Error(res.data.error);
 
-        try{
-            Swal.fire({ title:'Sincronizando...', didOpen:()=>Swal.showLoading() });
-            const res = await axios.post(baseUrl, payload);
-            if (!res.data.success) throw new Error(res.data.error || 'Falha ao sincronizar');
-
+            // Atualiza array local
             it.codigo_produto_interno = Number(ins.codigo);
-            it.descricao_interno      = String(ins.nome || '');
-            it.unidade_interno        = unidadeInterna;
-            it.fator_conversao        = fator;
-            it.quantidade_interno     = qtdInternaNorm;
+            it.descricao_interno = ins.nome;
+            it.unidade_interno = ins.und;
+            it.fator_conversao = fator;
 
             renderTabela();
             toggleGravarNota();
+            Swal.fire('Sucesso', 'Vínculo salvo.', 'success');
 
+            // Limpa form
             selectedIndex = null;
-            $('#syncNotaInfo').html('<span class="k-hint">Selecione um item pendente e clique “Sincronizar Item”</span>');
+            $('#syncNotaInfo').html('<iconify-icon icon="icon-park-outline:info"></iconify-icon> Selecione um item na tabela.').css({'background':'#fff8e1','color':'#666'});
             $('#selInsumo').val(null).trigger('change');
-            $('#insumoCodigo').text(''); $('#insumoUn').text(''); $('#insumoNome').text('');
-            $('#fatorConv').val(1); $('#qtdInternaPreview').text(''); $('#formulaPreview').text('');
-            $('#qtdNotaPreviewVal').text(''); $('#qtdNotaPreviewUnit').text(''); $('#qtdInternaUnit').text('');
+            $('#fatorConv').val(1);
             $('#btnGravarVinculo').prop('disabled', true);
 
-            Swal.fire('Pronto!', 'Vínculo salvo com sucesso.', 'success');
-        }catch(e){
-            console.error(e);
-            Swal.fire('Erro', e.message || 'Erro ao salvar vínculo', 'error');
+        } catch(e) {
+            Swal.fire('Erro', e.message, 'error');
         }
     }
 
     async function gravarNota(){
+        if(!allSynced()) return Swal.fire('Pendente', 'Vincule todos os itens antes de gravar.', 'warning');
 
-        // 🔒 valida sincronização
-        if (!allSynced()) {
-            return Swal.fire(
-                'Atenção',
-                'Existem itens pendentes de sincronização.',
-                'warning'
-            );
-        }
+        const dataEntrada = $('#notaDataEntrada').val();
+        if(!dataEntrada) return Swal.fire('Atenção', 'Informe a Data de Entrada.', 'warning');
 
-        const data_entrada = $('#notaDataEntrada').val();
-        if (!data_entrada) {
-            return Swal.fire(
-                'Atenção',
-                'Informe a data de entrada.',
-                'warning'
-            );
-        }
+        // Lógica de Destino
+        const lojaDestino = $('#selLojaDestino').val();
+        const transferir = lojaDestino && String(lojaDestino) !== String(system_unit_id);
 
-        // 🏬 lógica NOVA de destino
-        const lojaSelecionada = $('#selLojaDestino').val();
-
-        const transferirDestino =
-            lojaSelecionada &&
-            String(lojaSelecionada) !== String(system_unit_id);
-
-        const lojaDestino = transferirDestino
-            ? Number(lojaSelecionada)
-            : null;
-
-        // 📦 itens
-        const itensReq = itens.map(it => ({
-            numero_item_nota: it.numero_item_nota,
-            codigo_produto_interno: it.codigo_produto_interno,
-            unidade_interno: it.unidade_interno,
-            quantidade_interno: Number(
-                it.quantidade_interno ??
-                (Number(it.quantidade_nota || 0) * Number(it.fator_conversao || 1))
-            ),
-            fator_conversao: Number(it.fator_conversao || 1)
-        }));
-
-        // 🧾 payload final
-        const req = {
-            method: 'lancarItensNotaNoEstoque',
-            token,
-            data: {
-                system_unit_id: Number(system_unit_id),
-                usuario_id: Number(usuario_id),
-                chave_acesso: String(chave_acesso),
-                data_entrada: String(data_entrada),
-                transferir_destino: transferirDestino,
-                system_unit_id_destino: lojaDestino,
-                itens: itensReq
-            }
+        const payload = {
+            system_unit_id: Number(system_unit_id),
+            usuario_id: Number(usuario_id),
+            chave_acesso: String(chave_acesso),
+            data_entrada: dataEntrada,
+            transferir_destino: transferir,
+            system_unit_id_destino: transferir ? Number(lojaDestino) : null,
+            itens: itens.map(it => ({
+                numero_item_nota: it.numero_item_nota,
+                codigo_produto_interno: it.codigo_produto_interno,
+                unidade_interno: it.unidade_interno,
+                quantidade_interno: Number(it.quantidade_nota) * Number(it.fator_conversao),
+                fator_conversao: Number(it.fator_conversao)
+            }))
         };
 
         try {
-            Swal.fire({
-                title: 'Gravando entrada...',
-                didOpen: () => Swal.showLoading()
+            Swal.fire({ title: 'Processando Entrada...', didOpen:()=>Swal.showLoading() });
+            const res = await axios.post(baseUrl, {
+                method: 'lancarItensNotaNoEstoque',
+                token,
+                data: payload
             });
 
-            const res = await axios.post(baseUrl, req);
+            if(!res.data.success) throw new Error(res.data.message);
 
-            if (!res.data?.success) {
-                throw new Error(res.data?.message || 'Falha ao lançar itens no estoque');
-            }
-
-            // ✅ estado local
             nota.incluida_estoque = 1;
             setFlagEstoque(nota);
-            toggleGravarNota();
+            Swal.fire('Sucesso!', 'Entrada de estoque realizada.', 'success');
 
-            let msg = 'Nota incluída no estoque com sucesso.';
-
-            if (transferirDestino) {
-                msg += `
-                <br><br>
-                <b>Transferência automática realizada</b>
-            `;
-            }
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso',
-                html: msg
-            });
-
-        } catch (e) {
-            console.error(e);
-            Swal.fire(
-                'Erro',
-                e.message || 'Erro ao gravar nota no estoque',
-                'error'
-            );
+        } catch(e) {
+            Swal.fire('Erro', e.message, 'error');
         }
     }
 
-    // >>> Modal + Iframe do Novo Produto (pré-seleção automática) <<<
+    // Auxiliares
+    function setFlagEstoque(n){
+        const el = $('#flagEstoque');
+        const btn = $('#btnGravarNota');
+
+        if(Number(n?.incluida_estoque) === 1){
+            el.attr('class', 'badge bg-green').html('<iconify-icon icon="icon-park-outline:check"></iconify-icon> ESTOQUE LANÇADO');
+            // Muda o texto para indicar que pode atualizar/corrigir
+            btn.html('<iconify-icon icon="icon-park-outline:refresh" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> ATUALIZAR ENTRADA');
+        } else {
+            el.attr('class', 'badge bg-orange').html('<iconify-icon icon="icon-park-outline:time"></iconify-icon> PENDENTE ESTOQUE');
+            btn.html('<iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> LANÇAR NO ESTOQUE');
+        }
+
+        // LIBERA O BOTÃO: O botão agora depende apenas da sincronização dos itens
+        toggleGravarNota();
+    }
+
+    function toggleGravarNota(){
+        // Habilita se todos os itens estiverem vinculados, independente se já foi lançada ou não
+        $('#btnGravarNota').prop('disabled', !allSynced());
+    }
+
+    // function toggleGravarNota(){
+    //     // Se ainda não foi incluída (flag != 1), habilita/desabilita baseado no vínculo
+    //     // if(Number(nota?.incluida_estoque)!==1) {
+    //     //     $('#btnGravarNota').prop('disabled', !allSynced());
+    //     // }
+    // }
+
+    // Novo Produto Iframe
     function abrirNovoProdutoModalViaIframe(){
-        const qs = new URLSearchParams({
-            system_unit_id: system_unit_id || '',
-            token: token || ''
-        });
-        const url = `${baseUrlredirect}/novo-produto-modal.html?${qs.toString()}`;
+        const qs = `system_unit_id=${system_unit_id}&token=${token}`;
+        const url = `${baseUrlredirect}/novo-produto-modal.html?${qs}`;
 
-        // callback que o filho chamará: window.parent.onNovoProdutoSalvo({...})
-        window.onNovoProdutoSalvo = function (produto) {
-            try {
-                const codigoCriado = String(produto?.codigo || '');
-                fecharIframeNovoProduto();              // fecha modal do iframe
-                carregarInsumos(codigoCriado);          // recarrega e já seleciona o novo
-                Swal.fire('Sucesso', 'Produto criado e adicionado à lista.', 'success');
-            } catch (e) {
-                console.error('onNovoProdutoSalvo error:', e);
-            }
-        };
-
-        // função opcional p/ o filho fechar o modal do iframe
-        window.fecharIframeNovoProduto = function(){
+        window.onNovoProdutoSalvo = function(prod){
             $('#modalNovoInsumoIframe').modal('hide');
+            carregarInsumos(prod.codigo);
+            Swal.fire('Sucesso', 'Produto cadastrado.', 'success');
         };
 
-        // abre modal e injeta a página no iframe
         $('#iframeNovoProduto').attr('src', url);
         $('#modalNovoInsumoIframe').modal('show');
     }
 
-    async function carregarLojasDestino(){
-        try{
-            const res = await axios.post(baseUrl, {
-                method: 'getGroupByUser',
-                token,
-                data: { user_id: Number(usuario_id) }
-            });
-
-            if (!res.data?.lojas_por_grupo) {
-                throw new Error('Nenhuma loja encontrada');
-            }
-
-            const lojas = [];
-            Object.values(res.data.lojas_por_grupo).forEach(arr => {
-                arr.forEach(l => {
-                    if (!lojas.find(x => Number(x.id) === Number(l.id))) {
-                        lojas.push(l);
-                    }
-                });
-            });
-
-            const $sel = $('#selLojaDestino');
-
-            if ($sel.hasClass('select2-hidden-accessible')) {
-                $sel.select2('destroy');
-            }
-
-            $sel.empty();
-
-            lojas.forEach(l => {
-                $sel.append(new Option(l.name, l.id));
-            });
-
-            $sel.select2({
-                width: 'resolve'
-            });
-
-            // ✅ loja atual pré-selecionada
-            $sel.val(String(system_unit_id)).trigger('change');
-
-        }catch(e){
-            console.error(e);
-            Swal.fire(
-                'Erro',
-                'Erro ao carregar lojas disponíveis',
-                'error'
-            );
-        }
-    }
-
-    function setFlagEstoque(n){
-        const el = $('#flagEstoque');
-
-        if (Number(n?.incluida_estoque) === 1) {
-            el
-                .removeClass()
-                .addClass('badge bg-green')
-                .text('Incluída no estoque');
-
-            $('#btnGravarNota').prop('disabled', true);
-        } else {
-            el
-                .removeClass()
-                .addClass('badge bg-orange')
-                .text('Ainda não incluída no estoque');
-
-            carregarLojasDestino();
-        }
-    }
-
-
-    $('#chkTransferirDestino').on('change', function(){
-        if (this.checked) {
-            $('#boxLojaDestino').show();
-        } else {
-            $('#boxLojaDestino').hide();
-            $('#selLojaDestino').val(null).trigger('change');
-        }
-    });
-
-
-    $('#selLojaDestino').on('change', function () {
-        const lojaSelecionada = String($(this).val());
-        const $select2 = $('#selLojaDestino').next('.select2-container');
-
-        if (lojaSelecionada && lojaSelecionada !== String(system_unit_id)) {
-
-            // 🔆 glow amarelo no campo
-            $select2.addClass('transfer-alert');
-
-            // 🏷️ mostra aviso textual
-            $('#transferHint').fadeIn(150);
-
-            // ⚠️ alerta único (não fica repetindo)
+    function fecharTelaConfirm(){
+        if(Number(nota?.incluida_estoque)!==1){
             Swal.fire({
+                title: 'Sair sem salvar?',
+                text: 'A entrada no estoque ainda não foi concluída.',
                 icon: 'warning',
-                title: 'Transferência automática',
-                html: `
-                A entrada será registrada na <b>loja atual</b>,
-                porém os itens serão <b>transferidos automaticamente</b>
-                para a loja selecionada.
-            `,
-                confirmButtonText: 'Entendi'
-            });
-
+                showCancelButton: true,
+                confirmButtonText: 'Sair mesmo assim'
+            }).then((r)=>{ if(r.isConfirmed) closeParentModal(); });
         } else {
-
-            // ❌ remove destaque se voltar para loja original
-            $select2.removeClass('transfer-alert');
-            $('#transferHint').fadeOut(150);
+            closeParentModal();
         }
-    });
+    }
 
+    function closeParentModal(){
+        try { window.parent.$('#modalEntradaEstoque').modal('hide'); } catch(e){}
+    }
 
-
-
-
-
-
-    $(function () {
-        $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
-    });
 </script>
 </body>
 </html>

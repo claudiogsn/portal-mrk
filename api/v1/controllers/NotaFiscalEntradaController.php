@@ -243,12 +243,12 @@ class NotaFiscalEntradaController {
         }
     }
 
-    public static function getNotaItensFornecedorPayload(array $data):array
+    public static function getNotaItensFornecedorPayload(array $data): array
     {
         global $pdo;
 
         try {
-            // ===== validação =====
+            // ===== 1. VALIDAÇÃO DE ENTRADA =====
             $required = ['system_unit_id', 'chave_acesso', 'fornecedor_id'];
             foreach ($required as $k) {
                 if (!isset($data[$k]) || $data[$k] === '' || $data[$k] === null) {
@@ -260,34 +260,83 @@ class NotaFiscalEntradaController {
             $chaveAcesso = trim((string)$data['chave_acesso']);
             $fornIdInput = (int)$data['fornecedor_id'];
 
-            // ===== nota (com dados do fornecedor via JOIN) =====
+            // ===== 2. BUSCA DA NOTA =====
             $stNota = $pdo->prepare("
             SELECT 
                 en.*, 
                 ff.nome     AS fornecedor_nome,
                 ff.razao    AS fornecedor_razao,
-                ff.cnpj_cpf AS fornecedor_cnpj_cpf
+                ff.cnpj_cpf AS fornecedor_cnpj_cpf,
+                dest.name   AS nome_unidade_destino
             FROM estoque_nota AS en
             LEFT JOIN financeiro_fornecedor AS ff
                    ON ff.id = en.fornecedor_id
                   AND ff.system_unit_id = en.system_unit_id
+            LEFT JOIN system_unit AS dest 
+                   ON dest.id = en.transferido_para_unit_id
             WHERE en.system_unit_id = :unit
               AND en.chave_acesso  = :chave
             LIMIT 1
         ");
+
             $stNota->execute([':unit' => $unitId, ':chave' => $chaveAcesso]);
             $nota = $stNota->fetch(PDO::FETCH_ASSOC);
+
             if (!$nota) {
-                return ['success' => false, 'error' => 'Nota não encontrada para a chave informada.'];
+                return ['success' => false, 'error' => 'Nota não encontrada.'];
             }
 
-            $notaId       = (int)$nota['id'];
+            if ((int)$nota['fornecedor_id'] !== $fornIdInput) {
+                return ['success' => false, 'error' => 'fornecedor_id não confere.'];
+            }
+
+            // ===== 3. MONTA OBJETO DE TRANSFERÊNCIA COM DOCS =====
+            $transfInfo = [
+                'foi_transferida' => false,
+                'destino_id'      => null,
+                'destino_nome'    => null,
+                'transfer_key'    => null,
+                'doc_saida'       => null, // Novo campo
+                'doc_entrada'     => null  // Novo campo
+            ];
+
+            if (!empty($nota['transferido_para_unit_id'])) {
+                $transfInfo['foi_transferida'] = true;
+                $transfInfo['destino_id']      = (int)$nota['transferido_para_unit_id'];
+                $transfInfo['destino_nome']    = $nota['nome_unidade_destino'];
+                $transfInfo['transfer_key']    = $nota['transfer_key'] ?? null;
+
+                // --- BUSCA OS DOCS NA MOVIMENTAÇÃO SE TIVER KEY ---
+                if (!empty($nota['transfer_key'])) {
+                    // Usamos DISTINCT para não trazer linhas repetidas de cada item
+                    $stMov = $pdo->prepare("
+                    SELECT DISTINCT system_unit_id, doc, tipo 
+                    FROM movimentacao 
+                    WHERE transfer_key = :key
+                ");
+                    $stMov->execute([':key' => $nota['transfer_key']]);
+                    $movs = $stMov->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($movs as $m) {
+                        // Se o system_unit_id for o da origem (atual), é o Doc de Saída (ts)
+                        if ((int)$m['system_unit_id'] === $unitId) {
+                            $transfInfo['doc_saida'] = $m['doc'];
+                        }
+                        // Se o system_unit_id for o do destino, é o Doc de Entrada (te)
+                        elseif ((int)$m['system_unit_id'] === (int)$nota['transferido_para_unit_id']) {
+                            $transfInfo['doc_entrada'] = $m['doc'];
+                        }
+                    }
+                }
+            }
+
+            // Injeta o objeto atualizado na nota
+            $nota['transferencia_info'] = $transfInfo;
+
+            // ===== 4. ITENS DA NOTA (Mantido igual) =====
+            $notaId = (int)$nota['id'];
             $fornecedorId = (int)$nota['fornecedor_id'];
-            if ($fornecedorId !== $fornIdInput) {
-                return ['success' => false, 'error' => 'fornecedor_id não confere com a nota.'];
-            }
 
-            // ===== itens da nota =====
             $stItens = $pdo->prepare("
             SELECT id, numero_item, codigo_produto, descricao, unidade, quantidade, valor_unitario
             FROM estoque_nota_item
@@ -299,132 +348,80 @@ class NotaFiscalEntradaController {
 
             $itensOut = [];
 
-            // prepareds para reuso
-            $qRelPorCodigoUnid = $pdo->prepare("
-            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
-            FROM item_fornecedor
-            WHERE system_unit_id = :unit
-              AND fornecedor_id  = :forn
-              AND codigo_nota    = :cod
-              AND (unidade_nota = :un OR unidade_nota IS NULL)
-            ORDER BY (unidade_nota IS NULL), id DESC
-            LIMIT 1
-        ");
-            $qRelPorDescUnid = $pdo->prepare("
-            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
-            FROM item_fornecedor
-            WHERE system_unit_id = :unit
-              AND fornecedor_id  = :forn
-              AND descricao_nota = :desc
-              AND (unidade_nota = :un OR unidade_nota IS NULL)
-            ORDER BY (unidade_nota IS NULL), id DESC
-            LIMIT 1
-        ");
-            $qRelPorCodigo = $pdo->prepare("
-            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
-            FROM item_fornecedor
-            WHERE system_unit_id = :unit
-              AND fornecedor_id  = :forn
-              AND codigo_nota    = :cod
-            ORDER BY id DESC
-            LIMIT 1
-        ");
-            $qRelPorDesc = $pdo->prepare("
-            SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item
-            FROM item_fornecedor
-            WHERE system_unit_id = :unit
-              AND fornecedor_id  = :forn
-              AND descricao_nota = :desc
-            ORDER BY id DESC
-            LIMIT 1
-        ");
-            $qProd = $pdo->prepare("
-            SELECT id, codigo, nome, und
-            FROM products
-            WHERE system_unit_id = :unit AND codigo = :codigo
-            LIMIT 1
-        ");
+            // Prepara queries de relacionamento (mantidas do original para performance)
+            $qRelPorCodigoUnid = $pdo->prepare("SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item FROM item_fornecedor WHERE system_unit_id = :unit AND fornecedor_id = :forn AND codigo_nota = :cod AND (unidade_nota = :un OR unidade_nota IS NULL) ORDER BY (unidade_nota IS NULL), id DESC LIMIT 1");
+            $qRelPorDescUnid   = $pdo->prepare("SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item FROM item_fornecedor WHERE system_unit_id = :unit AND fornecedor_id = :forn AND descricao_nota = :desc AND (unidade_nota = :un OR unidade_nota IS NULL) ORDER BY (unidade_nota IS NULL), id DESC LIMIT 1");
+            $qRelPorCodigo     = $pdo->prepare("SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item FROM item_fornecedor WHERE system_unit_id = :unit AND fornecedor_id = :forn AND codigo_nota = :cod ORDER BY id DESC LIMIT 1");
+            $qRelPorDesc       = $pdo->prepare("SELECT id, produto_codigo, codigo_nota, descricao_nota, unidade_nota, fator_conversao, unidade_item FROM item_fornecedor WHERE system_unit_id = :unit AND fornecedor_id = :forn AND descricao_nota = :desc ORDER BY id DESC LIMIT 1");
+            $qProd             = $pdo->prepare("SELECT id, codigo, nome, und FROM products WHERE system_unit_id = :unit AND codigo = :codigo LIMIT 1");
 
             foreach ($rows as $r) {
+                // ... (Processamento dos itens idêntico ao anterior) ...
                 $numItem  = (int)$r['numero_item'];
-                $codNota  = $r['codigo_produto'] !== null ? (string)$r['codigo_produto'] : null;
-                $descNota = $r['descricao']      !== null ? (string)$r['descricao']      : null;
-                $uniNota  = $r['unidade']        !== null ? (string)$r['unidade']        : null;
-                $qtdNota  = $r['quantidade']     !== null ? (float)$r['quantidade']      : 0.0;
-                $valorUnit = $r['valor_unitario'] !== null ? (float)$r['valor_unitario'] : 0.0;
+                $codNota  = $r['codigo_produto'] ?? null;
+                $descNota = $r['descricao'] ?? null;
+                $uniNota  = $r['unidade'] ?? null;
+                $qtdNota  = (float)($r['quantidade'] ?? 0);
+                $valUnit  = (float)($r['valor_unitario'] ?? 0);
 
-
-                // === tenta casar relação item_fornecedor (prioridade) ===
+                // Logica de Match
                 $rel = null;
-
-                if ($codNota !== null) {
+                if ($codNota) {
                     $qRelPorCodigoUnid->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':cod'=>$codNota, ':un'=>$uniNota]);
                     $rel = $qRelPorCodigoUnid->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
-                if (!$rel && $descNota !== null) {
+                if (!$rel && $descNota) {
                     $qRelPorDescUnid->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':desc'=>$descNota, ':un'=>$uniNota]);
                     $rel = $qRelPorDescUnid->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
-                if (!$rel && $codNota !== null) {
+                if (!$rel && $codNota) {
                     $qRelPorCodigo->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':cod'=>$codNota]);
                     $rel = $qRelPorCodigo->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
-                if (!$rel && $descNota !== null) {
+                if (!$rel && $descNota) {
                     $qRelPorDesc->execute([':unit'=>$unitId, ':forn'=>$fornecedorId, ':desc'=>$descNota]);
                     $rel = $qRelPorDesc->fetch(PDO::FETCH_ASSOC) ?: null;
                 }
 
-                $fator             = 1.0;
+                $fator = 1.0;
                 $prodCodigoInterno = null;
-                $prodNomeInterno   = null;
-                $prodUndInterno    = null;
+                $prodNomeInterno = null;
+                $prodUndInterno = null;
 
                 if ($rel) {
-                    $fator = isset($rel['fator_conversao']) ? (float)$rel['fator_conversao'] : 1.0;
-
+                    $fator = (float)($rel['fator_conversao'] ?? 1.0);
                     if (!empty($rel['produto_codigo'])) {
                         $qProd->execute([':unit'=>$unitId, ':codigo'=>(int)$rel['produto_codigo']]);
                         if ($p = $qProd->fetch(PDO::FETCH_ASSOC)) {
                             $prodCodigoInterno = (int)$p['codigo'];
-                            $prodNomeInterno   = (string)$p['nome'];
-                            $prodUndInterno    = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : ($p['und'] ?? null);
-                        } else {
-                            $prodUndInterno    = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : null;
+                            $prodNomeInterno = (string)$p['nome'];
+                            $prodUndInterno = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : ($p['und'] ?? null);
                         }
-                    } else {
-                        $prodUndInterno = !empty($rel['unidade_item']) ? (string)$rel['unidade_item'] : null;
                     }
+                    if (!$prodUndInterno) $prodUndInterno = $rel['unidade_item'] ?? null;
                 }
 
-                $qtdInterno = round($qtdNota * $fator, 4);
-
                 $itensOut[] = [
-                    // dados da nota
                     'numero_item_nota'       => $numItem,
                     'codigo_produto_nota'    => $codNota,
                     'descricao_nota'         => $descNota,
                     'unidade_nota'           => $uniNota,
                     'quantidade_nota'        => $qtdNota,
-                    'valor_unitario_nota'    => $valorUnit,
-
-                    // mapeamento interno (se houver)
+                    'valor_unitario_nota'    => $valUnit,
                     'codigo_produto_interno' => $prodCodigoInterno,
                     'descricao_interno'      => $prodNomeInterno,
                     'unidade_interno'        => $prodUndInterno,
-                    'quantidade_interno'     => $qtdInterno,
+                    'quantidade_interno'     => round($qtdNota * $fator, 4),
                     'fator_conversao'        => $fator,
-
-                    // metadados opcionais
                     'relacao_encontrada'     => (bool)$rel,
                     'relacao_id'             => $rel ? (int)$rel['id'] : null,
                 ];
             }
 
-            // ===== retorno =====
             return [
                 'success' => true,
                 'data' => [
-                    'nota'  => $nota,     // já contém fornecedor_nome/razao/cnpj_cpf
+                    'nota'  => $nota,
                     'itens' => $itensOut
                 ]
             ];
@@ -433,7 +430,6 @@ class NotaFiscalEntradaController {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-
     public static function vincularItemNotaFornecedor(array $data):array
     {
         global $pdo;
@@ -649,11 +645,11 @@ class NotaFiscalEntradaController {
                 throw new Exception("system_unit_id_destino é obrigatório quando transferir_destino = true");
             }
 
-            // ===== busca nota =====
+            // ===== busca nota (ALTERADO: buscando transfer_key também) =====
             $stNota = $pdo->prepare("
-            SELECT id, numero_nf, data_emissao
-            FROM estoque_nota
-            WHERE system_unit_id = :unit AND chave_acesso = :chave
+            SELECT id, numero_nf, data_emissao, transfer_key 
+            FROM estoque_nota 
+            WHERE system_unit_id = :unit AND chave_acesso = :chave 
             LIMIT 1
         ");
             $stNota->execute([':unit'=>$unitId, ':chave'=>$chaveAcesso]);
@@ -662,6 +658,8 @@ class NotaFiscalEntradaController {
 
             $notaId    = (int)$nota['id'];
             $docNumero = (string)$nota['numero_nf'];
+            $oldTransferKey = $nota['transfer_key'] ?? null; // Pega a chave antiga se existir
+
             $dataEmissaoNota = $nota['data_emissao']
                 ? date('Y-m-d', strtotime($nota['data_emissao']))
                 : null;
@@ -755,7 +753,7 @@ class NotaFiscalEntradaController {
                 $countIns++;
             }
 
-            // marca nota
+            // marca nota como incluída (Update inicial)
             $pdo->prepare("
             UPDATE estoque_nota
             SET incluida_estoque = 1, data_entrada = :dt, updated_at = CURRENT_TIMESTAMP
@@ -773,11 +771,22 @@ class NotaFiscalEntradaController {
 
             if ($transferirDestino === true) {
 
+                // 1. Verifica se precisa cancelar transferência anterior (Correção de destino)
+                if (!empty($oldTransferKey)) {
+                    try {
+                        $stCancel = $pdo->prepare("UPDATE movimentacao SET status = 3 WHERE transfer_key = :tk");
+                        $stCancel->execute([':tk' => $oldTransferKey]);
+                    } catch (Exception $e) {
+                        // Log silencioso ou ignorar se não afetar o fluxo principal
+                    }
+                }
+
+                // 2. Prepara nova transferência com a data do payload
                 $payloadTransfer = [
                     'system_unit_id'         => $unitId,
                     'system_unit_id_destino' => $unitDestino,
                     'usuario_id'             => $usuarioId,
-                    'transfer_date'          => $dataEntrada,
+                    'transfer_date'          => $dataEntrada, // Usa a data que veio no payload
                     'itens'                  => array_map(fn($d) => [
                         'codigo'     => $d['produto'],
                         'seq'        => $d['seq'],
@@ -792,6 +801,29 @@ class NotaFiscalEntradaController {
                         'success' => false,
                         'message' => 'Entrada concluída, mas a transferência falhou: ' . $transferResult['message']
                     ];
+                } else {
+                    // 3. Sucesso: Grava ID do destino E a nova transfer_key na nota
+
+                    // Tenta pegar a key retornada pelo controller.
+                    // Se não vier, assume que o controller gravou no banco e precisamos pegar via doc ou similar,
+                    // mas idealmente o createTransferItems deve retornar a 'transfer_key'.
+                    $newKey = $transferResult['transfer_key'] ?? null;
+
+                    try {
+                        $pdo->prepare("
+                        UPDATE estoque_nota 
+                        SET 
+                            transferido_para_unit_id = :destId,
+                            transfer_key = :newKey
+                        WHERE id = :id
+                    ")->execute([
+                            ':destId' => $unitDestino,
+                            ':newKey' => $newKey,
+                            ':id'     => $notaId
+                        ]);
+                    } catch (Exception $e) {
+                        error_log("Erro ao atualizar dados de transferência na nota: " . $e->getMessage());
+                    }
                 }
             }
 
@@ -808,9 +840,7 @@ class NotaFiscalEntradaController {
             if ($pdo->inTransaction()) $pdo->rollBack();
             return ['success' => false, 'message' => $e->getMessage()];
         }
-    }
-
-    public static function getItensCompradosPorPeriodo(array $data): array
+    }    public static function getItensCompradosPorPeriodo(array $data): array
     {
         global $pdo;
 
