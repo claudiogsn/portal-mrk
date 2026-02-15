@@ -22,7 +22,7 @@ if (isset($_GET['tag'])) {
         <title>Erro 403 - Acesso Negado</title>
         
         <!-- Google Fonts -->
-        <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Kanit:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
 
         <!-- Bootstrap Core Css -->
@@ -41,7 +41,7 @@ if (isset($_GET['tag'])) {
         <style>
             body {
                 background-color: #f3f3f3;
-                font-family: "Roboto", sans-serif;
+                font-family: "Kanit", sans-serif;
             }
 
             .error-container {

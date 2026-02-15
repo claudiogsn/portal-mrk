@@ -4255,37 +4255,37 @@ nav .input-field label.active {
 }
 
 @font-face {
-  font-family: "Roboto";
-  src: local(Roboto Thin), url("../fonts/roboto/Roboto-Thin.eot");
-  src: url("../fonts/roboto/Roboto-Thin.eot?#iefix") format("embedded-opentype"), url("../fonts/roboto/Roboto-Thin.woff2") format("woff2"), url("../fonts/roboto/Roboto-Thin.woff") format("woff"), url("../fonts/roboto/Roboto-Thin.ttf") format("truetype");
+  font-family: "Kanit";
+  src: local(Kanit Thin), url("../fonts/Kanit/Kanit-Thin.eot");
+  src: url("../fonts/Kanit/Kanit-Thin.eot?#iefix") format("embedded-opentype"), url("../fonts/Kanit/Kanit-Thin.woff2") format("woff2"), url("../fonts/Kanit/Kanit-Thin.woff") format("woff"), url("../fonts/Kanit/Kanit-Thin.ttf") format("truetype");
   font-weight: 200;
 }
 
 @font-face {
-  font-family: "Roboto";
-  src: local(Roboto Light), url("../fonts/roboto/Roboto-Light.eot");
-  src: url("../fonts/roboto/Roboto-Light.eot?#iefix") format("embedded-opentype"), url("../fonts/roboto/Roboto-Light.woff2") format("woff2"), url("../fonts/roboto/Roboto-Light.woff") format("woff"), url("../fonts/roboto/Roboto-Light.ttf") format("truetype");
+  font-family: "Kanit";
+  src: local(Kanit Light), url("../fonts/Kanit/Kanit-Light.eot");
+  src: url("../fonts/Kanit/Kanit-Light.eot?#iefix") format("embedded-opentype"), url("../fonts/Kanit/Kanit-Light.woff2") format("woff2"), url("../fonts/Kanit/Kanit-Light.woff") format("woff"), url("../fonts/Kanit/Kanit-Light.ttf") format("truetype");
   font-weight: 300;
 }
 
 @font-face {
-  font-family: "Roboto";
-  src: local(Roboto Regular), url("../fonts/roboto/Roboto-Regular.eot");
-  src: url("../fonts/roboto/Roboto-Regular.eot?#iefix") format("embedded-opentype"), url("../fonts/roboto/Roboto-Regular.woff2") format("woff2"), url("../fonts/roboto/Roboto-Regular.woff") format("woff"), url("../fonts/roboto/Roboto-Regular.ttf") format("truetype");
+  font-family: "Kanit";
+  src: local(Kanit Regular), url("../fonts/Kanit/Kanit-Regular.eot");
+  src: url("../fonts/Kanit/Kanit-Regular.eot?#iefix") format("embedded-opentype"), url("../fonts/Kanit/Kanit-Regular.woff2") format("woff2"), url("../fonts/Kanit/Kanit-Regular.woff") format("woff"), url("../fonts/Kanit/Kanit-Regular.ttf") format("truetype");
   font-weight: 400;
 }
 
 @font-face {
-  font-family: "Roboto";
-  src: url("../fonts/roboto/Roboto-Medium.eot");
-  src: url("../fonts/roboto/Roboto-Medium.eot?#iefix") format("embedded-opentype"), url("../fonts/roboto/Roboto-Medium.woff2") format("woff2"), url("../fonts/roboto/Roboto-Medium.woff") format("woff"), url("../fonts/roboto/Roboto-Medium.ttf") format("truetype");
+  font-family: "Kanit";
+  src: url("../fonts/Kanit/Kanit-Medium.eot");
+  src: url("../fonts/Kanit/Kanit-Medium.eot?#iefix") format("embedded-opentype"), url("../fonts/Kanit/Kanit-Medium.woff2") format("woff2"), url("../fonts/Kanit/Kanit-Medium.woff") format("woff"), url("../fonts/Kanit/Kanit-Medium.ttf") format("truetype");
   font-weight: 500;
 }
 
 @font-face {
-  font-family: "Roboto";
-  src: url("../fonts/roboto/Roboto-Bold.eot");
-  src: url("../fonts/roboto/Roboto-Bold.eot?#iefix") format("embedded-opentype"), url("../fonts/roboto/Roboto-Bold.woff2") format("woff2"), url("../fonts/roboto/Roboto-Bold.woff") format("woff"), url("../fonts/roboto/Roboto-Bold.ttf") format("truetype");
+  font-family: "Kanit";
+  src: url("../fonts/Kanit/Kanit-Bold.eot");
+  src: url("../fonts/Kanit/Kanit-Bold.eot?#iefix") format("embedded-opentype"), url("../fonts/Kanit/Kanit-Bold.woff2") format("woff2"), url("../fonts/Kanit/Kanit-Bold.woff") format("woff"), url("../fonts/Kanit/Kanit-Bold.ttf") format("truetype");
   font-weight: 700;
 }
 
@@ -4295,7 +4295,7 @@ a {
 
 html {
   line-height: 1.5;
-  font-family: "Roboto", sans-serif;
+  font-family: "Kanit", sans-serif;
   font-weight: normal;
   color: rgba(0, 0, 0, 0.87);
 }

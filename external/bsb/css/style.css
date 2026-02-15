@@ -1,7 +1,7 @@
 ﻿/* Navbar ====================================== */
 @import url(materialize.css);
 .navbar {
-  font-family: "Roboto", sans-serif;
+  font-family: "Kanit", sans-serif;
   -webkit-border-radius: 0;
   -moz-border-radius: 0;
   -ms-border-radius: 0;
@@ -2368,7 +2368,7 @@ body {
   -o-transition: all 0.5s;
   -webkit-transition: all 0.5s;
   transition: all 0.5s;
-  font-family: 'Roboto', Arial, Tahoma, sans-serif; }
+  font-family: 'Kanit', Arial, Tahoma, sans-serif; }
 
 h1,
 h2,
@@ -6694,7 +6694,7 @@ fieldset[disabled] .form-control {
 
 /* Navbars ===================================== */
 .navbar {
-  font-family: "Roboto", sans-serif;
+  font-family: "Kanit", sans-serif;
   -webkit-border-radius: 0;
   -moz-border-radius: 0;
   -ms-border-radius: 0;
@@ -7528,7 +7528,7 @@ fieldset[disabled] .form-control {
   -o-transition: all 0.5s;
   -webkit-transition: all 0.5s;
   transition: all 0.5s;
-  font-family: "Roboto", sans-serif;
+  font-family: "Kanit", sans-serif;
   background: #fdfdfd;
   width: 300px;
   overflow: hidden;
