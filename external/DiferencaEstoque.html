@@ -3,770 +3,460 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Consolidação Mensal</title>
+    <title>Consolidação Mensal | Portal MRK</title>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap Core Css -->
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
-    <!-- Waves Effect Css -->
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
-    <!-- Custom Css -->
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
+    <link href="style/mrk.css" rel="stylesheet">
 
-    <!-- SweetAlert -->
+    <style>
+        /* ====== AJUSTES GERAIS MRK ====== */
+        html, body { background: transparent !important; }
+        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; }
+        .container-fluid { padding-top: 15px; }
 
-    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+        .card {
+            background: rgba(255, 255, 255, 0.98) !important;
+            border-top: 2px solid var(--mrk-blue) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        }
+        .card .header h2 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); display: flex; align-items: center; gap: 8px; }
 
-<style>
-    .header-card {
-        margin-top: 20px;
-        padding: 20px;
-        background-color: #f5f5f5;
-        border-radius: 10px;
-    }
-    .day-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 10px;
-        margin-top: 20px;
-    }
-    .day-card {
-        cursor: pointer;
-        text-align: center;
-        color: white;
-        font-weight: bold;
-    }
-    .day-card p {
-        margin: 0;
-        font-size: 18px;
-        color: white;
-    }
-    .container-card {
-        padding: 20px;
-    }
-    .bg-green {
-        background-color: #28a745 !important;
-    }
-    .bg-orange {
-        background-color: #ff9800 !important;
-    }
-    .timeline-item {
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }
-    .timeline-item.entrada {
-        background-color: #d4edda;
-        border-left: 5px solid #28a745;
-    }
-    .timeline-item.saida {
-        background-color: #f8d7da;
-        border-left: 5px solid #dc3545;
-    }
-    .timeline-item.balanco {
-        background-color: #fefefe;
-        border-left: 5px solid #6c757d;
-    }
-    .timeline-label {
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
-    .saldo-final {
-        background-color: #e0f7ff; /* Azul claro */
-        color: #007bff; /* Texto azul */
-        font-weight: bold;
-        box-shadow: 0 0 8px rgba(0, 123, 255, 0.6); /* Glow azul */
-    }
-    .table-container {
-        max-height: 700px; /* Altura máxima da tabela com rolagem */
-        overflow-y: auto; /* Ativa a rolagem vertical */
-        
-    }
+        /* ====== GRID DE DIAS ====== */
+        .day-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .day-card {
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-left: 4px solid #ccc;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .day-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .day-card p { margin: 0; font-family: 'Kanit'; font-size: 22px; font-weight: 700; color: #333; }
+        .day-card small { font-size: 10px; text-transform: uppercase; font-weight: 600; }
 
-    .table thead th {
-        position: sticky;
-        top: 0;
-        background-color: #fff; /* Cor de fundo do cabeçalho */
-        z-index: 1; /* Garante que fique acima do conteúdo */
-        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1); /* Sombra para destacar */
-    }
-    
-    .fix-input {
-        z-index: 99999 !important;
-        pointer-events: auto !important;
-        opacity: 1 !important;
-        position: relative !important;
-    }
+        .day-consolidated { border-left-color: var(--mrk-green); background: #f1f8f1; }
+        .day-consolidated small { color: var(--mrk-green); }
+        .day-pending { border-left-color: var(--mrk-amber); background: #fffaf0; }
+        .day-pending small { color: var(--mrk-amber); }
 
-    #customContextMenu {
-        border: 1px solid #ccc;
-        background: #fff;
-        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-        padding: 5px 0;
-        border-radius: 4px;
-    }
-    #customContextMenu .dropdown-item {
-        padding: 10px 20px;
-        cursor: pointer;
-    }
-    #customContextMenu .dropdown-item:hover {
-        background: #f8f9fa;
-    }
+        /* ====== TABELA E SKELETON ====== */
+        .table thead th {
+            background-color: #f8f9fa;
+            color: var(--mrk-blue);
+            font-family: 'Kanit', sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .saldo-final { background-color: #e3f2fd !important; font-weight: bold; color: var(--mrk-blue); }
 
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+        /* ====== TIMELINE ====== */
+        .timeline-item {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .timeline-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .timeline-entrada { border-left: 5px solid var(--mrk-green); }
+        .timeline-entrada .timeline-icon { background: #e8f5e9; color: var(--mrk-green); }
+        .timeline-saida { border-left: 5px solid var(--mrk-red); }
+        .timeline-saida .timeline-icon { background: #ffebee; color: var(--mrk-red); }
+        .timeline-balanco { border-left: 5px solid #607d8b; background: #f5f7f9; }
 
+        /* ====== CONTEXT MENU ====== */
+        #customContextMenu {
+            background: #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: none; padding: 5px;
+        }
+        .dropdown-item {
+            border-radius: 4px; font-family: 'Poppins'; font-size: 13px; padding: 8px 15px; display: flex; align-items: center; gap: 8px;
+        }
+        .dropdown-item:hover { background: var(--mrk-blue); color: #fff; }
 
-</style>
-
+        /* Modal Position Fix */
+        .modal-header { position: relative; border-bottom: 2px solid var(--mrk-blue); padding: 18px 25px; }
+        .modal-title { font-family: 'Kanit'; color: var(--mrk-blue); font-weight: 600; }
+        .btn-close-mrk { position: absolute; top: 15px; right: 15px; color: var(--mrk-red); font-size: 26px; background: none; border: none; cursor: pointer; }
+    </style>
 </head>
 <body class="theme-blue">
-    <div class="container-fluid">
-        <div class="header-card">
-            <div class="row">
-                <div class="col-md-3">
+
+<div class="container-fluid">
+    <div class="card">
+        <div class="body">
+            <div class="row clearfix">
+                <div class="col-md-3 mb-0">
+                    <label style="font-family:'Kanit'">Ano</label>
                     <select id="yearSelect" class="form-control">
                         <option value="2024">2024</option>
                         <option value="2025">2025</option>
-                        <option value="2026" selected >2026</option>
+                        <option value="2026" selected>2026</option>
                         <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                        <option value="2029">2029</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-3 mb-0">
+                    <label style="font-family:'Kanit'">Mês</label>
                     <select id="monthSelect" class="form-control">
-                        <option value="1">Janeiro</option>
-                        <option value="2">Fevereiro</option>
-                        <option value="3">Março</option>
-                        <option value="4">Abril</option>
-                        <option value="5">Maio</option>
-                        <option value="6">Junho</option>
-                        <option value="7">Julho</option>
-                        <option value="8">Agosto</option>
-                        <option value="9">Setembro</option>
-                        <option value="10">Outubro</option>
-                        <option value="11" selected>Novembro</option>
-                        <option value="12">Dezembro</option>
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                        <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                        <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <button id="searchButton" class="btn btn-primary">Buscar</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="header">
-                <h2>Diferenças de Estoque</h2>
-            </div>
-            <div class="body container-card">
-                <div class="day-grid" id="dayGrid">
-                    <!-- Cards dos dias serão carregados dinamicamente -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="detailsModalLabel">Difenças de Estoque</h5>
-                </div>
-                <div class="modal-body">
-                    <div id="modalContentGrid">
-                        <!-- Conteúdo dinâmico do grid será carregado aqui -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="exportToExcel" class="btn btn-success">Exportar para Excel</button>
-                    <button id="confirmDifferences" class="btn btn-primary">Confirmar Diferenças</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="timelineModal" tabindex="-1" aria-labelledby="timelineModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="timelineModalLabel">Linha do Tempo do Produto</h5>
-                </div>
-                <div class="modal-body">
-                    <div id="timelineContent">
-                        <!-- Linha do tempo será carregada aqui -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Ajuste de Saldo -->
-    <div class="modal fade" id="ajusteSaldoModal" tabindex="-1" aria-labelledby="ajusteSaldoLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="ajusteSaldoLabel">Ajustar Saldo</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                        <span aria-hidden="true">&times;</span>
+                <div class="col-md-2 mb-0" style="display: flex; align-items: flex-end;">
+                    <button id="searchButton" class="btn btn-primary btn-block" style="height:38px; background-color: var(--mrk-blue) !important;">
+                        <iconify-icon icon="icon-park-outline:search" style="vertical-align:middle; margin-right:5px;"></iconify-icon> BUSCAR
                     </button>
                 </div>
-                <div class="modal-body">
-                    <label for="novoSaldo">Novo Saldo:</label>
-                    <input 
-                        type="text" 
-                        id="novoSaldo" 
-                        class="form-control" 
-                        placeholder="Digite o novo saldo">
-                    <small id="novoSaldoError" class="form-text text-danger" style="display: none;">Por favor, insira um valor válido.</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="confirmAjusteSaldo">Confirmar</button>
-                </div>
             </div>
         </div>
     </div>
 
-    <div id="customContextMenu" class="dropdown-menu" style="position: absolute; display: none; z-index: 9999;">
-        <button class="dropdown-item" id="adjustSaldoOption">Ajustar Saldo</button>
+    <div class="card mt-4">
+        <div class="header">
+            <h2><iconify-icon icon="icon-park-outline:calendar-dot" width="24"></iconify-icon> STATUS DE CONSOLIDAÇÃO DIÁRIA</h2>
+        </div>
+        <div class="body">
+            <div class="day-grid" id="dayGrid">
+            </div>
+        </div>
     </div>
-    
+</div>
 
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg" style="width: 95%; max-width: 1200px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Conferência de Estoque</h5>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="modalContentGrid" class="table-responsive" style="max-height: 65vh;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="exportToExcel" class="btn btn-default waves-effect">
+                    <iconify-icon icon="icon-park-outline:excel" style="vertical-align:middle;"></iconify-icon> EXPORTAR EXCEL
+                </button>
+                <button id="confirmDifferences" class="btn btn-primary" style="background-color: var(--mrk-blue) !important;">
+                    <iconify-icon icon="icon-park-outline:check-one" style="vertical-align:middle;"></iconify-icon> CONFIRMAR DIA
+                </button>
+                <button type="button" class="btn btn-link" data-dismiss="modal" style="color:#666;">FECHAR</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<div class="modal fade" id="timelineModal" tabindex="-1">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Histórico do Produto</h5>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body" id="timelineContent" style="background: #f9f9f9;">
+            </div>
+        </div>
+    </div>
+</div>
 
-    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', async function () {
-            const baseUrl = window.location.hostname !== 'localhost'
-                ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-                : 'http://localhost/portal-mrk/api/v1/index.php';
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        const unitId = urlParams.get('unit_id');
-        const username = urlParams.get('username');
+<div class="modal fade" id="ajusteSaldoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ajusteSaldoLabel">Ajustar Saldo</h5>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body">
+                <label>Definir Novo Saldo:</label>
+                <input type="text" id="novoSaldo" class="form-control text-center" style="font-size: 20px; font-weight: bold; color: var(--mrk-blue);" placeholder="0,000">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link" data-dismiss="modal" style="color:#666;">CANCELAR</button>
+                <button type="button" class="btn btn-primary" id="confirmAjusteSaldo" style="background-color: var(--mrk-blue) !important;">SALVAR AJUSTE</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-        let currentDetails = []; // Variável para armazenar os detalhes carregados no modal
+<div id="customContextMenu" class="dropdown-menu" style="position: absolute; display: none; z-index: 9999;">
+    <button class="dropdown-item" id="adjustSaldoOption">
+        <iconify-icon icon="icon-park-outline:modify"></iconify-icon> Ajustar Saldo Manual
+    </button>
+</div>
 
-        async function loadDays(year, month) {
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'getStatusConsolidationMonth',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        year: String(year),
-                        month: String(month).padStart(2, '0')
-                    }
-                });
-                renderDays(response.data);
-            } catch (error) {
-                console.error('Erro ao carregar dias:', error);
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token'), unitId = params.get('unit_id'), username = params.get('username');
+
+        let currentDetails = [];
+
+        // ====== SKELETONS ======
+        function showGridSkeletons() {
+            const grid = $('#dayGrid').empty();
+            for(let i=0; i<30; i++) {
+                grid.append(`<div class="skeleton" style="height: 80px; border-radius:8px;"></div>`);
             }
+        }
+
+        // ====== CORE LOGIC ======
+        async function loadDays(year, month) {
+            showGridSkeletons();
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'getStatusConsolidationMonth', token,
+                    data: { system_unit_id: unitId, year: String(year), month: String(month).padStart(2, '0') }
+                });
+                renderDays(res.data);
+            } catch (e) { console.error(e); }
         }
 
         function renderDays(days) {
-            const grid = document.getElementById('dayGrid');
-            grid.innerHTML = '';
-
+            const grid = $('#dayGrid').empty();
             days.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             days.forEach(day => {
-                const dayNumber = parseInt(day.date.split('-')[2], 10);
+                const dayNum = parseInt(day.date.split('-')[2]);
+                const statusClass = day.status === 'consolidated' ? 'day-consolidated' : 'day-pending';
+                const statusTxt = day.status === 'consolidated' ? 'Consolidado' : 'Pendente';
+                const icon = day.status === 'consolidated' ? 'check-one' : 'time';
 
-                const card = document.createElement('div');
-                card.className = `card day-card ${day.status === 'consolidated' ? 'bg-green' : 'bg-orange'}`;
-                card.dataset.date = day.date;
-                card.innerHTML = `
-                    <div class="body">
-                        <p>${dayNumber}</p>
-                        <small>${day.status === 'consolidated' ? 'Consolidado' : 'Pendente'}</small>
+                const card = $(`
+                    <div class="day-card ${statusClass}" data-date="${day.date}">
+                        <p>${dayNum}</p>
+                        <small><iconify-icon icon="icon-park-outline:${icon}"></iconify-icon> ${statusTxt}</small>
                     </div>
-                `;
+                `);
 
-                card.addEventListener('click', function () {
-                    openDetailsModal(this.dataset.date);
-                });
-
-                grid.appendChild(card);
+                card.click(() => openDetailsModal(day.date));
+                grid.append(card);
             });
         }
 
-            async function openDetailsModal(date) {
-                Swal.fire({
-                    title: 'Carregando...',
-                    text: 'Aguarde enquanto carregamos os detalhes.',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
+        async function openDetailsModal(date) {
+            Swal.fire({ title: 'Buscando dados...', didOpen: () => Swal.showLoading() });
+            try {
+                const configResp = await axios.post(baseUrl, { method: 'getConfigGroupByUnitId', token, data: { system_unit_id: unitId } });
+                const metodo = configResp?.data?.consolidacao_diaria == 1 ? 'GetInfoConsolidationEstoque' : 'GetInfoConsolidationEstoqueSemBalanco';
+
+                const res = await axios.post(baseUrl, { method: metodo, token, data: { system_unit_id: unitId, data: date } });
+                Swal.close();
+
+                currentDetails = res.data.data || [];
+                renderDetailsGrid(currentDetails, date);
+
+                $('#confirmDifferences').off('click').on('click', () => {
+                    Swal.fire({
+                        title: 'Confirmar Dia?', text: 'Deseja persistir as divergências deste dia?',
+                        icon: 'question', showCancelButton: true, confirmButtonText: 'Sim, Persistir'
+                    }).then(r => { if(r.isConfirmed) confirmDifferences(currentDetails, date); });
                 });
 
-                try {
-                    // 🔍 1. Buscar a configuração do grupo
-                    const configResp = await axios.post(baseUrl, {
-                        method: 'getConfigGroupByUnitId',
-                        token: token,
-                        data: {
-                            system_unit_id: unitId
-                        }
-                    });
+                $('#detailsModal').modal('show');
+            } catch (e) { Swal.fire('Erro', 'Falha ao carregar detalhes.', 'error'); }
+        }
 
-                    const config = configResp?.data;
-                    const useConsolidacao = config?.consolidacao_diaria == 1;
+        function renderDetailsGrid(details, date) {
+            const container = $('#modalContentGrid').empty();
+            if (!details.length) { container.html('<div class="p-4 text-center">Nenhum dado para este dia.</div>'); return; }
 
-                    const metodo = useConsolidacao
-                        ? 'GetInfoConsolidationEstoque'
-                        : 'GetInfoConsolidationEstoqueSemBalanco';
-
-                    // 📦 2. Buscar os dados com o método correto
-                    const response = await axios.post(baseUrl, {
-                        method: metodo,
-                        token: token,
-                        data: {
-                            system_unit_id: unitId,
-                            data: date
-                        }
-                    });
-
-                    Swal.close();
-
-                    const confirmButton = document.getElementById('confirmDifferences');
-
-                    if (response.data.status === 'error') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro',
-                            text: response.data.message
-                        });
-                    } else if (response.data.message === 'Consolidação já realizada para este dia.') {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Consolidação Realizada',
-                            text: 'Este dia já foi consolidado!'
-                        });
-
-                        confirmButton.style.display = 'inline-block';
-                        currentDetails = response.data.data;
-                        renderDetailsGrid(currentDetails, date);
-
-                        confirmButton.onclick = () => {
-                            Swal.fire({
-                                title: 'Confirmar?',
-                                text: 'Você tem certeza que deseja confirmar as diferenças?',
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonText: 'Sim, confirmar!',
-                                cancelButtonText: 'Cancelar'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    confirmDifferences(currentDetails, date);
-                                }
-                            });
-                        };
-
-                        $('#detailsModal').modal('show');
-                    } else {
-                        confirmButton.style.display = 'inline-block';
-                        currentDetails = response.data.data;
-                        renderDetailsGrid(currentDetails, date);
-
-                        confirmButton.onclick = () => {
-                            Swal.fire({
-                                title: 'Confirmar?',
-                                text: 'Você tem certeza que deseja confirmar as diferenças?',
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonText: 'Sim, confirmar!',
-                                cancelButtonText: 'Cancelar'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    confirmDifferences(currentDetails, date);
-                                }
-                            });
-                        };
-
-                        $('#detailsModal').modal('show');
-                    }
-                } catch (error) {
-                    console.error('Erro ao carregar detalhes:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Erro ao carregar os detalhes, tente novamente.'
-                    });
-                }
-            }
-
-
-            function renderDetailsGrid(details, date) {
-                const modalContentGrid = document.getElementById('modalContentGrid');
-                modalContentGrid.innerHTML = '';
-
-                if (details && details.length > 0) {
-                    // Cria o contêiner com rolagem para a tabela
-                    const container = document.createElement('div');
-                    container.className = 'table-container';
-
-                    const table = document.createElement('table');
-                    table.className = 'table table-striped';
-
-                    const thead = document.createElement('thead');
-                    thead.innerHTML = `
+            const table = $(`
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <th>Produto</th>
-                            <th>Nome</th>
-                            <th>Saldo Anterior</th>
-                            <th>Entradas</th>
-                            <th>Saídas</th>
-                            <th>Saldo Final</th>
-                            <th>Qtd. Balanço</th>
-                            <th>Diferença</th>
-                            <th>Ações</th>
+                            <th style="width:50px">Hist.</th>
+                            <th>Cód.</th>
+                            <th>Descrição do Produto</th>
+                            <th class="text-center">S. Anterior</th>
+                            <th class="text-center">Entradas</th>
+                            <th class="text-center">Saídas</th>
+                            <th class="text-center saldo-final">Saldo Final</th>
+                            <th class="text-center">Qtd. Balanço</th>
+                            <th class="text-center">Diferença</th>
                         </tr>
-                    `;
-                    table.appendChild(thead);
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            `);
 
-                    const tbody = document.createElement('tbody');
-                    details.forEach(detail => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${detail.produto}</td>
-                            <td>${detail.nome_produto}</td>
-                            <td>${detail.saldo_anterior}</td>
-                            <td>${detail.entradas}</td>
-                            <td>${detail.saidas}</td>
-                            <td class="saldo-final">${detail.contagem_ideal}</td>
-                            <td>${detail.contagem_realizada}</td>
-                            <td>${detail.diferenca}</td>
-                            <td><button class="btn btn-info btn-sm" onclick="openTimelineModal('${detail.produto}', '${date}')">Detalhes</button></td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-                    table.appendChild(tbody);
-
-                    container.appendChild(table);
-                    modalContentGrid.appendChild(container);
-                    addSaldoClickEvent(details, date);
-                } else {
-                    modalContentGrid.innerHTML = '<p>Nenhum detalhe encontrado.</p>';
-                }
-            }
-
-
-        window.openTimelineModal = async function (product, date) {
-            $('#timelineModal').on('hidden.bs.modal', function () {
-            $('body').addClass('modal-open'); // Restaura a classe necessária para manter o modal `detailsModal` funcional
-        });
-            Swal.fire({
-                title: 'Carregando...',
-                text: 'Aguarde enquanto carregamos a linha do tempo.',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
+            details.forEach((d, idx) => {
+                const diffColor = parseFloat(d.diferenca) < 0 ? 'var(--mrk-red)' : (parseFloat(d.diferenca) > 0 ? 'var(--mrk-green)' : '#666');
+                table.find('tbody').append(`
+                    <tr>
+                        <td class="text-center">
+                            <a href="javascript:void(0)" onclick="openTimelineModal('${d.produto}', '${date}')" style="font-size:20px; color:var(--mrk-blue);">
+                                <iconify-icon icon="icon-park-outline:history"></iconify-icon>
+                            </a>
+                        </td>
+                        <td><b>${d.produto}</b></td>
+                        <td>${d.nome_produto}</td>
+                        <td class="text-center saldo-anterior-cell" data-idx="${idx}" style="cursor:context-menu;">${d.saldo_anterior}</td>
+                        <td class="text-center" style="color:var(--mrk-green)">+ ${d.entradas}</td>
+                        <td class="text-center" style="color:var(--mrk-red)">- ${d.saidas}</td>
+                        <td class="text-center saldo-final">${d.contagem_ideal}</td>
+                        <td class="text-center"><b>${d.contagem_realizada}</b></td>
+                        <td class="text-center" style="color:${diffColor}; font-weight:bold;">${d.diferenca}</td>
+                    </tr>
+                `);
             });
 
-            try {
-                const response = await axios.post(baseUrl, {
-                    method: 'getMovsByProd',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        data: date,
-                        product: product
-                    }
-                });
+            container.append(table);
+            addSaldoClickEvent(details, date);
+        }
 
+        // ====== TIMELINE ======
+        window.openTimelineModal = async function (product, date) {
+            Swal.fire({ title: 'Carregando Linha do Tempo...', didOpen: () => Swal.showLoading() });
+            try {
+                const res = await axios.post(baseUrl, { method: 'getMovsByProd', token, data: { system_unit_id: unitId, data: date, product } });
                 Swal.close();
-                if (response.data && Array.isArray(response.data)) {
-                    renderTimeline(response.data);
-                    $('#timelineModal').modal('show');
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Erro ao carregar os dados da linha do tempo.'
-                    });
-                }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Erro ao carregar a linha do tempo.'
-                });
-            }
+                renderTimeline(res.data);
+                $('#timelineModal').modal('show');
+            } catch (e) { Swal.fire('Erro', 'Falha ao carregar timeline.', 'error'); }
         };
 
-        function renderTimeline(movements) {
-            const timelineContent = document.getElementById('timelineContent');
-            timelineContent.innerHTML = '';
-
-            movements.forEach(movement => {
-                const listItem = document.createElement('div');
-                listItem.className = `timeline-item ${movement.tipo_mov}`;
-                listItem.innerHTML = `
-                    <div class="timeline-label">${movement.tipo_mov.toUpperCase()}</div>
-                    <div><strong>Produto:</strong> ${movement.nome_produto}</div>
-                    <div><strong>Quantidade:</strong> ${movement.quantidade}</div>
-                    <div><strong>Documento:</strong> ${movement.doc}</div>
-                    <div><strong>Destino:</strong> ${movement.system_unit_id_destino || 'Destino Não Informado'}</div>
-                `;
-                timelineContent.appendChild(listItem);
+        function renderTimeline(movs) {
+            const container = $('#timelineContent').empty();
+            movs.forEach(m => {
+                const isEntrada = m.tipo_mov.toLowerCase().includes('entrada');
+                container.append(`
+                    <div class="timeline-item timeline-${isEntrada ? 'entrada' : 'saida'}">
+                        <div class="timeline-icon">
+                            <iconify-icon icon="icon-park-outline:${isEntrada ? 'arrow-down' : 'arrow-up'}"></iconify-icon>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-weight:700; color:#333; text-transform:uppercase; font-size:11px;">${m.tipo_mov}</div>
+                            <div style="font-size:13px;">${m.nome_produto}</div>
+                            <div style="font-size:12px; color:#666;">Doc: ${m.doc} | Destino: ${m.system_unit_id_destino || '-'}</div>
+                        </div>
+                        <div style="font-family:'Kanit'; font-weight:700; font-size:16px;">
+                            ${isEntrada ? '+' : '-'} ${m.quantidade}
+                        </div>
+                    </div>
+                `);
             });
         }
 
-        async function confirmDifferences(details, date) {
-            try {
-                Swal.fire({
-                    title: 'Enviando...',
-                    text: 'Aguarde enquanto confirmamos as diferenças.',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
-
-                const response = await axios.post(baseUrl, {
-                    method: 'persistStockDifferences',
-                    token: token,
-                    data: {
-                        date: date,
-                        system_unit_id: unitId,
-                        data: details
-                    }
-                });
-
-                if (response.data.status === 'success') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Sucesso',
-                        text: response.data.message
-                    });
-                    $('#detailsModal').modal('hide');
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: response.data.message
-                    });
-                }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Erro ao confirmar diferenças, tente novamente.'
-                });
-            }
-        }
-
-            document.getElementById('exportToExcel').addEventListener('click', function () {
-                Swal.fire({
-                    title: 'Exportar para Excel?',
-                    text: 'Você tem certeza que deseja exportar os dados para um arquivo Excel?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sim',
-                    cancelButtonText: 'Não'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const table = document.querySelector('#modalContentGrid table');
-                        if (!table) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Aviso',
-                                text: 'Não há dados para exportar!'
-                            });
-                            return;
-                        }
-
-                        const wb = XLSX.utils.book_new();
-                        const ws = XLSX.utils.table_to_sheet(table);
-
-                        XLSX.utils.book_append_sheet(wb, ws, 'Diferenças de Estoque');
-
-                        const filename = 'Diferencas_Estoque.xlsx';
-                        XLSX.writeFile(wb, filename);
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Exportação Concluída',
-                            text: `O arquivo ${filename} foi salvo com sucesso!`
-                        });
-                    }
-                });
-            });
-
-        document.getElementById('searchButton').addEventListener('click', function () {
-            const year = document.getElementById('yearSelect').value;
-            const month = document.getElementById('monthSelect').value;
-            loadDays(year, month);
-        });
-
-        const today = new Date();
-        document.getElementById('yearSelect').value = today.getFullYear();
-        document.getElementById('monthSelect').value = today.getMonth() + 1;
-        loadDays(today.getFullYear(), today.getMonth() + 1);
-
-
+        // ====== AJUSTE DE SALDO ======
         function addSaldoClickEvent(details, date) {
-            const tableRows = document.querySelectorAll('#modalContentGrid tbody tr');
-            const contextMenu = document.getElementById('customContextMenu');
-
-            tableRows.forEach((row, index) => {
-                const saldoAnteriorCell = row.cells[2]; // Índice da célula "Saldo Anterior"
-
-                // Evento de CTRL + clique
-                saldoAnteriorCell.addEventListener('click', function (event) {
-                    if (event.ctrlKey) {
-                        const item = details[index]; // Dados do item correspondente na linha
-                        Swal.fire({
-                            title: 'Deseja ajustar o saldo?',
-                            text: `Saldo Atual: ${item.saldo_anterior}`,
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Sim, ajustar',
-                            cancelButtonText: 'Cancelar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                showSaldoAdjustmentModal(item, date); // Abre o modal de ajuste
-                            }
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Ação Bloqueada',
-                            text: 'Solicite permissão para ajustar o saldo.'
-                        });
-                    }
+            $('.saldo-anterior-cell').on('contextmenu', function (e) {
+                e.preventDefault();
+                const idx = $(this).data('idx');
+                const item = details[idx];
+                $('#customContextMenu').css({ display: 'block', left: e.pageX, top: e.pageY });
+                $('#adjustSaldoOption').off('click').on('click', () => {
+                    $('#customContextMenu').hide();
+                    showSaldoAdjustmentModal(item, date);
                 });
-
-                // Evento de botão direito (menu de contexto)
-                saldoAnteriorCell.addEventListener('contextmenu', function (event) {
-                    event.preventDefault(); // Previne o menu de contexto padrão
-
-                    // Mostra o menu de contexto personalizado
-                    contextMenu.style.display = 'block';
-                    contextMenu.style.left = `${event.pageX}px`;
-                    contextMenu.style.top = `${event.pageY}px`;
-
-                    // Configura o botão "Ajustar Saldo" do menu
-                    document.getElementById('adjustSaldoOption').onclick = () => {
-                        const item = details[index]; // Dados do item correspondente na linha
-                        showSaldoAdjustmentModal(item, date); // Abre o modal de ajuste
-                        contextMenu.style.display = 'none'; // Fecha o menu
-                    };
-                });
-            });
-
-            // Fecha o menu de contexto se o usuário clicar em qualquer outro lugar
-            document.addEventListener('click', function () {
-                contextMenu.style.display = 'none';
             });
         }
-
-
 
         function showSaldoAdjustmentModal(item, date) {
-            // Define o título do modal
-            document.getElementById('ajusteSaldoLabel').innerText = `Ajustar Saldo para ${item.nome_produto}`;
-            
-            // Limpa o campo de entrada e mensagens de erro antes de abrir
-            const novoSaldoInput = document.getElementById('novoSaldo');
-            const novoSaldoError = document.getElementById('novoSaldoError');
-            novoSaldoInput.value = "";
-            novoSaldoError.style.display = "none";
-
-            // Abre o modal
-            $('#ajusteSaldoModal').modal('show');
-
-            $('#novoSaldo').each(function () {
-                $(this).on('input', function () {
-                    let valor = $(this).val().replace(/\D/g, '');
-                    valor = (valor / 1000).toFixed(3);
-                    $(this).val(valor.replace('.', ','));
-                });
-            
+            $('#ajusteSaldoLabel').text(`Ajustar Saldo: ${item.nome_produto}`);
+            $('#novoSaldo').val('').off('input').on('input', function() {
+                let v = $(this).val().replace(/\D/g, '');
+                v = (v / 1000).toFixed(3);
+                $(this).val(v.replace('.', ','));
             });
 
-            // Configura o botão de confirmar
-            document.getElementById('confirmAjusteSaldo').onclick = function () {
-                const novoSaldo = novoSaldoInput.value.trim();
-                
-                
-                // Fecha o modal e envia o ajuste
+            $('#confirmAjusteSaldo').off('click').on('click', async () => {
+                const novoSaldo = $('#novoSaldo').val().trim();
                 $('#ajusteSaldoModal').modal('hide');
-                sendSaldoAdjustmentRequest(item, novoSaldo, date);
-            };
-        }
-        
 
-
-        async function sendSaldoAdjustmentRequest(item, novoSaldo, date) {
-            Swal.fire({
-                title: 'Aguarde...',
-                text: 'Enviando ajuste para a API.',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
+                Swal.fire({ title: 'Salvando Ajuste...', didOpen: () => Swal.showLoading() });
+                try {
+                    const res = await axios.post(baseUrl, {
+                        method: 'createAjusteSaldo', token,
+                        data: {
+                            system_unit_id: unitId, ajuste_date: date, usuario_id: username,
+                            itens: [{ codigo: item.produto, descricao: item.nome_produto, saldoAtual: item.saldo_anterior, novoSaldo }]
+                        }
+                    });
+                    if (res.data.status === 'success') {
+                        Swal.fire('Sucesso!', 'Saldo ajustado.', 'success').then(() => $('#detailsModal').modal('hide'));
+                    }
+                } catch (e) { Swal.fire('Erro', 'Falha no ajuste.', 'error'); }
             });
 
-            const requestData = {
-                method: 'createAjusteSaldo',
-                token: token, 
-                data: {
-                    system_unit_id: unitId,
-                    ajuste_date: date,
-                    itens: [
-                        {
-                            codigo: item.produto,
-                            descricao: item.nome_produto,
-                            saldoAtual: item.saldo_anterior,
-                            novoSaldo: novoSaldo
-                        }
-                    ],
-                    usuario_id: username
-                }
-            };
-
-            try {
-                const response = await axios.post(baseUrl, requestData);
-                if (response.data.status === 'success') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Sucesso!',
-                        text: 'Saldo ajustado com sucesso!'
-                    }).then(() => {
-                        // Fecha os modais
-                        $('#detailsModal').modal('hide');
-                        $('#timelineModal').modal('hide');
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: response.data.message || 'Erro ao ajustar saldo.'
-                    });
-                }
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Erro',
-                    text: 'Ocorreu um erro ao enviar o ajuste. Tente novamente.'
-                });
-            }
+            $('#ajusteSaldoModal').modal('show');
         }
 
+        // ====== PERSISTÊNCIA ======
+        async function confirmDifferences(details, date) {
+            try {
+                Swal.fire({ title: 'Confirmando...', didOpen: () => Swal.showLoading() });
+                const res = await axios.post(baseUrl, {
+                    method: 'persistStockDifferences', token,
+                    data: { date, system_unit_id: unitId, data: details }
+                });
+                if (res.data.status === 'success') {
+                    Swal.fire('Sucesso!', res.data.message, 'success');
+                    $('#detailsModal').modal('hide');
+                    loadDays($('#yearSelect').val(), $('#monthSelect').val());
+                }
+            } catch (e) { Swal.fire('Erro', 'Tente novamente.', 'error'); }
+        }
 
+        // ====== EXPORTAÇÃO ======
+        $('#exportToExcel').click(function () {
+            const table = document.querySelector('#modalContentGrid table');
+            if (!table) return;
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.table_to_sheet(table);
+            XLSX.utils.book_append_sheet(wb, ws, 'Diferenças');
+            XLSX.writeFile(wb, `Diferencas_Estoque_${new Date().getTime()}.xlsx`);
+        });
+
+        // ====== INIT ======
+        $('#searchButton').click(() => loadDays($('#yearSelect').val(), $('#monthSelect').val()));
+        $(document).click(() => $('#customContextMenu').hide());
+
+        const now = new Date();
+        $('#yearSelect').val(now.getFullYear());
+        $('#monthSelect').val(now.getMonth() + 1);
+        loadDays(now.getFullYear(), now.getMonth() + 1);
     });
-
-    </script>
+</script>
 </body>
 </html>
