@@ -1,546 +1,270 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>DRE Gerencial</title>
-    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <title>DRE Gerencial | Portal MRK</title>
 
-    <!-- Fonts e Ícones -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
-
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .selected-row {
-            background-color: #d0ebff !important; /* Fundo azul claro */
-            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8); /* Brilho externo */
-            z-index: 1; /* Mantém o brilho acima de outros elementos */
-            position: relative; /* Necessário para aplicar o z-index */
-            transition: box-shadow 0.3s ease, background-color 0.3s ease; /* Animação suave */
-            font-weight: bold;
-        }
+        /* ====== AJUSTES GERAIS MRK ====== */
+        html, body { background: transparent !important; }
+        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; }
+        .container-fluid { padding-top: 15px; }
 
-        .selected-row .fixed-column,
-        .selected-row .total-column {
-            background-color: #d0ebff !important; /* Fundo alinhado com a linha selecionada */
+        .card {
+            background: rgba(255, 255, 255, 0.98) !important;
+            border-top: 2px solid var(--mrk-blue) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
         }
+        .card .header h2 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); display: flex; align-items: center; gap: 10px; }
 
+        /* Labels e Inputs */
+        label { font-family: 'Kanit', sans-serif; font-size: 12px; color: #666; margin-bottom: 5px; }
+        .form-control { height: 38px; border-radius: 6px; border: 1px solid #ddd; font-family: 'Poppins'; }
 
-        .row-01 .fixed-column,
-        .row-01 .total-column {
-            background-color: #d9f9d9 !important; /* Remove o fundo das colunas fixadas */
-        }
-        
-        .row-01 {
-            background-color: #d9f9d9 !important; /* Verde claro */
-        }
-
-        .row-02 .fixed-column,
-        .row-02 .total-column {
-            background-color: #ffe5b4 !important; /* Laranja claro */
-        }
-        .row-02 {
-            background-color: #ffe5b4 !important; /* Laranja claro */
-        }
-
-        .row-03 .fixed-column,
-        .row-03 .total-column {
-            background-color: #ffcccc !important; /* Vermelho claro */
-        }
-        .row-03 {
-            background-color: #ffcccc !important; /* Vermelho claro */
-        }
-
-        .row-04 .fixed-column,
-        .row-04 .total-column {
-            background-color: #e6e6e6 !important; /* Cinza claro */
-        }
-        .row-04 {
-            background-color: #e6e6e6 !important; /* Cinza claro */
-        }
-
-          .header-card {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f5f5f5;
-            border-radius: 10px;
-        }
+        /* ====== TABELA DRE PREMIUM ====== */
         .table-container {
-            overflow: auto; /* Habilita rolagem tanto horizontal quanto vertical */
-            max-height: 550px; /* Altura máxima da tabela */
+            overflow: auto;
+            max-height: 65vh;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            position: relative;
         }
 
-        thead th {
-            position: sticky;
-            top: 0; /* Fixa a linha no topo */
-            background-color: #f9f9f9; /* Cor de fundo para o cabeçalho */
-            z-index: 3; /* Mantém o cabeçalho acima de outros elementos */
-            text-align: center; /* Centraliza o texto */
+        .table-dre { margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
+        .table-dre thead th {
+            position: sticky; top: 0;
+            background-color: #f8f9fa !important;
+            color: var(--mrk-blue);
+            font-family: 'Kanit'; font-size: 11px; text-transform: uppercase;
+            z-index: 10; border-bottom: 2px solid #ddd !important; padding: 12px 8px;
         }
-
-
-        .fixed-header {
-            position: sticky;
-            top: 0; /* Fixa no topo */
-            background-color: #f9f9f9; /* Cor de fundo para o cabeçalho */
-            z-index: 3; /* Certifica que o cabeçalho fica acima das células */
-        }
-
-        .table-container td, .table-container th {
-            user-select: none; 
-        }
-
 
         .fixed-column {
-            position: sticky;
-            left: 0;
-            background-color: #f9f9f9;
-            z-index: 2;
+            position: sticky; left: 0; z-index: 11; min-width: 220px;
+            background-color: white !important; border-right: 2px solid #eee !important;
         }
-
         .total-column {
-            position: sticky;
-            right: 0;
-            background-color: #f9f9f9;
-            z-index: 2;
+            position: sticky; right: 0; z-index: 9;
+            background-color: #fcfcfc !important; border-left: 2px solid #eee !important;
+            font-weight: 700; color: var(--mrk-blue);
         }
 
-        .header-card {
-            margin-bottom: 20px;
-        }
+        .row-01 { background-color: #f1f8f1 !important; color: #2e7d32 !important; }
+        .row-02 { background-color: #fff9f0 !important; color: #e67e22 !important; }
+        .row-03 { background-color: #fff5f5 !important; color: #d32f2f !important; }
+        .row-04 { background-color: #f0f4fa !important; color: var(--mrk-blue) !important; }
 
-        .parent-category {
-            font-weight: bold;
-            background-color: #dfe6e9; /* Default pastel color */
-        }
+        .row-master { font-weight: 700 !important; font-size: 14px; }
+        .table-dre tbody td { cursor: pointer; padding: 10px 15px; white-space: nowrap; font-size: 13px; }
 
-        .parent-category:nth-child(1n) {
-            background-color: #dfe6e9; /* Light gray */
-        }
+        /* ====== MODAIS MRK ====== */
+        .modal-content { border-radius: 12px; border: none; overflow: hidden; }
+        .modal-header { position: relative; border-bottom: 2px solid var(--mrk-blue); padding: 18px 25px; background: #fff; }
+        .modal-title { font-family: 'Kanit'; color: var(--mrk-blue); font-weight: 600; padding-right: 30px; }
+        .btn-close-mrk { position: absolute; top: 15px; right: 15px; color: var(--mrk-red); font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer; }
 
-        .parent-category:nth-child(2n) {
-            background-color: #b2bec3; /* Slightly darker gray */
+        /* Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px; height: 12px; width: 100%;
         }
-
-        .parent-category:nth-child(3n) {
-            background-color: #74b9ff; /* Light blue */
-        }
-
-        .parent-category:nth-child(4n) {
-            background-color: #81ecec; /* Light cyan */
-        }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 
 <body class="theme-blue">
-
-    <!-- Carregador -->
-    <div class="page-loader-wrapper">
-        <div class="loader">
-            <div class="preloader">
-                <div class="spinner-layer pl-blue">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-            </div>
-            <p>Aguarde...</p>
-        </div>
-    </div>
-
-    <!-- Conteúdo -->
-    <div class="container-fluid">
-
-        <!-- Filtros -->
-        <div class="header-card">
-            <div class="row">
-                <div class="col-md-3">
+<div class="container-fluid">
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="body">
+            <div class="row clearfix">
+                <div class="col-md-3 mb-0">
+                    <label>Exercício (Ano)</label>
                     <select id="ano" class="form-control">
                         <option value="2026" selected>2026</option>
                         <option value="2025">2025</option>
                         <option value="2024">2024</option>
-                        <option value="2023">2023</option>
                     </select>
                 </div>
-                <div class="col-md-3 text-right">
-                    <button id="btnGerarRelatorio" class="btn btn-success">Gerar Relatório</button>
+                <div class="col-md-3 mb-0">
+                    <label>&nbsp;</label>
+                    <button id="btnGerarRelatorio" class="btn btn-success btn-block" style="height:38px; background-color: var(--mrk-green) !important;">
+                        <iconify-icon icon="icon-park-outline:refresh" style="vertical-align:middle; margin-right:5px;"></iconify-icon> GERAR DRE
+                    </button>
                 </div>
-                <div class="col-md-3 text-right">
-                    <button id="btnExportarTabela" class="btn btn-primary">Exportar para Excel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabela -->
-        <div class="card">
-            <div class="header">
-                <h2>DRE Gerencial</h2>
-            </div>
-            <div class="body table-responsive">
-                <div class="table-container">
-                    <table class="table table-striped">
-                        <thead class="fixed-header">
-                            <tr>
-                                <th class="fixed-column">Categoria</th>
-                                <th>Janeiro</th>
-                                <th>Fevereiro</th>
-                                <th>Março</th>
-                                <th>Abril</th>
-                                <th>Maio</th>
-                                <th>Junho</th>
-                                <th>Julho</th>
-                                <th>Agosto</th>
-                                <th>Setembro</th>
-                                <th>Outubro</th>
-                                <th>Novembro</th>
-                                <th>Dezembro</th>
-                                <th class="total-column">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dreTableBody">
-                            <!-- Dados Dinâmicos -->
-                        </tbody>
-                    </table>
+                <div class="col-md-3 mb-0">
+                    <label>&nbsp;</label>
+                    <button id="btnExportarTabela" class="btn btn-primary btn-block" style="height:38px; background-color: var(--mrk-blue) !important;">
+                        <iconify-icon icon="icon-park-outline:excel" style="vertical-align:middle; margin-right:5px;"></iconify-icon> EXPORTAR EXCEL
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
+    <div class="card">
+        <div class="header">
+            <h2><iconify-icon icon="icon-park-outline:chart-line" width="24"></iconify-icon> DRE GERENCIAL</h2>
+        </div>
+        <div class="body p-0">
+            <div class="table-container" id="dreScrollContainer">
+                <table class="table table-dre" id="dreTable">
+                    <thead>
+                    <tr>
+                        <th class="fixed-column">Categoria</th>
+                        <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
+                        <th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
+                        <th class="total-column text-center">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody id="dreTableBody">
+                    <tr><td colspan="14" class="text-center p-5 text-muted">Selecione o ano e clique em "Gerar DRE".</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
-             const tbody = document.getElementById('dreTableBody');
+<div class="modal fade" id="modalDetalhesDRE" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="tituloModalDetalhes">Detalhamento de Lançamentos</h4>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0" id="tabelaContasDRE">
+                        <thead style="background: #f8f9fa;">
+                        <tr>
+                            <th style="padding-left: 20px;">Documento</th>
+                            <th>Favorecido / Nome</th>
+                            <th class="text-center">Vencimento</th>
+                            <th class="text-right" style="padding-right: 20px;">Valor (R$)</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link" data-dismiss="modal" style="color:#666;">FECHAR</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-            tbody.addEventListener('click', (event) => {
-                // Verifica se o clique foi na primeira coluna
-                const clickedCell = event.target;
-                if (clickedCell && clickedCell.classList.contains('fixed-column')) {
-                    // Remove a seleção de qualquer outra linha
-                    const rows = tbody.querySelectorAll('tr');
-                    rows.forEach(row => row.classList.remove('selected-row'));
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-                    // Marca a linha clicada
-                    const clickedRow = clickedCell.parentElement;
-                    clickedRow.classList.add('selected-row');
-                }
-            });
+<script>
+    'use strict';
 
-            const tableContainer = document.querySelector('.table-container');
+    $(document).ready(function () {
+        const baseUrl = 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token'), unitId = params.get('unit_id');
 
-            let isDragging = false;
-            let startX, scrollLeft;
+        const toBRL = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-            if (tableContainer) {
-                tableContainer.addEventListener('mousedown', (e) => {
-                    isDragging = true;
-                    startX = e.pageX - tableContainer.offsetLeft;
-                    scrollLeft = tableContainer.scrollLeft;
-                    tableContainer.style.cursor = 'grabbing'; // Cursor para indicar a ação de arrastar
+        async function handleCellClick(code, month, year, name) {
+            Swal.fire({ title: 'Buscando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'getContaByMonth', token,
+                    data: { system_unit_id: unitId, plano_contas: code, month, year }
                 });
 
-                tableContainer.addEventListener('mouseleave', () => {
-                    isDragging = false;
-                    tableContainer.style.cursor = 'default';
-                });
+                Swal.close();
+                if (res.data.success) {
+                    const contas = res.data.data;
+                    $('#tituloModalDetalhes').html(`<small style="font-size:12px; color:#999; display:block;">DETALHAMENTO</small> ${code} - ${name} (${month}/${year})`);
 
-                tableContainer.addEventListener('mouseup', () => {
-                    isDragging = false;
-                    tableContainer.style.cursor = 'default';
-                });
-
-                tableContainer.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    e.preventDefault();
-                    const x = e.pageX - tableContainer.offsetLeft;
-                    const walk = (x - startX) * 2; // Velocidade de rolagem
-                    tableContainer.scrollLeft = scrollLeft - walk;
-                });
-            }
-
-           
-            const baseUrl = window.location.hostname !== 'localhost' ?
-                'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' :
-                'https://portal.mrksolucoes.com.br/api/v1/financeiro.php';
-
-            const token = new URLSearchParams(window.location.search).get('token');
-            const unitId = new URLSearchParams(window.location.search).get('unit_id');
-
-            function hidePageLoader() {
-                const loader = document.querySelector('.page-loader-wrapper');
-                if (loader) {
-                    loader.style.display = 'none';
-                }
-            }
-
-            function formatCurrency(value) {
-                return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            }
-
-            function getRowColor(planoContas) {
-                if (planoContas.startsWith('01')) return 'green';
-                if (planoContas.startsWith('02')) return 'orange';
-                if (planoContas.startsWith('03')) return 'red';
-                if (planoContas.startsWith('04')) return 'black';
-                return 'inherit';
-            }
-
-            function getRowStrong(planoContas) {
-                if(planoContas === '01') return 'bold';
-                if(planoContas === '02') return 'bold';
-                if(planoContas === '03') return 'bold';
-                if(planoContas === '04') return 'bold';
-            }
-
-            function getRowBackground(planoContas) {
-                if(planoContas === '01') return '#d9f9d9 important!'; // Verde claro
-                if(planoContas === '02') return '#ffe5b4 important!'; // Laranja claro
-                if(planoContas === '03') return '#ffcccc important!'; // Vermelho claro
-                if(planoContas === '04') return '#e6e6e6 important!'; // Cinza claro
-                return 'inherit'; // Fundo padrão
-            }
-
-
-            async function handleCellClick(planoContas, month, year, category) {
-                Swal.fire({
-                    title: 'Aguarde...',
-                    html: 'Carregando os dados, por favor espere.',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                const requestData = {
-                    method: 'getContaByMonth',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        plano_contas: planoContas,
-                        month: month,
-                        year: year
-                    }
-                };
-
-                try {
-                    const response = await axios.post(baseUrl, requestData);
-
-                    if (response.data.success) {
-                        Swal.close();
-                        const contas = response.data.data;
-                        let modalHtml = '<table class="table table-striped"><thead><tr><th>Doc</th><th>Nome</th><th>Emissão</th><th>Vencimento</th><th>Valor</th><th>Tipo</th></tr></thead><tbody>';
-
-                        const formatarData = (data) => {
-                            if (!data) return 'N/A'; // Caso a data seja nula ou indefinida
-                            const [ano, mes, dia] = data.split("-");
-                            return `${dia}/${mes}/${ano}`;
-                        };
-
-                        contas.forEach(conta => {
-                            modalHtml += `<tr>
-                                <td>${conta.doc}</td>
-                                <td>${conta.nome}</td>
-                                <td>${formatarData(conta.emissao)}</td>
-                                <td>${formatarData(conta.vencimento)}</td>
-                                <td>${formatCurrency(parseFloat(conta.valor))}</td>
-                                <td>${conta.origem}</td>
-                            </tr>`;
-                        });
-
-                        modalHtml += '</tbody></table>';
-
-                        Swal.fire({
-                            title: `Contas do plano ${planoContas} - ${category} em ${month}/${year}`,
-                            html: modalHtml,
-                            width: '80%',
-                            customClass: {
-                                popup: 'swal-wide'
-                            },
-                            confirmButtonText: 'Fechar'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro',
-                            text: response.data.message
-                        });
-                    }
-                } catch (error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Erro ao buscar os dados.'
+                    const tbody = $('#tabelaContasDRE tbody').empty();
+                    contas.forEach(c => {
+                        tbody.append(`
+                                <tr>
+                                    <td style="padding-left: 20px;"><b>${c.doc}</b></td>
+                                    <td>${c.nome}</td>
+                                    <td class="text-center">${c.vencimento.split('-').reverse().join('/')}</td>
+                                    <td class="text-right" style="padding-right: 20px;"><b>${toBRL(parseFloat(c.valor))}</b></td>
+                                </tr>
+                            `);
                     });
+                    $('#modalDetalhesDRE').modal('show');
                 }
-            }
+            } catch (e) { Swal.fire('Erro', 'Falha ao carregar.', 'error'); }
+        }
 
-            function renderTable(categories) {
-                const tbody = document.getElementById('dreTableBody');
-                tbody.innerHTML = '';
+        function renderTable(categories) {
+            const tbody = $('#dreTableBody').empty();
+            categories.forEach(cat => {
+                const row = $('<tr></tr>');
+                if (cat.code === '01') row.addClass('row-01 row-master');
+                else if (cat.code === '02') row.addClass('row-02 row-master');
+                else if (cat.code === '03') row.addClass('row-03 row-master');
+                else if (cat.code === '04') row.addClass('row-04 row-master');
 
-                categories.forEach(category => {
-                    const row = document.createElement('tr');
-                    
-                    if (category.code === '01') row.classList.add('row-01');
-                    if (category.code === '02') row.classList.add('row-02');
-                    if (category.code === '03') row.classList.add('row-03');
-                    if (category.code === '04') row.classList.add('row-04');
-                    
-                    row.style.color = getRowColor(category.code);
-                    row.style.fontWeight = getRowStrong(category.code)
-                    row.style.backgroundColor = getRowBackground(category.code); 
+                row.append(`<td class="fixed-column"><b>${cat.code}</b> - ${cat.name}</td>`);
 
-                    // Categoria
-                    const categoryCell = document.createElement('td');
-                    categoryCell.classList.add('fixed-column');
-                    categoryCell.backgroundColor = getRowBackground(category.code);
-                    categoryCell.textContent = `${category.code} - ${category.name}`;
-                    row.appendChild(categoryCell);
-
-                    // Valores mensais
-                    const monthlyValues = Array.isArray(category.monthly_values) ? category.monthly_values : Object.values(category.monthly_values);
-                    monthlyValues.forEach((value, index) => {
-                        const cell = document.createElement('td');
-                        const month = (index + 1).toString().padStart(2, '0');
-                        const year = document.getElementById('ano').value;
-
-                        cell.id = `${category.code}-${month}-${year}`;
-                        cell.textContent = formatCurrency(value);
-                        cell.addEventListener('click', () => handleCellClick(category.code, month, year,category.name));
-
-                        row.appendChild(cell);
-                    });
-
-                    // Total
-                    const total = monthlyValues.reduce((sum, val) => sum + val, 0);
-                    const totalCell = document.createElement('td');
-                    totalCell.classList.add('total-column');
-                    totalCell.textContent = formatCurrency(total);
-                    row.appendChild(totalCell);
-
-                    tbody.appendChild(row);
-                });
-            }
-
-            // Ocultar o loader ao carregar a página
-            hidePageLoader();
-
-            document.getElementById('btnGerarRelatorio').addEventListener('click', async () => {
-                const ano = document.getElementById('ano').value;
-                const dataInicial = `${ano}-01-01`;
-                const dataFinal = `${ano}-12-31`;
-
-                Swal.fire({
-                    title: 'Aguarde...',
-                    html: 'Carregando os dados, por favor espere.',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                const vals = Array.isArray(cat.monthly_values) ? cat.monthly_values : Object.values(cat.monthly_values);
+                vals.forEach((v, i) => {
+                    const m = (i + 1).toString().padStart(2, '0');
+                    const cell = $(`<td class="text-right">${toBRL(v)}</td>`);
+                    cell.click(() => handleCellClick(cat.code, m, $('#ano').val(), cat.name));
+                    row.append(cell);
                 });
 
-                const requestData = {
-                    method: 'getDreGerencial',
-                    token: token,
-                    data: {
-                        system_unit_id: unitId,
-                        data_inicial: dataInicial,
-                        data_final: dataFinal
-                    }
-                };
-
-                try {
-                    const response = await axios.post(baseUrl, requestData);
-                    if (response.data.success) {
-                        Swal.close();
-                        renderTable(response.data.data.categories);
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erro',
-                            text: response.data.message
-                        });
-                    }
-                } catch (error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erro',
-                        text: 'Erro ao buscar os dados.'
-                    });
-                }
+                const total = vals.reduce((a, b) => a + b, 0);
+                row.append(`<td class="total-column text-right">${toBRL(total)}</td>`);
+                tbody.append(row);
             });
+        }
 
-            function exportToExcel(data, fileName) {
-                Swal.fire({
-                    title: 'Exportar para Excel?',
-                    text: 'Você deseja exportar os dados para um arquivo Excel?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sim, exportar',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const ws = XLSX.utils.json_to_sheet(data);
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, fileName);
-                        XLSX.writeFile(wb, `${fileName}.xlsx`);
-
-                        Swal.fire({
-                            title: 'Exportação Concluída!',
-                            text: 'O arquivo foi exportado com sucesso.',
-                            icon: 'success'
-                        });
-                    }
+        $('#btnGerarRelatorio').click(async () => {
+            const year = $('#ano').val();
+            $('#dreTableBody').html('<tr><td colspan="14" class="text-center p-5"><div class="skeleton"></div></td></tr>');
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'getDreGerencial', token,
+                    data: { system_unit_id: unitId, data_inicial: `${year}-01-01`, data_final: `${year}-12-31` }
                 });
-            }
-
-            document.getElementById('btnExportarTabela').addEventListener('click', function () {
-                const rows = [];
-                const tableRows = document.querySelectorAll('#dreTableBody tr');
-
-                tableRows.forEach(row => {
-                    const cols = row.querySelectorAll('td');
-                    const rowData = {
-                        "Categoria": cols[0]?.innerText || '',
-                        "Janeiro": cols[1]?.innerText || '',
-                        "Fevereiro": cols[2]?.innerText || '',
-                        "Março": cols[3]?.innerText || '',
-                        "Abril": cols[4]?.innerText || '',
-                        "Maio": cols[5]?.innerText || '',
-                        "Junho": cols[6]?.innerText || '',
-                        "Julho": cols[7]?.innerText || '',
-                        "Agosto": cols[8]?.innerText || '',
-                        "Setembro": cols[9]?.innerText || '',
-                        "Outubro": cols[10]?.innerText || '',
-                        "Novembro": cols[11]?.innerText || '',
-                        "Dezembro": cols[12]?.innerText || '',
-                        "Total": cols[13]?.innerText || ''
-                    };
-                    rows.push(rowData);
-                });
-
-                exportToExcel(rows, "DRE_Gerencial");
-            });
-
-            
+                if (res.data.success) renderTable(res.data.data.categories);
+            } catch (e) { Swal.fire('Erro', 'Falha na comunicação.', 'error'); }
         });
-    </script>
-</body>
 
+        $('#btnExportarTabela').click(() => {
+            const rows = [];
+            $('#dreTableBody tr').each(function() {
+                const tds = $(this).find('td');
+                if(tds.length) {
+                    rows.push({ "Categoria": tds[0].innerText, "Janeiro": tds[1].innerText, "Dezembro": tds[12].innerText, "Total": tds[13].innerText });
+                }
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "DRE");
+            XLSX.writeFile(wb, `DRE_${$('#ano').val()}.xlsx`);
+        });
+    });
+</script>
+</body>
 </html>
