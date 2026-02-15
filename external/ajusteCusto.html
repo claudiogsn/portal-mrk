@@ -3,80 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajuste de Preço de Custo</title>
-    
-    <!-- Favicon-->
-    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <title>Ajuste de Custo | Portal MRK</title>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap Core Css -->
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
-
-    <!-- Waves Effect Css -->
-    <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet" />
-
-    <!-- Animation Css -->
-    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet" />
-
-    <!-- JQuery DataTable Css -->
-    <link href="bsb/plugins/jquery-datatable/skin/bootstrap/css/dataTables.bootstrap.css" rel="stylesheet">
-
-    <!-- SweetAlert Css -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
-
-    <!-- Custom Css -->
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet" />
-
-    <!-- JQuery Steps CSS (para o Wizard) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.css">
-
-    <!-- MultiSelect CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.css">
+    <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        .form-control {
-            margin-bottom: 10px;
-        }
-        table {
-            margin-top: 20px;
-        }
-        th, td {
-            text-align: left;
-        }
-        .modal-body {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        .form-control {
-        display: block;
-        width: 100%;
-        height: 34px;
-        padding: 6px 12px;
-        font-size: 14px;
-        line-height: 1.42857143;
-        color: #555;
-        background-color: #fff;
-        background-image: none;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-                box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
-        -webkit-transition: border-color ease-in-out .15s, -webkit-box-shadow ease-in-out .15s;
-            -o-transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-                transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
-        }
-        .form-control:focus {
-        border-color: #66afe9;
-        outline: 0;
-        -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-                box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102, 175, 233, .6);
-        }
-       
+        /* ====== AJUSTES GERAIS MRK ====== */
+        html, body { background: transparent !important; }
+        body { font-family: 'Poppins', sans-serif; }
+        .container-fluid { padding-top: 15px; }
 
+        .card {
+            background: rgba(255, 255, 255, 0.98) !important;
+            border-top: 2px solid var(--mrk-blue) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        }
+        .card .header h2 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); display: flex; align-items: center; gap: 8px; }
+
+        label { font-family: 'Kanit', sans-serif; font-weight: 500; color: #666; font-size: 12px; margin-bottom: 5px; }
+
+        /* Customização Select2 para o padrão MRK */
+        .select2-container--default .select2-selection--single {
+            height: 38px !important;
+            border: 1px solid #ddd !important;
+            border-radius: 6px !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 12px;
+            color: #555;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; }
+
+        .form-control { height: 38px; border-radius: 6px; border: 1px solid #ddd; }
+
+        /* Tabela MRK */
+        .table thead th {
+            background-color: #f8f9fa;
+            color: var(--mrk-blue);
+            font-family: 'Kanit', sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .col-action { width: 60px; text-align: center !important; }
+        .action-icon { font-size: 22px; cursor: pointer; transition: transform 0.2s; display: inline-block; text-decoration: none !important; }
+        .action-icon:hover { transform: scale(1.1); }
     </style>
 </head>
 <body class="theme-blue">
@@ -86,33 +69,31 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="header">
-                    <h2>Ajuste de Preço de Custo</h2>
+                    <h2><iconify-icon icon="icon-park-outline:calculator" width="24"></iconify-icon> AJUSTE DE PREÇO DE CUSTO</h2>
                 </div>
                 <div class="body">
                     <form id="adjustForm">
-                        <div class="row">
-                            <div class="col-md-2">
-                                <label for="adjust-date">Data</label>
+                        <div class="row clearfix">
+                            <div class="col-md-2 mb-2">
+                                <label>Data do Ajuste</label>
                                 <input type="date" id="adjust-date" class="form-control" required>
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-5">
-                                <label for="item-description">Produto</label>
-                                <input type="hidden" id="item-code" class="form-control" readonly>
-                                <input type="text" id="item-description" class="form-control" readonly placeholder="Clique para selecionar um produto" data-toggle="modal" data-target="#itemModal">
+                            <div class="col-md-4 mb-2">
+                                <label>Pesquisar Produto</label>
+                                <select id="selProduto" class="form-control select2" style="width: 100%;"></select>
                             </div>
-                            <div class="col-md-3">
-                                <label for="current-price">Preço Atual</label>
-                                <input type="text" id="current-price" class="form-control" readonly>
+                            <div class="col-md-2 mb-2">
+                                <label>Custo Atual</label>
+                                <input type="text" id="current-price" class="form-control text-center" readonly style="background:#f9f9f9; font-weight: bold;">
                             </div>
-                            <div class="col-md-3">
-                                <label for="new-price">Novo Preço</label>
-                                <input type="number" id="new-price" class="form-control" placeholder="Digite o Novo Preço">
+                            <div class="col-md-2 mb-2">
+                                <label>Novo Custo</label>
+                                <input type="text" id="new-price" class="form-control text-center" placeholder="R$ 0,00" style="color: var(--mrk-blue); font-weight: bold;">
                             </div>
-                            <div class="col-md-1">
-                                <label for="add-item">&nbsp;</label>
-                                <button type="button" id="add-item" class="btn btn-primary">Adicionar</button>
+                            <div class="col-md-2 mb-2" style="display: flex; align-items: flex-end;">
+                                <button type="button" id="add-item" class="btn btn-primary btn-block" style="height: 38px; background-color: var(--mrk-blue) !important;">
+                                    <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> ADICIONAR
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -121,273 +102,195 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="row">
-            <div class="col-md-12">
-                <table id="result-table" class="table table-striped table-hover">
+    <div class="card" style="margin-top: 20px;">
+        <div class="body p-0">
+            <div class="table-responsive">
+                <table id="result-table" class="table table-hover mb-0">
                     <thead>
-                        <tr>
-                            <th>Cod.</th>
-                            <th>Descrição</th>
-                            <th>Preço Atual</th>
-                            <th>Novo Preço</th>
-                            <th>Ações</th>
-                        </tr>
+                    <tr>
+                        <th class="col-action">Excluir</th>
+                        <th style="width: 100px;">Código</th>
+                        <th>Descrição do Produto</th>
+                        <th class="text-center">Preço Atual</th>
+                        <th class="text-center">Novo Preço</th>
+                    </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <center>
-        <button type="button" id="submit-adjust" class="btn btn-success">Confirmar Ajuste</button>
-    </center>
-</div>
-
-<!-- Modal de Seleção de Produto -->
-<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title">Selecionar Produto</h4>
-            </div>
-            <div class="modal-body">
-                <input type="text" id="item-search" class="form-control" placeholder="Buscar por código ou descrição">
-                <table id="item-table" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Cod.</th>
-                            <th>Descrição</th>
-                            <th>Preço Atual</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
+    <div class="text-center mt-4">
+        <button type="button" id="submit-adjust" class="btn btn-success btn-lg" style="background-color: var(--mrk-green) !important; padding: 10px 40px;">
+            <iconify-icon icon="icon-park-outline:save-one" style="vertical-align: middle; margin-right: 8px;"></iconify-icon>
+            CONFIRMAR TODOS OS AJUSTES
+        </button>
     </div>
 </div>
 
- <!-- Jquery Core Js (Versão 2.2.4 para Compatibilidade com Bootstrap) -->
- <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
- <!-- Bootstrap Core Js -->
- <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
- <!-- Waves Effect Plugin Js -->
- <script src="bsb/plugins/node-waves/waves.js"></script>
- <!-- SweetAlert Plugin Js -->
- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
- <!-- jQuery Steps JS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-steps/1.1.0/jquery.steps.min.js"></script>
- <!-- jQuery Validation JS -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
- <!-- jQuery Multi-Select -->
- <script src="https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"></script>
-
-<!-- Adicionar Axios e SweetAlert -->
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     $(document).ready(function() {
-    // Define base URL and retrieve query parameters
-    const baseUrl = window.location.hostname !== 'localhost' ?
-        'https://portal.mrksolucoes.com.br/api/v1/index.php' :
-        'http://localhost/portal-mrk/api/v1/index.php';
+        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token'), unit_id = params.get('unit_id'), username = params.get('username');
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const unit_id = urlParams.get('unit_id');
-    const username = urlParams.get('username');
+        let listaProdutos = [];
 
-    // Carregar produtos no modal
-    async function loadItems() {
+        // Inicializações
+        $('#adjust-date').val(new Date().toISOString().split('T')[0]);
+        $('#selProduto').select2({ placeholder: 'Pesquise por código ou nome...', allowClear: true });
 
-        Swal.fire({
-            title: 'Carregando itens...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
+        // MÁSCARA FINANCEIRA (PADRÃO MRK)
+        function maskMoney(v) {
+            v = v.replace(/\D/g, "");
+            v = (v / 100).toFixed(2) + "";
+            v = v.replace(".", ",");
+            v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+            v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+            return "R$ " + v;
+        }
+
+        $('#new-price').on('input', function() {
+            $(this).val(maskMoney($(this).val()));
         });
 
-        try {
-            const response = await axios.post(baseUrl, {
-                method: 'listInsumos',
-                token: token,
-                data: { unit_id: unit_id }
-            });
-
-            Swal.close();
-
-            if (response.data.success) {
-                const items = response.data.insumos;
-                const tbody = $('#item-table tbody');
-                tbody.empty();
-
-                // Renderizar as linhas da tabela
-                items.forEach(item => {
-                    const row = `
-                        <tr>
-                            <td>${item.codigo}</td>
-                            <td>${item.nome}</td>
-                            <td>${item.preco_custo}</td>
-                            <td>
-                                <button 
-                                    class="btn btn-primary select-item" 
-                                    data-codigo="${item.codigo}" 
-                                    data-nome="${item.nome}"
-                                    data-preco="${item.preco_custo}">
-                                    Inserir
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.append(row);
+        // CARREGAR PRODUTOS PARA O SELECT2
+        async function loadSelectData() {
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'listInsumos',
+                    token: token,
+                    data: { unit_id: unit_id }
                 });
 
-                // Configurar filtro de busca
-                $('#item-search').off('input').on('input', function () {
-                    const searchValue = $(this).val().toLowerCase();
-                    $('#item-table tbody tr').each(function () {
-                        const codigo = $(this).find('td:nth-child(1)').text().toLowerCase();
-                        const nome = $(this).find('td:nth-child(2)').text().toLowerCase();
+                if (response.data.success) {
+                    listaProdutos = response.data.insumos;
+                    const $sel = $('#selProduto').empty().append('<option value=""></option>');
 
-                        // Exibir linha se corresponder ao filtro
-                        if (codigo.includes(searchValue) || nome.includes(searchValue)) {
-                            $(this).show();
-                        } else {
-                            $(this).hide();
-                        }
+                    listaProdutos.forEach(p => {
+                        $sel.append(new Option(`${p.codigo} - ${p.nome}`, p.codigo));
                     });
-                });
+                }
+            } catch (e) { console.error('Erro ao carregar lista:', e); }
+        }
 
-                // Configurar botão para selecionar item
-                $('.select-item').click(function () {
-                    const codigo = $(this).data('codigo');
-                    const nome = $(this).data('nome');
-                    const preco = $(this).data('preco');
-
-                    $('#item-code').val(codigo);
-                    $('#item-description').val(nome);
-                    $('#current-price').val(preco);
-                    $('#itemModal').modal('hide');
-                });
+        // EVENTO AO SELECIONAR PRODUTO
+        $('#selProduto').on('change', function() {
+            const cod = $(this).val();
+            const p = listaProdutos.find(x => String(x.codigo) === String(cod));
+            if (p) {
+                const precoFmt = parseFloat(p.preco_custo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                $('#current-price').val(precoFmt).data('raw', p.preco_custo);
+                $('#new-price').focus();
             } else {
-                Swal.fire('Erro', 'Não foi possível carregar os itens.', 'error');
+                $('#current-price').val('').data('raw', 0);
             }
-        } catch (error) {
-            console.error(error);
-            Swal.fire('Erro', 'Ocorreu um erro ao buscar os itens.', 'error');
-        }
-    }
-
-    // Adicionar item à tabela
-    $('#add-item').click(function() {
-        const codigo = $('#item-code').val();
-        const descricao = $('#item-description').val();
-        const precoAtual = $('#current-price').val();
-        const novoPreco = $('#new-price').val();
-
-        if (!codigo || !novoPreco || !precoAtual) {
-            Swal.fire('Erro', 'Preencha todos os campos!', 'error');
-            return;
-        }
-
-        const isDuplicate = $('#result-table tbody tr').toArray().some(row => {
-            return $(row).find('td:first').text() === codigo;
         });
-        if (isDuplicate) {
-            Swal.fire('Erro', 'Este produto já foi adicionado!', 'error');
-            return;
-        }
 
-        $('#result-table tbody').append(`
-            <tr>
-                <td>${codigo}</td>
-                <td>${descricao}</td>
-                <td>${precoAtual}</td>
-                <td>${parseFloat(novoPreco).toFixed(2)}</td>
-                <td><button class="btn btn-danger remove-item">Remover</button></td>
-            </tr>
-        `);
+        // ADICIONAR AO GRID
+        $('#add-item').click(function() {
+            const codigo = $('#selProduto').val();
+            const precoNovoStr = $('#new-price').val();
 
-        $('#item-code, #item-description, #current-price, #new-price').val('');
-    });
+            if (!codigo || precoNovoStr === '' || precoNovoStr === 'R$ 0,00') {
+                Swal.fire('Atenção', 'Selecione o produto e informe o novo preço.', 'warning');
+                return;
+            }
 
-    $('#result-table').on('click', '.remove-item', function() {
-        $(this).closest('tr').remove();
-    });
+            const p = listaProdutos.find(x => String(x.codigo) === String(codigo));
 
-    // Submeter ajustes
-    $('#submit-adjust').click(async function() {
-        const data = [];
-        $('#result-table tbody tr').each(function() {
-            const row = $(this);
-            data.push({
-                codigo: row.find('td:nth-child(1)').text(),
-                descricao: row.find('td:nth-child(2)').text(),
-                precoAtual: row.find('td:nth-child(3)').text(),
-                novoPreco: row.find('td:nth-child(4)').text(),
+            // Valida duplicidade
+            if ($(`#result-table tbody tr[data-cod="${codigo}"]`).length > 0) {
+                Swal.fire('Erro', 'Este produto já está na lista de ajuste.', 'error');
+                return;
+            }
+
+            const precoAtual = parseFloat($('#current-price').data('raw'));
+
+            const row = `
+                <tr data-cod="${codigo}">
+                    <td class="col-action">
+                        <a class="action-icon icon-red remove-item" title="Remover"><iconify-icon icon="icon-park-outline:delete-five"></iconify-icon></a>
+                    </td>
+                    <td class="text-center"><b>${codigo}</b></td>
+                    <td>${p.nome}</td>
+                    <td class="text-center">R$ ${precoAtual.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                    <td class="text-center" style="color: var(--mrk-blue); font-weight: bold;">${precoNovoStr}</td>
+                </tr>
+            `;
+
+            $('#result-table tbody').append(row);
+
+            // Limpa campos
+            $('#selProduto').val(null).trigger('change');
+            $('#new-price').val('');
+        });
+
+        // REMOVER DO GRID
+        $('#result-table').on('click', '.remove-item', function() {
+            $(this).closest('tr').remove();
+        });
+
+        // SUBMETER PARA API
+        $('#submit-adjust').click(async function() {
+            const items = [];
+            $('#result-table tbody tr').each(function() {
+                const row = $(this);
+                items.push({
+                    codigo: row.data('cod'),
+                    descricao: row.find('td:nth-child(3)').text(),
+                    precoAtual: row.find('td:nth-child(4)').text().replace('R$ ', '').replace('.', '').replace(',', '.'),
+                    novoPreco: row.find('td:nth-child(5)').text().replace('R$ ', '').replace('.', '').replace(',', '.'),
+                });
             });
-        });
 
-        if (data.length === 0) {
-            Swal.fire('Erro', 'Nenhum item adicionado!', 'error');
-            return;
-        }
+            if (items.length === 0) return Swal.fire('Atenção', 'Adicione itens para ajuste.', 'info');
 
-        const adjustDate = $('#adjust-date').val();
-        if (!adjustDate || isNaN(new Date(adjustDate).getTime())) {
-            Swal.fire('Erro', 'Selecione uma data válida.', 'error');
-            return;
-        }
+            const result = await Swal.fire({
+                title: 'Confirmar Ajuste?',
+                text: 'Os preços de custo serão atualizados no banco de dados.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, Confirmar',
+                confirmButtonColor: '#2e7d32'
+            });
 
-        Swal.fire({
-            title: 'Confirmar Ajuste?',
-            text: 'Deseja realmente confirmar o ajuste de preço?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim',
-            cancelButtonText: 'Não'
-        }).then(async (result) => {
             if (result.isConfirmed) {
+                Swal.fire({ title: 'Processando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 try {
                     const response = await axios.post(baseUrl, {
                         method: 'createAjusteCusto',
                         token: token,
                         data: {
                             system_unit_id: unit_id,
-                            ajuste_date: adjustDate,
-                            itens: data,
+                            ajuste_date: $('#adjust-date').val(),
+                            itens: items,
                             usuario_id: username
                         }
                     });
 
                     if (response.data.status === 'success') {
-                        resDoc = response.data.doc;
-                        Swal.fire('Sucesso', 'Ajuste de preço realizado com sucesso! Documento: ' + resDoc, 'success');
+                        Swal.fire('Sucesso!', 'Ajuste concluído: ' + response.data.doc, 'success');
                         $('#result-table tbody').empty();
                     } else {
-                        Swal.fire('Erro', response.data.message || 'Erro ao realizar ajuste!', 'error');
+                        throw new Error(response.data.message);
                     }
                 } catch (error) {
-                    Swal.fire('Erro', 'Ocorreu um erro de comunicação com o servidor.', 'error');
-                    console.error(error);
+                    Swal.fire('Erro', error.message || 'Falha na comunicação.', 'error');
                 }
             }
         });
-    });
 
-    $('#item-description').click(function () {
-    console.log('Modal acionado.');
-    loadItems().then(() => {
-        console.log('Itens carregados, abrindo modal...');
-        $('#itemModal').modal('show');
+        loadSelectData();
     });
-});
-
-});
 </script>
 </body>
 </html>
-
