@@ -265,6 +265,38 @@
             XLSX.writeFile(wb, `DRE_${$('#ano').val()}.xlsx`);
         });
     });
+
+    /**
+     * Ajusta a altura do iframe baseado no espaço disponível abaixo do breadcrumb
+     */
+    function resizeIframe() {
+        try {
+            const iframe = document.getElementById('iframe_external');
+            const breadcrumb = document.querySelector('.breadcrumb');
+
+            // Se o breadcrumb existir, pega a altura real dele.
+            // Caso contrário, usa 70px como uma margem de segurança padrão.
+            const offsetHeight = breadcrumb ? breadcrumb.offsetHeight : 70;
+
+            if (iframe) {
+                // Calcula a altura final (Altura da Janela - Altura do Cabeçalho/Breadcrumb)
+                // Subtraímos 5px extras para evitar "flicker" de scroll em alguns browsers
+                const finalHeight = window.innerHeight - offsetHeight - 5;
+                iframe.style.height = finalHeight + 'px';
+            }
+        } catch (e) {
+            console.warn("Falha ao ajustar altura do iframe:", e);
+        }
+    }
+
+    // Registra os eventos de forma limpa
+    window.addEventListener('resize', resizeIframe);
+    window.addEventListener('load', resizeIframe);
+
+    // Executa imediatamente caso o DOM já esteja pronto
+    if (document.readyState === "complete") {
+        resizeIframe();
+    }
 </script>
 </body>
 </html>
