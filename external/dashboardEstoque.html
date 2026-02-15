@@ -3,609 +3,525 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard de Estoque & Financeiro</title>
+    <title>Dashboard Estoque | Portal MRK</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
     <style>
-        :root{
+        :root {
             --mrk-blue: #0B46AC;
-            --mrk-green: #08A794;
-            --mrk-gray: #EBEBEB;
-            --mrk-black: #191F2A;
-            --mrk-amber: #f59e0b;
+            --mrk-green: #2e7d32;
+            --mrk-amber: #ffa000;
+            --mrk-red: #d32f2f;
+            --bg-gray: #F4F7F6;
         }
+
+        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-gray); color: #333; }
+        h1, h2, h3, .kanit { font-family: 'Kanit', sans-serif; }
+
+        .mrk-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-top: 3px solid var(--mrk-blue);
+        }
+
+        .card-green { border-top-color: var(--mrk-green); }
+        .card-amber { border-top-color: var(--mrk-amber); }
+        .card-black { border-top-color: #191F2A; }
+
+        label { font-family: 'Kanit', sans-serif; font-size: 12px; color: #666; margin-bottom: 4px; display: block; }
+        .form-control {
+            height: 38px; border-radius: 6px; border: 1px solid #d1d5db; padding: 0 10px; font-size: 13px; width: 100%;
+        }
+
         .btn-mrk {
-            background: color-mix(in srgb, var(--mrk-blue) 12%, white);
-            color: var(--mrk-blue);
-            border: 1px solid color-mix(in srgb, var(--mrk-blue) 25%, white);
-            transition: all 0.2s;
+            padding: 6px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px;
+            font-weight: 600; color: #4b5563; cursor: pointer; transition: all 0.2s;
         }
-        .btn-mrk:hover { background: color-mix(in srgb, var(--mrk-blue) 20%, white); }
+        .btn-mrk:hover { border-color: var(--mrk-blue); color: var(--mrk-blue); background: #f0f4fa; }
 
         .skeleton {
-            background-color: #e2e8f0;
-            background-image: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px);
-            background-size: 600px;
-            animation: shine-lines 1.6s infinite linear;
-            border-radius: 6px;
-            color: transparent !important;
-            pointer-events: none;
-            min-height: 2rem;
-            display: inline-block;
-            width: 100%;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px; color: transparent !important;
         }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-        @keyframes shine-lines {
-            0% { background-position: -100px; }
-            40%, 100% { background-position: 140px; }
-        }
+        .chart-skel { position: absolute; inset: 0; background: white; z-index: 10; display: flex; flex-direction: column; padding: 20px; }
     </style>
 </head>
 
-<body class="text-gray-800" style="background: var(--mrk-gray);">
+<body class="text-gray-800">
+<div class="p-6 mx-auto">
 
-<div class="p-6">
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-4 flex-wrap">
-            <button onclick="setRange('hoje')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Hoje</button>
-            <button onclick="setRange('ontem')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Ontem</button>
-            <button onclick="setRange('7dias')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Últimos 7 dias</button>
-            <button onclick="setRange('mes')" class="btn-mrk px-3 py-1 rounded shadow text-sm">Últimos 30 dias</button>
-
-            <input type="date" id="startDate" class="filter-input border p-2 rounded-md shadow bg-white text-sm" />
-            <input type="date" id="endDate" class="filter-input border p-2 rounded-md shadow bg-white text-sm" />
-
-            <select id="filtroGrupo" class="filter-input border p-2 rounded-md shadow bg-white text-sm min-w-[150px]">
-                <option value="">Todos os Grupos</option>
-            </select>
-
-            <select id="filtroLoja" class="filter-input border p-2 rounded-md shadow bg-white text-sm min-w-[150px]">
-                <option value="">Todas as lojas</option>
-            </select>
+    <div class="mrk-card p-4 mb-6" style="border-top-width: 2px;">
+        <div class="flex items-end gap-4 flex-wrap">
+            <div class="flex-1 min-w-[300px]">
+                <label>Atalhos de Período</label>
+                <div class="flex gap-2">
+                    <button onclick="setRange('hoje')" class="btn-mrk">Hoje</button>
+                    <button onclick="setRange('ontem')" class="btn-mrk">Ontem</button>
+                    <button onclick="setRange('7dias')" class="btn-mrk">7 Dias</button>
+                    <button onclick="setRange('mes')" class="btn-mrk">30 Dias</button>
+                </div>
+            </div>
+            <div class="w-40">
+                <label>Data Início</label>
+                <input type="date" id="startDate" class="form-control filter-input" />
+            </div>
+            <div class="w-40">
+                <label>Data Fim</label>
+                <input type="date" id="endDate" class="form-control filter-input" />
+            </div>
+            <div class="w-56">
+                <label>Grupo</label>
+                <select id="filtroGrupo" class="form-control filter-input"></select>
+            </div>
+            <div class="w-56">
+                <label>Loja</label>
+                <select id="filtroLoja" class="form-control filter-input"></select>
+            </div>
+            <div class="w-44">
+                <button id="btnAplicar" onclick="fetchData()" class="hidden bg-blue-700 hover:bg-blue-800 text-white font-bold h-[38px] px-4 rounded shadow-lg transition-all flex items-center justify-center gap-2 w-full">
+                    <iconify-icon icon="icon-park-outline:check-one"></iconify-icon> APLICAR
+                </button>
+            </div>
         </div>
-
-        <button id="btnAplicar" onclick="fetchData()" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-lg transform transition hover:scale-105 flex items-center gap-2">
-            <i class="fas fa-check"></i> Aplicar Filtros
-        </button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-blue);">
-            <div class="text-4xl" style="color: var(--mrk-blue);"><i class="fas fa-dollar-sign"></i></div>
-            <div class="w-full">
-                <div class="text-sm font-semibold">Faturamento</div>
-                <div class="text-2xl font-extrabold kpi-value" id="faturamentoBruto">R$ 0,00</div>
+        <div class="mrk-card p-6 flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-700 text-2xl">
+                <iconify-icon icon="icon-park-outline:finance"></iconify-icon>
+            </div>
+            <div class="flex-1">
+                <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Faturamento Bruto</div>
+                <div class="text-2xl font-bold kanit kpi-value" id="faturamentoBruto">R$ 0,00</div>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-green);">
-            <div class="text-4xl" style="color: var(--mrk-green);"><i class="fas fa-shopping-cart"></i></div>
-            <div class="w-full">
-                <div class="text-sm font-semibold">Compras</div>
-                <div class="text-2xl font-extrabold kpi-value" id="totalCompras">R$ 0,00</div>
+        <div class="mrk-card p-6 card-green flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-700 text-2xl">
+                <iconify-icon icon="icon-park-outline:shopping-cart"></iconify-icon>
+            </div>
+            <div class="flex-1">
+                <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Total Compras</div>
+                <div class="text-2xl font-bold kanit kpi-value" id="totalCompras">R$ 0,00</div>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-black);">
-            <div class="text-4xl" style="color: var(--mrk-black);"><i class="fas fa-percent"></i></div>
-            <div class="w-full">
-                <div class="text-sm font-semibold">% Compras x Fat.</div>
-                <div class="text-2xl font-extrabold kpi-value" id="percentualCompras">0%</div>
+        <div class="mrk-card p-6 card-black flex items-center gap-5">
+            <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 text-2xl">
+                <iconify-icon icon="icon-park-outline:percentage"></iconify-icon>
+            </div>
+            <div class="flex-1">
+                <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider">% Compras / Fat</div>
+                <div class="text-2xl font-bold kanit kpi-value" id="percentualCompras">0%</div>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4" style="border-color: var(--mrk-amber);">
-            <div class="text-4xl" style="color: var(--mrk-amber);"><i class="fas fa-file-invoice"></i></div>
-            <div class="flex-1 w-full">
-                <div class="text-sm font-semibold">Notas Pendentes</div>
-                <div class="flex items-center justify-between mt-1">
-                    <div class="flex flex-col">
-                        <div class="text-2xl font-extrabold kpi-value" id="qtdNotasPendentes">-</div>
-                        <div id="nomeLojaPendente" class="text-[10px] font-bold text-gray-400 max-w-[100px] uppercase">Selecione uma loja</div>
-                        <small class="text-xs text-gray-500">Últimos 30 dias</small>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <a href="javascript:void(0)" onclick="atualizarNotasPendentesForce(this)" class="text-amber-500 hover:text-amber-700 transition-colors p-2" title="Atualizar (Requer Loja Selecionada)">
-                            <i class="fas fa-sync-alt"></i>
-                        </a>
-                        <button onclick="verDetalhesNotasPendentes()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-3 py-1.5 rounded border border-amber-200 transition-all">Ver mais</button>
-                    </div>
+        <div class="mrk-card p-5 card-amber">
+            <div class="flex items-center justify-between mb-1">
+                <div class="text-[10px] font-bold uppercase text-gray-500">Notas Pendentes</div>
+                <iconify-icon icon="icon-park-outline:file-invoice" class="text-amber-600 text-xl"></iconify-icon>
+            </div>
+            <div class="flex items-end justify-between">
+                <div>
+                    <div class="text-2xl font-bold kanit kpi-value" id="qtdNotasPendentes">-</div>
+                    <div id="nomeLojaPendente" class="text-[9px] font-bold text-gray-400 uppercase truncate max-w-[120px]">Selecione uma loja</div>
                 </div>
-                <div id="msgCache" class="text-[10px] text-gray-400 text-right mt-1 hidden"></div>
+                <div class="flex gap-1">
+                    <button onclick="atualizarNotasPendentesForce(this)" class="p-2 text-amber-600 hover:bg-amber-50 rounded-md transition-colors" title="Sincronizar">
+                        <iconify-icon icon="icon-park-outline:refresh"></iconify-icon>
+                    </button>
+                    <button onclick="verDetalhesNotasPendentes()" class="text-[10px] bg-amber-600 text-white font-bold px-2 py-1 rounded hover:bg-amber-700">VER MAIS</button>
+                </div>
             </div>
+            <div id="msgCache" class="text-[9px] text-gray-400 mt-1 hidden"></div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white p-6 rounded-lg shadow relative group">
-            <h2 class="text-lg font-semibold mb-4">Evolução do Faturamento</h2>
+        <div class="mrk-card p-6 relative">
+            <h2 class="text-md font-bold mb-4 uppercase flex items-center gap-2">Evolução do Faturamento</h2>
             <div id="chartFaturamentoDiario" style="width:100%; height:320px;"></div>
-            <div id="skel-chartFaturamentoDiario" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/3 bg-gray-200 rounded animate-pulse mb-4"></div><div class="flex-1 bg-gray-100 rounded animate-pulse"></div></div>
+            <div id="skel-chartFaturamentoDiario" class="chart-skel hidden"><div class="flex-1 skeleton"></div></div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow relative group">
-            <h2 class="text-lg font-semibold mb-4">Evolução das Compras</h2>
+        <div class="mrk-card p-6 relative">
+            <h2 class="text-md font-bold mb-4 uppercase flex items-center gap-2">Evolução das Compras</h2>
             <div id="chartComprasDiario" style="width:100%; height:320px;"></div>
-            <div id="skel-chartComprasDiario" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/3 bg-gray-200 rounded animate-pulse mb-4"></div><div class="flex-1 bg-gray-100 rounded animate-pulse"></div></div>
+            <div id="skel-chartComprasDiario" class="chart-skel hidden"><div class="flex-1 skeleton"></div></div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-white p-6 h-[350px] rounded-lg shadow relative">
-            <h2 class="text-lg font-semibold mb-4">TOP 5 - COMPRAS POR PRODUTO</h2>
+        <div class="mrk-card p-6 h-[350px] relative">
+            <h2 class="text-md font-bold mb-4 uppercase">Top 5 Compras por Produto</h2>
             <div id="chartTopProdutos" class="w-full h-full"></div>
-            <div id="skel-chartTopProdutos" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/2 bg-gray-200 rounded animate-pulse mb-4"></div><div class="h-full bg-gray-100 rounded animate-pulse"></div></div>
+            <div id="skel-chartTopProdutos" class="chart-skel hidden"><div class="flex-1 skeleton"></div></div>
         </div>
-        <div class="bg-white p-6 h-[350px] rounded-lg shadow relative">
-            <h2 class="text-lg font-semibold mb-4">TOP 5 - COMPRAS POR FORNECEDOR</h2>
+        <div class="mrk-card p-6 h-[350px] relative">
+            <h2 class="text-md font-bold mb-4 uppercase">Top 5 Compras por Fornecedor</h2>
             <div id="chartTopFornecedores" class="w-full h-full"></div>
-            <div id="skel-chartTopFornecedores" class="absolute inset-0 bg-white z-10 hidden flex flex-col p-6"><div class="h-6 w-1/2 bg-gray-200 rounded animate-pulse mb-4"></div><div class="h-full bg-gray-100 rounded animate-pulse"></div></div>
+            <div id="skel-chartTopFornecedores" class="chart-skel hidden"><div class="flex-1 skeleton"></div></div>
         </div>
     </div>
 </div>
 
 <script>
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
+    'use strict';
 
+    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
     const urlParams = new URLSearchParams(window.location.search);
-    const system_unit_id = parseInt(urlParams.get('system_unit_id'));
-    const user_id = parseInt(urlParams.get('user_id'));
-    const token = urlParams.get('token');
+    const system_unit_id = parseInt(urlParams.get('system_unit_id')), user_id = parseInt(urlParams.get('user_id')), token = urlParams.get('token');
 
-    const MRK = {
-        blue:  '#0B46AC',
-        green: '#08A794',
-        gray:  '#EBEBEB',
-        black: '#191F2A',
-        amber: '#f59e0b',
-        series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480']
-    };
+    const MRK = { blue: '#0B46AC', green: '#2e7d32', gray: '#EBEBEB', black: '#191F2A', amber: '#ffa000', palette: ['#0B46AC', '#2e7d32', '#191F2A', '#ffa000', '#673ab7'] };
 
-    const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    // FORMATADOR DE MOEDA
+    const formatCurrency = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    let grupoId = null;
-    let resumoEstoqueGrupo = [], evolucaoCmvGrupo = [], datasEvolucao = [], cmvProdutosGrupo = [], topFornecedoresGrupo = [], listaNotasPendentes = [];
-    let gruposDisponiveis = {}, lojasPorGrupo = {};
-
-    function showApplyButton() {
-        const btn = document.getElementById('btnAplicar');
-        btn.classList.remove('hidden');
-        btn.classList.add('animate-bounce');
-        setTimeout(() => btn.classList.remove('animate-bounce'), 1000);
+    // HELPER: LIMPEZA DE STRING PARA FLOAT
+    function cleanFloat(v) {
+        if (typeof v === 'number') return v;
+        if (!v || v === "" || v === "-") return 0;
+        let clean = v.toString().replace("R$", "").replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+        return parseFloat(clean) || 0;
     }
 
+    let grupoId = null, resumoEstoqueGrupo = [], evolucaoCmvGrupo = [], datasEvolucao = [], cmvProdutosGrupo = [], topFornecedoresGrupo = [], listaNotasPendentes = [], lojasPorGrupo = {};
+
+    // --- FUNÇÕES DE UI ---
+    function showApplyButton() { document.getElementById('btnAplicar').classList.remove('hidden'); }
     function hideApplyButton() { document.getElementById('btnAplicar').classList.add('hidden'); }
 
-    function setupFilterListeners() {
-        document.querySelectorAll('.filter-input').forEach(input => {
-            input.addEventListener('change', showApplyButton);
-            input.addEventListener('keyup', showApplyButton);
-        });
-    }
-
     function setRange(tipo) {
-        const now = new Date();
-        const start = new Date();
+        const now = new Date(), start = new Date();
         if (tipo === 'ontem') start.setDate(now.getDate() - 1);
         else if (tipo === '7dias') start.setDate(now.getDate() - 7);
         else if (tipo === 'mes') start.setMonth(now.getMonth() - 1);
-
         document.getElementById('endDate').value = now.toISOString().split('T')[0];
         document.getElementById('startDate').value = start.toISOString().split('T')[0];
         showApplyButton();
     }
 
-    function toggleSkeleton(type, isLoading) {
-        if (type === 'kpi' || type === 'all') {
-            const kpis = document.querySelectorAll('.kpi-value');
-            kpis.forEach(el => {
-                // Não adiciona skeleton ao card de notas pendentes se for 'all', pois ele tem lógica própria
-                if(type === 'all' && el.id === 'qtdNotasPendentes') return;
-
-                if (isLoading) el.classList.add('skeleton');
-                else el.classList.remove('skeleton');
-            });
-        }
-        if (type === 'charts' || type === 'all') {
-            const ids = ['skel-chartFaturamentoDiario', 'skel-chartComprasDiario', 'skel-chartTopProdutos', 'skel-chartTopFornecedores'];
-            ids.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) {
-                    if (isLoading) el.classList.remove('hidden');
-                    else el.classList.add('hidden');
-                }
-            });
+    function toggleSkeletons(isLoading) {
+        if(isLoading) {
+            document.querySelectorAll('.kpi-value').forEach(el => el.classList.add('skeleton'));
+            document.querySelectorAll('.chart-skel').forEach(el => el.classList.remove('hidden'));
+        } else {
+            document.querySelectorAll('.kpi-value').forEach(el => el.classList.remove('skeleton'));
+            document.querySelectorAll('.chart-skel').forEach(el => el.classList.add('hidden'));
         }
     }
 
     function animateValue(id, start, end, duration, isCurrency = false, isPercentage = false) {
-        const element = document.getElementById(id);
-        if (!element) return;
-        element.classList.remove('skeleton');
+        const el = document.getElementById(id); if (!el) return;
         let startTimestamp = null;
         const step = (timestamp) => {
             if (!startTimestamp) startTimestamp = timestamp;
             const progress = Math.min((timestamp - startTimestamp) / duration, 1);
             const value = start + progress * (end - start);
-            let formatted;
-            if (isCurrency) {
-                formatted = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else if (isPercentage) {
-                formatted = value.toFixed(2) + '%';
-            } else {
-                formatted = Math.floor(value);
-            }
-            element.textContent = formatted;
+            el.textContent = isCurrency ? formatCurrency(value) : (isPercentage ? value.toFixed(2) + '%' : Math.floor(value));
             if (progress < 1) window.requestAnimationFrame(step);
         };
         window.requestAnimationFrame(step);
     }
 
-    // --- NOVA FUNÇÃO PARA RESETAR UI DE NOTAS ---
+    // --- CORE DE DADOS ---
+    async function fetchData() {
+        hideApplyButton();
+        const start = document.getElementById('startDate').value, end = document.getElementById('endDate').value;
+        const dt_inicio = start + ' 00:00:00', dt_fim = end + ' 23:59:59';
+        const lojaSel = document.getElementById('filtroLoja').value;
+
+        toggleSkeletons(true);
+
+        const promises = [
+            axios.post(baseUrl, { method: 'generateResumoEstoquePorGrupo', token, data: { grupoId, dt_inicio, dt_fim } }),
+            axios.post(baseUrl, { method: 'generateCmvEvolucao', token, data: { grupoId, dt_inicio, dt_fim } }),
+            axios.post(baseUrl, { method: 'generateCmvPorProduto', token, data: { grupoId, dt_inicio, dt_fim } }),
+            axios.post(baseUrl, { method: 'generateTopComprasPorFornecedor', token, data: { grupoId, dt_inicio, dt_fim } })
+        ];
+
+        if (lojaSel) promises.push(carregarNotasPendentes(lojaSel));
+        else resetNotasPendentesUI();
+
+        try {
+            const results = await Promise.all(promises);
+            resumoEstoqueGrupo = results[0].data.data || [];
+            evolucaoCmvGrupo = results[1].data.data || [];
+            datasEvolucao = results[1].data.labels || [];
+            cmvProdutosGrupo = results[2].data.data || [];
+            topFornecedoresGrupo = results[3].data.data || [];
+            aplicarFiltroLoja();
+        } catch (e) { Swal.fire('Erro', 'Falha ao buscar dados.', 'error'); }
+        finally { toggleSkeletons(false); }
+    }
+
+    // --- LÓGICA DE NOTAS PENDENTES (AS QUE ESTAVAM FALTANDO) ---
+
     function resetNotasPendentesUI() {
-        const elQtd = document.getElementById('qtdNotasPendentes');
-        const elNome = document.getElementById('nomeLojaPendente');
-
-        elQtd.textContent = "-";
-        elQtd.classList.remove('skeleton');
-
-        elNome.textContent = "Selecione uma loja";
-        elNome.classList.remove('text-amber-600');
-        elNome.classList.add('text-gray-400');
-
+        document.getElementById('qtdNotasPendentes').textContent = '-';
+        const nomeEl = document.getElementById('nomeLojaPendente');
+        nomeEl.textContent = 'Selecione uma loja';
+        nomeEl.classList.remove('text-amber-600');
+        nomeEl.classList.add('text-gray-400');
         document.getElementById('msgCache').classList.add('hidden');
         listaNotasPendentes = [];
     }
 
-    async function fetchData() {
-        hideApplyButton();
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const lojaSelecionada = document.getElementById('filtroLoja').value;
+    async function carregarNotasPendentes(id) {
+        try {
+            const res = await axios.post(baseUrl, { method: 'listarNotasNaoImportadasUltimos30DiasCached', token, data: { system_unit_id: id } });
+            processarRespostaNotas(res.data);
+        } catch(e) { console.error(e); }
+    }
 
-        const dt_inicio = startDate + ' 00:00:00';
-        const dt_fim = endDate + ' 23:59:59';
+    // *** FUNÇÃO CORRIGIDA E REINSERIDA ***
+    window.atualizarNotasPendentesForce = async function(btn) {
+        const id = document.getElementById('filtroLoja').value;
+        if(!id) return Swal.fire('Aviso', 'Selecione uma loja para sincronizar.', 'warning');
 
-        toggleSkeleton('all', true);
-
-        // Lista de promessas básicas (sempre executadas)
-        const promises = [
-            carregarResumoEstoquePorGrupo(dt_inicio, dt_fim),
-            carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim),
-            carregarCmvProdutosPorGrupo(dt_inicio, dt_fim),
-            carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim)
-        ];
-
-        // LÓGICA CONDICIONAL: Só carrega notas se tiver loja selecionada
-        if (lojaSelecionada) {
-            // Adiciona skeleton visualmente apenas neste momento
-            document.getElementById('qtdNotasPendentes').classList.add('skeleton');
-            promises.push(carregarNotasPendentes());
-        } else {
-            resetNotasPendentesUI();
-        }
+        const icon = btn.querySelector('iconify-icon');
+        // Efeito de loading no ícone
+        if(icon) icon.style.animation = "spin 1s linear infinite";
 
         try {
-            await Promise.all(promises);
-            aplicarFiltroLoja();
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Falha ao carregar dados.', 'error');
+            const res = await axios.post(baseUrl, { method: 'listarNotasNaoImportadasUltimos30Dias', token, data: { system_unit_id: id } });
+            processarRespostaNotas(res.data);
+            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }).fire({ icon: 'success', title: 'Sincronizado!' });
+        } catch(e) {
+            Swal.fire('Erro', 'Erro ao sincronizar notas.', 'error');
         } finally {
-            toggleSkeleton('charts', false);
-            setTimeout(() => toggleSkeleton('kpi', false), 100);
+            if(icon) icon.style.animation = "";
         }
     }
 
-    function parseBRL(v) {
-        if (v == null) return 0;
-        if (typeof v === 'number') return v;
-        return Number(String(v).replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    // *** FUNÇÃO CORRIGIDA E REINSERIDA ***
+    window.verDetalhesNotasPendentes = function() {
+        // 1. Validação
+        const filtroLojaEl = document.getElementById('filtroLoja');
+        if(!filtroLojaEl.value) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Atenção',
+                text: 'Selecione uma loja para ver os detalhes.',
+                confirmButtonColor: '#0B46AC'
+            });
+        }
+
+        if (!Array.isArray(listaNotasPendentes) || listaNotasPendentes.length === 0) {
+            return Swal.fire({
+                icon: 'success',
+                title: 'Tudo em dia!',
+                text: 'Nenhuma nota pendente para esta loja.',
+                confirmButtonColor: '#0B46AC'
+            });
+        }
+
+        // 2. Cálculos
+        const valorTotalGeral = listaNotasPendentes.reduce((acc, n) => acc + Number(n.valor_total), 0);
+
+        // 3. Construção do HTML (Layout MRK)
+        let html = `
+    <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-5 rounded-lg mb-5 shadow-sm">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-2xl">
+                <iconify-icon icon="icon-park-outline:bill"></iconify-icon>
+            </div>
+            <div class="text-left">
+                <div class="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Total Pendente</div>
+                <div class="text-2xl font-bold text-amber-900 kanit">
+                    ${valorTotalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+                </div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">Qtd Notas</div>
+            <div class="text-2xl font-bold text-amber-900 kanit">${listaNotasPendentes.length}</div>
+        </div>
+    </div>
+
+    <div class="max-h-[55vh] overflow-y-auto border border-gray-200 rounded-lg custom-scrollbar">
+        <table class="w-full text-xs text-left border-collapse">
+            <thead class="bg-gray-50 sticky top-0 shadow-sm z-10">
+                <tr>
+                    <th class="p-3 border-b text-gray-500 font-bold uppercase tracking-wider">Emissão</th>
+                    <th class="p-3 border-b text-gray-500 font-bold uppercase tracking-wider">NF / Série</th>
+                    <th class="p-3 border-b text-gray-500 font-bold uppercase tracking-wider">Fornecedor</th>
+                    <th class="p-3 border-b text-right text-gray-500 font-bold uppercase tracking-wider">Valor</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                ${listaNotasPendentes.map(n => `
+                    <tr class="hover:bg-blue-50 transition-colors duration-150">
+                        <td class="p-3 text-gray-600">
+                            ${new Date(n.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </td>
+                        <td class="p-3 font-medium text-gray-800">
+                            ${n.numero_nf} <span class="text-gray-400 text-[10px]">/ ${n.serie}</span>
+                        </td>
+                        <td class="p-3 uppercase text-gray-600 truncate max-w-[200px]" title="${n.emitente_razao}">
+                            ${n.emitente_razao.slice(0, 25)}${n.emitente_razao.length > 25 ? '...' : ''}
+                        </td>
+                        <td class="p-3 text-right font-bold text-blue-700">
+                            ${Number(n.valor_total).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>`;
+
+        // 4. Exibição Modal
+        Swal.fire({
+            title: '<div class="flex items-center gap-2 text-xl font-bold text-[#0B46AC] font-sans"><iconify-icon icon="icon-park-outline:file-invoice"></iconify-icon> Notas Pendentes de Importação</div>',
+            html: html,
+            width: '850px',
+            showConfirmButton: true,
+            confirmButtonText: 'FECHAR',
+            confirmButtonColor: '#0B46AC',
+            buttonsStyling: true,
+            customClass: {
+                popup: 'rounded-xl',
+                confirmButton: 'font-bold px-6 py-2 rounded-lg'
+            }
+        });
+    }
+
+    function processarRespostaNotas(data) {
+        const sel = document.getElementById('filtroLoja');
+        const nomeLoja = sel.options[sel.selectedIndex].text;
+        const nomeEl = document.getElementById('nomeLojaPendente');
+
+        nomeEl.textContent = nomeLoja;
+        nomeEl.classList.remove('text-gray-400');
+        nomeEl.classList.add('text-amber-600');
+
+        if (data.success && data.data) {
+            listaNotasPendentes = data.data.notas_pendentes || [];
+            document.getElementById('qtdNotasPendentes').textContent = data.data.total_pendentes || listaNotasPendentes.length;
+            if(data.data.last_update) {
+                const d = new Date(data.data.last_update);
+                document.getElementById('msgCache').textContent = `Atualizado: ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
+                document.getElementById('msgCache').classList.remove('hidden');
+            }
+        }
+    }
+
+    // --- RENDERIZAÇÃO ---
+    function aplicarFiltroLoja() {
+        const lojaId = parseInt(document.getElementById('filtroLoja').value) || null;
+        const f = l => !lojaId || l.lojaId == lojaId;
+        const lojaObj = lojaId ? lojasPorGrupo[grupoId].find(x => parseInt(x.id) === lojaId) : null;
+        const fName = lojaObj ? lojaObj.name : null;
+
+        renderResumo(resumoEstoqueGrupo.filter(f));
+        renderEvolucao(evolucaoCmvGrupo.filter(l => !fName || l.nome === fName));
+        renderTopProdutos(cmvProdutosGrupo.filter(f));
+        renderTopFornecedores(topFornecedoresGrupo.filter(f));
+    }
+
+    function renderResumo(data) {
+        let fat = 0, comp = 0;
+        data.forEach(l => { fat += cleanFloat(l.faturamento_bruto); comp += cleanFloat(l.total_compras); });
+        animateValue('faturamentoBruto', 0, fat, 800, true);
+        animateValue('totalCompras', 0, comp, 800, true);
+        animateValue('percentualCompras', 0, fat > 0 ? (comp / fat) * 100 : 0, 800, false, true);
+    }
+
+    function renderEvolucao(lojas) {
+        const config = (id, field) => {
+            const chartDom = document.getElementById(id); if(!chartDom) return;
+            const chart = echarts.init(chartDom);
+            chart.setOption({
+                color: MRK.palette,
+                tooltip: { trigger: 'axis', formatter: p => `<b>${p[0].name}</b><br>${p.map(x => `${x.marker} ${x.seriesName}: <b>${formatCurrency(x.value)}</b>`).join('<br>')}` },
+                legend: { top: 0 },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: datasEvolucao },
+                yAxis: { type: 'value', axisLabel: { formatter: v => v.toLocaleString('pt-BR', {compactDisplay:'short', notation:'compact'}) } },
+                series: lojas.map(l => ({ name: l.nome, type: 'bar', stack: 'total', data: l[field].map(v => cleanFloat(v)) }))
+            }, true);
+        };
+        config('chartFaturamentoDiario', 'faturamento');
+        config('chartComprasDiario', 'compras');
+    }
+
+    function renderTopProdutos(data) {
+        const chart = echarts.init(document.getElementById('chartTopProdutos'));
+        const agg = {};
+        data.forEach(l => (l.produtos || []).forEach(p => agg[p.name] = (agg[p.name] || 0) + cleanFloat(p.value)));
+        const ds = Object.entries(agg).sort((a,b) => b[1] - a[1]).slice(0,5);
+        chart.setOption({
+            tooltip: { trigger: 'axis', formatter: p => `${p[0].name}: <b>${formatCurrency(p[0].value)}</b>` },
+            grid: { right: '20%', containLabel: true },
+            xAxis: { type: 'value', show: false },
+            yAxis: { type: 'category', data: ds.map(x => x[0].slice(0,15)), inverse: true },
+            series: [{ type: 'bar', data: ds.map(x => x[1]), color: MRK.blue, label: { show: true, position: 'right', formatter: p => formatCurrency(p.value) }, itemStyle: { borderRadius: [0,4,4,0] } }]
+        }, true);
+    }
+
+    function renderTopFornecedores(data) {
+        const chart = echarts.init(document.getElementById('chartTopFornecedores'));
+        const agg = {};
+        data.forEach(l => (l.fornecedores || []).forEach(f => {
+            if(!agg[f.fornecedor]) agg[f.fornecedor] = {v:0, n:0};
+            agg[f.fornecedor].v += cleanFloat(f.valor_total); agg[f.fornecedor].n += parseInt(f.qtd_notas);
+        }));
+        const ds = Object.entries(agg).sort((a,b) => b[1].v - a[1].v).slice(0,5);
+        chart.setOption({
+            tooltip: { trigger: 'axis', formatter: p => `<b>${ds[p[0].dataIndex][0]}</b><br>Total: ${formatCurrency(ds[p[0].dataIndex][1].v)}` },
+            grid: { right: '20%', containLabel: true },
+            xAxis: { type: 'value', show: false },
+            yAxis: { type: 'category', data: ds.map(x => x[0].slice(0,15)), inverse: true },
+            series: [{ type: 'bar', data: ds.map(x => x[1].v), color: MRK.green, label: { show: true, position: 'right', formatter: p => formatCurrency(p.value) }, itemStyle: { borderRadius: [0,4,4,0] } }]
+        }, true);
     }
 
     async function carregarGrupoInicial() {
         const res = await axios.post(baseUrl, { method: 'getGroupByUnit', token, data: { system_unit_id } });
         if (res.data?.length > 0) grupoId = res.data[0].id;
-        await carregarGruposUsuario();
-    }
+        const resGroups = await axios.post(baseUrl, { method: 'getGroupByUser', token, data: { user_id } });
+        const { grupos, lojas_por_grupo } = resGroups.data;
+        lojasPorGrupo = lojas_por_grupo;
 
-    async function carregarGruposUsuario() {
-        const res = await axios.post(baseUrl, { method: 'getGroupByUser', token, data: { user_id } });
-        const { grupos, lojas_por_grupo } = res.data;
-        gruposDisponiveis = grupos; lojasPorGrupo = lojas_por_grupo;
-        const grupoSelect = document.getElementById('filtroGrupo');
-        grupoSelect.innerHTML = '';
-        grupos.forEach(grupo => {
-            grupoSelect.innerHTML += `<option value="${grupo.id}" ${grupo.id == grupoId ? 'selected' : ''}>${grupo.nome}</option>`;
-        });
+        const gSel = document.getElementById('filtroGrupo');
+        gSel.innerHTML = grupos.map(g => `<option value="${g.id}" ${g.id == grupoId ? 'selected' : ''}>${g.nome}</option>`).join('');
+        gSel.addEventListener('change', function() { grupoId = parseInt(this.value); atualizarFiltroLoja(); document.getElementById('filtroLoja').value = ""; resetNotasPendentesUI(); showApplyButton(); });
 
-        grupoSelect.addEventListener('change', () => {
-            grupoId = parseInt(grupoSelect.value);
-            atualizarFiltroLoja();
-            document.getElementById('filtroLoja').value = ""; // Reseta loja ao mudar grupo
-            resetNotasPendentesUI(); // Reseta notas ao mudar grupo
-            showApplyButton();
-        });
         atualizarFiltroLoja();
     }
 
     function atualizarFiltroLoja() {
         const lojas = lojasPorGrupo[grupoId] || [];
-        const filtro = document.getElementById('filtroLoja');
-        filtro.innerHTML = '<option value="">Todas as lojas</option>';
-        lojas.forEach(loja => { filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`; });
-        filtro.addEventListener('change', showApplyButton);
+        const lSel = document.getElementById('filtroLoja');
+        lSel.innerHTML = '<option value="">Todas as lojas</option>' + lojas.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+        lSel.addEventListener('change', function() { showApplyButton(); if(!this.value) resetNotasPendentesUI(); });
     }
 
-    // --- FUNÇÕES DE CARGA DE DADOS ---
-    async function carregarResumoEstoquePorGrupo(dt_inicio, dt_fim) {
-        const res = await axios.post(baseUrl, { method: 'generateResumoEstoquePorGrupo', token, data: { grupoId, dt_inicio, dt_fim } });
-        resumoEstoqueGrupo = res.data.data || [];
-    }
-    async function carregarEvolucaoCmvPorGrupo(dt_inicio, dt_fim) {
-        const res = await axios.post(baseUrl, { method: 'generateCmvEvolucao', token, data: { grupoId, dt_inicio, dt_fim } });
-        evolucaoCmvGrupo = res.data.data || []; datasEvolucao = res.data.labels || [];
-    }
-    async function carregarCmvProdutosPorGrupo(dt_inicio, dt_fim) {
-        const res = await axios.post(baseUrl, { method: 'generateCmvPorProduto', token, data: { grupoId, dt_inicio, dt_fim } });
-        cmvProdutosGrupo = res.data.data || [];
-    }
-    async function carregarTopFornecedoresPorGrupo(dt_inicio, dt_fim) {
-        const res = await axios.post(baseUrl, { method: 'generateTopComprasPorFornecedor', token, data: { grupoId, dt_inicio, dt_fim } });
-        topFornecedoresGrupo = res.data.data || [];
-    }
-
-    async function carregarNotasPendentes() {
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        // Se chegou aqui, já validamos que tem valor, mas por segurança:
-        if(!filtroLojaEl.value) {
-            resetNotasPendentesUI();
-            return;
-        }
-
-        const selectedLoja = parseInt(filtroLojaEl.value);
-
-        try {
-            const res = await axios.post(baseUrl, {
-                method: 'listarNotasNaoImportadasUltimos30DiasCached',
-                token,
-                data: { system_unit_id: selectedLoja }
-            });
-            processarRespostaNotas(res.data);
-        } catch (e) {
-            console.error(e);
-            listaNotasPendentes = [];
-            document.getElementById('qtdNotasPendentes').textContent = "Erro";
-        }
-    }
-
-    async function atualizarNotasPendentesForce(element) {
-        const filtroLojaEl = document.getElementById('filtroLoja');
-
-        // BLOQUEIO: Se não tem loja selecionada, avisa e para.
-        if(!filtroLojaEl.value) {
-            return Swal.fire({
-                icon: 'warning',
-                title: 'Atenção',
-                text: 'Selecione uma loja específica para buscar notas pendentes.'
-            });
-        }
-
-        const elQtd = document.getElementById('qtdNotasPendentes');
-        elQtd.classList.add('skeleton');
-
-        const selectedLoja = parseInt(filtroLojaEl.value);
-        const icon = element.querySelector('i');
-        if(icon) icon.classList.add('fa-spin');
-
-        try {
-            const res = await axios.post(baseUrl, {
-                method: 'listarNotasNaoImportadasUltimos30Dias',
-                token,
-                data: { system_unit_id: selectedLoja }
-            });
-            processarRespostaNotas(res.data);
-            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }).fire({ icon: 'success', title: 'Notas sincronizadas!' });
-        } catch (e) { console.error(e); }
-        finally {
-            if(icon) icon.classList.remove('fa-spin');
-            elQtd.classList.remove('skeleton');
-        }
-    }
-
-    function processarRespostaNotas(data) {
-        const msgCache = document.getElementById('msgCache');
-        const nomeLojaEl = document.getElementById('nomeLojaPendente');
-
-        // Estiliza o nome da loja para ativo
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        const nomeLojaSelecionada = filtroLojaEl.options[filtroLojaEl.selectedIndex].text;
-        nomeLojaEl.textContent = nomeLojaSelecionada;
-        nomeLojaEl.classList.remove('text-gray-400');
-        nomeLojaEl.classList.add('text-amber-600');
-
-        if (data.success && data.data && data.data.notas_pendentes) {
-            listaNotasPendentes = data.data.notas_pendentes;
-            const el = document.getElementById('qtdNotasPendentes');
-            el.textContent = data.data.total_pendentes || listaNotasPendentes.length;
-            el.classList.remove('skeleton');
-
-            if (data.data.cached && data.data.last_update) {
-                const date = new Date(data.data.last_update);
-                msgCache.textContent = `Atualizado às ${date.getHours()}:${date.getMinutes().toString().padStart(2,'0')}`;
-                msgCache.classList.remove('hidden');
-            } else { msgCache.classList.add('hidden'); }
-        } else {
-            listaNotasPendentes = [];
-            document.getElementById('qtdNotasPendentes').textContent = "0";
-            document.getElementById('qtdNotasPendentes').classList.remove('skeleton');
-            msgCache.classList.add('hidden');
-        }
-    }
-
-    function verDetalhesNotasPendentes() {
-        // Se não houver loja selecionada ou lista vazia, mostra mensagem
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        if(!filtroLojaEl.value) {
-            return Swal.fire('Atenção', 'Selecione uma loja para ver os detalhes.', 'warning');
-        }
-
-        if (!Array.isArray(listaNotasPendentes) || listaNotasPendentes.length === 0) {
-            return Swal.fire('Tudo em dia!', 'Nenhuma nota pendente para esta loja.', 'success');
-        }
-
-        const valorTotalGeral = listaNotasPendentes.reduce((acc, n) => acc + Number(n.valor_total), 0);
-        let html = `
-        <div class="flex items-center justify-between bg-amber-50 border border-amber-200 p-4 rounded-lg mb-4 shadow-sm">
-            <div class="flex items-center gap-3">
-                <div class="text-3xl text-amber-600"><i class="fas fa-file-invoice-dollar"></i></div>
-                <div><div class="text-xs font-bold text-amber-800 uppercase">Total Pendente</div>
-                <div class="text-2xl font-black text-amber-900">R$ ${valorTotalGeral.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div></div>
-            </div>
-            <div class="text-right"><div class="text-xs font-bold text-amber-800 uppercase">Qtd</div>
-            <div class="text-2xl font-black text-amber-900">${listaNotasPendentes.length}</div></div>
-        </div>
-        <div class="max-h-[50vh] overflow-y-auto border rounded-lg">
-            <table class="w-full text-xs text-left border-collapse">
-                <thead><tr class="bg-gray-100 sticky top-0 shadow-sm z-10"><th class="p-3 border-b">Emissão</th><th class="p-3 border-b">NF / Série</th><th class="p-3 border-b">Fornecedor</th><th class="p-3 border-b text-right">Valor</th></tr></thead>
-                <tbody class="divide-y divide-gray-200">
-                    ${listaNotasPendentes.map(n => `<tr class="hover:bg-blue-50"><td class="p-3">${new Date(n.data_emissao+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="p-3">${n.numero_nf}/${n.serie}</td><td class="p-3 uppercase">${n.emitente_razao.slice(0,25)}</td><td class="p-3 text-right font-bold text-blue-700">R$ ${Number(n.valor_total).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`).join('')}
-                </tbody>
-            </table>
-        </div>`;
-        Swal.fire({ title: 'Notas Pendentes', html, width: '850px', confirmButtonColor: MRK.blue, confirmButtonText: 'Fechar' });
-    }
-
-    function aplicarFiltroLoja() {
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        let selectedLoja = parseInt(filtroLojaEl.value) || null;
-
-        const filtradoResumo = resumoEstoqueGrupo.filter(l => !selectedLoja || l.lojaId === selectedLoja);
-        const filtradoCmvProdutos = cmvProdutosGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-        const filtradoFornecedores = topFornecedoresGrupo.filter(l => !selectedLoja || l.lojaId == selectedLoja);
-
-        const lojaObj = selectedLoja ? (lojasPorGrupo[grupoId].find(x => parseInt(x.id) === selectedLoja)) : null;
-        const nomeSelecionado = lojaObj ? lojaObj.name : null;
-
-        // Se não tem loja selecionada (selectedLoja é null ou 0), chama o reset
-        if (!selectedLoja) {
-            resetNotasPendentesUI();
-        }
-
-        const filtradoEvolucao = evolucaoCmvGrupo.filter(l => !nomeSelecionado || l.nome === nomeSelecionado);
-
-        renderResumo(filtradoResumo);
-        renderEvolucaoBarras(filtradoEvolucao, datasEvolucao);
-        renderChartTopProdutos(agregarProdutos(filtradoCmvProdutos));
-        renderChartTopFornecedores(agregarFornecedores(filtradoFornecedores));
-    }
-
-    function renderResumo(data) {
-        let fat = 0, comp = 0;
-        data.forEach(l => { fat += parseBRL(l.faturamento_bruto); comp += parseBRL(l.total_compras); });
-        animateValue('faturamentoBruto', 0, fat, 1000, true);
-        animateValue('totalCompras', 0, comp, 1000, true);
-        animateValue('percentualCompras', 0, fat > 0 ? (comp / fat) * 100 : 0, 1000, false, true);
-    }
-
-    function renderEvolucaoBarras(lojas, labels) {
-        const config = (id, tipo) => {
-            const chartDom = document.getElementById(id);
-            if(!chartDom) return;
-            const chart = echarts.init(chartDom);
-            const series = lojas.map((l, i) => ({
-                name: l.nome, type: 'bar', stack: 'total',
-                data: tipo === 'fat' ? l.faturamento : l.compras,
-                itemStyle: { color: MRK.series[i % MRK.series.length] }
-            }));
-            chart.setOption({
-                legend: { top: 0 },
-                tooltip: {
-                    trigger: 'axis',
-                    formatter: function(params) {
-                        let res = `${params[0].name}<br/>`;
-                        params.forEach(p => {
-                            res += `${p.marker} ${p.seriesName}: <b>${formatCurrency(p.value)}</b><br/>`;
-                        });
-                        return res;
-                    }
-                },
-                xAxis: { type: 'category', data: labels },
-                yAxis: { type: 'value', axisLabel: { formatter: (v) => 'R$ ' + v.toLocaleString('pt-BR') } },
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                series
-            }, true);
-        };
-        config('chartFaturamentoDiario', 'fat');
-        config('chartComprasDiario', 'comp');
-    }
-
-    function agregarProdutos(data) {
-        const res = {};
-        data.forEach(l => (l.produtos || []).forEach(p => { res[p.name] = (res[p.name] || 0) + parseFloat(p.value); }));
-        return Object.entries(res).map(([nome, valor]) => ({nome, valor})).sort((a,b) => b.valor - a.valor).slice(0,5);
-    }
-
-    function agregarFornecedores(data) {
-        const res = {};
-        data.forEach(l => (l.fornecedores || []).forEach(f => {
-            if(!res[f.fornecedor]) res[f.fornecedor] = {nome: f.fornecedor, valor: 0, qtd: 0};
-            res[f.fornecedor].valor += parseFloat(f.valor_total);
-            res[f.fornecedor].qtd += parseInt(f.qtd_notas);
-        }));
-        return Object.values(res).sort((a,b) => b.valor - a.valor).slice(0,5);
-    }
-
-    function renderChartTopProdutos(data) {
-        const chart = echarts.init(document.getElementById('chartTopProdutos'));
-        chart.setOption({
-            tooltip: { trigger: 'axis', formatter: (params) => `${params[0].name}: <b>${formatCurrency(params[0].value)}</b>` },
-            yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
-            xAxis: { type: 'value', axisLabel: { show: false } },
-            grid: { left: '3%', right: '12%', bottom: '10%', containLabel: true },
-            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.blue }, label: { show: true, position: 'right', formatter: (p) => formatCurrency(p.value), fontSize: 10, fontWeight: 'bold' } }]
-        }, true);
-    }
-
-    function renderChartTopFornecedores(data) {
-        const chart = echarts.init(document.getElementById('chartTopFornecedores'));
-        chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                formatter: (params) => {
-                    const item = data[params[0].dataIndex];
-                    return `<b>${item.nome}</b><br/>` +
-                        `<i class="fas fa-money-bill-wave"></i> Valor: <b>${formatCurrency(item.valor)}</b><br/>` +
-                        `<i class="fas fa-file-invoice"></i> Qtd Notas: <b>${item.qtd}</b>`;
-                }
-            },
-            yAxis: { type: 'category', data: data.map(d => d.nome.slice(0,15)), inverse: true },
-            xAxis: { type: 'value', axisLabel: { show: false } },
-            grid: { left: '3%', right: '15%', bottom: '10%', containLabel: true },
-            series: [{ type: 'bar', data: data.map(d => d.valor), itemStyle: { color: MRK.green }, label: { show: true, position: 'right', formatter: (p) => formatCurrency(p.value), fontSize: 10, fontWeight: 'bold' } }]
-        }, true);
-    }
+    // CSS para animação do spin
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = "@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
+    document.head.appendChild(styleSheet);
 
     window.addEventListener('DOMContentLoaded', async () => {
-        setupFilterListeners();
-        const now = new Date();
-        const start = new Date();
-        start.setDate(now.getDate() - 7);
-        document.getElementById('endDate').value = now.toISOString().split('T')[0];
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+        document.querySelectorAll('.filter-input').forEach(el => el.addEventListener('change', showApplyButton));
+        setRange('7dias');
         await carregarGrupoInicial();
         fetchData();
     });
 </script>
-
 </body>
 </html>

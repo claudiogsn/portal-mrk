@@ -3,960 +3,449 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard Financeiro</title>
+    <title>Dashboard Financeiro | Portal MRK</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- não usado, mas mantido como no estoque -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
-
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
     <style>
-        :root{
+        :root {
             --mrk-blue: #0B46AC;
-            --mrk-green: #08A794;
-            --mrk-gray: #EBEBEB;
-            --mrk-black: #191F2A;
+            --mrk-green: #2e7d32;
+            --mrk-amber: #ffa000;
+            --mrk-red: #d32f2f;
+            --bg-gray: #F4F7F6;
         }
 
-        .animate-number { transition: all 1s ease-in-out; }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-gray); color: #333; }
+        h1, h2, h3, .kanit { font-family: 'Kanit', sans-serif; }
+
+        /* Card MRK */
+        .mrk-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-top: 3px solid var(--mrk-blue);
+        }
+        .card-green { border-top-color: var(--mrk-green); }
+        .card-amber { border-top-color: var(--mrk-amber); }
+        .card-black { border-top-color: #191F2A; }
+
+        /* Inputs */
+        label { font-family: 'Kanit', sans-serif; font-size: 12px; color: #666; margin-bottom: 4px; display: block; }
+        .form-control { height: 38px; border-radius: 6px; border: 1px solid #d1d5db; padding: 0 10px; font-size: 13px; width: 100%; }
+
+        /* Botões */
         .btn-mrk {
-            background: color-mix(in srgb, var(--mrk-blue) 12%, white);
-            color: var(--mrk-blue);
-            border: 1px solid color-mix(in srgb, var(--mrk-blue) 25%, white);
+            padding: 6px 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px;
+            font-weight: 600; color: #4b5563; cursor: pointer; transition: all 0.2s;
         }
-        .btn-mrk:hover {
-            background: color-mix(in srgb, var(--mrk-blue) 20%, white);
-        }
+        .btn-mrk:hover { border-color: var(--mrk-blue); color: var(--mrk-blue); background: #f0f4fa; }
 
-        /* 🔥 Popup extra grande só pra lista de contas */
-        .swal2-popup.swal2-xl {
-            width: 90vw !important;
-            max-width: 1400px !important;
-        }
-
-        /* Garante que o conteúdo role dentro do modal grande */
-        .swal2-html-container {
-            max-height: 70vh;
-            overflow: auto;
-        }
-
-        .cal-grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
-        .cal-dow { font-size: 11px; color:#6b7280; text-transform: uppercase; letter-spacing: .06em; text-align:center; }
+        /* Calendário */
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .cal-dow { font-size: 11px; font-weight: 700; text-align: center; color: #666; text-transform: uppercase; padding-bottom: 5px; }
         .cal-day {
-            background:#fff;
-            border:1px solid #eee;
-            border-radius: 14px;
-            padding: 10px;
-            min-height: 84px;
-            position: relative;
-            cursor: pointer;
-            transition: transform .08s ease, box-shadow .08s ease;
+            background: #fff; border: 1px solid #eee; border-radius: 8px; min-height: 80px; padding: 8px; position: relative; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .cal-day:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.06); }
-        .cal-day.muted { opacity: .40; cursor: default; }
-        .cal-day.hasdata { border-color: rgba(11,70,172,.25); background: color-mix(in srgb, var(--mrk-blue) 6%, white); }
-        .cal-num { font-weight: 800; font-size: 13px; color: var(--mrk-black); }
-        .cal-total { position:absolute; bottom:10px; left:10px; right:10px; font-size: 12px; font-weight: 800; color: var(--mrk-black); }
-        .cal-badge {
-            position:absolute; top:10px; right:10px;
-            font-size: 11px; font-weight: 800;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: color-mix(in srgb, var(--mrk-green) 14%, white);
-            color: var(--mrk-green);
-            border:1px solid color-mix(in srgb, var(--mrk-green) 30%, white);
+        .cal-day:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: var(--mrk-blue); }
+        .cal-day.hasdata { background: #f8fbff; border-color: #dbeafe; }
+        .cal-day.muted { background: #f9fafb; opacity: 0.5; pointer-events: none; }
+
+        .cal-num { font-family: 'Kanit'; font-weight: 700; font-size: 14px; color: #333; }
+        .cal-badge { position: absolute; top: 8px; right: 8px; background: var(--mrk-blue); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+        .cal-total { position: absolute; bottom: 8px; right: 8px; font-size: 12px; font-weight: 700; color: #333; }
+        .cal-empty { position: absolute; bottom: 8px; right: 8px; font-size: 18px; color: #eee; }
+
+        /* Skeletons */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 4px; color: transparent !important;
         }
-        .cal-empty { color:#9ca3af; font-size:12px; font-weight:700; position:absolute; bottom:10px; left:10px; }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Modal Grande */
+        .swal2-xl { width: 90vw !important; max-width: 1200px !important; }
     </style>
 </head>
 
-<body class="text-gray-800" style="background: var(--mrk-gray);">
+<body class="text-gray-800">
+<div class="p-6 mx-auto">
 
-<div class="p-6">
-    <!-- FILTROS -->
-    <div class="mb-6">
-        <div class="flex items-center gap-4 flex-wrap">
-            <button onclick="setRange('hoje')" class="btn-mrk px-3 py-1 rounded shadow">Hoje</button>
-            <button onclick="setRange('ontem')" class="btn-mrk px-3 py-1 rounded shadow">Ontem</button>
-            <button onclick="setRange('7dias')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 7 dias</button>
-            <button onclick="setRange('mes')" class="btn-mrk px-3 py-1 rounded shadow">Últimos 30 dias</button>
-
-            <input type="date" id="startDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
-            <input type="date" id="endDate" onchange="fetchData()" class="border p-2 rounded-md shadow bg-white" />
-
-            <select id="tipoData" class="border p-2 rounded-md shadow bg-white">
-                <option value="vencimento">Data de Vencimento</option>
-                <option value="emissao">Data de Emissão</option>
-            </select>
-
-            <select id="filtroGrupo" class="border p-2 rounded-md shadow bg-white">
-                <option value="">Todos os Grupos</option>
-            </select>
-
-            <select id="filtroLoja" class="border p-2 rounded-md shadow bg-white">
-                <option value="">Todas as lojas</option>
-            </select>
+    <div class="mrk-card p-4 mb-6" style="border-top-width: 2px;">
+        <div class="flex items-end gap-4 flex-wrap">
+            <div class="flex-1 min-w-[300px]">
+                <label>Atalhos de Período</label>
+                <div class="flex gap-2">
+                    <button onclick="setRange('hoje')" class="btn-mrk">Hoje</button>
+                    <button onclick="setRange('ontem')" class="btn-mrk">Ontem</button>
+                    <button onclick="setRange('7dias')" class="btn-mrk">7 Dias</button>
+                    <button onclick="setRange('mes')" class="btn-mrk">30 Dias</button>
+                </div>
+            </div>
+            <div class="w-36">
+                <label>Data Início</label>
+                <input type="date" id="startDate" onchange="fetchData()" class="form-control" />
+            </div>
+            <div class="w-36">
+                <label>Data Fim</label>
+                <input type="date" id="endDate" onchange="fetchData()" class="form-control" />
+            </div>
+            <div class="w-40">
+                <label>Considerar por</label>
+                <select id="tipoData" class="form-control">
+                    <option value="vencimento">Vencimento</option>
+                    <option value="emissao">Emissão</option>
+                </select>
+            </div>
+            <div class="w-48">
+                <label>Grupo Econômico</label>
+                <select id="filtroGrupo" class="form-control"></select>
+            </div>
+            <div class="w-48">
+                <label>Loja / Unidade</label>
+                <select id="filtroLoja" class="form-control"></select>
+            </div>
         </div>
     </div>
 
-    <!-- CARDS -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
 
-        <!-- Contas a Vencer 7 dias -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex flex-col justify-between"
-             style="border-color: var(--mrk-blue);">
-            <div class="flex items-center gap-4">
-                <div class="text-4xl" style="color: var(--mrk-blue);">
-                    <i class="fas fa-calendar-week"></i>
-                </div>
+        <div class="mrk-card p-5 card-amber flex flex-col justify-between h-[140px]">
+            <div class="flex items-start justify-between">
                 <div>
-                    <div class="text-sm font-semibold" style="color: var(--mrk-black);">
-                        Contas a vencer nos próximos 7 dias
-                    </div>
-                    <div class="text-2xl md:text-3xl font-extrabold animate-number" id="contasVencer7"
-                         style="color: var(--mrk-black);">R$ 0,00</div>
+                    <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">A Vencer (7 Dias)</div>
+                    <div class="text-2xl font-bold kanit kpi-value" id="contasVencer7">R$ 0,00</div>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xl">
+                    <iconify-icon icon="icon-park-outline:calendar-dot"></iconify-icon>
                 </div>
             </div>
-            <div class="mt-3 flex justify-between items-center text-xs text-gray-600">
-                <span id="qtdContas7">0 contas</span>
-                <button class="text-xs font-semibold text-blue-700 hover:underline"
-                        onclick="mostrarContasPrazo(7)">
-                    Ver mais
-                </button>
+            <div class="flex items-center justify-between text-xs mt-2 border-t pt-2 border-gray-100">
+                <span class="font-medium text-gray-600 kpi-value" id="qtdContas7">0 contas</span>
+                <button onclick="mostrarContasPrazo(7)" class="text-amber-700 font-bold hover:underline">VER DETALHES</button>
             </div>
         </div>
 
-        <!-- Contas a Vencer 30 dias -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex flex-col justify-between"
-             style="border-color: var(--mrk-green);">
-            <div class="flex items-center gap-4">
-                <div class="text-4xl" style="color: var(--mrk-green);">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
+        <div class="mrk-card p-5 card-amber flex flex-col justify-between h-[140px]">
+            <div class="flex items-start justify-between">
                 <div>
-                    <div class="text-sm font-semibold" style="color: var(--mrk-black);">
-                        Contas a vencer nos próximos 30 dias
-                    </div>
-                    <div class="text-2xl md:text-3xl font-extrabold animate-number" id="contasVencer30"
-                         style="color: var(--mrk-black);">R$ 0,00</div>
+                    <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1">A Vencer (30 Dias)</div>
+                    <div class="text-2xl font-bold kanit kpi-value" id="contasVencer30">R$ 0,00</div>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xl">
+                    <iconify-icon icon="icon-park-outline:calendar-thirty"></iconify-icon>
                 </div>
             </div>
-            <div class="mt-3 flex justify-between items-center text-xs text-gray-600">
-                <span id="qtdContas30">0 contas</span>
-                <button class="text-xs font-semibold text-blue-700 hover:underline"
-                        onclick="mostrarContasPrazo(30)">
-                    Ver mais
-                </button>
+            <div class="flex items-center justify-between text-xs mt-2 border-t pt-2 border-gray-100">
+                <span class="font-medium text-gray-600 kpi-value" id="qtdContas30">0 contas</span>
+                <button onclick="mostrarContasPrazo(30)" class="text-amber-700 font-bold hover:underline">VER DETALHES</button>
             </div>
         </div>
 
-        <!-- Soma Débitos -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
-             style="border-color: var(--mrk-black);">
-            <div class="text-4xl" style="color: var(--mrk-black);">
-                <i class="fas fa-arrow-down-long"></i>
+        <div class="mrk-card p-5 card-black flex items-center gap-4 h-[140px]">
+            <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-800 text-2xl">
+                <iconify-icon icon="icon-park-outline:arrow-circle-down"></iconify-icon>
             </div>
             <div>
-                <div class="text-sm font-semibold" style="color: var(--mrk-black);">
-                    Débito
-                </div>
-                <div class="text-2xl md:text-3xl font-extrabold animate-number" id="totalDebitos"
-                     style="color: var(--mrk-black);">R$ 0,00</div>
+                <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Total Débitos</div>
+                <div class="text-2xl font-bold kanit kpi-value" id="totalDebitos">R$ 0,00</div>
             </div>
         </div>
 
-        <!-- Soma Créditos -->
-        <div class="bg-white p-6 rounded-xl shadow-lg border-l-8 flex items-center gap-4"
-             style="border-color: var(--mrk-black);">
-            <div class="text-4xl" style="color: var(--mrk-black);">
-                <i class="fas fa-arrow-up-long"></i>
+        <div class="mrk-card p-5 card-green flex items-center gap-4 h-[140px]">
+            <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-700 text-2xl">
+                <iconify-icon icon="icon-park-outline:arrow-circle-up"></iconify-icon>
             </div>
             <div>
-                <div class="text-sm font-semibold" style="color: var(--mrk-black);">
-                    Créditos
-                </div>
-                <div class="text-2xl md:text-3xl font-extrabold animate-number" id="totalCreditos"
-                     style="color: var(--mrk-black);">R$ 0,00</div>
+                <div class="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Total Créditos</div>
+                <div class="text-2xl font-bold kanit kpi-value" id="totalCreditos">R$ 0,00</div>
             </div>
         </div>
-
     </div>
 
-    <!-- GRÁFICO: PLANOS DE CONTAS -->
-    <div class="grid grid-cols-1 gap-6 mb-6">
-        <div class="w-full bg-white p-6 rounded-lg shadow">
-            <h2 class="text-lg font-semibold mb-4" style="color: var(--mrk-black);">
-                Somatório das Contas por Plano de Contas
+    <div class="mrk-card p-6 mb-6 relative">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-md font-bold uppercase flex items-center gap-2">
+                <iconify-icon icon="icon-park-outline:chart-histogram" class="text-blue-700"></iconify-icon>
+                Movimentação por Plano de Contas
             </h2>
-            <p class="text-xs text-gray-500 mb-2">
-                Considerando apenas contas em aberto no período e tipo de data selecionado.
-            </p>
-            <div id="chartPlanosContas" style="width:100%; height:360px;"></div>
         </div>
+        <div id="chartPlanosContas" style="width:100%; height:360px;"></div>
+        <div id="skel-chartPlanos" class="absolute inset-0 bg-white z-10 hidden p-6"><div class="skeleton h-full w-full rounded"></div></div>
     </div>
-    <!-- CALENDÁRIO: MAPA DE CONTAS -->
-    <div class="w-full bg-white p-6 rounded-lg shadow mt-6">
-        <div class="flex items-center justify-between gap-3 flex-wrap">
+
+    <div class="mrk-card p-6">
+        <div class="flex items-center justify-between mb-4">
             <div>
-                <h2 class="text-lg font-semibold" style="color: var(--mrk-black);">
-                    Calendário de Contas (Mapa do Mês)
+                <h2 class="text-md font-bold uppercase flex items-center gap-2">
+                    <iconify-icon icon="icon-park-outline:calendar" class="text-blue-700"></iconify-icon>
+                    Mapa de Vencimentos
                 </h2>
-                <p class="text-xs text-gray-500">
-                    Clique em um dia para ver as contas daquele dia (conforme o tipo de data selecionado).
-                </p>
+                <p class="text-xs text-gray-500 mt-1">Clique no dia para visualizar os lançamentos previstos.</p>
             </div>
-
-            <div class="flex items-center gap-2">
-                <button class="btn-mrk px-3 py-1 rounded shadow" onclick="navMes(-1)">
-                    <i class="fa fa-chevron-left"></i>
-                </button>
-
-                <div class="px-3 py-1 rounded shadow bg-white border text-sm font-extrabold" id="calTituloMes">
-                    —
-                </div>
-
-                <button class="btn-mrk px-3 py-1 rounded shadow" onclick="navMes(1)">
-                    <i class="fa fa-chevron-right"></i>
-                </button>
+            <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                <button class="w-8 h-8 flex items-center justify-center bg-white rounded shadow text-gray-600 hover:text-blue-700" onclick="navMes(-1)"><iconify-icon icon="icon-park-outline:left"></iconify-icon></button>
+                <div class="px-4 font-bold text-sm min-w-[120px] text-center" id="calTituloMes">-</div>
+                <button class="w-8 h-8 flex items-center justify-center bg-white rounded shadow text-gray-600 hover:text-blue-700" onclick="navMes(1)"><iconify-icon icon="icon-park-outline:right"></iconify-icon></button>
             </div>
         </div>
 
-        <div class="mt-4 cal-grid" id="calDows"></div>
-        <div class="mt-2 cal-grid" id="calGrid"></div>
-
-        <div class="mt-4 text-xs text-gray-500" id="calHint"></div>
+        <div class="cal-grid mb-2" id="calDows"></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="mt-4 text-xs text-right text-gray-500 font-medium border-t pt-2" id="calHint"></div>
     </div>
+
 </div>
 
-
-
-
-
-
 <script>
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
+    'use strict';
 
-    const baseUrlFinanceiro = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
-        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/index.php' : 'http://localhost/portal-mrk/api/v1/index.php';
+    const baseUrlFinanceiro = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
     const urlParams = new URLSearchParams(window.location.search);
-    const system_unit_id = parseInt(urlParams.get('system_unit_id'));
-    const user_id = parseInt(urlParams.get('user_id'));
-    const token = urlParams.get('token');
+    const system_unit_id = parseInt(urlParams.get('system_unit_id')), user_id = parseInt(urlParams.get('user_id')), token = urlParams.get('token');
 
-    // 🎨 PALETA MRK
-    const MRK = {
-        blue:  '#0B46AC',
-        green: '#08A794',
-        gray:  '#EBEBEB',
-        black: '#191F2A',
-        series: ['#0B46AC', '#08A794', '#191F2A', '#0B46AC80', '#08A79480']
-    };
+    const MRK = { blue: '#0B46AC', green: '#2e7d32', gray: '#EBEBEB', black: '#191F2A', series: ['#0B46AC', '#08A794', '#191F2A', '#ffa000'] };
+    const formatBRL = (v) => Number(v||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    let grupoId = null;
-    let gruposDisponiveis = {};
-    let lojasPorGrupo = {};
-    let lojasGrupo = [];
-
-    // Estado bruto vindo do backend financeiro
-    let dashboardFinanceiro = null;
-
-    function animateValue(id, start, end, duration, isCurrency = false) {
-        const element = document.getElementById(id);
-        if (!element) return;
-
-        let startTimestamp = null;
-
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = start + progress * (end - start);
-
-            element.textContent = isCurrency
-                ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                : Math.floor(value);
-
-            if (progress < 1) window.requestAnimationFrame(step);
-        };
-
-        window.requestAnimationFrame(step);
-    }
-
-    function formatBRL(valor) {
-        const numero = Number(valor) || 0;
-        return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    function setRange(tipo) {
-        const now = new Date();
-        const start = new Date();
-        if (tipo === 'ontem') {
-            start.setDate(now.getDate() - 1);
-            now.setDate(now.getDate() - 1);
-        } else if (tipo === '7dias') {
-            start.setDate(now.getDate() - 7);
-        } else if (tipo === 'mes') {
-            start.setMonth(now.getMonth() - 1);
-        }
-
-        document.getElementById('endDate').value = now.toISOString().split('T')[0];
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
-        fetchData();
-    }
-
-    async function carregarGrupoInicial() {
-        const res = await axios.post(baseUrl, {
-            method: 'getGroupByUnit',
-            token,
-            data: { system_unit_id }
-        });
-
-        if (Array.isArray(res.data) && res.data.length > 0) {
-            grupoId = res.data[0].id;
-        }
-
-        await carregarGruposUsuario();
-    }
-
-    async function carregarGruposUsuario() {
-        const res = await axios.post(baseUrl, {
-            method: 'getGroupByUser',
-            token,
-            data: { user_id }
-        });
-
-        const { grupos, lojas_por_grupo } = res.data;
-        gruposDisponiveis = grupos || [];
-        lojasPorGrupo = lojas_por_grupo || {};
-
-        const grupoSelect = document.getElementById('filtroGrupo');
-        grupoSelect.innerHTML = '';
-
-        gruposDisponiveis.forEach(grupo => {
-            grupoSelect.innerHTML += `<option value="${grupo.id}" ${grupo.id == grupoId ? 'selected' : ''}>${grupo.nome}</option>`;
-        });
-
-        grupoSelect.addEventListener('change', () => {
-            grupoId = parseInt(grupoSelect.value);
-            dashboardFinanceiro = null;
-            limparCharts();
-            atualizarFiltroLoja();
-            document.getElementById('filtroLoja').value = "";
-            fetchData();
-        });
-
-        atualizarFiltroLoja();
-    }
-
-    function atualizarFiltroLoja() {
-        const lojas = lojasPorGrupo[grupoId] || [];
-        const filtro = document.getElementById('filtroLoja');
-
-        filtro.innerHTML = '<option value="">Todas as lojas</option>';
-        lojas.forEach(loja => {
-            filtro.innerHTML += `<option value="${loja.id}">${loja.name}</option>`;
-        });
-    }
-
-    async function carregarLojasGrupo() {
-        const res = await axios.post(baseUrl, {
-            method: 'getUnitsByGroup',
-            token,
-            data: { group_id: grupoId }
-        });
-        lojasGrupo = res.data || [];
-    }
-
-    function limparCharts() {
-        const ids = ['chartPlanosContas'];
-        ids.forEach(id => {
-            const dom = document.getElementById(id);
-            if (!dom) return;
-            const inst = echarts.getInstanceByDom(dom);
-            if (inst) inst.dispose();
-        });
-    }
-
-    async function fetchData() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const tipoData = document.getElementById('tipoData').value || 'vencimento';
-
-        if (!grupoId) {
-            Swal.fire('Atenção', 'Nenhum grupo selecionado/encontrado.', 'warning');
-            return;
-        }
-
-        if (!startDate || !endDate) {
-            return; // espera o usuário escolher as datas
-        }
-
-        const dt_inicio = startDate; // formato Y-m-d
-        const dt_fim = endDate;
-
-        Swal.fire({
-            title: 'Carregando...',
-            html: 'Buscando dados financeiros.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => Swal.showLoading()
-        });
-
-        try {
-            await carregarLojasGrupo();
-
-            const res = await axios.post(baseUrlFinanceiro, {
-                method: 'getDashboardFinanceiroPorGrupo',
-                token,
-                data: {
-                    group_id: grupoId,
-                    dt_inicio,
-                    dt_fim,
-                    tipo_data: tipoData
-                }
-            });
-
-            if (!res.data || !res.data.success) {
-                throw new Error(res.data?.message || 'Erro ao carregar dashboard financeiro.');
-            }
-
-            dashboardFinanceiro = res.data.data || null;
-
-            aplicarFiltroLoja();
-            await atualizarCalendario();
-
-        } catch (err) {
-            console.error(err);
-            Swal.fire('Erro ao carregar', err.message || 'Falha ao buscar dados.', 'error');
-        } finally {
-            Swal.close();
-        }
-    }
-
-    function getNomeLojaById(lojaId) {
-        const lojas = lojasPorGrupo[grupoId] || [];
-        const l = lojas.find(x => parseInt(x.id) === parseInt(lojaId));
-        return l ? l.name : null;
-    }
-
-    function getUnidadesArray() {
-        if (!dashboardFinanceiro || !dashboardFinanceiro.por_unidade) return [];
-        const pu = dashboardFinanceiro.por_unidade;
-        if (Array.isArray(pu)) return pu;
-        return Object.values(pu);
-    }
-
-    function aplicarFiltroLoja() {
-        if (!dashboardFinanceiro) return;
-
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        let selectedLoja = parseInt(filtroLojaEl.value) || null;
-
-        const lojasValidas = (lojasPorGrupo[grupoId] || []).map(l => parseInt(l.id));
-        if (selectedLoja && !lojasValidas.includes(selectedLoja)) {
-            selectedLoja = null;
-            filtroLojaEl.value = "";
-        }
-
-        const unidades = getUnidadesArray();
-
-        let unidadesFiltradas = unidades;
-        if (selectedLoja) {
-            unidadesFiltradas = unidades.filter(u => parseInt(u.system_unit_id) === selectedLoja);
-        }
-
-        // Totais Débito / Crédito
-        let totalDebitos = 0;
-        let totalCreditos = 0;
-
-        unidadesFiltradas.forEach(u => {
-            totalDebitos += Number(u.totais?.debitos || 0);
-            totalCreditos += Number(u.totais?.creditos || 0);
-        });
-
-        animateValue('totalDebitos', 0, totalDebitos, 1000, true);
-        animateValue('totalCreditos', 0, totalCreditos, 1000, true);
-
-        // Contas a vencer 7 e 30 (sempre tipo D por vencimento, filtradas por loja se houver)
-        const contas7 = (dashboardFinanceiro.contas_vencer_7 || []).filter(c =>
-            !selectedLoja || parseInt(c.system_unit_id) === selectedLoja
-        );
-        const contas30 = (dashboardFinanceiro.contas_vencer_30 || []).filter(c =>
-            !selectedLoja || parseInt(c.system_unit_id) === selectedLoja
-        );
-
-        const total7 = contas7.reduce((acc, c) => acc + Number(c.valor || 0), 0);
-        const total30 = contas30.reduce((acc, c) => acc + Number(c.valor || 0), 0);
-
-        animateValue('contasVencer7', 0, total7, 1000, true);
-        animateValue('contasVencer30', 0, total30, 1000, true);
-
-        document.getElementById('qtdContas7').textContent = `${contas7.length} conta(s)`;
-        document.getElementById('qtdContas30').textContent = `${contas30.length} conta(s)`;
-
-        // Gráfico por planos
-        let planos = [];
-
-        if (selectedLoja) {
-            const unidade = unidades.find(u => parseInt(u.system_unit_id) === selectedLoja);
-            planos = unidade?.planos || [];
-        } else {
-            planos = dashboardFinanceiro.planos_geral || [];
-        }
-
-        renderChartPlanos(planos);
-    }
-
-    function renderChartPlanos(planos) {
-        const dom = document.getElementById('chartPlanosContas');
-        if (!dom) return;
-
-        const old = echarts.getInstanceByDom(dom);
-        if (old) old.dispose();
-
-        const chart = echarts.init(dom);
-
-        if (!planos || planos.length === 0) {
-            chart.setOption({
-                title: {
-                    text: 'Sem dados para exibir no período selecionado.',
-                    left: 'center',
-                    top: 'middle',
-                    textStyle: { color: '#999', fontSize: 14 }
-                }
-            });
-            return;
-        }
-
-        const labels = planos.map(p => (p.plano_descricao || p.plano_codigo || '').substring(0, 20));
-        const debitos = planos.map(p => Number(p.total_debitos || 0));
-        const creditos = planos.map(p => Number(p.total_creditos || 0));
-
-        const option = {
-            color: MRK.series,
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' },
-                formatter: (params) => {
-                    let idx = params[0].dataIndex;
-                    const plano = planos[idx];
-                    const nome = plano.plano_descricao || plano.plano_codigo;
-                    const d = Number(plano.total_debitos || 0);
-                    const c = Number(plano.total_creditos || 0);
-                    const tot = d + c;
-
-                    return `
-                        <b>${nome}</b><br/>
-                        Débitos: <b>${formatBRL(d)}</b><br/>
-                        Créditos: <b>${formatBRL(c)}</b><br/>
-                        Total: <b>${formatBRL(tot)}</b>
-                    `;
-                }
-            },
-            legend: {
-                top: 0,
-                textStyle: { color: MRK.black }
-            },
-            grid: { left: '3%', right: '4%', bottom: '10%', top: 40, containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: labels,
-                axisLabel: {
-                    fontSize: 11,
-                    rotate: labels.length > 10 ? 35 : 0,
-                    color: MRK.black
-                },
-                axisLine: { lineStyle: { color: MRK.black } }
-            },
-            yAxis: {
-                type: 'value',
-                axisLabel: {
-                    formatter: v => `R$ ${Number(v).toLocaleString('pt-BR')}`,
-                    color: MRK.black
-                },
-                splitLine: { lineStyle: { color: MRK.gray } }
-            },
-            series: [
-                {
-                    name: 'Débitos',
-                    type: 'bar',
-                    stack: 'total',
-                    data: debitos,
-                    itemStyle: { color: MRK.series[0] }
-                },
-                {
-                    name: 'Créditos',
-                    type: 'bar',
-                    stack: 'total',
-                    data: creditos,
-                    itemStyle: { color: MRK.series[1] }
-                }
-            ]
-        };
-
-        chart.setOption(option);
-    }
-
+    // === CORREÇÃO CRÍTICA DE DATAS (TIMEZONE FIX) ===
     const parseDateLocal = (dateStr) => {
         if (!dateStr) return null;
         const [y, m, d] = dateStr.split('-').map(Number);
         return new Date(y, m - 1, d);
     };
 
-    function mostrarContasPrazo(dias) {
+    let grupoId = null, gruposDisponiveis = [], lojasPorGrupo = {}, lojasGrupo = [], dashboardFinanceiro = null, mapaDeContas = null, calAnoMesAtual = null;
+    const DOWS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+
+    function toggleSkeletons(isLoading) {
+        if(isLoading) {
+            $('.kpi-value').addClass('skeleton');
+            $('#skel-chartPlanos').removeClass('hidden');
+        } else {
+            $('.kpi-value').removeClass('skeleton');
+            $('#skel-chartPlanos').addClass('hidden');
+        }
+    }
+
+    function animateValue(id, start, end, duration, isCurrency=false) {
+        const el = document.getElementById(id); if(!el) return;
+        el.classList.remove('skeleton');
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const value = start + progress * (end - start);
+            el.textContent = isCurrency ? formatBRL(value) : Math.floor(value);
+            if (progress < 1) window.requestAnimationFrame(step);
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    function setRange(tipo) {
+        const now = new Date(), start = new Date();
+        if (tipo === 'ontem') { start.setDate(now.getDate()-1); now.setDate(now.getDate()-1); }
+        else if (tipo === '7dias') start.setDate(now.getDate()-7);
+        else if (tipo === 'mes') start.setMonth(now.getMonth()-1);
+        document.getElementById('endDate').value = now.toISOString().split('T')[0];
+        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+        fetchData();
+    }
+
+    async function fetchData() {
+        const start = document.getElementById('startDate').value, end = document.getElementById('endDate').value;
+        const tipoData = document.getElementById('tipoData').value;
+        if(!grupoId || !start || !end) return;
+
+        toggleSkeletons(true);
+
+        try {
+            await carregarLojasGrupo();
+            const res = await axios.post(baseUrlFinanceiro, {
+                method: 'getDashboardFinanceiroPorGrupo',
+                token,
+                data: { group_id: grupoId, dt_inicio: start, dt_fim: end, tipo_data: tipoData }
+            });
+
+            if (!res.data.success) throw new Error(res.data.message);
+            dashboardFinanceiro = res.data.data;
+            aplicarFiltroLoja();
+            await atualizarCalendario();
+        } catch (e) { Swal.fire('Erro', 'Falha ao buscar dados.', 'error'); }
+        finally { toggleSkeletons(false); }
+    }
+
+    function aplicarFiltroLoja() {
         if (!dashboardFinanceiro) return;
+        const lojaId = parseInt($('#filtroLoja').val()) || null;
 
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        let selectedLoja = parseInt(filtroLojaEl.value) || null;
+        const unidades = Object.values(dashboardFinanceiro.por_unidade || {});
+        const unidadesFiltradas = lojaId ? unidades.filter(u => parseInt(u.system_unit_id) === lojaId) : unidades;
 
-        const listaBruta = dias === 7
-            ? (dashboardFinanceiro.contas_vencer_7 || [])
-            : (dashboardFinanceiro.contas_vencer_30 || []);
+        let deb = 0, cred = 0;
+        unidadesFiltradas.forEach(u => { deb += Number(u.totais?.debitos||0); cred += Number(u.totais?.creditos||0); });
+        animateValue('totalDebitos', 0, deb, 800, true);
+        animateValue('totalCreditos', 0, cred, 800, true);
 
-        const lista = listaBruta.filter(c =>
-            !selectedLoja || parseInt(c.system_unit_id) === selectedLoja
-        );
+        // Contas a Vencer
+        const filterContas = (list) => list.filter(c => !lojaId || parseInt(c.system_unit_id) === lojaId);
+        const c7 = filterContas(dashboardFinanceiro.contas_vencer_7 || []);
+        const c30 = filterContas(dashboardFinanceiro.contas_vencer_30 || []);
 
-        if (lista.length === 0) {
-            Swal.fire(
-                'Sem contas',
-                `Nenhuma conta a vencer nos próximos ${dias} dias para o filtro atual.`,
-                'info'
-            );
-            return;
-        }
+        animateValue('contasVencer7', 0, c7.reduce((a,b)=>a+Number(b.valor),0), 800, true);
+        animateValue('contasVencer30', 0, c30.reduce((a,b)=>a+Number(b.valor),0), 800, true);
+        $('#qtdContas7').text(`${c7.length} contas`);
+        $('#qtdContas30').text(`${c30.length} contas`);
 
-        // 🔥 FUNÇÃO LOCAL PARA CORRIGIR TIMEZONE
-
-
-        let html = `
-        <div style="max-height:400px;overflow:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead>
-                    <tr>
-                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Loja</th>
-                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:center;">Nome</th>
-                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Doc</th>
-                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Vencimento</th>
-                        <th style="border-bottom:1px solid #ccc;padding:4px;text-align:left;">Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-        lista.forEach(c => {
-            const venc = c.vencimento
-                ? parseDateLocal(c.vencimento).toLocaleDateString('pt-BR')
-                : '';
-
-            const lojaNome = getNomeLojaById(c.system_unit_id) || c.system_unit_id;
-
-            html += `
-            <tr>
-                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${lojaNome}</td>
-                <td style="border-bottom:1px solid #eee;padding:4px;">${c.nome || ''}</td>
-                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${c.doc || ''}</td>
-                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${venc}</td>
-                <td style="border-bottom:1px solid #eee;padding:4px;text-align:left;">${formatBRL(c.valor)}</td>
-            </tr>
-        `;
-        });
-
-        html += `
-                </tbody>
-            </table>
-        </div>
-    `;
-
-        Swal.fire({
-            title: `Contas a vencer nos próximos ${dias} dias`,
-            html,
-            customClass: {
-                popup: 'swal2-xl'
-            },
-            confirmButtonText: 'Fechar'
-        });
+        // Gráfico
+        const planos = lojaId
+            ? (unidades.find(u => parseInt(u.system_unit_id) === lojaId)?.planos || [])
+            : (dashboardFinanceiro.planos_geral || []);
+        renderChartPlanos(planos);
     }
 
-    // ====== Calendário (Mapa de Contas) ======
-    let mapaDeContas = null;          // resposta do getMapaDeContas
-    let calAnoMesAtual = null;        // "YYYY-MM"
-    const DOWS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    function renderChartPlanos(planos) {
+        const dom = document.getElementById('chartPlanosContas'); if(!dom) return;
+        const chart = echarts.init(dom);
+        if(!planos.length) { chart.clear(); return; }
 
-    function toAnoMes(dateStr) {
-        // dateStr: YYYY-MM-DD
-        if (!dateStr) return null;
-        return dateStr.slice(0, 7);
+        const labels = planos.map(p => (p.plano_descricao||p.plano_codigo).slice(0,20));
+        chart.setOption({
+            color: [MRK.blue, MRK.green],
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            legend: { top: 0 },
+            grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+            xAxis: { type: 'category', data: labels, axisLabel: { rotate: 30, fontSize: 10 } },
+            yAxis: { type: 'value', axisLabel: { formatter: v => v.toLocaleString('pt-BR',{compactDisplay:'short', notation:'compact'}) } },
+            series: [
+                { name: 'Débitos', type: 'bar', stack: 'total', data: planos.map(p => Number(p.total_debitos)), itemStyle: { borderRadius: [0,0,4,4] } },
+                { name: 'Créditos', type: 'bar', stack: 'total', data: planos.map(p => Number(p.total_creditos)), itemStyle: { borderRadius: [4,4,0,0] } }
+            ]
+        }, true);
     }
 
-    function addMonths(anoMes, delta) {
-        // anoMes: "YYYY-MM"
-        const [y, m] = anoMes.split('-').map(Number);
-        const d = new Date(y, m - 1, 1);
-        d.setMonth(d.getMonth() + delta);
-        const yy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        return `${yy}-${mm}`;
+    function mostrarContasPrazo(dias) {
+        const lojaId = parseInt($('#filtroLoja').val()) || null;
+        const list = (dias === 7 ? dashboardFinanceiro.contas_vencer_7 : dashboardFinanceiro.contas_vencer_30)
+            .filter(c => !lojaId || parseInt(c.system_unit_id) === lojaId);
+
+        if(!list.length) return Swal.fire('Tudo pago!', `Nenhuma conta a vencer nos próximos ${dias} dias.`, 'success');
+
+        let html = `<div class="max-h-[50vh] overflow-y-auto border rounded"><table class="w-full text-xs text-left">
+            <thead class="bg-gray-100 sticky top-0 shadow-sm"><tr><th class="p-2">Loja</th><th class="p-2">Favorecido</th><th class="p-2">Vencimento</th><th class="p-2 text-right">Valor</th></tr></thead>
+            <tbody>${list.map(c => `<tr class="border-b"><td class="p-2">${getNomeLoja(c.system_unit_id)}</td><td class="p-2">${c.nome}</td><td class="p-2">${parseDateLocal(c.vencimento).toLocaleDateString('pt-BR')}</td><td class="p-2 text-right font-bold">${formatBRL(c.valor)}</td></tr>`).join('')}</tbody>
+        </table></div>`;
+        Swal.fire({ title: `A Vencer (${dias} Dias)`, html, width: '800px', confirmButtonColor: MRK.blue });
     }
 
-    function tituloMes(anoMes) {
-        const [y, m] = anoMes.split('-').map(Number);
-        const dt = new Date(y, m - 1, 1);
-        return dt.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    }
-
-    async function fetchMapaDeContas(anoMes, unitId, tipoData) {
-        // chama seu método novo
-        const res = await axios.post(baseUrlFinanceiro, {
-            method: 'getMapaDeContas',
-            token,
-            data: {
-                unit_id: unitId,
-                ano_mes: anoMes,
-                tipo_data: tipoData
-            }
-        });
-
-        if (!res.data || !res.data.success) {
-            throw new Error(res.data?.error || res.data?.message || 'Falha ao buscar mapa de contas.');
-        }
-        return res.data.data;
-    }
-
-    function montarMapaDias(mapa) {
-        const byDate = {};
-        (mapa?.dias || []).forEach(d => {
-            byDate[d.data] = d;
-        });
-        return byDate;
-    }
-
-    function renderCalendario(mapa, anoMes) {
-        const grid = document.getElementById('calGrid');
-        const dows = document.getElementById('calDows');
-        const titulo = document.getElementById('calTituloMes');
-        const hint = document.getElementById('calHint');
-
-        if (!grid || !dows || !titulo || !hint) return;
-
-        // cabeçalho DOW
-        dows.innerHTML = DOWS.map(x => `<div class="cal-dow">${x}</div>`).join('');
-
-        titulo.textContent = tituloMes(anoMes);
-
-        // se não tem mapa, limpa
-        if (!mapa || !anoMes) {
-            grid.innerHTML = '';
-            hint.innerHTML = `<span class="text-gray-500">Sem dados para exibir.</span>`;
-            return;
-        }
-
-        const byDate = montarMapaDias(mapa);
-
-        const [yy, mm] = anoMes.split('-').map(Number);
-        const first = new Date(yy, mm - 1, 1);
-        const last = new Date(yy, mm, 0); // último dia do mês
-        const daysInMonth = last.getDate();
-        const startDow = first.getDay(); // 0..6
-
-        // grade 6 semanas (42 células)
-        const totalCells = 42;
-
-        let html = '';
-        for (let i = 0; i < totalCells; i++) {
-            const dayNum = i - startDow + 1;
-            const isInMonth = dayNum >= 1 && dayNum <= daysInMonth;
-
-            if (!isInMonth) {
-                html += `<div class="cal-day muted"></div>`;
-                continue;
-            }
-
-            const dateStr = `${anoMes}-${String(dayNum).padStart(2, '0')}`;
-            const dia = byDate[dateStr];
-            const total = dia ? Number(dia.total || 0) : 0;
-            const qtd = dia ? (dia.itens || []).length : 0;
-
-            const has = dia && qtd > 0;
-
-            html += `
-      <div class="cal-day ${has ? 'hasdata' : ''}" ${has ? `onclick="abrirDia('${dateStr}')"` : ''}>
-        <div class="cal-num">${dayNum}</div>
-        ${has ? `<div class="cal-badge">${qtd}</div>` : ''}
-        ${has
-                ? `<div class="cal-total">${formatBRL(total)}</div>`
-                : `<div class="cal-empty">—</div>`
-            }
-      </div>
-    `;
-        }
-
-        grid.innerHTML = html;
-
-        const totalGeral = Number(mapa?.totais?.valor_total || 0);
-        const qtdItens = Number(mapa?.totais?.qtd_itens || 0);
-        hint.innerHTML = `
-    <b>Total do mês:</b> ${formatBRL(totalGeral)} &nbsp; • &nbsp;
-    <b>Itens:</b> ${qtdItens}
-  `;
-    }
-
-    function abrirDia(dateStr) {
-        if (!mapaDeContas) return;
-
-        const dia = (mapaDeContas.dias || []).find(d => d.data === dateStr);
-        if (!dia || !dia.itens || dia.itens.length === 0) {
-            Swal.fire('Sem contas', 'Nenhuma conta nesse dia.', 'info');
-            return;
-        }
-
-        const totalDia = Number(dia.total || 0);
-
-        const dataFormatada = parseDateLocal(dateStr).toLocaleDateString('pt-BR');
-
-        let html = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <div style="font-size:12px;color:#666;">
-                <b>Data:</b> ${dataFormatada}
-            </div>
-            <div style="font-size:12px;">
-                <b>Total:</b> ${formatBRL(totalDia)}
-            </div>
-        </div>
-
-        <div style="max-height:520px;overflow:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead>
-                    <tr>
-                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:left;">Fornecedor</th>
-                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Doc</th>
-                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Dup</th>
-                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Emissão</th>
-                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:center;">Venc.</th>
-                        <th style="border-bottom:1px solid #ccc;padding:6px;text-align:right;">Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-
-        dia.itens.forEach(i => {
-            const em = i.emissao
-                ? parseDateLocal(i.emissao).toLocaleDateString('pt-BR')
-                : '';
-
-            const vc = i.vencimento
-                ? parseDateLocal(i.vencimento).toLocaleDateString('pt-BR')
-                : '';
-
-            html += `
-            <tr>
-                <td style="border-bottom:1px solid #eee;padding:6px;text-align:left;">${i.fornecedor_nome || ''}</td>
-                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.documento || ''}</td>
-                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${i.numero_duplicata || '-'}</td>
-                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${em}</td>
-                <td style="border-bottom:1px solid #eee;padding:6px;text-align:center;">${vc}</td>
-                <td style="border-bottom:1px solid #eee;padding:6px;text-align:right;">${formatBRL(i.valor)}</td>
-            </tr>
-        `;
-        });
-
-        html += `
-                </tbody>
-            </table>
-        </div>
-    `;
-
-        Swal.fire({
-            title: 'Contas do dia',
-            html,
-            customClass: { popup: 'swal2-xl' },
-            confirmButtonText: 'Fechar'
-        });
-    }
-
+    // ====== CALENDÁRIO ======
     async function atualizarCalendario() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const tipoData = document.getElementById('tipoData').value || 'vencimento';
-
-        // mês do endDate (mais intuitivo)
-        const anoMes = toAnoMes(endDate || startDate);
+        const start = document.getElementById('startDate').value, end = document.getElementById('endDate').value;
+        const lojaId = parseInt($('#filtroLoja').val()) || null;
+        const anoMes = (end || start).slice(0, 7);
         calAnoMesAtual = anoMes;
 
-        const filtroLojaEl = document.getElementById('filtroLoja');
-        const selectedLoja = parseInt(filtroLojaEl.value) || null;
-
-        if (!anoMes) {
-            mapaDeContas = null;
-            renderCalendario(null, null);
-            return;
-        }
-
-        if (!selectedLoja) {
-            mapaDeContas = null;
-            renderCalendario(null, anoMes);
-            document.getElementById('calHint').innerHTML =
-                `<span class="text-gray-500">Selecione uma <b>loja</b> para exibir o calendário desse mês.</span>`;
+        if(!lojaId) {
+            document.getElementById('calGrid').innerHTML = '<div class="col-span-7 text-center py-10 text-gray-400">Selecione uma loja para ver o calendário detalhado.</div>';
+            document.getElementById('calTituloMes').textContent = '-';
             return;
         }
 
         try {
-            // loader leve (sem travar o dashboard)
-            document.getElementById('calHint').innerHTML =
-                `<span class="text-gray-500">Carregando calendário do mês...</span>`;
-
-            const data = await fetchMapaDeContas(anoMes, selectedLoja, tipoData);
-            mapaDeContas = data;
+            const res = await axios.post(baseUrlFinanceiro, { method: 'getMapaDeContas', token, data: { unit_id: lojaId, ano_mes: anoMes, tipo_data: $('#tipoData').val() } });
+            mapaDeContas = res.data.data;
             renderCalendario(mapaDeContas, anoMes);
-        } catch (e) {
-            console.error(e);
-            mapaDeContas = null;
-            renderCalendario(null, anoMes);
-            document.getElementById('calHint').innerHTML =
-                `<span class="text-red-600">Erro ao carregar calendário: ${e.message || 'falha.'}</span>`;
+        } catch (e) { console.error(e); }
+    }
+
+    function renderCalendario(mapa, anoMes) {
+        const [y, m] = anoMes.split('-').map(Number);
+        const first = new Date(y, m-1, 1), last = new Date(y, m, 0);
+        const daysInMonth = last.getDate(), startDow = first.getDay();
+
+        $('#calTituloMes').text(first.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase());
+        $('#calDows').html(DOWS.map(d => `<div class="cal-dow">${d}</div>`).join(''));
+
+        let html = '', byDate = {};
+        (mapa?.dias || []).forEach(d => byDate[d.data] = d);
+
+        for(let i=0; i<42; i++) {
+            const day = i - startDow + 1;
+            if(day < 1 || day > daysInMonth) { html += '<div class="cal-day muted"></div>'; continue; }
+
+            const dateStr = `${anoMes}-${String(day).padStart(2,'0')}`;
+            const dados = byDate[dateStr];
+            const has = dados && dados.itens.length > 0;
+
+            html += `<div class="cal-day ${has?'hasdata':''}" ${has?`onclick="abrirDia('${dateStr}')"`:''}>
+                <div class="cal-num">${day}</div>
+                ${has ? `<div class="cal-badge">${dados.itens.length}</div><div class="cal-total">${formatBRL(dados.total)}</div>` : '<div class="cal-empty"><iconify-icon icon="icon-park-outline:check-small"></iconify-icon></div>'}
+            </div>`;
         }
+        $('#calGrid').html(html);
+        $('#calHint').html(`Total Mês: <b>${formatBRL(mapa?.totais?.valor_total)}</b>`);
+    }
+
+    function abrirDia(dateStr) {
+        const dia = mapaDeContas.dias.find(d => d.data === dateStr);
+        if(!dia) return;
+        let html = `<div class="max-h-[50vh] overflow-y-auto border rounded"><table class="w-full text-xs text-left">
+            <thead class="bg-gray-100 sticky top-0"><tr><th class="p-2">Fornecedor</th><th class="p-2">Doc</th><th class="p-2">Vencimento</th><th class="p-2 text-right">Valor</th></tr></thead>
+            <tbody>${dia.itens.map(i => `<tr><td class="p-2">${i.fornecedor_nome}</td><td class="p-2">${i.documento}</td><td class="p-2">${parseDateLocal(i.vencimento).toLocaleDateString('pt-BR')}</td><td class="p-2 text-right font-bold">${formatBRL(i.valor)}</td></tr>`).join('')}</tbody>
+        </table></div>`;
+        Swal.fire({ title: `Contas de ${parseDateLocal(dateStr).toLocaleDateString('pt-BR')}`, html, width: '800px', confirmButtonColor: MRK.blue });
     }
 
     function navMes(delta) {
-        if (!calAnoMesAtual) {
-            const endDate = document.getElementById('endDate').value;
-            calAnoMesAtual = toAnoMes(endDate);
-        }
-        if (!calAnoMesAtual) return;
-
-        const novo = addMonths(calAnoMesAtual, delta);
-        calAnoMesAtual = novo;
-
-        // Ajusta os inputs de data para esse mês (mantendo o “range” do mês)
-        const [yy, mm] = novo.split('-').map(Number);
-        const first = new Date(yy, mm - 1, 1);
-        const last = new Date(yy, mm, 0);
-
-        document.getElementById('startDate').value = first.toISOString().split('T')[0];
-        document.getElementById('endDate').value = last.toISOString().split('T')[0];
-
-        // Recarrega dashboard + calendário
+        if(!calAnoMesAtual) return;
+        const [y, m] = calAnoMesAtual.split('-').map(Number);
+        const next = new Date(y, m-1+delta, 1);
+        const lastDay = new Date(y, m+delta, 0);
+        document.getElementById('startDate').value = next.toISOString().slice(0,10);
+        document.getElementById('endDate').value = lastDay.toISOString().slice(0,10);
         fetchData();
     }
 
+    // --- CARGAS INICIAIS ---
+    async function carregarLojasGrupo() {
+        const res = await axios.post(baseUrl, { method: 'getUnitsByGroup', token, data: { group_id: grupoId } });
+        lojasGrupo = res.data;
+    }
+    function getNomeLoja(id) { return lojasGrupo.find(l => l.id == id)?.name || id; }
+
+    async function carregarGrupoInicial() {
+        const res = await axios.post(baseUrl, { method: 'getGroupByUnit', token, data: { system_unit_id } });
+        if (res.data?.length > 0) grupoId = res.data[0].id;
+        const resG = await axios.post(baseUrl, { method: 'getGroupByUser', token, data: { user_id } });
+        gruposDisponiveis = resG.data.grupos; lojasPorGrupo = resG.data.lojas_por_grupo;
+
+        $('#filtroGrupo').html(gruposDisponiveis.map(g => `<option value="${g.id}" ${g.id == grupoId ? 'selected' : ''}>${g.nome}</option>`).join(''));
+        $('#filtroGrupo').change(function() { grupoId = parseInt(this.value); atualizarFiltroLoja(); fetchData(); });
+        atualizarFiltroLoja();
+    }
+
+    function atualizarFiltroLoja() {
+        const lojas = lojasPorGrupo[grupoId] || [];
+        $('#filtroLoja').html('<option value="">Todas as lojas</option>' + lojas.map(l => `<option value="${l.id}">${l.name}</option>`).join(''));
+        $('#filtroLoja').change(async function() { aplicarFiltroLoja(); await atualizarCalendario(); });
+    }
 
     window.addEventListener('DOMContentLoaded', async () => {
-        document.getElementById('filtroLoja').addEventListener('change', async () => {
-            aplicarFiltroLoja();
-            await atualizarCalendario();
-        });        document.getElementById('tipoData').addEventListener('change', fetchData);
-
+        $('#tipoData').change(fetchData);
         await carregarGrupoInicial();
         setRange('7dias');
     });
 </script>
-
 </body>
 </html>

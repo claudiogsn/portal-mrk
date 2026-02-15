@@ -1649,40 +1649,75 @@ class DashboardController
 
         try {
             $lojas = BiController::getUnitsByGroup($grupoId);
+
+            if (!$lojas) {
+                return ['success' => true, 'data' => []];
+            }
+
+            // Mapa lojaId (custom_code) -> dados da loja
+            $lojaById = [];
+            $lojaIds = [];
+
+            foreach ($lojas as $loja) {
+                $lojaId = (string)$loja['custom_code'];
+                $lojaById[$lojaId] = $loja;
+                $lojaIds[] = $lojaId;
+            }
+
+            // placeholders IN (...)
+            $placeholders = implode(',', array_fill(0, count($lojaIds), '?'));
+
+            // 1 query para todas as lojas do grupo
+            $sql = "
+            SELECT
+                lojaId,
+                COUNT(*) AS numero_pedidos,
+                COALESCE(SUM(vlTotalRecebido),0) AS faturamento_bruto,
+                COALESCE(SUM(vlDesconto),0) AS total_descontos,
+                COALESCE(SUM(vlServicoRecebido),0) AS total_taxa_servico,
+                COALESCE(SUM(numPessoas),0) AS total_clientes,
+                COALESCE(SUM(CASE WHEN modoVenda2 = 'SALAO' THEN 1 ELSE 0 END),0) AS pedidos_salao,
+                COALESCE(SUM(CASE WHEN modoVenda2 = 'DELIVERY' THEN 1 ELSE 0 END),0) AS pedidos_delivery,
+                COALESCE(SUM(CASE WHEN modoVenda2 = 'BALCAO' THEN 1 ELSE 0 END),0) AS pedidos_balcao
+            FROM movimento_caixa
+            WHERE lojaId IN ($placeholders)
+              AND dataContabil BETWEEN ? AND ?
+              AND cancelado = 0
+            GROUP BY lojaId
+        ";
+
+            $stmt = $pdo->prepare($sql);
+
+            // bind: lojaIds..., dt_inicio, dt_fim
+            $params = array_merge($lojaIds, [$dt_inicio, $dt_fim]);
+            $stmt->execute($params);
+
+            // Resultados por lojaId
+            $agg = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $agg[(string)$row['lojaId']] = $row;
+            }
+
+            // Monta resumo garantindo que lojas sem movimento retornem zerado
             $resumo = [];
 
             foreach ($lojas as $loja) {
-                $lojaId = $loja['custom_code'];
+                $lojaId = (string)$loja['custom_code'];
+                $res = $agg[$lojaId] ?? [
+                    'numero_pedidos' => 0,
+                    'faturamento_bruto' => 0,
+                    'total_descontos' => 0,
+                    'total_taxa_servico' => 0,
+                    'total_clientes' => 0,
+                    'pedidos_salao' => 0,
+                    'pedidos_delivery' => 0,
+                    'pedidos_balcao' => 0,
+                ];
 
-                $stmt = $pdo->prepare("
-                SELECT
-                    COUNT(*) AS numero_pedidos,
-                    SUM(vlTotalRecebido) AS faturamento_bruto,
-                    SUM(vlDesconto) AS total_descontos,
-                    SUM(vlServicoRecebido) AS total_taxa_servico,
-                    SUM(numPessoas) AS total_clientes,
-                    SUM(CASE WHEN modoVenda2 = 'SALAO' THEN 1 ELSE 0 END) AS pedidos_salao,
-                    SUM(CASE WHEN modoVenda2 = 'DELIVERY' THEN 1 ELSE 0 END) AS pedidos_delivery,
-                    SUM(CASE WHEN modoVenda2 = 'BALCAO' THEN 1 ELSE 0 END) AS pedidos_balcao
-                    
-                
-                FROM movimento_caixa
-                WHERE lojaId = :lojaId
-                  AND dataContabil BETWEEN :dt_inicio AND :dt_fim
-                  AND cancelado = 0
-            ");
-                $stmt->execute([
-                    ':lojaId' => $lojaId,
-                    ':dt_inicio' => $dt_inicio,
-                    ':dt_fim' => $dt_fim
-                ]);
-
-                $res = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                $bruto = (float)$res['faturamento_bruto'] ?? 0;
-                $descontos = (float)$res['total_descontos'] ?? 0;
-                $taxaServico = (float)$res['total_taxa_servico'] ?? 0;
-                $clientes = (int)$res['total_clientes'] ?? 0;
+                $bruto = (float)$res['faturamento_bruto'];
+                $descontos = (float)$res['total_descontos'];
+                $taxaServico = (float)$res['total_taxa_servico'];
+                $clientes = (int)$res['total_clientes'];
 
                 $liquido = $bruto - $taxaServico;
                 $ticketMedio = $clientes > 0 ? $bruto / $clientes : 0;
@@ -1697,9 +1732,9 @@ class DashboardController
                     'faturamento_liquido' => round($liquido, 2),
                     'numero_clientes' => $clientes,
                     'ticket_medio' => round($ticketMedio, 2),
-                    'numero_pedidos' => (int)$res['numero_pedidos'] ?? 0,
+                    'numero_pedidos' => (int)$res['numero_pedidos'],
                     'pedidos_presencial' => (int)$res['pedidos_salao'] + (int)$res['pedidos_balcao'],
-                    'pedidos_delivery' => (int)$res['pedidos_delivery'] ?? 0
+                    'pedidos_delivery' => (int)$res['pedidos_delivery']
                 ];
             }
 
@@ -2332,71 +2367,104 @@ class DashboardController
             $lojas = BiController::getUnitsByGroup($grupoId);
             $dados = [];
 
-            $periodo = new DatePeriod(
-                new DateTime($dt_inicio),
-                new DateInterval('P1D'),
-                (new DateTime($dt_fim))->modify('+1 day')
-            );
+            // 1) Materializa as datas uma vez (evita re-iterar DatePeriod)
+            $start = new DateTime($dt_inicio);
+            $end   = (new DateTime($dt_fim))->modify('+1 day'); // inclusivo
+
+            $periodo = new DatePeriod($start, new DateInterval('P1D'), $end);
+
+            $dates = [];      // Y-m-d
+            $labels = [];     // d/m
+            foreach ($periodo as $d) {
+                $dates[]  = $d->format('Y-m-d');
+                $labels[] = $d->format('d/m');
+            }
+
+            // Pré-calcula um mapa data => índice no array
+            $dateIndex = array_flip($dates);
 
             foreach ($lojas as $loja) {
                 $unitId = (int)$loja['system_unit_id'];
 
-                $faturamentoArray = [];
-                $comprasArray = [];
-                $cmvArray = [];
+                // Arrays preenchidos com 0 (tamanho = nº de dias)
+                $faturamentoArray = array_fill(0, count($dates), 0.0);
+                $comprasArray     = array_fill(0, count($dates), 0.0);
+                $cmvArray         = array_fill(0, count($dates), 0.0);
 
-                foreach ($periodo as $dia) {
-                    $data = $dia->format('Y-m-d');
+                // 2) FATURAMENTO agregado por dia (1 query)
+                $stmtFat = $pdo->prepare("
+                SELECT DATE(data_movimento) AS dia, COALESCE(SUM(valor_liquido),0) AS total
+                FROM _bi_sales
+                WHERE system_unit_id = :unit
+                  AND DATE(data_movimento) BETWEEN :dt_ini AND :dt_fim
+                GROUP BY DATE(data_movimento)
+            ");
+                $stmtFat->execute([
+                    ':unit'   => $unitId,
+                    ':dt_ini' => $dt_inicio,
+                    ':dt_fim' => $dt_fim,
+                ]);
 
-                    // FATURAMENTO
-                    $stmtFat = $pdo->prepare("
-                    SELECT COALESCE(SUM(valor_liquido),0) 
-                    FROM _bi_sales 
-                    WHERE system_unit_id = :unit 
-                      AND DATE(data_movimento) = :data
-                ");
-                    $stmtFat->execute([':unit' => $unitId, ':data' => $data]);
-                    $faturamento = (float)$stmtFat->fetchColumn();
+                while ($row = $stmtFat->fetch(PDO::FETCH_ASSOC)) {
+                    $dia = $row['dia'];
+                    if (isset($dateIndex[$dia])) {
+                        $faturamentoArray[$dateIndex[$dia]] = round((float)$row['total'], 2);
+                    }
+                }
 
-                    // ✅ COMPRAS via ESTOQUE_NOTA (entrada da nota)
-                    $stmtComp = $pdo->prepare("
-                    SELECT COALESCE(SUM(COALESCE(eni.valor_total, 0)),0)
-                    FROM estoque_nota en
-                    JOIN estoque_nota_item eni ON eni.nota_id=en.id AND eni.system_unit_id=en.system_unit_id
-                    WHERE en.system_unit_id=:unit
-                    AND DATE(data_emissao) = :data                
-                      -- AND incluida_estoque = 1
-                ");
-                    $stmtComp->execute([':unit' => $unitId, ':data' => $data]);
-                    $compras = (float)$stmtComp->fetchColumn();
+                // 3) COMPRAS agregado por dia (1 query)
+                // mantém a mesma lógica que você já tinha (eni.valor_total, data_emissao)
+                $stmtComp = $pdo->prepare("
+                SELECT DATE(en.data_emissao) AS dia,
+                       COALESCE(SUM(COALESCE(eni.valor_total, 0)),0) AS total
+                FROM estoque_nota en
+                JOIN estoque_nota_item eni
+                  ON eni.nota_id = en.id
+                 AND eni.system_unit_id = en.system_unit_id
+                WHERE en.system_unit_id = :unit
+                  AND DATE(en.data_emissao) BETWEEN :dt_ini AND :dt_fim
+                GROUP BY DATE(en.data_emissao)
+            ");
+                $stmtComp->execute([
+                    ':unit'   => $unitId,
+                    ':dt_ini' => $dt_inicio,
+                    ':dt_fim' => $dt_fim,
+                ]);
 
-                    // CMV (saídas)
-                    $stmtCmv = $pdo->prepare("
-                    SELECT COALESCE(SUM(saidas * preco_custo),0)
-                    FROM fluxo_estoque
-                    WHERE system_unit_id = :unit 
-                      AND data = :data
-                ");
-                    $stmtCmv->execute([':unit' => $unitId, ':data' => $data]);
-                    $cmv = (float)$stmtCmv->fetchColumn();
+                while ($row = $stmtComp->fetch(PDO::FETCH_ASSOC)) {
+                    $dia = $row['dia'];
+                    if (isset($dateIndex[$dia])) {
+                        $comprasArray[$dateIndex[$dia]] = round((float)$row['total'], 2);
+                    }
+                }
 
-                    $faturamentoArray[] = round($faturamento, 2);
-                    $comprasArray[]     = round($compras, 2);
-                    $cmvArray[]         = round($cmv, 2);
+                // 4) CMV (saídas) agregado por dia (1 query)
+                $stmtCmv = $pdo->prepare("
+                SELECT data AS dia, COALESCE(SUM(saidas * preco_custo),0) AS total
+                FROM fluxo_estoque
+                WHERE system_unit_id = :unit
+                  AND data BETWEEN :dt_ini AND :dt_fim
+                GROUP BY data
+            ");
+                $stmtCmv->execute([
+                    ':unit'   => $unitId,
+                    ':dt_ini' => $dt_inicio,
+                    ':dt_fim' => $dt_fim,
+                ]);
+
+                while ($row = $stmtCmv->fetch(PDO::FETCH_ASSOC)) {
+                    $dia = $row['dia'];
+                    if (isset($dateIndex[$dia])) {
+                        $cmvArray[$dateIndex[$dia]] = round((float)$row['total'], 2);
+                    }
                 }
 
                 $dados[] = [
                     'nome'        => $loja['name'],
                     'faturamento' => $faturamentoArray,
                     'compras'     => $comprasArray,
-                    'cmv'         => $cmvArray
+                    'cmv'         => $cmvArray,
                 ];
-            }
-
-            // recria labels bonitinho
-            $labels = [];
-            foreach ($periodo as $d) {
-                $labels[] = $d->format('d/m');
             }
 
             return [
