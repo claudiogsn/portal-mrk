@@ -1464,78 +1464,84 @@ class NotaFiscalEntradaController {
             $system_unit_id = (int)($data['system_unit_id'] ?? 0);
             $dt_inicio      = $data['dt_inicio'] ?? null;
             $dt_fim         = $data['dt_fim'] ?? null;
-            $tipoData       = strtolower(trim($data['tipoData'] ?? 'entrada')); // entrada | emissao
+            $tipoData       = strtolower(trim($data['tipoData'] ?? 'entrada'));
 
             if (!$system_unit_id || !$dt_inicio || !$dt_fim) {
-                return [
-                    "success" => false,
-                    "message" => "Parâmetros obrigatórios: system_unit_id, dt_inicio, dt_fim."
-                ];
-            }
-
-            if (!in_array($tipoData, ['entrada', 'emissao'], true)) {
-                return [
-                    "success" => false,
-                    "message" => "tipoData inválido. Use 'entrada' ou 'emissao'."
-                ];
+                return ["success" => false, "message" => "Parâmetros obrigatórios."];
             }
 
             $campoData = ($tipoData === 'emissao') ? 'n.data_emissao' : 'n.data_entrada';
 
-            // 🔧 AJUSTE AQUI se necessário:
-            // - se doc = chave_acesso => "m.doc = n.chave_acesso"
-            // - se doc = numero/serie => "m.doc = CONCAT(n.numero_nf,'/',IFNULL(n.serie,''))"
-            $joinDoc = "m.doc = n.numero_nf";
+            // Ajuste o joinDoc conforme a realidade da sua movimentacao (se doc é NF ou Chave)
+            $joinDoc   = "m.doc = n.numero_nf";
 
+            // 1. PREPARA QUERY PARA BUSCAR DOCS NA MOVIMENTACAO (Pela transfer_key)
+            $sqlMov = "SELECT DISTINCT system_unit_id, doc 
+                   FROM movimentacao 
+                   WHERE transfer_key = :key";
+            $stmtMov = $pdo->prepare($sqlMov);
+
+            // 2. QUERY PRINCIPAL CORRIGIDA
             $sql = "
-            SELECT
-                n.id               AS nota_id,
-                n.system_unit_id,
-                n.fornecedor_id,
-                f.razao             AS fornecedor_nome,      -- ✅ FORNECEDOR
-                n.chave_acesso,
-                n.numero_nf,
-                n.serie,
-                n.data_emissao,
-                n.data_entrada,
-                n.natureza_operacao,
-                n.valor_total,
-                n.valor_produtos,
-                n.valor_frete,
+        SELECT
+            n.id               AS nota_id,
+            n.system_unit_id,
+            n.fornecedor_id,
+            f.razao            AS fornecedor_nome,
+            n.chave_acesso,
+            n.numero_nf,
+            n.serie,
+            n.data_emissao,
+            n.data_entrada,
+            n.valor_total,
+            
+            -- ✅ CAMPOS CORRIGIDOS CONFORME DDL
+            n.transferido_para_unit_id, -- ID do destino (Se não nulo, foi transferido)
+            n.transfer_key,             -- Chave UUID da transferência
+            
+            ud.name            AS nome_destino,
+            uo.name            AS nome_origem, -- Nome da unidade atual (origem)
 
-                m.id               AS mov_id,
-                m.seq              AS item_seq,
-                m.produto          AS item_produto,
-                m.quantidade       AS item_quantidade,
-                m.valor            AS item_valor_unitario,
-                m.data             AS item_data_mov,
-                m.data_emissao     AS item_data_emissao_mov,
-                m.data_original    AS item_data_original,
+            -- ITENS DA MOVIMENTAÇÃO
+            m.id               AS mov_id,
+            m.seq              AS item_seq,
+            m.produto          AS item_produto,
+            m.quantidade       AS item_quantidade,
+            m.valor            AS item_valor_unitario,
+            m.data             AS item_data_mov,
+            
+            p.nome             AS produto_nome,
+            p.und              AS produto_unidade
 
-                p.nome             AS produto_nome,          -- ✅ PRODUTO
-                p.und          AS produto_unidade        -- ✅ (se existir no seu products)
+        FROM estoque_nota n
 
-            FROM estoque_nota n
+        LEFT JOIN financeiro_fornecedor f
+            ON f.id = n.fornecedor_id
+           AND f.system_unit_id = n.system_unit_id
 
-            LEFT JOIN financeiro_fornecedor f
-                ON f.id = n.fornecedor_id
-               AND f.system_unit_id = n.system_unit_id      -- ✅ recomendado
+        -- JOIN para pegar o nome do destino (baseado no transferido_para_unit_id)
+        LEFT JOIN system_unit ud 
+            ON ud.id = n.transferido_para_unit_id 
 
-            LEFT JOIN movimentacao m
-                ON m.system_unit_id = n.system_unit_id
-               AND {$joinDoc}
-               AND m.tipo = 'c'
-               AND m.status = 1
+        -- JOIN para pegar o nome da origem (baseado na unidade da nota)
+        LEFT JOIN system_unit uo 
+            ON uo.id = n.system_unit_id 
 
-            LEFT JOIN products p
-                ON p.codigo = m.produto
-               AND p.system_unit_id = m.system_unit_id      -- ✅ remova se não existir no seu schema
+        LEFT JOIN movimentacao m
+            ON m.system_unit_id = n.system_unit_id
+           AND {$joinDoc}
+           AND m.tipo = 'c' -- Compra
+           AND m.status = 1
 
-            WHERE n.system_unit_id = :system_unit_id
-              AND n.incluida_estoque = 1
-              AND DATE($campoData) BETWEEN :dt_inicio AND :dt_fim
+        LEFT JOIN products p
+            ON p.codigo = m.produto
+           AND p.system_unit_id = m.system_unit_id
 
-            ORDER BY $campoData DESC, n.numero_nf DESC, m.seq ASC
+        WHERE n.system_unit_id = :system_unit_id
+          AND n.incluida_estoque = 1
+          AND DATE($campoData) BETWEEN :dt_inicio AND :dt_fim
+
+        ORDER BY $campoData DESC, n.numero_nf DESC, m.seq ASC
         ";
 
             $stmt = $pdo->prepare($sql);
@@ -1550,7 +1556,6 @@ class NotaFiscalEntradaController {
             $notasMap = [];
             $totNotas = 0;
             $sumValorNotas = 0.0;
-
             $sumQtdTotal = 0.0;
             $sumValorItens = 0.0;
             $countItens = 0;
@@ -1563,9 +1568,67 @@ class NotaFiscalEntradaController {
                     $valorNota = (float)($r['valor_total'] ?? 0);
                     $sumValorNotas += $valorNota;
 
+                    // ===== LÓGICA DE TRANSFERÊNCIA CORRIGIDA =====
+                    $transfInfo = [
+                        'foi_transferida' => false,
+                        'transfer_key'    => null,
+                        'origem_id'       => null,
+                        'origem_nome'     => null,
+                        'destino_id'      => null,
+                        'destino_nome'    => null,
+                        'doc_saida'       => null,
+                        'doc_entrada'     => null,
+                        'descricao'       => null
+                    ];
+
+                    // Verifica se existe ID de destino
+                    if (!empty($r['transferido_para_unit_id'])) {
+                        $transfInfo['foi_transferida'] = true;
+                        $transfInfo['transfer_key']    = $r['transfer_key'];
+
+                        // A origem é a própria unidade da nota
+                        $transfInfo['origem_id']       = (int)$r['system_unit_id'];
+                        $transfInfo['origem_nome']     = $r['nome_origem'];
+
+                        // O destino é para onde foi transferido
+                        $transfInfo['destino_id']      = (int)$r['transferido_para_unit_id'];
+                        $transfInfo['destino_nome']    = $r['nome_destino'];
+
+                        // Descrição
+                        if (!empty($r['nome_destino'])) {
+                            $transfInfo['descricao'] = "Enviado para: " . $r['nome_destino'];
+                        } else {
+                            $transfInfo['descricao'] = "Transferência realizada";
+                        }
+
+                        // --- BUSCA DOCS NA MOVIMENTAÇÃO ---
+                        if (!empty($r['transfer_key'])) {
+                            $stmtMov->execute([':key' => $r['transfer_key']]);
+                            $movsDocs = $stmtMov->fetchAll(PDO::FETCH_ASSOC);
+
+                            foreach ($movsDocs as $md) {
+                                $mdUnitId = (int)$md['system_unit_id'];
+
+                                // Se system_unit_id da mov for igual a ORIGEM (Unidade atual) -> Doc Saída (TS)
+                                if ($mdUnitId === (int)$r['system_unit_id']) {
+                                    $transfInfo['doc_saida'] = $md['doc'];
+                                }
+
+                                // Se system_unit_id da mov for igual ao DESTINO -> Doc Entrada (TE)
+                                if ($mdUnitId === (int)$r['transferido_para_unit_id']) {
+                                    $transfInfo['doc_entrada'] = $md['doc'];
+                                }
+                            }
+                        }
+                    }
+                    // ==============================================================
+
                     $notasMap[$notaKey] = [
-                        "fornecedor_id"     =>  (int)$r['fornecedor_id'],
+                        "fornecedor_id"     => (int)$r['fornecedor_id'],
                         "fornecedor_nome"   => $r['fornecedor_nome'] ?? null,
+
+                        "transferencia_info" => $transfInfo,
+
                         "chave_acesso"      => $r['chave_acesso'],
                         "numero_nf"         => $r['numero_nf'],
                         "serie"             => $r['serie'],
@@ -1583,16 +1646,14 @@ class NotaFiscalEntradaController {
 
                     $notasMap[$notaKey]["itens"][] = [
                         "mov_id"         => (int)$r['mov_id'],
-                        "seq"            => (int)$r['item_seq'],
-                        "produto"        => is_numeric($r['item_produto']) ? (int)$r['item_produto'] : $r['item_produto'],
-                        "produto_nome"   => $r['produto_nome'] ?? null,          // ✅
-                        "produto_unidade"=> $r['produto_unidade'] ?? null,       // ✅
+                        "item_seq"       => (int)$r['item_seq'],
+                        "produto_id"     => $r['item_produto'],
+                        "produto_nome"   => $r['produto_nome'],
+                        "produto_unidade"=> $r['produto_unidade'],
                         "quantidade"     => $qtd,
                         "valor_unitario" => $vu,
                         "valor_total"    => (float)round($vt, 2),
-                        "data_mov"       => $r['item_data_mov'],
-                        "data_emissao"   => $r['item_data_emissao_mov'],
-                        "data_original"  => $r['item_data_original']
+                        "data_mov"       => $r['item_data_mov']
                     ];
 
                     $countItens++;
@@ -1604,7 +1665,6 @@ class NotaFiscalEntradaController {
             return [
                 "success" => true,
                 "system_unit_id" => $system_unit_id,
-                "tipoData"       => strtoupper($tipoData),
                 "dt_inicio"      => $dt_inicio,
                 "dt_fim"         => $dt_fim,
                 "totais" => [
@@ -1620,16 +1680,11 @@ class NotaFiscalEntradaController {
         } catch (Exception $e) {
             return [
                 "success" => false,
-                "message" => "Erro ao listar compras por período.",
+                "message" => "Erro ao listar compras.",
                 "error" => $e->getMessage()
             ];
         }
     }
-
-
-
-
-
 
 }
 ?>

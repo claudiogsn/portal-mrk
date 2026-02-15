@@ -33,15 +33,20 @@
         .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
         .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
 
+        /* Tag de Transferência */
+        .badge-transf {
+            display: inline-flex; align-items: center; gap: 4px;
+            background-color: #e3f2fd; color: #0d47a1;
+            padding: 2px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 600; margin-top: 4px;
+            border: 1px solid #bbdefb;
+        }
+
         /* Tabela */
         .table thead th {
             font-family: 'Kanit', sans-serif;
-            color: var(--mrk-blue);
-            font-weight: 600;
-            font-size: 12px;
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
-            white-space: nowrap;
+            color: var(--mrk-blue); font-weight: 600; font-size: 12px;
+            background-color: #f8f9fa; border-bottom: 2px solid #e9ecef; white-space: nowrap;
         }
         .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
 
@@ -51,23 +56,14 @@
         tr.itens-row { display: none; }
         tr.itens-row td { background: #fdfdfd !important; padding: 15px !important; box-shadow: inset 0 3px 6px rgba(0,0,0,0.02); }
 
-        /* Subtabela */
-        .subtable { border: 1px solid #eee; margin-bottom: 0; background: #fff; }
-        .subtable th { background: #f1f1f1 !important; color: #666 !important; font-size: 11px !important; }
-
-        /* Select2 Custom */
-        .select2-container--default .select2-selection--multiple {
-            border: 1px solid #ccc; border-radius: 4px; min-height: 34px;
-        }
-        .select2-container--default.select2-container--focus .select2-selection--multiple {
-            border-color: var(--mrk-blue);
-        }
+        /* Checkbox Custom */
+        .chk-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #555; }
+        .chk-input { width: 16px; height: 16px; accent-color: var(--mrk-blue); }
 
         /* Skeleton Loader */
         .skeleton-wrapper { display: none; }
         .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
         .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
-        .sk-kpi { height: 80px; width: 100%; border-radius: 6px; }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
     </style>
 </head>
@@ -139,16 +135,22 @@
             </div>
 
             <div class="row clearfix" style="margin-bottom: 15px;">
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label class="muted">Filtrar Fornecedor</label>
                     <select id="filtroFornecedor" class="form-control" multiple="multiple"></select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="muted">Busca Rápida</label>
                     <div class="input-group">
                         <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
                         <input type="text" id="filtroTexto" class="form-control" placeholder="Nota, Chave, Produto...">
                     </div>
+                </div>
+                <div class="col-md-3" style="padding-top: 25px;">
+                    <label class="chk-label">
+                        <input type="checkbox" id="chkApenasTransf" class="chk-input">
+                        <span>Apenas Transferidas</span>
+                    </label>
                 </div>
             </div>
 
@@ -177,7 +179,7 @@
                     <tr>
                         <th style="width:40px;"></th>
                         <th class="nowrap">Nota</th>
-                        <th class="nowrap">Fornecedor</th>
+                        <th class="nowrap">Fornecedor / Origem</th>
                         <th class="nowrap">Emissão</th>
                         <th class="nowrap">Entrada</th>
                         <th class="text-right nowrap">Valor Total</th>
@@ -255,37 +257,22 @@
 
     // ================= INIT =================
     $(document).ready(() => {
-        // Select2 Config
-        $('#filtroFornecedor').select2({
-            placeholder: 'Selecione Fornecedores...',
-            width: '100%',
-            allowClear: true,
-            closeOnSelect: false
-        });
+        $('#filtroFornecedor').select2({ placeholder: 'Selecione Fornecedores...', width: '100%', allowClear: true, closeOnSelect: false });
 
-        // Datas Padrão
         const hoje = new Date();
-        const y = hoje.getFullYear();
-        const m = String(hoje.getMonth() + 1).padStart(2, '0');
-        const d = String(hoje.getDate()).padStart(2, '0');
+        const y = hoje.getFullYear(), m = String(hoje.getMonth() + 1).padStart(2, '0'), d = String(hoje.getDate()).padStart(2, '0');
         $('#dtFim').val(`${y}-${m}-${d}`);
-
         const ini = new Date(hoje.getTime() - 7*24*60*60*1000);
-        const y2 = ini.getFullYear();
-        const m2 = String(ini.getMonth() + 1).padStart(2, '0');
-        const d2 = String(ini.getDate()).padStart(2, '0');
-        $('#dtInicio').val(`${y2}-${m2}-${d2}`);
+        $('#dtInicio').val(`${ini.getFullYear()}-${String(ini.getMonth() + 1).padStart(2, '0')}-${String(ini.getDate()).padStart(2, '0')}`);
 
-        // Eventos
         $('#btnAtualizar').on('click', fetchBackend);
         $('#filtroFornecedor').on('change', applyFiltrosTempoReal);
         $('#filtroTexto').on('input', debounce(applyFiltrosTempoReal, 300));
+        $('#chkApenasTransf').on('change', applyFiltrosTempoReal); // NOVO EVENTO
         $('#btnExpandirTudo').on('click', () => expandCollapseAll(true));
         $('#btnRecolherTudo').on('click', () => expandCollapseAll(false));
 
-        if (!token || !system_unit_id) {
-            Swal.fire('Atenção', 'URL inválida (token/unit_id).', 'warning');
-        }
+        if (!token || !system_unit_id) Swal.fire('Atenção', 'URL inválida.', 'warning');
     });
 
     // ================= BACKEND =================
@@ -294,9 +281,7 @@
         const dt_fim    = $('#dtFim').val();
         const tipoData  = $('#tipoData').val();
 
-        if (!dt_inicio || !dt_fim) {
-            return Swal.fire('Atenção', 'Informe o período.', 'warning');
-        }
+        if (!dt_inicio || !dt_fim) return Swal.fire('Atenção', 'Informe o período.', 'warning');
 
         toggleLoader(true);
 
@@ -304,12 +289,7 @@
             const res = await axios.post(baseUrl, {
                 method: 'getComprasPorPeriodo',
                 token,
-                data: {
-                    system_unit_id: Number(system_unit_id),
-                    dt_inicio,
-                    dt_fim,
-                    tipoData
-                }
+                data: { system_unit_id: Number(system_unit_id), dt_inicio, dt_fim, tipoData }
             });
 
             if (!res.data || res.data.success === false) {
@@ -321,13 +301,11 @@
                 return Swal.fire('Aviso', res.data?.message || 'Nenhum registro encontrado.', 'info');
             }
 
-            const notas = Array.isArray(res.data.notas) ? res.data.notas : [];
-            dadosBrutos = notas;
+            dadosBrutos = Array.isArray(res.data.notas) ? res.data.notas : [];
             expandedSet = new Set();
 
-            buildFiltroFornecedores(notas);
+            buildFiltroFornecedores(dadosBrutos);
             applyFiltrosTempoReal();
-
             toggleLoader(false);
 
         } catch (e) {
@@ -342,17 +320,12 @@
         const mapa = {};
         notas.forEach(n => {
             const id = n.fornecedor_id;
-            const nome = n.fornecedor_nome || 'Sem Nome';
-            if (id && !mapa[id]) mapa[id] = nome;
+            if (id && !mapa[id]) mapa[id] = n.fornecedor_nome || 'Sem Nome';
         });
-
         const $sel = $('#filtroFornecedor');
         $sel.empty();
-
         Object.keys(mapa).sort((a,b) => Number(a) - Number(b)).forEach(id => {
-            let nomeF = mapa[id];
-            if(nomeF.length > 60) nomeF = nomeF.substring(0,60) + '...';
-            $sel.append(`<option value="${escapeHtml(id)}">${escapeHtml(nomeF)}</option>`);
+            $sel.append(`<option value="${escapeHtml(id)}">${escapeHtml(mapa[id])}</option>`);
         });
         $sel.val(null).trigger('change');
     }
@@ -361,28 +334,25 @@
         let arr = [...dadosBrutos];
         const selFor = $('#filtroFornecedor').val() || [];
         const termo = ($('#filtroTexto').val() || '').trim().toLowerCase();
+        const apenasTransf = $('#chkApenasTransf').is(':checked');
 
-        // Filtro Fornecedor
+        // Filtro Apenas Transferidas (NOVO)
+        if (apenasTransf) {
+            arr = arr.filter(n => n.transferencia_info && n.transferencia_info.foi_transferida);
+        }
+
         if (selFor.length > 0) {
             const setSel = new Set(selFor.map(String));
             arr = arr.filter(n => setSel.has(String(n.fornecedor_id || '')));
         }
 
-        // Filtro Texto (Deep Search)
         if (termo) {
             arr = arr.filter(n => {
-                // Busca no cabeçalho
                 const headerMatch = [n.fornecedor_nome, n.numero_nf, n.chave_acesso]
                     .some(field => String(field || '').toLowerCase().includes(termo));
-
                 if (headerMatch) return true;
-
-                // Busca nos itens
                 const itens = Array.isArray(n.itens) ? n.itens : [];
-                return itens.some(it =>
-                    String(it.produto_nome || '').toLowerCase().includes(termo) ||
-                    String(it.produto || '').toLowerCase().includes(termo)
-                );
+                return itens.some(it => String(it.produto_nome || '').toLowerCase().includes(termo) || String(it.produto || '').toLowerCase().includes(termo));
             });
         }
 
@@ -394,20 +364,15 @@
 
     function renderTotalizadores(notas) {
         let qtd = notas.length;
-        let totalValor = 0;
-        notas.forEach(n => totalValor += Number(n.valor_total || 0));
+        let totalValor = notas.reduce((a,b) => a + Number(b.valor_total || 0), 0);
         let media = qtd > 0 ? (totalValor / qtd) : 0;
-
         $('#totQtd').text(qtd);
         $('#totValor').text(brMoney(totalValor));
         $('#totMedia').text(brMoney(media));
     }
 
     function renderInfoStatus(){
-        const total = dadosBrutos.length;
-        const filtrados = notasFiltradas.length;
-        if(total > 0) $('#infoStatus').html(`Exibindo <b>${filtrados}</b> de <b>${total}</b> registros.`);
-        else $('#infoStatus').html('');
+        $('#infoStatus').html(`Exibindo <b>${notasFiltradas.length}</b> de <b>${dadosBrutos.length}</b> registros.`);
     }
 
     function renderTabela(notas){
@@ -419,16 +384,20 @@
             return;
         }
 
-        // Limite para performance
         const limiteRender = 300;
         const renderList = notas.slice(0, limiteRender);
 
         renderList.forEach(n => {
             const key = makeNotaKey(n);
             const isExpanded = expandedSet.has(key);
-
-            // Icon Logic
             const iconName = isExpanded ? 'icon-park-outline:down' : 'icon-park-outline:right';
+
+            // Lógica de Transferência (Visual)
+            let transfHtml = '';
+            if (n.transferencia_info && n.transferencia_info.foi_transferida) {
+                const desc = escapeHtml(n.transferencia_info.descricao || 'Transferência');
+                transfHtml = `<br><span class="badge-transf"><iconify-icon icon="icon-park-outline:transfer"></iconify-icon> ${desc}</span>`;
+            }
 
             $tbody.append(`
                 <tr class="nota-row" data-key="${escapeHtml(key)}">
@@ -436,7 +405,10 @@
                     <iconify-icon icon="${iconName}" width="18" style="vertical-align: middle;"></iconify-icon>
                   </td>
                   <td class="nowrap"><strong>${escapeHtml(n.numero_nf || '-')}</strong></td>
-                  <td>${escapeHtml(n.fornecedor_nome || '')}</td>
+                  <td>
+                    ${escapeHtml(n.fornecedor_nome || 'Sem Nome')}
+                    ${transfHtml}
+                  </td>
                   <td class="nowrap">${formatBRDate(n.data_emissao)}</td>
                   <td class="nowrap">${formatBRDate(n.data_entrada)}</td>
                   <td class="text-right nowrap"><strong>${brMoney(n.valor_total)}</strong></td>
@@ -457,7 +429,6 @@
             $tbody.append(`<tr><td colspan="6" class="text-center text-warning">Exibindo os primeiros ${limiteRender} de ${notas.length}. Refine a busca.</td></tr>`);
         }
 
-        // Toggle Event
         $('.cell-toggle').off('click').on('click', function(e){
             e.preventDefault();
             const key = $(this).data('key');
@@ -471,10 +442,10 @@
 
         let rows = itens.map(it => `
             <tr>
-              <td>${it.seq || '-'}</td>
-              <td>${it.produto || ''}</td>
+              <td>${it.item_seq || '-'}</td>
+              <td>${escapeHtml(it.produto_id || '')}</td>
               <td>${escapeHtml(it.produto_nome || '')}</td>
-              <td>${it.produto_unidade || ''}</td>
+              <td>${escapeHtml(it.produto_unidade || '')}</td>
               <td class="text-right">${Number(it.quantidade || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
               <td class="text-right">${brMoney(it.valor_unitario)}</td>
               <td class="text-right"><strong>${brMoney(it.valor_total)}</strong></td>
@@ -502,18 +473,13 @@
     }
 
     function toggleRow(key){
-        if (expandedSet.has(key)) expandedSet.delete(key);
-        else expandedSet.add(key);
-        // Re-renderiza para atualizar ícone e mostrar/ocultar linha
-        // (Poderia ser manipulado via DOM direto para ultra-performance, mas renderTabela é rápido o suficiente com paginação virtual)
+        if (expandedSet.has(key)) expandedSet.delete(key); else expandedSet.add(key);
         renderTabela(notasFiltradas);
     }
 
     function expandCollapseAll(expandir){
         if (expandir) {
-            if(notasFiltradas.length > 500) {
-                return Swal.fire('Aviso', 'Muitos registros para expandir. Filtre mais dados antes.', 'warning');
-            }
+            if(notasFiltradas.length > 500) return Swal.fire('Aviso', 'Muitos registros para expandir. Filtre mais dados antes.', 'warning');
             expandedSet = new Set(notasFiltradas.map(makeNotaKey));
         } else {
             expandedSet = new Set();
