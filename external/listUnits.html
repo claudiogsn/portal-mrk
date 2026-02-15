@@ -236,6 +236,7 @@
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
                 <h4 class="modal-title"><iconify-icon icon="icon-park-outline:edit"></iconify-icon> Editar Unidade</h4>
             </div>
             <div class="modal-body" style="padding-top: 0; background-color: #fcfcfc;">
@@ -284,7 +285,7 @@
                                 <input type="text" class="form-control" id="editCnpj">
                             </div>
                             <div class="col-md-6">
-                                <label class="muted">Custom Code</label>
+                                <label class="muted">Codigo PDV</label>
                                 <input type="text" class="form-control" id="editCustomCode">
                             </div>
                         </div>
@@ -306,14 +307,24 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="switch-card">
-                                    <div class="switch-info"><h5>Importar Faturamento</h5></div>
-                                    <div class="switch"><label><input type="checkbox" id="editMenewFaturamento"><span class="lever"></span></label></div>
+                                    <div class="switch-info">
+                                        <h5>Importar Faturamento</h5>
+                                        <p>Sincroniza vendas do PDV.</p>
+                                    </div>
+                                    <div class="switch">
+                                        <label><input type="checkbox" id="editMenewFaturamento"><span class="lever switch-col-blue"></span></label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="switch-card">
-                                    <div class="switch-info"><h5>Sincronizar Estoque</h5></div>
-                                    <div class="switch"><label><input type="checkbox" id="editMenewEstoque"><span class="lever"></span></label></div>
+                                    <div class="switch-info">
+                                        <h5>Sincronizar Estoque</h5>
+                                        <p>Baixa automática de insumos.</p>
+                                    </div>
+                                    <div class="switch">
+                                        <label><input type="checkbox" id="editMenewEstoque"><span class="lever switch-col-blue"></span></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -322,14 +333,24 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="switch-card">
-                                    <div class="switch-info"><h5>Importar Faturamento</h5></div>
-                                    <div class="switch"><label><input type="checkbox" id="editZigFaturamento"><span class="lever"></span></label></div>
+                                    <div class="switch-info">
+                                        <h5>Importar Faturamento</h5>
+                                        <p>Vendas via Zig.</p>
+                                    </div>
+                                    <div class="switch">
+                                        <label><input type="checkbox" id="editZigFaturamento"><span class="lever switch-col-blue"></span></label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="switch-card">
-                                    <div class="switch-info"><h5>Sincronizar Estoque</h5></div>
-                                    <div class="switch"><label><input type="checkbox" id="editZigEstoque"><span class="lever"></span></label></div>
+                                    <div class="switch-info">
+                                        <h5>Sincronizar Estoque</h5>
+                                        <p>Controle via Zig.</p>
+                                    </div>
+                                    <div class="switch">
+                                        <label><input type="checkbox" id="editZigEstoque"><span class="lever switch-col-blue"></span></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -362,7 +383,7 @@
                         <div class="switch-card">
                             <div class="switch-info">
                                 <h5>Exportação F360</h5>
-                                <p>Envia o DRE e fluxo de caixa para a plataforma F360 diariamente.</p>
+                                <p>Envia o DRE e fluxo de caixa para a plataforma F360.</p>
                             </div>
                             <div class="switch">
                                 <label><input type="checkbox" id="editF360Integration"><span class="lever"></span></label>
@@ -379,7 +400,6 @@
         </div>
     </div>
 </div>
-
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
