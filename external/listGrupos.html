@@ -2,114 +2,210 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
-    <title>Gestão de Grupos de Estabelecimento</title>
+    <title>Grupos de Estabelecimento | Portal MRK</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/plugins/multi-select/css/multi-select.css" rel="stylesheet" />
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
+
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <!-- Multi-select plugin -->
-    <link href="bsb/plugins/multi-select/css/multi-select.css" rel="stylesheet" />
     <script src="bsb/plugins/multi-select/js/jquery.multi-select.js"></script>
-    <script src="https://kit.fontawesome.com/313adf4cdc.js" crossorigin="anonymous"></script>
-    <link href="style/mrk.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-
 
     <style>
-        .form-control { margin-bottom: 10px; }
-        @media (max-width: 768px) {
-            body, .form-control, .modal-content, table, th, td, button {
-                font-size: 12px !important;
-            }
+        /* REGRA SOLICITADA */
+        html, body { background: transparent !important; }
+
+        body { font-family: 'Poppins', sans-serif; padding-top: 10px; }
+
+        /* Card Padrão */
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
         }
-        .custom-header {
-            padding: 5px;
-            background: #f1f1f1;
-            border-bottom: 1px solid #ccc;
+
+        /* Header */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #eee; }
+        .header-flex h2 { margin: 0; font-family: 'Kanit'; font-size: 20px; color: var(--mrk-blue); display: flex; align-items: center; gap: 8px; }
+
+        .body { padding: 20px; }
+
+        /* Filtros */
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+        .form-control { height: 38px; box-shadow: none; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .form-control:focus { border-color: var(--mrk-blue); }
+        .input-group .form-control { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+        /* Tabela */
+        .table-responsive { border: 1px solid #eee; border-radius: 6px; }
+        .table { margin-bottom: 0; }
+        .table thead th {
+            font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; font-size: 12px;
+            background-color: #f8f9fa; border-bottom: 2px solid #e9ecef; white-space: nowrap; text-transform: uppercase; padding: 12px;
         }
+        .table tbody td { font-size: 13px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; padding: 12px; color: #555; }
+        .table-hover tbody tr:hover { background-color: #f0f4f8; }
+
+        /* Ações */
+        .btn-action { cursor: pointer; font-size: 18px; transition: transform 0.2s; display: inline-block; margin: 0 5px; text-decoration: none !important; }
+        .btn-action:hover { transform: scale(1.2); }
+        .action-blue { color: var(--mrk-blue); }
+        .action-green { color: var(--mrk-green); }
+        .action-red { color: var(--mrk-red); }
+        .action-orange { color: var(--mrk-amber); }
+
+        /* Badges */
+        .badge-status { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .bg-green-light { background: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+        .bg-red-light { background: #ffebee; color: var(--mrk-red); border: 1px solid #ffcdd2; }
+
+        /* Botões */
+        .btn-success { background-color: var(--mrk-green) !important; border:none; padding: 8px 16px; border-radius: 4px; font-family: 'Kanit'; color:#fff; }
+        .btn-primary { background-color: var(--mrk-blue) !important; border:none; padding: 8px 16px; border-radius: 4px; font-family: 'Kanit'; color:#fff; }
+        .btn-default { border: 1px solid #ddd; background: #fff; color: #666; padding: 8px 16px; border-radius: 4px; font-family: 'Kanit'; }
+
+        /* Modal Clean */
+        .modal-header { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px 20px; border-radius: 6px 6px 0 0; }
+        .modal-title { font-family: 'Kanit'; color: var(--mrk-blue); font-weight: 600; font-size: 18px; margin: 0; }
+        .modal-content { border: none; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .modal-footer { border-top: 1px solid #eee; background: #fff; padding: 15px 20px; border-radius: 0 0 6px 6px; }
+
+        .muted { color: #888; font-size: 12px; margin-bottom: 5px; display: block; font-weight: 500; }
+
+        /* Multi-Select Customizado */
+        .ms-container { width: 100%; }
+        .ms-container .ms-selectable, .ms-container .ms-selection { width: 48%; border-radius: 4px; }
+        .ms-container .ms-list { border: 1px solid #eee; border-radius: 0 0 4px 4px; }
+        .ms-container .ms-optgroup-label { color: #333; font-weight: bold; }
+        .ms-elem-selectable, .ms-elem-selection { padding: 8px 10px !important; font-size: 12px; border-bottom: 1px solid #f9f9f9; color: #555; }
+        .ms-elem-selectable:hover, .ms-elem-selection:hover { background-color: #f0f4fa; color: var(--mrk-blue); }
+        .custom-header { background: #f8f9fa; color: var(--mrk-blue); padding: 8px; font-family: 'Kanit'; font-weight: 600; font-size: 12px; border: 1px solid #eee; border-bottom: none; border-radius: 4px 4px 0 0; text-align: center; }
+        .search-input { border: 1px solid #eee; border-top:none; border-bottom: 1px solid #eee; width: 100%; padding: 5px 10px; font-size: 12px; }
+        .search-input:focus { outline: none; border-color: var(--mrk-blue); }
+
+        /* Skeleton */
+        .skeleton-wrapper { display: none; margin-top: 10px; }
+        .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
+        .sk-row { height: 45px; width: 100%; margin-bottom: 8px; }
+        @keyframes pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body class="theme-blue">
 <div class="container-fluid">
-    <br />
+
     <div class="card">
-        <div class="header"><h2>Grupos de Estabelecimento</h2></div>
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:shop"></iconify-icon>
+                GRUPOS DE ESTABELECIMENTO
+            </h2>
+            <button class="btn btn-success waves-effect" id="btnNovoGrupo">
+                <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                NOVO GRUPO
+            </button>
+        </div>
+
         <div class="body">
-            <div class="row">
-                <div class="col-md-6"><input type="text" id="filtroGrupo" class="form-control" placeholder="Filtrar por nome do grupo" /></div>
-                <div class="col-md-6 text-right"><button class="btn btn-success" id="btnNovoGrupo">Novo Grupo</button></div>
+            <div class="filter-box">
+                <div class="row">
+                    <div class="col-md-12">
+                        <label class="muted">Filtrar Grupo</label>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
+                            <input type="text" id="filtroGrupo" class="form-control" placeholder="Buscar por nome do grupo ou ID...">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="tabela-grupos" style="width:100%; border-collapse: collapse;">
+
+            <div id="skeleton-area" class="skeleton-wrapper">
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+                <div class="skeleton sk-row"></div>
+            </div>
+
+            <div class="table-responsive" id="table-area">
+                <table class="table table-hover" id="tabela-grupos">
                     <thead>
                     <tr>
-                        <th style="width: 28px; padding: 0;" class="text-center"> </th>
-                        <th style="width: 28px; padding: 0;" class="text-center"> </th>
-                        <th style="width: 28px; padding: 0;" class="text-center"> </th>
-                        <th style="text-align: center;">ID</th>
-                        <th style="text-align: left;">Nome</th>
-                        <th style="text-align: center;">Slug</th>
-                        <th style="text-align: center;">Ativo</th>
+                        <th class="text-center" width="120">Ações</th>
+                        <th class="text-center" width="60">ID</th>
+                        <th>Nome do Grupo</th>
+                        <th class="text-center">Slug</th>
+                        <th class="text-center">Status</th>
                     </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                    <tr><td colspan="5" class="text-center muted" style="padding: 30px;">Carregando...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de Edição/Cadastro do Grupo -->
 <div class="modal fade" id="modalGrupo" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header"><h4 class="modal-title">Dados do Grupo</h4></div>
+            <div class="modal-header"><h4 class="modal-title"><iconify-icon icon="icon-park-outline:edit"></iconify-icon> Dados do Grupo</h4></div>
             <div class="modal-body">
                 <form id="formGrupo">
                     <input type="hidden" id="grupoId">
-                    <input type="text" class="form-control" id="grupoNome" placeholder="Nome *" required>
-                    <input type="text" class="form-control" id="grupoSlug" placeholder="Slug (gerado automaticamente)" readonly>
-                    <select class="form-control" id="grupoAtivo" required>
-                        <option value="">Ativo?</option>
-                        <option value="1">Sim</option>
-                        <option value="0">Não</option>
-                    </select>
+                    <div class="form-group">
+                        <label class="muted">Nome do Grupo *</label>
+                        <input type="text" class="form-control" id="grupoNome" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="muted">Slug (Automático)</label>
+                        <input type="text" class="form-control" id="grupoSlug" readonly style="background-color: #eee;">
+                    </div>
+                    <div class="form-group">
+                        <label class="muted">Status</label>
+                        <select class="form-control" id="grupoAtivo" required>
+                            <option value="1">Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button id="salvarGrupo" class="btn btn-primary">Salvar</button>
-                <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button id="salvarGrupo" class="btn btn-primary">SALVAR</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Associação de Estabelecimentos -->
-<!-- Modal Associação de Estabelecimentos -->
-<!-- Modal Associação de Estabelecimentos -->
 <div class="modal fade" id="modalLojasGrupo" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <div class="modal-header"><h4 class="modal-title">Associação de Estabelecimentos</h4></div>
+            <div class="modal-header"><h4 class="modal-title"><iconify-icon icon="icon-park-outline:connection"></iconify-icon> Associação de Lojas</h4></div>
             <div class="modal-body">
                 <select id="multiSelectEstabelecimentos" multiple="multiple" class="form-control"></select>
             </div>
             <div class="modal-footer">
-                <button id="btnSalvarUnidadesGrupo" class="btn btn-primary">Salvar</button>
-                <button class="btn btn-default" data-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
+                <button id="btnSalvarUnidadesGrupo" class="btn btn-primary">SALVAR ASSOCIAÇÃO</button>
             </div>
         </div>
     </div>
 </div>
-
-
 
 <script>
     const baseUrl = window.location.hostname !== 'localhost'
@@ -119,14 +215,27 @@
     const token = new URLSearchParams(window.location.search).get('token');
     let grupoAtualId = null;
 
+    // Helper: Skeleton
+    function toggleLoading(isLoading) {
+        if (isLoading) {
+            $('#table-area').hide();
+            $('#skeleton-area').show();
+        } else {
+            $('#skeleton-area').hide();
+            $('#table-area').fadeIn();
+        }
+    }
+
     $(document).ready(() => {
+        if(!token) Swal.fire('Erro', 'Token não encontrado.', 'error');
+
         listarGrupos();
 
         $('#btnNovoGrupo').click(() => {
             $('#grupoId').val('');
             $('#grupoNome').val('');
             $('#grupoSlug').val('');
-            $('#grupoAtivo').val('');
+            $('#grupoAtivo').val('1');
             $('#modalGrupo').modal('show');
         });
 
@@ -137,11 +246,9 @@
             const nome = $('#grupoNome').val();
             const ativo = $('#grupoAtivo').val();
 
-            if (!nome || ativo === "") {
-                return Swal.fire('Erro', 'Preencha todos os campos obrigatórios.', 'error');
-            }
+            if (!nome || ativo === "") return Swal.fire('Atenção', 'Preencha o nome.', 'warning');
 
-            Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
 
             try {
                 await axios.post(baseUrl, {
@@ -149,91 +256,64 @@
                     token,
                     data: { ...(id && { id }), nome, ativo }
                 });
-
                 Swal.close();
                 $('#modalGrupo').modal('hide');
                 listarGrupos();
-            } catch {
-                Swal.fire('Erro', 'Falha ao salvar o grupo.', 'error');
-            }
-        });
-
-        $('#selectDisponiveis').on('dblclick', function () {
-            $('#selectDisponiveis option:selected').each(function () {
-                $('#selectNoGrupo').append($(this));
-            });
-        });
-
-        $('#selectNoGrupo').on('dblclick', function () {
-            $('#selectNoGrupo option:selected').each(function () {
-                $('#selectDisponiveis').append($(this));
-            });
+            } catch { Swal.fire('Erro', 'Falha ao salvar.', 'error'); }
         });
 
         $('#btnSalvarUnidadesGrupo').click(async () => {
-            const unidades = $('#multiSelectEstabelecimentos').val().map(Number);
-
+            const unidades = $('#multiSelectEstabelecimentos').val() ? $('#multiSelectEstabelecimentos').val().map(Number) : [];
             if (!grupoAtualId) return;
 
-            Swal.fire({ title: 'Salvando associação...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
             try {
                 await axios.post(baseUrl, {
-                    method: 'updateUnitsGroup',
-                    token,
-                    data: {
-                        grupo_id: grupoAtualId,
-                        unidades
-                    }
+                    method: 'updateUnitsGroup', token,
+                    data: { grupo_id: grupoAtualId, unidades }
                 });
-
-                Swal.close();
-                $('#modalLojasGrupo').modal('hide');
+                Swal.close(); $('#modalLojasGrupo').modal('hide');
+                Swal.fire({ icon: 'success', title: 'Sucesso', text: 'Associação atualizada!' });
                 listarGrupos();
-            } catch {
-                Swal.fire('Erro', 'Não foi possível salvar associação.', 'error');
-            }
+            } catch { Swal.fire('Erro', 'Falha na associação.', 'error'); }
         });
-
     });
 
     async function listarGrupos() {
+        toggleLoading(true);
         try {
             const res = await axios.post(baseUrl, { method: 'getGroups', token, data: {} });
             const tbody = $('#tabela-grupos tbody');
             tbody.empty();
 
-            for (const grupo of res.data) {
-                const ativo = grupo.ativo === "1"
-                    ? '<span class="label label-success" style="font-size:10pt;">Sim</span>'
-                    : '<span class="label label-danger" style="font-size:10pt;">Não</span>';
+            if(!res.data || !res.data.length) {
+                tbody.html('<tr><td colspan="5" class="text-center muted" style="padding: 30px;">Nenhum grupo encontrado.</td></tr>');
+            } else {
+                for (const grupo of res.data) {
+                    const ativo = (grupo.ativo == "1" || grupo.ativo == 1);
+                    const statusHtml = ativo
+                        ? '<span class="badge-status bg-green-light">ATIVO</span>'
+                        : '<span class="badge-status bg-red-light">INATIVO</span>';
 
-                const row = `
-                    <tr>
-                      <td class="text-center">
-                        <a href="#" title="Editar" onclick="editarGrupo(${grupo.id}, '${grupo.nome}', '${grupo.slug}', '${grupo.ativo}')">
-                          <i class="far fa-edit blue"></i>
-                        </a>
-                      </td>
-                      <td class="text-center">
-                        <a href="#" title="Associar Estabelecimentos" onclick="abrirModalAssociar(${grupo.id})">
-                          <i class="fa fa-home green"></i>
-                        </a>
-                      </td>
-                      <td class="text-center">
-                        <a href="#" title="${grupo.ativo == '1' ? 'Desativar' : 'Ativar'} Grupo" onclick="toggleAtivoGrupo(${grupo.id}, ${grupo.ativo})">
-                          <i class="${grupo.ativo == 1 ? 'fa fa-power-off red' : 'fa fa-power-off green'}"></i>
-                        </a>
-                      </td>
-                      <td class="text-center">${grupo.id}</td>
-                      <td>${grupo.nome}</td>
-                      <td class="text-center">${grupo.slug}</td>
-                      <td class="text-center">${ativo}</td>
-                    </tr>`;
-                tbody.append(row);
+                    // Botões de ação
+                    const btnEditar = `<a class="btn-action action-blue" onclick="editarGrupo(${grupo.id}, '${grupo.nome}', '${grupo.slug}', '${grupo.ativo}')" title="Editar"><iconify-icon icon="icon-park-outline:edit"></iconify-icon></a>`;
+                    const btnAssociar = `<a class="btn-action action-orange" onclick="abrirModalAssociar(${grupo.id})" title="Associar Lojas"><iconify-icon icon="icon-park-outline:connection"></iconify-icon></a>`;
+                    const btnStatus = `<a class="btn-action ${ativo ? 'action-red' : 'action-green'}" onclick="toggleAtivoGrupo(${grupo.id}, ${grupo.ativo})" title="${ativo ? 'Desativar' : 'Ativar'}"><iconify-icon icon="icon-park-outline:power"></iconify-icon></a>`;
+
+                    tbody.append(`
+                        <tr>
+                            <td class="text-center nowrap">${btnEditar} ${btnAssociar} ${btnStatus}</td>
+                            <td class="text-center"><b>${grupo.id}</b></td>
+                            <td>${grupo.nome}</td>
+                            <td class="text-center text-muted">${grupo.slug || '-'}</td>
+                            <td class="text-center">${statusHtml}</td>
+                        </tr>`);
+                }
             }
-
+            toggleLoading(false);
         } catch (err) {
+            console.error(err);
+            toggleLoading(false);
             Swal.fire('Erro', 'Não foi possível carregar os grupos.', 'error');
         }
     }
@@ -249,8 +329,7 @@
     async function abrirModalAssociar(group_id) {
         grupoAtualId = group_id;
         const $select = $('#multiSelectEstabelecimentos');
-
-        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+        Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
 
         try {
             const [disponiveisRes, noGrupoRes] = await Promise.all([
@@ -259,75 +338,59 @@
             ]);
 
             $select.empty();
-
-            // Pega os IDs dos que já estão no grupo
             const idsNoGrupo = new Set(noGrupoRes.data.map(loja => loja.system_unit_id));
-
-// Filtra os disponíveis para remover duplicados
             const disponiveisFiltrados = disponiveisRes.data.filter(loja => !idsNoGrupo.has(loja.id));
 
-// Junta os dois conjuntos sem duplicação
             const allOptions = [
-                ...disponiveisFiltrados.map(loja => ({
-                    id: loja.id,
-                    label: formatLoja(loja)
-                })),
-                ...noGrupoRes.data.map(loja => ({
-                    id: loja.system_unit_id,
-                    label: formatLoja(loja)
-                }))
+                ...disponiveisFiltrados.map(loja => ({ id: loja.id, label: formatLoja(loja) })),
+                ...noGrupoRes.data.map(loja => ({ id: loja.system_unit_id, label: formatLoja(loja) }))
             ];
 
-
             const selectedIds = new Set(noGrupoRes.data.map(l => l.system_unit_id));
-
             allOptions.forEach(opt => {
                 $select.append(new Option(opt.label, opt.id, false, selectedIds.has(opt.id)));
             });
 
-            // Recria o multi-select com headers
-            if ($select.data('multiselect')) {
-                $select.multiSelect('destroy');
-            }
+            // Re-init plugin
+            if ($select.data('multiselect')) $select.multiSelect('destroy');
 
             $select.multiSelect({
-                selectableHeader: `
-                <div class="custom-header text-center"><strong>Disponíveis</strong></div>
-                <input type="text" id="filtroDisponiveis" class="form-control" placeholder="Filtrar disponíveis...">`,
-                selectionHeader: '<div class="custom-header text-center"><strong>Selecionados</strong></div>',
-                keepOrder: true
+                selectableHeader: `<div class="custom-header">Disponíveis</div><input type="text" class="search-input" autocomplete="off" placeholder="Filtrar...">`,
+                selectionHeader: `<div class="custom-header">Selecionados</div><input type="text" class="search-input" autocomplete="off" placeholder="Filtrar...">`,
+                keepOrder: true,
+                afterInit: function(ms){
+                    var that = this,
+                        $selectableSearch = that.$selectableUl.prev(),
+                        $selectionSearch = that.$selectionUl.prev(),
+                        selectableSearchString = '#'+that.$container.attr('id')+' .ms-elem-selectable:not(.ms-selected)',
+                        selectionSearchString = '#'+that.$container.attr('id')+' .ms-elem-selection.ms-selected';
+
+                    that.qs1 = $selectableSearch.quicksearch(selectableSearchString)
+                        .on('keydown', function(e){ if (e.which === 40){ that.$selectableUl.focus(); return false; } });
+
+                    that.qs2 = $selectionSearch.quicksearch(selectionSearchString)
+                        .on('keydown', function(e){ if (e.which == 40){ that.$selectionUl.focus(); return false; } });
+                },
+                afterSelect: function(){ this.qs1.cache(); this.qs2.cache(); },
+                afterDeselect: function(){ this.qs1.cache(); this.qs2.cache(); }
             });
-
-            setTimeout(() => {
-                $('#filtroDisponiveis').on('input', function () {
-                    const termo = $(this).val().toLowerCase();
-
-                    $('#multiSelectEstabelecimentos').next('.ms-container').find('.ms-selectable li').each(function () {
-                        const texto = $(this).text().toLowerCase();
-                        $(this).toggle(texto.includes(termo));
-                    });
-                });
-            }, 200); // Espera o multiSelect renderizar
 
             Swal.close();
             $('#modalLojasGrupo').modal('show');
-        } catch {
-            Swal.fire('Erro', 'Erro ao carregar estabelecimentos.', 'error');
+        } catch(e) {
+            console.error(e);
+            Swal.fire('Erro', 'Erro ao carregar dados.', 'error');
         }
     }
 
-
     function formatLoja(loja) {
-        return `${loja.id ? loja.id : loja.system_unit_id} - ${loja.name} - ${loja.custom_code ? loja.custom_code : 'Sem Integração'}`;
+        return `${loja.id || loja.system_unit_id} - ${loja.name} ${loja.custom_code ? '('+loja.custom_code+')' : ''}`;
     }
 
-
     async function toggleAtivoGrupo(id, statusAtual) {
-        const novoStatus = statusAtual === 1 || statusAtual === "1" ? 0 : 1;
-        const acao = novoStatus ? 'ativar' : 'desativar';
-
+        const novoStatus = (statusAtual == 1 || statusAtual == "1") ? 0 : 1;
         const confirm = await Swal.fire({
-            title: `Deseja ${acao} este grupo?`,
+            title: `Deseja ${novoStatus ? 'ativar' : 'desativar'} este grupo?`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Sim',
@@ -336,30 +399,44 @@
 
         if (!confirm.isConfirmed) return;
 
-        Swal.fire({ title: 'Salvando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
         try {
             await axios.post(baseUrl, {
-                method: 'toggleGroupAtivo',
-                token,
+                method: 'toggleGroupAtivo', token,
                 data: { id, ativo: novoStatus }
             });
-
-            Swal.close();
             listarGrupos();
-        } catch {
-            Swal.fire('Erro', 'Erro ao alterar o status do grupo.', 'error');
-        }
+        } catch { Swal.fire('Erro', 'Erro ao alterar status.', 'error'); }
     }
-
 
     function filtrarTabela() {
         const termo = $('#filtroGrupo').val().toLowerCase();
         $('#tabela-grupos tbody tr').each(function () {
-            const nome = $(this).find('td:nth-child(4)').text().toLowerCase(); // Nome está na 4ª coluna
-            $(this).toggle(nome.includes(termo));
+            const texto = $(this).text().toLowerCase();
+            $(this).toggle(texto.includes(termo));
         });
     }
+
+    // Quicksearch Plugin Inline (para não depender de arquivo externo se faltar)
+    (function(window, document, undefined) {
+        $.fn.quicksearch = function (target, opt) {
+            var timeout, cache, rowcache, list, val,
+                options = $.extend({ delay: 100, selector: null, stripeRows: null, loader: null, bind: 'keyup', onBefore: function () { }, onAfter: function () { }, show: function () { this.style.display = ""; }, hide: function () { this.style.display = "none"; }, prepareQuery: function (val) { return val.toLowerCase().split(' '); }, testQuery: function (query, txt, _row) { for (var i = 0; i < query.length; i += 1) { if (txt.indexOf(query[i]) === -1) { return false; } } return true; } }, opt);
+            this.go = function () {
+                var i = 0, numMatchedRows = 0, noresults = true, query = options.prepareQuery(val), val_empty = (val.replace(' ', '').length === 0);
+                for (var i = 0, len = rowcache.length; i < len; i++) {
+                    if (val_empty || options.testQuery(query, cache[i], rowcache[i])) { options.show.apply(rowcache[i]); noresults = false; numMatchedRows++; } else { options.hide.apply(rowcache[i]); }
+                }
+                if (noresults) { this.results(false); } else { this.results(true); this.stripe(); }
+                this.loader(false); options.onAfter(); return this;
+            };
+            this.stripe = function () { if (typeof options.stripeRows === "object" && options.stripeRows !== null) { var joined = options.stripeRows.join(' '); var stripeRows_length = options.stripeRows.length; for (var i = 0, len = rowcache.length; i < len; i++) { var visible = rowcache[i].style.display !== 'none'; if (visible) { for (var j = 0; j < stripeRows_length; j++) { if (i % stripeRows_length === j) { $(rowcache[i]).addClass(options.stripeRows[j]); } else { $(rowcache[i]).removeClass(options.stripeRows[j]); } } } } } return this; };
+            this.loader = function (flag) { if (typeof options.loader === "string") { $(options.loader).css('display', flag ? 'block' : 'none'); } return this; };
+            this.results = function (flag) { if (typeof options.noResults === "string" && flag === false) { $(options.noResults).css('display', 'block'); } else if (typeof options.noResults === "string" && flag === true) { $(options.noResults).css('display', 'none'); } return this; };
+            this.cache = function () { rowcache = $(target); cache = []; for (var i = 0, len = rowcache.length; i < len; i++) { cache[i] = (typeof options.selector === "string") ? $(rowcache[i]).find(options.selector).text().toLowerCase() : $(rowcache[i]).text().toLowerCase(); } return this; };
+            this.init = function () { this.cache(); this.stripe(); this.loader(false); var that = this; $(this).on(options.bind, function () { val = $(this).val(); if (options.onBefore() !== false) { if (timeout) { clearTimeout(timeout); } timeout = setTimeout(function () { that.go(); }, options.delay); } }); return this; };
+            return this.init();
+        };
+    }(window, document));
 </script>
 </body>
 </html>
