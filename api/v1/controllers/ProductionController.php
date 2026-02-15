@@ -228,7 +228,7 @@ class ProductionController {
                 $codigo_produto,
                 $insumo['insumo_id'],
                 $insumo['quantity'],
-                $insumo['rendimento'] ?? 1
+                $insumo['rendimento']
             ]);
         }
 
