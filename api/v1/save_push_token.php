@@ -95,6 +95,12 @@ try {
     global $pdo;
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    // 1. Verifica se o usuário já tinha um token salvo ANTES de atualizar
+    $checkStmt = $pdo->prepare("SELECT token FROM user_push_tokens WHERE user_id = :user_id");
+    $checkStmt->execute([':user_id' => $userId]);
+    $tokenAntigo = $checkStmt->fetchColumn();
+
+    // 2. Faz o insert ou update no banco (A sua lógica que já está funcionando)
     $stmt = $pdo->prepare("
         INSERT INTO user_push_tokens (user_id, token, updated_at)
         VALUES (:user_id, :token, NOW())
@@ -107,6 +113,33 @@ try {
         ':user_id' => $userId,
         ':token'   => $token
     ]);
+
+    // 3. Verifica se é um aparelho novo para disparar a notificação
+    if ($tokenAntigo !== $token) {
+
+        $payload = [
+            "to" => $token,
+            "title" => "Dispositivo Conectado! 📱✨",
+            "body" => "Olá! Suas notificações da MRK chegarão neste aparelho a partir de agora. Se você usava outro celular, os alertas foram transferidos para cá! 🚀",
+            "sound" => "default"
+        ];
+
+        // Disparo do Push de Boas-vindas via cURL (Servidor para Servidor)
+        $ch = curl_init('https://exp.host/--/api/v2/push/send');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Accept: application/json',
+            'Accept-Encoding: gzip, deflate',
+            'Content-Type: application/json'
+        ]);
+        // Colocamos um timeout baixo (3s) para não travar a resposta do login do app caso o Expo demore
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+
+        curl_exec($ch);
+        curl_close($ch);
+    }
 
     echo json_encode([
         'success' => true,
