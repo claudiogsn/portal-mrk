@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Push Notifications</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="style/mrk.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        .form-control { margin-bottom: 10px; }
+        .token-text { font-family: monospace; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body class="theme-blue">
+<div class="container-fluid">
+    <br>
+    <div class="card">
+        <div class="header">
+            <h2>Disparador de Push Notifications</h2>
+            <small>Lista de usuários com o app instalado e autenticado.</small>
+        </div>
+        <div class="body">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="filtroUsuarios" class="form-control" placeholder="Filtrar por nome...">
+                </div>
+                <div class="col-md-8 text-right">
+                    <button class="btn btn-info" onclick="listarTokens()">
+                        <i class="fa fa-sync"></i> Atualizar Lista
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive mt-3">
+                <table class="table table-striped table-hover" id="tabelaTokens">
+                    <thead>
+                    <tr>
+                        <th width="150">Ações</th>
+                        <th>Usuário</th>
+                        <th>Token do Aparelho</th>
+                        <th>Último Login</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPush" tabindex="-1">
+    <div class="modal-dialog">
+        <form onsubmit="return false">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Enviar Notificação</h4>
+                    <small>Destinatário: <b id="pushUserName" class="text-primary"></b></small>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="pushToken">
+
+                    <label>Título da Notificação</label>
+                    <input class="form-control" id="pushTitle" placeholder="Ex: Oi eu sou Goku 🚀" required>
+
+                    <label>Mensagem (Corpo)</label>
+                    <textarea class="form-control" id="pushBody" rows="4" placeholder="Ex: Se a notificação chegou, o fluxo nativo está perfeito!" required></textarea>
+
+                    <label>Dados Extras (Opcional - Formato JSON)</label>
+                    <input class="form-control" id="pushData" value='{"teste": "dados_extras"}' placeholder='{"chave": "valor"}'>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="btnEnviarPush" onclick="enviarPush()">
+                        <i class="fa fa-paper-plane"></i> Enviar Agora
+                    </button>
+                    <button class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+
+    $(document).ready(function () {
+        listarTokens();
+
+        // Filtro rápido de tabela
+        $('#filtroUsuarios').on('input', function() {
+            const filtro = $(this).val().toLowerCase();
+            $('#tabelaTokens tbody tr').each(function () {
+                const nome = $(this).data('nome');
+                $(this).toggle(nome.includes(filtro));
+            });
+        });
+    });
+
+    // 1. Busca os dados do PHP (O método que acabamos de criar)
+    async function listarTokens() {
+        try {
+            // Mostra loading silencioso
+            const tbody = $('#tabelaTokens tbody');
+            tbody.html('<tr><td colspan="4" class="text-center">Carregando aparelhos...</td></tr>');
+
+            const res = await axios.post(baseUrl, { method: 'getActivePushTokens', token, data: {} });
+            tbody.empty();
+
+            if (res.data.success && res.data.data.length > 0) {
+                res.data.data.forEach(item => {
+                    // Formata a data (opcional)
+                    const dataAtualizacao = new Date(item.updated_at).toLocaleString('pt-BR');
+
+                    tbody.append(`
+                        <tr data-nome="${item.user_name.toLowerCase()}">
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="abrirModalPush('${item.token}', '${item.user_name}')">
+                                    <i class="fa fa-bell"></i> Enviar Push
+                                </button>
+                            </td>
+                            <td class="font-weight-bold">${item.user_name}</td>
+                            <td class="token-text">${item.token}</td>
+                            <td>${dataAtualizacao}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                tbody.html('<tr><td colspan="4" class="text-center">Nenhum aparelho ativo encontrado.</td></tr>');
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Não foi possível carregar a lista de tokens.', 'error');
+        }
+    }
+
+    // 2. Abre o modal e preenche quem vai receber
+    function abrirModalPush(tokenDestino, userName) {
+        $('#pushToken').val(tokenDestino);
+        $('#pushUserName').text(userName);
+
+        // Limpa os campos para um novo envio
+        $('#pushTitle').val('');
+        $('#pushBody').val('');
+
+        $('#modalPush').modal('show');
+    }
+
+    // 3. Dispara a requisição direto para o Expo
+    async function enviarPush() {
+        const to = $('#pushToken').val();
+        const title = $('#pushTitle').val();
+        const body = $('#pushBody').val();
+        let extraData = {};
+
+        if (!title || !body) {
+            Swal.fire('Atenção', 'Preencha o título e a mensagem.', 'warning');
+            return;
+        }
+
+        // Tenta fazer o parse do JSON extra (se o admin digitou algo errado, ignora)
+        try {
+            const dataInput = $('#pushData').val();
+            extraData = dataInput ? JSON.parse(dataInput) : {};
+        } catch (e) {
+            Swal.fire('Atenção', 'O campo de Dados Extras precisa ser um JSON válido.', 'warning');
+            return;
+        }
+
+        Swal.fire({ title: 'Disparando para o app...', didOpen: () => Swal.showLoading() });
+
+        // Monta o Payload exatamente como o seu cURL
+        const payload = {
+            to: to,
+            title: title,
+            body: body,
+            sound: "default",
+            data: extraData
+        };
+
+        try {
+            // Chamada DIRETA para o servidor do Expo
+            const response = await axios.post('https://exp.host/--/api/v2/push/send', payload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Accept-Encoding': 'gzip, deflate'
+                }
+            });
+
+            Swal.close();
+
+            // O Expo devolve 200 mesmo se o token for inválido, mas coloca erros no "data".
+            // Aqui fazemos uma validação rápida:
+            const expoResult = response.data.data;
+            if (expoResult && expoResult.status === 'error') {
+                Swal.fire('Aviso do Expo', expoResult.message, 'warning');
+            } else {
+                $('#modalPush').modal('hide');
+                Swal.fire('Sucesso!', 'A notificação foi entregue ao servidor da Apple/Google.', 'success');
+            }
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha de conexão com a API do Expo.', 'error');
+        }
+    }
+</script>
+</body>
+</html>

@@ -217,5 +217,40 @@ class MenuMobileController
     }
 
 
+    public static function getActivePushTokens(): array
+    {
+        global $pdo;
+
+        try {
+            // Faz o cruzamento (JOIN) da tabela de tokens com a de usuários
+            // Trazendo apenas quem tem um token preenchido
+            $stmt = $pdo->query("
+                SELECT 
+                    u.id AS user_id,
+                    u.name AS user_name,
+                    upt.token,
+                    upt.updated_at
+                FROM user_push_tokens upt
+                INNER JOIN system_users u ON upt.user_id = u.id
+                WHERE upt.token IS NOT NULL AND upt.token != ''
+                ORDER BY u.name ASC
+            ");
+
+            $tokens = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                "success" => true,
+                "data" => $tokens
+            ];
+
+        } catch (PDOException $e) {
+            return [
+                "success" => false,
+                "message" => "Erro ao listar tokens de push: " . $e->getMessage()
+            ];
+        }
+    }
+
+
 
 }

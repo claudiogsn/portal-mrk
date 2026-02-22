@@ -2408,6 +2408,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'getActivePushTokens':
+                $response = MenuMobileController::getActivePushTokens();
+                break;
+
 
             case 'listSystemUnits':
                 $response = SystemUnitController::listSystemUnits();
