@@ -189,19 +189,16 @@
         };
 
         try {
-            // Chamada DIRETA para o servidor do Expo
+            // Chamada DIRETA para o servidor do Expo, agora limpa para o navegador aceitar
             const response = await axios.post('https://exp.host/--/api/v2/push/send', payload, {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Accept-Encoding': 'gzip, deflate'
+                    'Content-Type': 'application/json'
                 }
             });
 
             Swal.close();
 
-            // O Expo devolve 200 mesmo se o token for inválido, mas coloca erros no "data".
-            // Aqui fazemos uma validação rápida:
+            // O axios do navegador devolve os dados direto no response.data
             const expoResult = response.data.data;
             if (expoResult && expoResult.status === 'error') {
                 Swal.fire('Aviso do Expo', expoResult.message, 'warning');
