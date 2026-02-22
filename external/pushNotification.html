@@ -124,10 +124,10 @@
 
                     tbody.append(`
                         <tr data-nome="${item.user_name.toLowerCase()}">
-                            <td>
-                                <button class="btn btn-primary btn-sm" onclick="abrirModalPush('${item.token}', '${item.user_name}')">
-                                    <i class="fa fa-bell"></i> Enviar Push
-                                </button>
+                            <td class="text-center">
+                                <a href="#" onclick="abrirModalPush('${item.token}', '${item.user_name}')" title="Enviar Push para este usuário">
+                                    <i class="fa fa-bell text-primary" style="font-size: 18px;"></i>
+                                </a>
                             </td>
                             <td class="font-weight-bold">${item.user_name}</td>
                             <td class="token-text">${item.token}</td>
