@@ -189,27 +189,33 @@
         };
 
         try {
-            // Chamada DIRETA para o servidor do Expo, agora limpa para o navegador aceitar
-            const response = await axios.post('https://exp.host/--/api/v2/push/send', payload, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+            // Agora chamamos a SUA API (mesma origem, zero CORS)
+            const response = await axios.post(baseUrl, {
+                method: 'sendPushNotification',
+                token: token,
+                data: payload
             });
 
             Swal.close();
 
-            // O axios do navegador devolve os dados direto no response.data
-            const expoResult = response.data.data;
-            if (expoResult && expoResult.status === 'error') {
-                Swal.fire('Aviso do Expo', expoResult.message, 'warning');
+            const result = response.data;
+
+            if (result.success) {
+                const expoData = result.expo_response.data;
+
+                if (expoData && expoData.status === 'error') {
+                    Swal.fire('Aviso do Expo', expoData.message, 'warning');
+                } else {
+                    $('#modalPush').modal('hide');
+                    Swal.fire('Sucesso!', 'A notificação foi entregue ao servidor da Apple/Google.', 'success');
+                }
             } else {
-                $('#modalPush').modal('hide');
-                Swal.fire('Sucesso!', 'A notificação foi entregue ao servidor da Apple/Google.', 'success');
+                Swal.fire('Erro no Servidor', result.message, 'error');
             }
 
         } catch (err) {
-            console.error(err);
-            Swal.fire('Erro', 'Falha de conexão com a API do Expo.', 'error');
+            console.error("Erro completo:", err);
+            Swal.fire('Erro', 'Falha ao se comunicar com a API da MRK.', 'error');
         }
     }
 </script>

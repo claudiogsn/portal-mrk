@@ -2412,6 +2412,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = MenuMobileController::getActivePushTokens();
                 break;
 
+            case 'sendPushNotification':
+                $response = MenuMobileController::sendPushNotification($requestData);
+                break;
+
 
             case 'listSystemUnits':
                 $response = SystemUnitController::listSystemUnits();

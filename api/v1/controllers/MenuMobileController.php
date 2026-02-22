@@ -251,6 +251,53 @@ class MenuMobileController
         }
     }
 
+    public static function sendPushNotification($data): array
+    {
+        if (empty($data['to']) || empty($data['title']) || empty($data['body'])) {
+            return ["success" => false, "message" => "Destinatário, título e mensagem são obrigatórios."];
+        }
+
+        // Monta o payload no padrão do Expo
+        $payload = [
+            "to" => $data['to'],
+            "title" => $data['title'],
+            "body" => $data['body'],
+            "sound" => "default"
+        ];
+
+        // Adiciona dados extras, se houver
+        if (!empty($data['data'])) {
+            $payload['data'] = $data['data'];
+        }
+
+        // Disparo via cURL (Servidor-para-Servidor, livre de CORS)
+        $ch = curl_init('https://exp.host/--/api/v2/push/send');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Accept: application/json',
+            'Accept-Encoding: gzip, deflate',
+            'Content-Type: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            return ["success" => false, "message" => "Erro no cURL do servidor: " . $error];
+        }
+
+        $expoResult = json_decode($response, true);
+
+        return [
+            "success" => true,
+            "message" => "Disparo realizado",
+            "expo_response" => $expoResult
+        ];
+    }
+
 
 
 }
