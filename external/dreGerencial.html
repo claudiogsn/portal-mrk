@@ -259,16 +259,19 @@
         });
 
         $('#btnExportarTabela').click(() => {
-            const rows = [];
-            $('#dreTableBody tr').each(function() {
-                const tds = $(this).find('td');
-                if(tds.length) {
-                    rows.push({ "Categoria": tds[0].innerText, "Janeiro": tds[1].innerText, "Dezembro": tds[12].innerText, "Total": tds[13].innerText });
-                }
-            });
-            const ws = XLSX.utils.json_to_sheet(rows);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "DRE");
+            // Verifica se a tabela já foi gerada (evita exportar a mensagem de "Selecione o ano")
+            if ($('#dreTableBody td').length <= 1) {
+                Swal.fire('Atenção', 'Gere o DRE antes de exportar.', 'warning');
+                return;
+            }
+
+            // Pega o elemento da tabela direto do HTML
+            const table = document.getElementById('dreTable');
+
+            // Converte a tabela inteira (incluindo o cabeçalho) para uma planilha
+            const wb = XLSX.utils.table_to_book(table, { sheet: "DRE" });
+
+            // Baixa o arquivo
             XLSX.writeFile(wb, `DRE_${$('#ano').val()}.xlsx`);
         });
     });
