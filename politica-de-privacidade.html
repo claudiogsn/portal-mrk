@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Política de Privacidade — MRK Mobile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --blue: #0B46AC;
+      --teal: #08A794;
+      --dark: #0d1117;
+      --mid: #1a2332;
+      --surface: #141c28;
+      --border: rgba(255,255,255,0.07);
+      --text: #c9d1dc;
+      --text-dim: #6b7a8d;
+      --white: #f0f4ff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--dark);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+
+    /* Background grain + gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% -10%, rgba(11,70,172,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 100%, rgba(8,167,148,0.12) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 60px 24px 48px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      padding: 8px 20px;
+      border-radius: 100px;
+      margin-bottom: 28px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fff;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.1s;
+    }
+
+    .logo-badge span { font-size: 16px; }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.15;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.2s;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, #4da6ff, var(--teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .meta {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--text-dim);
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.3s;
+    }
+
+    /* ─── LAYOUT ─── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 56px 24px 80px;
+    }
+
+    /* ─── SECTIONS ─── */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 36px;
+      margin-bottom: 20px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .section.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(11,70,172,0.4), rgba(8,167,148,0.3));
+      border: 1px solid rgba(8,167,148,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    p {
+      font-size: 15px;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    p:last-child { margin-bottom: 0; }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+    }
+
+    ul li {
+      font-size: 15px;
+      color: var(--text);
+      padding: 6px 0 6px 22px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+
+    ul li:last-child { border-bottom: none; }
+
+    ul li::before {
+      content: '›';
+      position: absolute;
+      left: 4px;
+      color: var(--teal);
+      font-weight: 700;
+    }
+
+    strong { color: var(--white); font-weight: 500; }
+
+    a {
+      color: #4da6ff;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(77,166,255,0.3);
+      transition: border-color 0.2s;
+    }
+
+    a:hover { border-color: #4da6ff; }
+
+    /* ─── HIGHLIGHT BOX ─── */
+    .highlight {
+      background: linear-gradient(135deg, rgba(11,70,172,0.15), rgba(8,167,148,0.1));
+      border: 1px solid rgba(8,167,148,0.25);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 16px 0;
+    }
+
+    .highlight p { color: #a8d4c8; margin: 0; font-size: 14px; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 32px 24px 48px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    footer strong { color: var(--text); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 600px) {
+      .section { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-badge"><span>🔒</span> MRK Mobile</div>
+  <h1>Política de <em>Privacidade</em></h1>
+  <p class="meta">Última atualização: fevereiro de 2025 &nbsp;·&nbsp; Versão 1.0</p>
+</header>
+
+<div class="wrapper">
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">📋</div>
+      <h2>Sobre esta Política</h2>
+    </div>
+    <p>Esta Política de Privacidade descreve como o aplicativo <strong>MRK Mobile</strong>, desenvolvido e operado pela <strong>MRK Soluções</strong>, coleta, utiliza e protege as informações dos usuários.</p>
+    <p>Ao utilizar o MRK Mobile, você concorda com as práticas descritas neste documento. Recomendamos a leitura completa antes de usar o aplicativo.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">📦</div>
+      <h2>Dados Coletados</h2>
+    </div>
+    <p>O MRK Mobile coleta apenas as informações necessárias para o funcionamento do serviço:</p>
+    <ul>
+      <li><strong>Credenciais de acesso</strong> — login e senha utilizados para autenticação na plataforma MRK.</li>
+      <li><strong>Token de push</strong> — identificador gerado pelo dispositivo para envio de notificações.</li>
+      <li><strong>Informações do dispositivo</strong> — marca, modelo, sistema operacional, versão do SO e versão do app.</li>
+      <li><strong>Identificador único do dispositivo</strong> — ID gerado pelo sistema operacional (Android ID ou Vendor ID no iOS), usado para identificar o aparelho.</li>
+      <li><strong>Endereço IP</strong> — capturado no momento do login e do registro do token de push.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">🎯</div>
+      <h2>Finalidade dos Dados</h2>
+    </div>
+    <p>As informações coletadas são utilizadas exclusivamente para:</p>
+    <ul>
+      <li>Autenticar o usuário na plataforma MRK de forma segura.</li>
+      <li>Enviar notificações push relevantes sobre atividades na plataforma.</li>
+      <li>Identificar o dispositivo para gerenciar corretamente o recebimento de notificações.</li>
+      <li>Melhorar a compatibilidade e a experiência do aplicativo em diferentes dispositivos.</li>
+    </ul>
+    <div class="highlight">
+      <p>🔐 Nenhum dado é vendido, compartilhado ou utilizado para fins publicitários. As informações são usadas exclusivamente para operação interna do serviço MRK.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">📷</div>
+      <h2>Uso da Câmera</h2>
+    </div>
+    <p>O MRK Mobile solicita permissão de acesso à câmera do dispositivo <strong>exclusivamente para leitura de QR Codes</strong> dentro da plataforma.</p>
+    <p>O aplicativo <strong>não captura, armazena ou transmite imagens ou vídeos</strong> do usuário ou de seu ambiente. A câmera é ativada apenas quando o usuário aciona explicitamente o recurso de leitura de QR Code.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">🔔</div>
+      <h2>Notificações Push</h2>
+    </div>
+    <p>O MRK Mobile pode solicitar permissão para enviar notificações push ao dispositivo. Essas notificações são utilizadas para informar o usuário sobre eventos e atualizações relevantes da plataforma MRK.</p>
+    <p>O usuário pode revogar esta permissão a qualquer momento nas configurações do sistema operacional do dispositivo.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">💾</div>
+      <h2>Armazenamento de Credenciais</h2>
+    </div>
+    <p>As credenciais de acesso (token de autenticação, login e ID do usuário) são armazenadas localmente no dispositivo utilizando o <strong>Secure Store</strong>, um mecanismo de armazenamento criptografado fornecido pelo sistema operacional.</p>
+    <p>Esses dados permanecem no dispositivo do usuário e são utilizados para manter a sessão ativa entre os usos do aplicativo, evitando a necessidade de login repetido.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">🌐</div>
+      <h2>Comunicação com Servidores</h2>
+    </div>
+    <p>O MRK Mobile se comunica com os servidores da MRK Soluções hospedados em <strong>portal.mrksolucoes.com.br</strong> para autenticação do usuário, carregamento do conteúdo da plataforma e registro dos tokens de push.</p>
+    <p>Toda a comunicação é realizada via <strong>HTTPS</strong>, garantindo a criptografia dos dados em trânsito.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">👤</div>
+      <h2>Direitos do Usuário</h2>
+    </div>
+    <p>O usuário tem direito a:</p>
+    <ul>
+      <li>Solicitar acesso às informações armazenadas sobre si.</li>
+      <li>Solicitar a correção de dados incorretos.</li>
+      <li>Solicitar a exclusão de seus dados da plataforma.</li>
+      <li>Revogar permissões concedidas ao aplicativo (câmera, notificações) a qualquer momento.</li>
+    </ul>
+    <p>Para exercer esses direitos, entre em contato conosco pelo e-mail abaixo.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">✉️</div>
+      <h2>Contato</h2>
+    </div>
+    <p>Dúvidas, solicitações ou reclamações relacionadas a esta Política de Privacidade podem ser enviadas para:</p>
+    <p><strong>MRK Soluções</strong><br/>
+    E-mail: <a href="mailto:ti@merakiconsult.com.br">ti@merakiconsult.com.br</a><br/>
+    Site: <a href="https://portal.mrksolucoes.com.br" target="_blank">portal.mrksolucoes.com.br</a></p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="icon">🔄</div>
+      <h2>Alterações nesta Política</h2>
+    </div>
+    <p>Esta Política de Privacidade pode ser atualizada periodicamente. Alterações significativas serão comunicadas aos usuários por meio de notificação no aplicativo ou por e-mail.</p>
+    <p>O uso continuado do MRK Mobile após alterações nesta política implica na aceitação dos novos termos.</p>
+  </div>
+
+</div>
+
+<footer>
+  <p>© <span id="year"></span> <strong>MRK Soluções</strong> — Todos os direitos reservados.</p>
+  <p style="margin-top:6px;">Esta política está em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD)</strong> — Lei nº 13.709/2018.</p>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Scroll reveal
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 60);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
