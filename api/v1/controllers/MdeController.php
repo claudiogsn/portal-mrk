@@ -1574,9 +1574,16 @@ class MdeController
         if (!$value) {
             return null;
         }
-
         $str = trim((string)$value);
-        return $str === '' ? null : $str;
+        if ($str === '') {
+            return null;
+        }
+        try {
+            $date = new \DateTime($str);
+            return $date->format('Y-m-d H:i:s');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
 
