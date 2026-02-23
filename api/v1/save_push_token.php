@@ -128,7 +128,7 @@ try {
 
     // 3. Verifica se é um aparelho novo para disparar a notificação
     // 3. Verifica se é um aparelho novo para disparar a notificação
-    if ($tokenAntigo !== $token) {
+    if (true) {
 
         // --- BUSCA O NOME DO USUÁRIO ---
         $stmtUser = $pdo->prepare("SELECT name FROM system_users WHERE id = :user_id");
