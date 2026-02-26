@@ -137,8 +137,6 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => 'Erro ao salvar: ' . $e->getMessage()];
         }
     }
-
-
     public static function createContaCredito($data): array
     {
         global $pdo;

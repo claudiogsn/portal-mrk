@@ -269,8 +269,7 @@
             const table = document.getElementById('dreTable');
 
             // Converte a tabela inteira (incluindo o cabeçalho) para uma planilha
-            const wb = XLSX.utils.table_to_book(table, { sheet: "DRE" });
-
+            const wb = XLSX.utils.table_to_book(table, { sheet: "DRE", raw: true });
             // Baixa o arquivo
             XLSX.writeFile(wb, `DRE_${$('#ano').val()}.xlsx`);
         });
