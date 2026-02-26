@@ -500,6 +500,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'baixarConta':
                 $response = FinanceiroContaController::baixarConta($requestData);
                 break;
+            case 'baixarContasEmLote':
+                $response = FinanceiroContaController::baixarContasEmLote($requestData);
+                break;
 
             case 'lancarNotaNoFinanceiroConta':
                 $response = FinanceiroContaController::lancarNotaNoFinanceiroConta($requestData);

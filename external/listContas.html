@@ -20,6 +20,39 @@
     <link href="style/mrk.css" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* Estilos para a Multi-seleção */
+        .linha-conta:hover {
+            background-color: rgba(11, 70, 172, 0.05) !important;
+        }
+        .linha-selecionada {
+            background-color: rgba(11, 70, 172, 0.15) !important;
+        }
+
+        /* Estilos para os Cards de Quitação em Lote */
+        .card-quitacao {
+            border: 1px solid #ddd;
+            border-left: 4px solid var(--mrk-blue);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .card-quitacao h5 {
+            margin-top: 0;
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Aumentar um pouco a área de clique do checkbox para facilitar */
+        .check-conta {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+    </style>
 </head>
 
 <body class="theme-blue">
@@ -39,22 +72,22 @@
         <div class="body">
 
             <div class="row clearfix">
-                <div class="col-md-2">
+                <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12" style="margin-bottom: 15px;">
                     <label class="muted">Data Inicial</label>
                     <input type="date" id="filtroDataInicial" class="form-control">
                 </div>
-                <div class="col-md-2">
+                <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12" style="margin-bottom: 15px;">
                     <label class="muted">Data Final</label>
                     <input type="date" id="filtroDataFinal" class="form-control">
                 </div>
-                <div class="col-md-2">
+                <div class="col-lg-2 col-md-3 col-sm-6 col-xs-12" style="margin-bottom: 15px;">
                     <label class="muted">Tipo de Data</label>
                     <select id="filtroTipoData" class="form-control">
                         <option value="emissao">Emissão</option>
                         <option value="vencimento" selected>Vencimento</option>
                     </select>
                 </div>
-                <div class="col-md-1">
+                <div class="col-lg-1 col-md-3 col-sm-6 col-xs-12" style="margin-bottom: 15px;">
                     <label class="muted">Tipo</label>
                     <select id="filtroTipo" class="form-control">
                         <option value="">Todas</option>
@@ -62,7 +95,7 @@
                         <option value="d">Débito</option>
                     </select>
                 </div>
-                <div class="col-md-1">
+                <div class="col-lg-1 col-md-4 col-sm-6 col-xs-12" style="margin-bottom: 15px;">
                     <label class="muted">Rateio</label>
                     <select id="filtroRateio" class="form-control">
                         <option value="">Todos</option>
@@ -70,7 +103,7 @@
                         <option value="0">Não</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-lg-1 col-md-4 col-sm-6 col-xs-12" style="margin-bottom: 15px;">
                     <label class="muted">Status</label>
                     <select id="filtroStatus" class="form-control">
                         <option value="">Todos</option>
@@ -78,14 +111,20 @@
                         <option value="pago">Quitado</option>
                     </select>
                 </div>
-                <div class="col-md-2 text-right">
-                    <label>&nbsp;</label><br>
-                    <button class="btn btn-primary" id="btnBuscar" style="margin-right: 5px;">
-                        <iconify-icon icon="icon-park-outline:search" width="16" style="vertical-align: middle; margin-right: 4px;"></iconify-icon> Buscar
-                    </button>
-                    <button class="btn btn-success" id="btnNovaConta">
-                        <iconify-icon icon="icon-park-outline:add" width="16" style="vertical-align: middle; margin-right: 4px;"></iconify-icon> Nova
-                    </button>
+
+                <div class="col-lg-3 col-md-4 col-sm-12 col-xs-12" style="margin-bottom: 15px;">
+                    <label class="hidden-sm hidden-xs">&nbsp;</label><br class="hidden-sm hidden-xs">
+                    <div style="display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="btnBuscar" title="Buscar">
+                            <iconify-icon icon="icon-park-outline:search" width="16" style="vertical-align: middle;"></iconify-icon>
+                        </button>
+                        <button class="btn btn-warning" id="btnQuitarEmLote" title="Quitar Selecionadas">
+                            <iconify-icon icon="icon-park-outline:check-one" width="16" style="vertical-align: middle;"></iconify-icon> Quitar
+                        </button>
+                        <button class="btn btn-success" id="btnNovaConta" title="Nova Conta">
+                            <iconify-icon icon="icon-park-outline:add" width="16" style="vertical-align: middle;"></iconify-icon> Nova
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -125,6 +164,10 @@
                 <table class="table table-striped table-hover" id="tabelaContas">
                     <thead>
                     <tr>
+                        <th style="width:30px; text-align:center;">
+                            <input type="checkbox" id="checkAllContas" title="Selecionar Toda a Lista">
+                            <label for="checkAllContas" style="margin-bottom: 0; cursor: pointer;" title="Selecionar Toda a Lista"></label>
+                        </th>
                         <th style="width:30px;"></th>
                         <th style="width:30px;"></th>
                         <th style="width:40px; text-align:center;">Tipo</th>
@@ -144,6 +187,27 @@
                 </table>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalQuitarLote" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Quitação de Contas em Lote</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="muted mb-3">Preencha os dados de quitação para as contas selecionadas.</p>
+                <div id="containerCardsQuitar" style="max-height: 55vh; overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarQuitarLote">
+                    <iconify-icon icon="icon-park-outline:check" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> Confirmar Quitação
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -262,11 +326,15 @@
         $('#filtroRateio').val('');
     }
 
+    // === Variáveis Globais ===
     let contas = [];
+    let contasFiltradasVisiveis = [];
+    let listaFormasPagamento = [];
 
     $(document).ready(function () {
         setDefaultMonth();
         checarIntegracaoF360();
+        carregarFormasPagamento();
 
         $('#btnBuscar').click(buscar);
         $('#filtroStatus, #filtroRateio').on('change input', aplicarFiltrosLocais);
@@ -274,6 +342,20 @@
 
         buscar();
     });
+
+    // === Funções Base ===
+    async function carregarFormasPagamento(){
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'listFormasPagamento',
+                token,
+                data: { system_unit_id: Number(unit_id), apenasAtivos: true }
+            });
+            listaFormasPagamento = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        } catch(e) {
+            console.error("Erro ao carregar formas de pagamento", e);
+        }
+    }
 
     async function buscar(){
         if (!token || !unit_id){
@@ -334,8 +416,12 @@
             });
         }
 
+        contasFiltradasVisiveis = lista;
+
         renderTabela(lista);
         renderTotais(lista);
+
+        $('#checkAllContas').prop('checked', false);
     }
 
     function renderTotais(lista){
@@ -360,7 +446,7 @@
         tbody.empty();
 
         if (!lista || !lista.length){
-            tbody.append('<tr><td colspan="13" class="text-center muted">Nenhum registro encontrado.</td></tr>');
+            tbody.append('<tr><td colspan="14" class="text-center muted">Nenhum registro encontrado.</td></tr>');
             return;
         }
 
@@ -387,13 +473,17 @@
             let bancoTexto = n.banco_codigo && n.banco_nome ? `${n.banco_codigo} - ${n.banco_nome}` : (n.banco_nome || n.banco_codigo || '');
 
             tbody.append(`
-              <tr>
-                <td>
+              <tr class="linha-conta" title="Use Ctrl+Clique para selecionar (ou clique na caixa)" style="cursor: pointer;">
+               <td class="text-center" style="vertical-align: middle;">
+                    <input type="checkbox" id="check_${n.id}" name="check_${n.id}" class="check-conta" value="${n.id}">
+                    <label for="check_${n.id}" style="margin-bottom: 0; cursor: pointer;"></label>
+                </td>
+                <td style="vertical-align: middle;">
                   <a href="#" class="btn-edit-conta" title="Editar" data-id="${n.id}" style="color:var(--mrk-blue);">
                     <iconify-icon icon="icon-park-outline:edit" width="18"></iconify-icon>
                   </a>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                   <a href="#" class="btn-delete-conta" title="Excluir"
                      data-id="${n.id}" data-nome="${(n.nome ?? '').replace(/"/g,'&quot;')}"
                      data-doc="${n.doc ?? ''}" data-emissao="${emissao}" data-vencimento="${vencimento}" data-valor="${n.valor ?? 0}"
@@ -401,17 +491,17 @@
                     <iconify-icon icon="icon-park-outline:delete" width="18"></iconify-icon>
                   </a>
                 </td>
-                <td class="text-center">${tipoIcon}</td>
-                <td>${n.nome ?? ''}</td>
-                <td>${n.doc ?? ''}</td>
-                <td>${emissao}</td>
-                <td>${vencimento}</td>
-                <td title="${n.obs ?? ''}">${n.obs ? String(n.obs).slice(0, 50) + '...' : ''}</td>
-                <td>${bancoTexto}</td>
-                <td class="text-center">${rateioBadge}</td>
-                <td>${statusBadge}</td>
-                <td>${pagamento}</td>
-                <td class="text-right"><strong>${toBRL(n.valor)}</strong></td>
+                <td class="text-center" style="vertical-align: middle;">${tipoIcon}</td>
+                <td style="vertical-align: middle;">${n.nome ?? ''}</td>
+                <td style="vertical-align: middle;">${n.doc ?? ''}</td>
+                <td style="vertical-align: middle;">${emissao}</td>
+                <td style="vertical-align: middle;">${vencimento}</td>
+                <td title="${n.obs ?? ''}" style="vertical-align: middle;">${n.obs ? String(n.obs).slice(0, 50) + '...' : ''}</td>
+                <td style="vertical-align: middle;">${bancoTexto}</td>
+                <td class="text-center" style="vertical-align: middle;">${rateioBadge}</td>
+                <td style="vertical-align: middle;">${statusBadge}</td>
+                <td style="vertical-align: middle;">${pagamento}</td>
+                <td class="text-right" style="vertical-align: middle;"><strong>${toBRL(n.valor)}</strong></td>
               </tr>
             `);
         }
@@ -427,9 +517,180 @@
         return '';
     }
 
-    // --- Export F360 ---
+    // ==========================================
+    // MULTI-SELEÇÃO E TOTAIS COM FEEDBACK VISUAL
+    // ==========================================
+    function atualizarTotaisPorSelecao() {
+        const idsSelecionados = $('.check-conta:checked').map(function() {
+            return String($(this).val());
+        }).get();
+
+        if (idsSelecionados.length === 0) {
+            renderTotais(contasFiltradasVisiveis);
+            return;
+        }
+
+        const listaSelecionada = contasFiltradasVisiveis.filter(n => idsSelecionados.includes(String(n.id)));
+        renderTotais(listaSelecionada);
+    }
+
+    $(document).on('change', '#checkAllContas', function() {
+        const isChecked = $(this).is(':checked');
+        $('.check-conta').prop('checked', isChecked);
+
+        if (isChecked) {
+            $('.linha-conta').addClass('linha-selecionada');
+        } else {
+            $('.linha-conta').removeClass('linha-selecionada');
+        }
+
+        atualizarTotaisPorSelecao();
+    });
+
+    // Se a pessoa clica direto na caixa de seleção, mudamos a cor da linha
+    $(document).on('change', '.check-conta', function() {
+        const $tr = $(this).closest('tr');
+
+        if ($(this).is(':checked')) {
+            $tr.addClass('linha-selecionada');
+        } else {
+            $tr.removeClass('linha-selecionada');
+        }
+
+        const total = $('.check-conta').length;
+        const marcados = $('.check-conta:checked').length;
+        $('#checkAllContas').prop('checked', total > 0 && total === marcados);
+
+        atualizarTotaisPorSelecao();
+    });
+
+    // Se a pessoa clica na LINHA COM CTRL (impedimos conflito se ela clicou direto na caixinha)
+    $(document).on('click', '.linha-conta', function(e) {
+        // Se a pessoa clicou exatamente num link, botão ou na própria checkbox, não fazemos nada,
+        // deixamos o evento natural da checkbox ou botão rodar
+        if ($(e.target).closest('a, button, input[type="checkbox"]').length) return;
+
+        // Se clicou segurando Ctrl ou Cmd (Mac)
+        if (e.ctrlKey || e.metaKey) {
+            const $chk = $(this).find('.check-conta');
+            $chk.prop('checked', !$chk.prop('checked')).trigger('change');
+
+            if (window.getSelection) {
+                window.getSelection().removeAllRanges();
+            }
+        }
+    });
+
+    // ==========================================
+    // QUITAÇÃO EM LOTE
+    // ==========================================
+    $(document).on('click', '#btnQuitarEmLote', function() {
+        const selecionadas = $('.check-conta:checked');
+
+        if (selecionadas.length === 0) {
+            return Swal.fire('Atenção', 'Selecione ao menos uma conta para quitar.', 'warning');
+        }
+
+        if (selecionadas.length > 10) {
+            return Swal.fire('Atenção', `Você selecionou ${selecionadas.length} contas. O limite máximo para quitação em lote é de 10 contas por vez.`, 'warning');
+        }
+
+        const container = $('#containerCardsQuitar');
+        container.empty();
+
+        const hoje = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 10);
+
+        let optionsFormas = '<option value="">Selecione...</option>';
+        listaFormasPagamento.forEach(f => {
+            const idValue = f.id || f.codigo;
+            optionsFormas += `<option value="${idValue}">${f.codigo} - ${f.nome}</option>`;
+        });
+
+        selecionadas.each(function() {
+            const id = $(this).val();
+            const conta = contasFiltradasVisiveis.find(c => String(c.id) === String(id));
+
+            if (conta) {
+                const cardHtml = `
+                    <div class="card-quitacao" data-id="${conta.id}">
+                        <h5><iconify-icon icon="icon-park-outline:bill"></iconify-icon> ${conta.nome || '-'} (Doc: ${conta.doc || '-'}) - <strong>${toBRL(conta.valor)}</strong></h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label>Data de Baixa</label>
+                                <input type="date" class="form-control input-baixa-dt" value="${hoje}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label>Forma de Pagamento</label>
+                                <select class="form-control input-forma-pgto" required>
+                                    ${optionsFormas}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.append(cardHtml);
+            }
+        });
+
+        $('#modalQuitarLote').modal({ backdrop: 'static', keyboard: false }).modal('show');
+    });
+
+    $(document).on('click', '#btnConfirmarQuitarLote', async function() {
+        const cards = $('.card-quitacao');
+        const payloadData = [];
+        let formValido = true;
+
+        cards.each(function() {
+            const id = $(this).data('id');
+            const baixa_dt = $(this).find('.input-baixa-dt').val();
+            const forma_pagamento = $(this).find('.input-forma-pgto').val();
+
+            if (!baixa_dt || !forma_pagamento) {
+                formValido = false;
+            }
+
+            payloadData.push({
+                id: Number(id),
+                usuario_id: username ? Number(username) : 0,
+                baixa_dt: baixa_dt,
+                forma_pagamento: Number(forma_pagamento)
+            });
+        });
+
+        if (!formValido) {
+            return Swal.fire('Atenção', 'Preencha Data e Forma de Pagamento em todos os cards.', 'warning');
+        }
+
+        try {
+            Swal.fire({ title: 'Processando quitação...', didOpen: () => Swal.showLoading() });
+
+            const payload = {
+                method: 'baixarContasEmLote',
+                token: token,
+                data: payloadData
+            };
+
+            const res = await axios.post(baseUrl, payload);
+            Swal.close();
+
+            if (res.data && res.data.success !== false) {
+                Swal.fire('Sucesso', 'Contas quitadas com sucesso!', 'success');
+                $('#modalQuitarLote').modal('hide');
+
+                $('#checkAllContas').prop('checked', false);
+                buscar();
+            } else {
+                Swal.fire('Erro', res.data?.message || 'Ocorreu um erro ao baixar as contas.', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha na comunicação com o servidor durante a quitação em lote.', 'error');
+        }
+    });
+
+    // === Export F360 ===
     let expRows = [];
-    const F360_EMPRESA_CNPJ = '26.144.579/0001-50'; // Ajuste conforme necessário
+    const F360_EMPRESA_CNPJ = '26.144.579/0001-50';
 
     $(document).on('click', '#btnOpenExportF360', function () {
         $('#modalExportF360').modal('show');
@@ -503,7 +764,7 @@
         } catch (e) { console.error(e); }
     }
 
-    // --- Modais ---
+    // === Modais Edição, Deleção e Inserção ===
     $(document).on('click', '#btnNovaConta', function () {
         var url = baseUrlRedirect + '/external/createFinanceiroConta.html?user_id=' + encodeURIComponent(username) + '&token=' + encodeURIComponent(token) + '&system_unit_id=' + encodeURIComponent(unit_id);
         $('#iframeNovaConta').attr('src', url);

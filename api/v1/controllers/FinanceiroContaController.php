@@ -181,12 +181,12 @@ class FinanceiroContaController {
             ];
         }
     }
-
     public static function createContaLote($data)
     {
         global $pdo;
 
         $gotLock = false;
+        $isTransactionCreator = false; // Flag para controlar transações aninhadas
 
         try {
             // ===== Validações mínimas =====
@@ -201,18 +201,16 @@ class FinanceiroContaController {
                 throw new Exception('contas deve ser um array válido.');
             }
 
-            // ===== Lógica de Rateio (ADICIONADO) =====
+            // ===== Lógica de Rateio =====
             $rateio = isset($data['rateio']) ? (int)$data['rateio'] : 0;
             $rateio_id = null;
 
             if ($rateio === 1) {
-                // Gera um UUID único para o lote
                 // Se tiver UtilsController use: $rateio_id = UtilsController::uuidv4();
-                // Caso contrário, verifique se tem a função uuidv4 disponível no escopo
                 $rateio_id = UtilsController::uuidv4();
             }
 
-            // ===== Função utilitária de fornecedor (pega cgc e razao social) =====
+            // ===== Função utilitária de fornecedor =====
             $fornCache = [];
             $getFornecedor = function ($id) use (&$fornCache, $pdo, $system_unit_id) {
                 if (!isset($fornCache[$id])) {
@@ -234,8 +232,12 @@ class FinanceiroContaController {
                 return $fornCache[$id];
             };
 
-            // ===== Transação e lock para geração de código sequencial =====
-            $pdo->beginTransaction();
+            // ===== Controle Inteligente de Transação =====
+            // Só inicia a transação se nenhuma outra estiver ativa
+            if (!$pdo->inTransaction()) {
+                $pdo->beginTransaction();
+                $isTransactionCreator = true;
+            }
 
             $lockName = 'financeiro_conta_codigo_local_lock';
             $stLock = $pdo->prepare("SELECT GET_LOCK(:name, 5)");
@@ -246,7 +248,7 @@ class FinanceiroContaController {
             $minCodigo = $stMin->fetchColumn();
             $nextCodigo = ($minCodigo !== null) ? ($minCodigo - 1) : 0;
 
-            // ===== INSERT (Com colunas de Rateio) =====
+            // ===== INSERT =====
             $stmtIns = $pdo->prepare("
             INSERT INTO financeiro_conta
             (
@@ -272,25 +274,13 @@ class FinanceiroContaController {
                     }
                 }
 
-                // Dados do fornecedor
                 $forn = $getFornecedor($c['fornecedor_id']);
-
-                // Lógica do Nome: Se vier nome no item (rateio), usa ele. Se não, usa a Razão do fornecedor.
                 $nome = !empty($c['nome']) ? $c['nome'] : $forn['razao'];
-
-                // Normalização dos valores
-                $valor          = $c['valor'];
-                $plano_contas   = isset($c['plano_contas']) ? $c['plano_contas'] : null;
-
-                // Tratamento de Obs (obs ou obs_extra)
+                $valor = $c['valor'];
+                $plano_contas = isset($c['plano_contas']) ? $c['plano_contas'] : null;
                 $obs = isset($c['obs']) ? $c['obs'] : (isset($c['obs_extra']) ? $c['obs_extra'] : '');
-
                 $banco = array_key_exists('banco', $c) ? $c['banco'] : null;
-
-                $forma_pagamento = array_key_exists('forma_pagamento', $c) ? $c['forma_pagamento']
-                    : (array_key_exists('forma_pagamento_id', $c) ? $c['forma_pagamento_id'] : null);
-
-                // Tratamento de Adicional (acrescimo ou adicional)
+                $forma_pagamento = array_key_exists('forma_pagamento', $c) ? $c['forma_pagamento'] : (array_key_exists('forma_pagamento_id', $c) ? $c['forma_pagamento_id'] : null);
                 $adic = isset($c['acrescimo']) ? $c['acrescimo'] : (isset($c['adicional']) ? $c['adicional'] : 0);
 
                 if (!is_numeric($valor)) throw new Exception("Conta #".($idx+1).": valor inválido.");
@@ -302,7 +292,7 @@ class FinanceiroContaController {
                     ':nome'            => $nome,
                     ':entidade'        => $c['fornecedor_id'],
                     ':cgc'             => $forn['cgc'],
-                    ':tipo'            => isset($c['tipo']) ? $c['tipo'] : 'd',
+                    ':tipo'            => isset($c['tipo']) ? $c['tipo'] : 'd', // Lote permite forçar tipo (nós forçamos 'c' no createContaCredito)
                     ':doc'             => $c['documento'],
                     ':emissao'         => $c['emissao'],
                     ':vencimento'      => $c['vencimento'],
@@ -312,8 +302,8 @@ class FinanceiroContaController {
                     ':forma_pagamento' => $forma_pagamento,
                     ':obs'             => $obs,
                     ':adic'            => $adic,
-                    ':rateio'          => $rateio,     // << Novo campo
-                    ':rateio_id'       => $rateio_id   // << Novo campo
+                    ':rateio'          => $rateio,
+                    ':rateio_id'       => $rateio_id
                 ]);
 
                 $id = $pdo->lastInsertId();
@@ -330,7 +320,10 @@ class FinanceiroContaController {
                 $nextCodigo -= 1;
             }
 
-            $pdo->commit();
+            // Só comita se foi ESTE método que abriu a transação
+            if ($isTransactionCreator) {
+                $pdo->commit();
+            }
 
             return [
                 'success'   => true,
@@ -341,7 +334,10 @@ class FinanceiroContaController {
             ];
 
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
+            // Só dá rollback se foi ESTE método que abriu a transação
+            if ($isTransactionCreator && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             return ['success' => false, 'error' => $e->getMessage()];
         } finally {
             if (!empty($gotLock)) {
@@ -349,8 +345,6 @@ class FinanceiroContaController {
             }
         }
     }
-
-
     public static function getContaById($id) {
         global $pdo;
 
@@ -389,7 +383,6 @@ class FinanceiroContaController {
 
         return $conta;
     }
-
     public static function deleteConta(int $id, ?int $usuario_id, ?string $motivo): array
     {
         global $pdo;
@@ -455,7 +448,6 @@ class FinanceiroContaController {
             return ['success' => false, 'message' => 'Erro ao excluir conta: ' . $e->getMessage()];
         }
     }
-
     public static function editConta(array $data): array
     {
         global $pdo;
@@ -553,7 +545,6 @@ class FinanceiroContaController {
             return ['success' => false, 'message' => 'Erro ao atualizar conta: ' . $e->getMessage()];
         }
     }
-
     public static function listContas($system_unit_id, $data_inicial, $data_final, $tipoData = 'emissao', $tipo = null) {
         global $pdo;
 
@@ -593,7 +584,6 @@ class FinanceiroContaController {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public static function getDreGerencial($system_unit_id, $data_inicial, $data_final) {
         global $pdo;
 
@@ -701,7 +691,6 @@ class FinanceiroContaController {
             ];
         }
     }
-
     public static function getContaByMonth($system_unit_id, $month, $year, $plano_contas) {
         global $pdo;
 
@@ -794,7 +783,6 @@ class FinanceiroContaController {
             ];
         }
     }
-
     public static function lancarNotaNoFinanceiroContaLote(array $data): array
     {
         global $pdo;
@@ -1012,7 +1000,6 @@ class FinanceiroContaController {
             }
         }
     }
-
     public static function lancarNotaNoFinanceiroConta(array $data): array
     {
         global $pdo;
@@ -1171,7 +1158,6 @@ class FinanceiroContaController {
             }
         }
     }
-
     public static function exportContasF360(array $data): array
     {
         global $pdo;
@@ -1279,7 +1265,6 @@ class FinanceiroContaController {
             return ['success'=>false, 'error'=>$e->getMessage()];
         }
     }
-
     public static function marcarExportadoF360(array $data): array
     {
         global $pdo;
@@ -1337,7 +1322,6 @@ class FinanceiroContaController {
             return ['success'=>false, 'error'=>$e->getMessage()];
         }
     }
-
     public static function hasF360Integration($system_unit_id): array
     {
         global $pdo;
@@ -1365,7 +1349,6 @@ class FinanceiroContaController {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-
     public static function baixarConta(array $data): array
     {
         global $pdo;
@@ -1375,16 +1358,27 @@ class FinanceiroContaController {
                 throw new Exception('Campo obrigatório ausente: id da conta.');
             }
 
+            if (
+                !isset($data['forma_pagamento']) &&
+                !isset($data['forma_pagamento_id'])
+            ) {
+                throw new Exception('Campo obrigatório ausente: forma_pagamento.');
+            }
+
             $id         = (int)$data['id'];
             $usuario_id = $data['usuario_id'] ?? null;
 
-            // Compat: se vier forma_pagamento_id, usa como forma_pagamento
-            if (!isset($data['forma_pagamento']) && isset($data['forma_pagamento_id'])) {
-                $data['forma_pagamento'] = $data['forma_pagamento_id'];
-            }
+            // Compat
+            $formaPagamentoId = (int)($data['forma_pagamento']
+                ?? $data['forma_pagamento_id']);
 
-            // 1) Busca conta atual (para validar e para auditoria)
-            $stConta = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+            // 1) Busca conta
+            $stConta = $pdo->prepare("
+            SELECT * 
+            FROM financeiro_conta 
+            WHERE id = :id 
+            LIMIT 1
+        ");
             $stConta->execute([':id' => $id]);
             $contaAtual = $stConta->fetch(PDO::FETCH_ASSOC);
 
@@ -1392,35 +1386,47 @@ class FinanceiroContaController {
                 throw new Exception('Conta não encontrada para o ID informado.');
             }
 
-            $system_unit_id = (int)$contaAtual['system_unit_id'];
-
-            // Se já estiver baixada, você pode travar aqui se quiser:
             if (!empty($contaAtual['baixa_dt']) && $contaAtual['baixa_dt'] !== '0000-00-00') {
-                // Se quiser permitir rebaixa, só comenta esse trecho.
                 throw new Exception('Conta já está baixada (quitada).');
             }
 
-            // 2) Monta campos que serão atualizados
+            $system_unit_id = (int)$contaAtual['system_unit_id'];
+
+            // 2) Busca forma de pagamento (e banco vinculado)
+            $stFP = $pdo->prepare("
+            SELECT id, banco_padrao_id
+            FROM financeiro_forma_pagamento
+            WHERE id = :id
+              AND system_unit_id = :unit
+              AND ativos = 1
+            LIMIT 1
+        ");
+            $stFP->execute([
+                ':id'   => $formaPagamentoId,
+                ':unit' => $system_unit_id
+            ]);
+
+            $formaPagamento = $stFP->fetch(PDO::FETCH_ASSOC);
+
+            if (!$formaPagamento) {
+                throw new Exception('Forma de pagamento inválida ou inativa.');
+            }
+
+            $bancoPadraoId = $formaPagamento['banco_padrao_id'] ?? null;
+
+            // 3) Campos de atualização
             $baixa_dt = !empty($data['baixa_dt'])
                 ? $data['baixa_dt']
                 : date('Y-m-d');
 
             $camposUpdate = [
-                'baixa_dt' => $baixa_dt,
+                'baixa_dt'        => $baixa_dt,
+                'forma_pagamento'=> $formaPagamentoId
             ];
 
-            // Se quiser atualizar o banco na baixa
-            if (array_key_exists('banco', $data)) {
-                $camposUpdate['banco'] = $data['banco'];
-            }
-
-            // Se quiser atualizar a forma de pagamento na baixa
-            if (array_key_exists('forma_pagamento', $data)) {
-                $camposUpdate['forma_pagamento'] = $data['forma_pagamento'];
-            }
-
-            if (empty($camposUpdate)) {
-                throw new Exception('Nenhum campo informado para baixa.');
+            // Banco vem AUTOMATICAMENTE da forma de pagamento
+            if (!empty($bancoPadraoId)) {
+                $camposUpdate['banco'] = $bancoPadraoId;
             }
 
             $setParts    = [];
@@ -1428,14 +1434,17 @@ class FinanceiroContaController {
             $dadosDepois = $contaAtual;
 
             foreach ($camposUpdate as $campo => $valor) {
-                $setParts[]         = "{$campo} = :{$campo}";
-                $params[":{$campo}"] = $valor;
-                $dadosDepois[$campo] = $valor;
+                $setParts[]           = "{$campo} = :{$campo}";
+                $params[":{$campo}"]  = $valor;
+                $dadosDepois[$campo]  = $valor;
             }
 
-            $sql = "UPDATE financeiro_conta 
-                SET " . implode(', ', $setParts) . ", updated_at = CURRENT_TIMESTAMP
-                WHERE id = :id";
+            $sql = "
+            UPDATE financeiro_conta
+            SET " . implode(', ', $setParts) . ",
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+        ";
 
             $stmtUpd = $pdo->prepare($sql);
             $stmtUpd->execute($params);
@@ -1443,24 +1452,29 @@ class FinanceiroContaController {
             if ($stmtUpd->rowCount() === 0) {
                 return [
                     'success' => false,
-                    'message' => 'Nenhuma alteração realizada (dados já estavam iguais).'
+                    'message' => 'Nenhuma alteração realizada.'
                 ];
             }
 
-            // 3) Busca registro atualizado
-            $stReload = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
+            // 4) Reload
+            $stReload = $pdo->prepare("
+            SELECT * 
+            FROM financeiro_conta 
+            WHERE id = :id 
+            LIMIT 1
+        ");
             $stReload->execute([':id' => $id]);
             $contaAtualizada = $stReload->fetch(PDO::FETCH_ASSOC);
 
-            // 4) Auditoria da BAIXA
+            // 5) Auditoria
             self::logAuditoria(
-                'BAIXA',                 // ação
-                'financeiro_conta',      // tabela
-                $id,                     // registro_id
-                $contaAtual,             // dados_antes
-                $dadosDepois,            // dados_depois
-                $system_unit_id,         // system_unit_id
-                $usuario_id              // usuario_id
+                'BAIXA',
+                'financeiro_conta',
+                $id,
+                $contaAtual,
+                $dadosDepois,
+                $system_unit_id,
+                $usuario_id
             );
 
             return [
@@ -1476,7 +1490,71 @@ class FinanceiroContaController {
             ];
         }
     }
+    public static function baixarContasEmLote(array $payload): array
+    {
+        global $pdo;
 
+        try {
+            // Verifica se o roteador passou o payload raiz ou já repassou a chave 'data'
+            $contas = isset($payload['data']) ? $payload['data'] : $payload;
+
+            if (!is_array($contas) || empty($contas)) {
+                throw new Exception('Nenhuma conta fornecida para baixa em lote.');
+            }
+
+            if (count($contas) > 10) {
+                throw new Exception('O limite máximo para quitação em lote é de 10 contas por vez.');
+            }
+
+            $pdo->beginTransaction();
+
+            $resultados = [];
+
+            foreach ($contas as $index => $contaData) {
+                if (!is_array($contaData)) {
+                    throw new Exception("O item na posição {$index} é inválido.");
+                }
+
+                if (empty($contaData['id'])) {
+                    throw new Exception("ID da conta ausente no item {$index}.");
+                }
+
+                // Valida apenas Data e Forma de Pagamento (Banco é automático na baixa individual)
+                if (empty($contaData['baixa_dt']) || empty($contaData['forma_pagamento'])) {
+                    throw new Exception("Campos incompletos (Data ou Forma de Pagamento) na conta ID {$contaData['id']}.");
+                }
+
+                // Chama o método individual
+                $res = self::baixarConta($contaData);
+
+                if (!isset($res['success']) || !$res['success']) {
+                    $msgErro = $res['message'] ?? 'Erro desconhecido ao processar.';
+                    throw new Exception("Erro na conta ID {$contaData['id']}: {$msgErro}");
+                }
+
+                $resultados[] = $res['data'] ?? $contaData['id'];
+            }
+
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => count($resultados) . ' contas foram baixadas com sucesso.',
+                'total'   => count($resultados),
+                'data'    => $resultados
+            ];
+
+        } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Erro na baixa em lote: ' . $e->getMessage()
+            ];
+        }
+    }
     public static function getExtratoBancario(array $data): array
     {
         global $pdo;
@@ -1616,7 +1694,8 @@ class FinanceiroContaController {
                 'error'   => 'Erro ao gerar extrato: ' . $e->getMessage()
             ];
         }
-    }    public static function getDashboardFinanceiroPorGrupo(array $data): array
+    }
+    public static function getDashboardFinanceiroPorGrupo(array $data): array
     {
         global $pdo;
 
@@ -1996,7 +2075,6 @@ class FinanceiroContaController {
             ];
         }
     }
-
     public static function getMapaDeContas(array $data): array
     {
         global $pdo;
