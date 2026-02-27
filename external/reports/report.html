@@ -151,10 +151,11 @@
     <div class="header-container">
         <div class="title-area">
             <h1>Portal MRK</h1>
-            <h2 id="report-title"></h2> <div id="unit-name" class="unit-display"></div>
+            <h2 id="report-title"></h2>
+            <div id="unit-name" class="unit-display"></div>
         </div>
         <div class="logo">
-            <img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+            <img id="logo-img" src="logo.png" alt="Logo">
         </div>
     </div>
 
@@ -183,6 +184,26 @@
         document.body.innerHTML = "<div style='text-align:center; margin-top:50px;'><h2>⚠️ Erro: Dados do relatório não encontrados.</h2><p>Certifique-se de que a consulta foi realizada corretamente.</p></div>";
     } else {
         renderAndAsk(config);
+    }
+
+    // FUNÇÃO NOVA: Força a imagem a virar Base64 antes do gerador de PDF rodar
+    async function loadLogoBase64() {
+        return new Promise(async (resolve) => {
+            try {
+                const imgEl = document.getElementById('logo-img');
+                const response = await fetch(imgEl.src);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    imgEl.src = reader.result; // Substitui a URL pela imagem em Base64
+                    resolve();
+                };
+                reader.readAsDataURL(blob);
+            } catch (error) {
+                console.warn("Aviso: Falha ao converter logo para base64. O PDF pode sair sem logo.", error);
+                resolve(); // Continua mesmo se der erro, pra não travar o app
+            }
+        });
     }
 
     async function renderAndAsk(cfg) {
@@ -223,7 +244,10 @@
             document.getElementById('signature-section').style.display = 'flex';
         }
 
-        // 6. Menu de Ações (SweetAlert2)
+        // 6. Aguarda a conversão da logo antes de exibir o menu
+        await loadLogoBase64();
+
+        // 7. Menu de Ações (SweetAlert2)
         const { value: action } = await Swal.fire({
             title: 'Relatório Pronto!',
             text: 'Escolha o que deseja fazer com o documento:',
@@ -251,7 +275,7 @@
             jsPDF: { unit: 'mm', format: 'a4', orientation: cfg.orientation || 'portrait' }
         };
 
-        // 7. Execução das Ações
+        // 8. Execução das Ações
         if (action === true) {
             // DOWNLOAD
             html2pdf().set(opt).from(element).save();
@@ -277,7 +301,9 @@
         }
         else if (action === undefined) {
             // IMPRIMIR
-            window.print();
+            setTimeout(() => {
+                window.print();
+            }, 500);
         }
     }
 </script>

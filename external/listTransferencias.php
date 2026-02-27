@@ -1,3 +1,24 @@
+<?php
+session_name('PHPSESSID_MRKSolutions');
+session_start();
+
+if (!isset($_SESSION['MRKSolutions'])) {
+    die("Sessão expirada. Faça login novamente.");
+}
+
+$appData = $_SESSION['MRKSolutions'];
+
+$token     = $appData['sessionid']    ?? '';
+$unit_id   = $appData['userunitid']   ?? '';
+$user_id   = $appData['userid']       ?? '';
+// Pegando os nomes para o cabeçalho do PDF
+$unit_name = $appData['userunitname'] ?? 'Unidade não identificada';
+$user_name = $appData['username']     ?? 'Usuário';
+
+if (empty($token)) {
+    die("Acesso negado.");
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -60,11 +81,13 @@
                 </div>
                 <div class="col-md-2">
                     <label class="muted">Ações</label><br>
-                    <button id="btnConsultar" class="btn btn-primary waves-effect" style="margin-right: 5px;">
-                        <iconify-icon icon="icon-park-outline:search" width="16" style="vertical-align: middle; margin-right: 4px;"></iconify-icon>
-                        Consultar
+                    <button id="btnConsultar" class="btn btn-primary waves-effect" style="margin-right: 5px;" title="Consultar">
+                        <iconify-icon icon="icon-park-outline:search" width="16" style="vertical-align: middle;"></iconify-icon>
                     </button>
-                    <button id="btnLimpar" class="btn btn-default waves-effect">
+                    <button id="btnPdf" class="btn btn-danger waves-effect" style="margin-right: 5px;" title="Exportar para PDF">
+                        <iconify-icon icon="icon-park-outline:file-pdf" width="16" style="vertical-align: middle;"></iconify-icon>
+                    </button>
+                    <button id="btnLimpar" class="btn btn-default waves-effect" title="Limpar Filtros">
                         <iconify-icon icon="icon-park-outline:clear" width="16" style="vertical-align: middle;"></iconify-icon>
                     </button>
                 </div>
@@ -142,9 +165,10 @@
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const system_unit_id = Number(urlParams.get('system_unit_id') || urlParams.get('unit_id') || urlParams.get('unit') || 0);
+    const token = "<?php echo $token; ?>";
+    const system_unit_id = <?php echo (int)$unit_id; ?>;
+    const session_unit_name = "<?php echo $unit_name; ?>";
+    const session_user_name = "<?php echo $user_name; ?>";
 
     // ====== STATE ======
     let docs = [];
@@ -227,7 +251,6 @@
             const destinoNome   = d.system_unit_destino_name || d.system_unit_id_destino || '';
             const tipoMov = getTipoMovDoc(d);
 
-            // Ícone da seta (Iconify)
             const iconArrow = isOpen
                 ? '<iconify-icon icon="icon-park-outline:down" width="16"></iconify-icon>'
                 : '<iconify-icon icon="icon-park-outline:right" width="16"></iconify-icon>';
@@ -376,6 +399,72 @@
         for (const k in openDocs) delete openDocs[k];
         renderTabela();
     }
+
+    // ====== EXPORTAÇÃO PDF (DETALHADO) ======
+    $('#btnPdf').on('click', function() {
+        if (docs.length === 0) {
+            return Swal.fire('Atenção', 'Faça uma consulta antes de exportar.', 'warning');
+        }
+
+        const pdfData = [];
+
+        docs.forEach(d => {
+            const remetente = d.system_unit_remetente_name || d.system_unit_name || '';
+            const destino = d.system_unit_destino_name || '-';
+            const mov = (getTipoMovDoc(d) || '').toUpperCase();
+
+            // 1. Linha Mestra (O Documento) - Formatada em Negrito via HTML
+            pdfData.push({
+                c1: `<b>${d.doc}</b>`,
+                c2: `<b>${fmtDateBR(d.data)}</b>`,
+                c3: `<b>${mov}</b>`,
+                c4: `<b>${remetente} ➔ ${destino}</b>`,
+                c5: `<b>${(d.itens || []).length} itens</b>`,
+                c6: `<b>${brMoney(d.total_custo)}</b>`
+            });
+
+            // 2. Linhas Detalhe (Os Insumos) - Formatadas com recuo e cor mais clara
+            if (d.itens && d.itens.length > 0) {
+                d.itens.forEach(it => {
+                    pdfData.push({
+                        c1: `<span style="color:#555; padding-left:15px;">↳ Seq: ${it.seq}</span>`,
+                        c2: `<span style="color:#555;">${it.produto} - ${escapeHtml(it.product_nome)}</span>`,
+                        c3: `<span style="color:#555;">${escapeHtml(it.product_und)}</span>`,
+                        c4: `<span style="color:#555;">Qtd: ${brNumber(it.quantidade, 4)}</span>`,
+                        c5: `<span style="color:#555;">UN: ${brMoney(it.preco_custo)}</span>`,
+                        c6: `<span style="color:#555;">Sub: ${brMoney(it.subtotal_custo)}</span>`
+                    });
+                });
+            }
+        });
+
+        const reportId = 'rep_transf_' + Date.now();
+        const config = {
+            title: 'RELATÓRIO DE TRANSFERÊNCIAS (DETALHADO)',
+            unit: session_unit_name,
+            orientation: 'landscape',
+            showSignature: true,
+            info: [
+                { label: 'Período', value: `${fmtDateBR($('#dtInicio').val())} até ${fmtDateBR($('#dtFim').val())}` },
+                { label: 'Gerado por', value: session_user_name },
+                { label: 'Data Emissão', value: new Date().toLocaleString('pt-BR') },
+                { label: 'Filtro Tipo', value: $('#filtroTipo option:selected').text() }
+            ],
+            // Usando nomes compostos nas colunas para fazer sentido tanto para o Mestre quanto para o Detalhe
+            columns: [
+                { label: 'Doc / Seq', key: 'c1', align: 'left' },
+                { label: 'Data / Produto', key: 'c2', align: 'left' },
+                { label: 'Mov / Und', key: 'c3', align: 'center' },
+                { label: 'Origem ➔ Destino / Qtd', key: 'c4', align: 'left' },
+                { label: 'Qtd Itens / Custo Unit', key: 'c5', align: 'right' },
+                { label: 'Custo Total / Subtotal', key: 'c6', align: 'right' }
+            ],
+            data: pdfData
+        };
+
+        localStorage.setItem(reportId, JSON.stringify(config));
+        window.open(`reports/report.html?id=${reportId}`, '_blank');
+    });
 
     // ====== INIT ======
     $(document).ready(() => {
