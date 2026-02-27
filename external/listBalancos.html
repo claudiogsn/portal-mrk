@@ -137,7 +137,7 @@
                         </th>
                         <th width="60" class="text-center">Ações</th>
                         <th width="150">Documento</th>
-                        <th>Data de Criação</th>
+                        <th>Data</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -312,7 +312,11 @@
         }
 
         balances.forEach(balanco => {
-            const dataFmt = new Date(balanco.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            function formatarDataBR(data) {
+                if (!data) return '';
+                const [ano, mes, dia] = data.split('-');
+                return `${dia}/${mes}/${ano}`;
+            }
 
             const row = $(`
                 <tr>
@@ -326,7 +330,7 @@
                         </a>
                     </td>
                     <td><strong>${balanco.doc}</strong></td>
-                    <td>${dataFmt}</td>
+                    <td>${formatarDataBR(balanco.data)}</td>
                 </tr>
             `);
 

@@ -451,7 +451,7 @@ class MovimentacaoController
                         'nome_categoria', c.nome
                     )
                 ) AS itens, 
-                MAX(m.created_at) AS created_at
+                MAX(m.data) AS data
             FROM movimentacao m
             INNER JOIN products p ON p.codigo = m.produto AND p.system_unit_id = m.system_unit_id
             INNER JOIN categorias c ON c.codigo = p.categoria AND c.system_unit_id = p.system_unit_id
@@ -461,14 +461,14 @@ class MovimentacaoController
             // Adiciona as condições de data, se fornecidas
             if (!empty($data_inicial) && !empty($data_final)) {
                 $query .=
-                    " AND m.created_at BETWEEN :data_inicial AND :data_final";
+                    " AND m.data BETWEEN :data_inicial AND :data_final";
             } elseif (!empty($data_inicial)) {
-                $query .= " AND m.created_at >= :data_inicial";
+                $query .= " AND m.data >= :data_inicial";
             } elseif (!empty($data_final)) {
-                $query .= " AND m.created_at <= :data_final";
+                $query .= " AND m.data <= :data_final";
             }
 
-            $query .= " GROUP BY m.doc ORDER BY MAX(m.created_at) DESC";
+            $query .= " GROUP BY m.doc ORDER BY MAX(m.data) DESC";
 
             $stmt = $pdo->prepare($query);
             $stmt->bindParam(
