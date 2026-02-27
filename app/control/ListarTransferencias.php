@@ -13,9 +13,9 @@ class ListarTransferencias extends TPage
 
 
         if($_SERVER['SERVER_NAME'] == "localhost"){
-            $link = "http://localhost/portal-mrk/external/listTransferencias.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "http://localhost/portal-mrk/external/listTransferencias.php";
         }else{
-            $link = "https://portal.mrksolucoes.com.br/external/listTransferencias.html?username={$username}&token={$token}&unit_id={$unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/listTransferencias.php";
         }
 
                // ---- CONTAINER PRINCIPAL (TVBox) ----
