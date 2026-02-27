@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Extrato do Insumo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
+
+    <style>
+        :root{
+            --bg-page: #f5f7fb;
+            --bg-card: #ffffff;
+            --bg-soft: #f8fafc;
+            --border-color: #e7edf5;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+            --radius-lg: 18px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+        }
+
+        body{
+            background: var(--bg-page);
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .page-wrap{
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 14px;
+            padding-bottom: 40px;
+        }
+
+        .top-card{
+            background: linear-gradient(135deg, rgba(11,70,172,0.98), rgba(8,167,148,0.96));
+            color: #fff;
+            border-radius: 22px;
+            box-shadow: 0 12px 30px rgba(11, 70, 172, 0.20);
+            padding: 18px 16px;
+            margin-bottom: 16px;
+        }
+
+        .top-card .title-row{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .title-box{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .title-icon{
+            width: 42px;
+            height: 42px;
+            min-width: 42px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title-box h1{
+            margin: 0;
+            font-family: 'Kanit', sans-serif;
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1.1;
+            letter-spacing: 0.2px;
+        }
+
+        .title-box p{
+            margin: 4px 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .saldo-box{
+            margin-top: 16px;
+            display: none;
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 16px;
+            padding: 12px 14px;
+        }
+
+        .saldo-box small{
+            display: block;
+            font-size: 11px;
+            opacity: 0.88;
+            margin-bottom: 4px;
+        }
+
+        .saldo-box strong{
+            font-size: 22px;
+            font-weight: 700;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        .filter-card{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .section-title{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Kanit', sans-serif;
+            font-size: 17px;
+            font-weight: 600;
+            margin: 0 0 14px;
+            color: var(--mrk-blue);
+        }
+
+        .filters-grid{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .field label{
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .input-shell{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-soft);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 0 12px;
+            min-height: 48px;
+        }
+
+        .input-shell iconify-icon{
+            color: var(--mrk-blue);
+            font-size: 18px;
+            min-width: 18px;
+        }
+
+        .input-shell input{
+            border: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            width: 100%;
+            font-size: 14px;
+            color: var(--text-main);
+            padding: 12px 0;
+        }
+
+        .input-shell.readonly-click{
+            cursor: pointer;
+        }
+
+        .input-shell.readonly-click input{
+            cursor: pointer;
+        }
+
+        .btn-buscar{
+            width: 100%;
+            min-height: 48px;
+            border: 0;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--mrk-blue), var(--mrk-green));
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 10px 20px rgba(11,70,172,0.14);
+            transition: transform .15s ease, opacity .15s ease;
+        }
+
+        .btn-buscar:hover,
+        .btn-buscar:focus{
+            color: #fff;
+            opacity: .96;
+            transform: translateY(-1px);
+        }
+
+        .content-area{
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .helper-empty{
+            background: var(--bg-card);
+            border: 1px dashed #d7e3f1;
+            border-radius: var(--radius-lg);
+            padding: 32px 18px;
+            text-align: center;
+            color: var(--text-muted);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .helper-empty iconify-icon{
+            font-size: 30px;
+            color: var(--mrk-blue);
+            margin-bottom: 8px;
+        }
+
+        .day-card{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+        }
+
+        .day-header{
+            padding: 14px 16px;
+            background: linear-gradient(180deg, #fbfdff 0%, #f6f9fc 100%);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .day-header-left{
+            min-width: 0;
+        }
+
+        .day-header .day-date{
+            font-family: 'Kanit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--mrk-blue);
+            line-height: 1.1;
+        }
+
+        .day-header .day-sub{
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .mov-list{
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mov-card{
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 12px;
+            background: #fff;
+        }
+
+        .mov-top{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .mov-type-wrap{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .mov-icon{
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .mov-entrada .mov-icon{
+            background: #e8f8ef;
+            color: #15803d;
+        }
+
+        .mov-saida .mov-icon{
+            background: #fdecec;
+            color: #dc2626;
+        }
+
+        .mov-saldo .mov-icon{
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .mov-balanco .mov-icon{
+            background: #e7f0ff;
+            color: var(--mrk-blue);
+        }
+
+        .mov-main{
+            min-width: 0;
+        }
+
+        .mov-main h4{
+            margin: 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .mov-main p{
+            margin: 3px 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .mov-qtd{
+            text-align: right;
+            min-width: max-content;
+        }
+
+        .mov-qtd small{
+            display: block;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .mov-qtd strong{
+            display: block;
+            font-family: 'Kanit', sans-serif;
+            font-size: 19px;
+            line-height: 1;
+        }
+
+        .qtd-entrada{ color: #15803d; }
+        .qtd-saida{ color: #dc2626; }
+        .qtd-neutra{ color: var(--text-main); }
+
+        .mov-meta{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .meta-pill{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.2;
+        }
+
+        .meta-pill iconify-icon{
+            font-size: 14px;
+            color: var(--mrk-blue);
+        }
+
+        .day-summary{
+            border-top: 1px solid var(--border-color);
+            padding: 12px;
+            background: #fbfdff;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .summary-box{
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+
+        .summary-box small{
+            display: block;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 3px;
+        }
+
+        .summary-box strong{
+            display: block;
+            font-family: 'Kanit', sans-serif;
+            font-size: 18px;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        /* Skeleton */
+        .skeleton-wrapper{
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .skeleton-card{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 14px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .skeleton-line{
+            height: 12px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #edf2f7 25%, #f8fbff 50%, #edf2f7 75%);
+            background-size: 200% 100%;
+            animation: pulseShimmer 1.4s infinite linear;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-line:last-child{ margin-bottom: 0; }
+
+        .w-30{ width: 30%; }
+        .w-45{ width: 45%; }
+        .w-60{ width: 60%; }
+        .w-75{ width: 75%; }
+        .w-100{ width: 100%; }
+
+        @keyframes pulseShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .modal .table > thead > tr > th{
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-size: 12px;
+        }
+
+        .modal .table > tbody > tr > td{
+            vertical-align: middle !important;
+            font-size: 12px;
+        }
+
+        @media (min-width: 768px){
+            .page-wrap{
+                padding: 20px;
+            }
+
+            .top-card{
+                padding: 22px;
+            }
+
+            .filters-grid{
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px;
+            }
+
+            .field.field-full{
+                grid-column: 1 / -1;
+            }
+
+            .day-summary{
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="page-wrap">
+
+    <div class="top-card">
+        <div class="title-row">
+            <div class="title-box">
+                <div class="title-icon">
+                    <iconify-icon icon="icon-park-outline:transaction-order" width="22"></iconify-icon>
+                </div>
+                <div>
+                    <h1>Extrato do Insumo</h1>
+                    <p>Acompanhe entradas, saídas, balanços e saldo diário</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="saldo_wrapper" class="saldo-box">
+            <small>Saldo inicial</small>
+            <strong id="saldo_inicial">0,00</strong>
+        </div>
+    </div>
+
+    <div class="filter-card" id="area-filtros">
+        <h3 class="section-title">
+            <iconify-icon icon="icon-park-outline:filter"></iconify-icon>
+            Filtros
+        </h3>
+
+        <div class="filters-grid">
+            <div class="field">
+                <label>Data Inicial</label>
+                <div class="input-shell">
+                    <iconify-icon icon="icon-park-outline:calendar"></iconify-icon>
+                    <input type="date" id="dataInicial">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Data Final</label>
+                <div class="input-shell">
+                    <iconify-icon icon="icon-park-outline:calendar"></iconify-icon>
+                    <input type="date" id="dataFinal">
+                </div>
+            </div>
+
+            <div class="field field-full">
+                <label>Produto / Insumo</label>
+                <div class="input-shell readonly-click" id="item-description-shell">
+                    <iconify-icon icon="icon-park-outline:box"></iconify-icon>
+                    <input type="hidden" id="item-id">
+                    <input type="text" id="item-description" readonly placeholder="Clique para selecionar...">
+                </div>
+            </div>
+
+            <div class="field field-full">
+                <button id="btnFiltrar" class="btn-buscar">
+                    <iconify-icon icon="icon-park-outline:search"></iconify-icon>
+                    BUSCAR EXTRATO
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-area">
+        <div id="skeleton-area" class="skeleton-wrapper">
+            <div class="skeleton-card">
+                <div class="skeleton-line w-30"></div>
+                <div class="skeleton-line w-75"></div>
+                <div class="skeleton-line w-45"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton-line w-30"></div>
+                <div class="skeleton-line w-100"></div>
+                <div class="skeleton-line w-60"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="skeleton-line w-30"></div>
+                <div class="skeleton-line w-75"></div>
+                <div class="skeleton-line w-45"></div>
+            </div>
+        </div>
+
+        <div id="extrato-list">
+            <div class="helper-empty">
+                <iconify-icon icon="icon-park-outline:notes"></iconify-icon>
+                <div>Selecione os filtros e toque em <strong>Buscar Extrato</strong>.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="background: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px;">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" style="color: var(--mrk-black); font-family: 'Kanit', sans-serif;">
+                    <iconify-icon icon="icon-park-outline:box" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Selecionar Produto
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <span class="input-group-addon">
+                        <iconify-icon icon="icon-park-outline:search"></iconify-icon>
+                    </span>
+                    <input type="text" id="item-search" class="form-control" placeholder="Digite código ou descrição...">
+                </div>
+
+                <div style="max-height: 360px; overflow-y: auto;">
+                    <table class="table table-striped table-hover" id="item-table">
+                        <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Descrição</th>
+                            <th>Und</th>
+                            <th width="50"></th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="bsb/plugins/node-waves/waves.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    $(document).ready(function () {
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const token       = urlParams.get('token');
+        const unitId      = urlParams.get('unit_id') || urlParams.get('system_unit_id');
+        const qsInsumoId  = urlParams.get('insumo_id');
+        const qsDtIni     = urlParams.get('dt_inicio');
+        const qsDtFim     = urlParams.get('dt_fim');
+        const redirect    = (urlParams.get('redirect') || 'false').toLowerCase() === 'true';
+
+        function toggleLoading(isLoading) {
+            if (isLoading) {
+                $('#extrato-list').hide();
+                $('#skeleton-area').css('display', 'flex');
+            } else {
+                $('#skeleton-area').hide();
+                $('#extrato-list').fadeIn();
+            }
+        }
+
+        if (redirect) {
+            $('#area-filtros').hide();
+        }
+
+        if (qsDtIni) $('#dataInicial').val(qsDtIni);
+        if (qsDtFim) $('#dataFinal').val(qsDtFim);
+
+        if (qsInsumoId) {
+            $('#item-id').val(qsInsumoId);
+            $('#item-description').val(`Carregando insumo ${qsInsumoId}...`);
+        } else {
+            const hoje = new Date().toISOString().split('T')[0];
+            if (!$('#dataInicial').val()) $('#dataInicial').val(hoje);
+            if (!$('#dataFinal').val()) $('#dataFinal').val(hoje);
+        }
+
+        $('#item-description, #item-description-shell').on('click', function () {
+            $('#itemModal').modal('show');
+            loadItems(unitId);
+        });
+
+        $('#btnFiltrar').on('click', buscarExtrato);
+
+        if (token && unitId && qsInsumoId && (qsDtIni || $('#dataInicial').val()) && (qsDtFim || $('#dataFinal').val())) {
+            buscarExtrato();
+        }
+
+        async function buscarExtrato() {
+            const dt_inicio = $('#dataInicial').val();
+            const dt_fim    = $('#dataFinal').val();
+            const insumo_id = $('#item-id').val();
+
+            if (!token || !unitId) {
+                return Swal.fire('Erro', 'Parâmetros de sistema ausentes.', 'error');
+            }
+
+            if (!dt_inicio || !dt_fim) {
+                return Swal.fire('Atenção', 'Informe o período.', 'warning');
+            }
+
+            if (!insumo_id) {
+                return Swal.fire('Atenção', 'Selecione um produto.', 'warning');
+            }
+
+            toggleLoading(true);
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'extratoInsumo',
+                    token: token,
+                    data: {
+                        system_unit_id: parseInt(unitId),
+                        insumo_id: parseInt(insumo_id),
+                        dt_inicio,
+                        dt_fim
+                    }
+                });
+
+                const result = response.data || {};
+
+                $('#saldo_inicial').text(brNum(result.saldo_inicial));
+                $('#saldo_wrapper').show();
+
+                if (result.nome_produto) {
+                    $('#item-description').val(result.nome_produto);
+                }
+
+                montarExtratoCards(result.extrato || []);
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Erro', 'Falha ao carregar extrato.', 'error');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        function montarExtratoCards(extrato) {
+            const $wrap = $('#extrato-list');
+            $wrap.empty();
+
+            if (!extrato.length) {
+                $wrap.html(`
+                    <div class="helper-empty">
+                        <iconify-icon icon="icon-park-outline:notes"></iconify-icon>
+                        <div>Nenhuma movimentação encontrada no período informado.</div>
+                    </div>
+                `);
+                return;
+            }
+
+            extrato.forEach(dia => {
+                const dataFmt = formatarData(dia.data);
+                let movsHtml = '';
+
+                if (dia.saldo_anterior !== undefined && dia.saldo_anterior !== null) {
+                    movsHtml += renderMovCard({
+                        tipoLabel: 'Saldo Anterior',
+                        documento: 'Início do dia',
+                        quantidade: dia.saldo_anterior,
+                        observacao: 'Saldo acumulado antes das movimentações',
+                        classe: 'saldo',
+                        meta1: 'Saldo de abertura',
+                        meta2: ''
+                    });
+                }
+
+                (dia.movimentacoes || []).forEach(mov => {
+                    const isEntrada = mov.tipo_mov === 'entrada';
+                    const qtd = parseFloat(mov.quantidade || 0);
+                    movsHtml += renderMovCard({
+                        tipoLabel: isEntrada ? 'Entrada' : 'Saída',
+                        documento: mov.doc || '-',
+                        quantidade: isEntrada ? qtd : (qtd * -1),
+                        observacao: mov.observacao || '',
+                        classe: isEntrada ? 'entrada' : 'saida',
+                        meta1: mov.doc ? 'Documento vinculado' : '',
+                        meta2: mov.origem || ''
+                    });
+                });
+
+                if (dia.balanco) {
+                    movsHtml += renderMovCard({
+                        tipoLabel: 'Balanço',
+                        documento: dia.balanco.doc || 'Auditoria',
+                        quantidade: parseFloat(dia.balanco.quantidade || 0),
+                        observacao: 'Ajuste de estoque',
+                        classe: 'balanco',
+                        meta1: 'Conferência / ajuste',
+                        meta2: ''
+                    });
+                }
+
+                if (!movsHtml) {
+                    movsHtml = `
+                        <div class="mov-card mov-saldo">
+                            <div class="mov-top">
+                                <div class="mov-type-wrap">
+                                    <div class="mov-icon">
+                                        <iconify-icon icon="icon-park-outline:dot"></iconify-icon>
+                                    </div>
+                                    <div class="mov-main">
+                                        <h4>Sem movimentações</h4>
+                                        <p>Não houve lançamentos registrados nesta data.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const saldoAnterior = dia.saldo_anterior !== undefined && dia.saldo_anterior !== null ? brNum(dia.saldo_anterior) : '-';
+                const saldoFinal    = dia.saldo_estimado !== undefined && dia.saldo_estimado !== null ? brNum(dia.saldo_estimado) : '-';
+
+                $wrap.append(`
+                    <div class="day-card">
+                        <div class="day-header">
+                            <div class="day-header-left">
+                                <div class="day-date">${dataFmt}</div>
+                                <div class="day-sub">Extrato consolidado do dia</div>
+                            </div>
+                        </div>
+
+                        <div class="mov-list">
+                            ${movsHtml}
+                        </div>
+
+                        <div class="day-summary">
+                            <div class="summary-box">
+                                <small>Saldo Anterior</small>
+                                <strong>${saldoAnterior}</strong>
+                            </div>
+                            <div class="summary-box">
+                                <small>Saldo Final</small>
+                                <strong>${saldoFinal}</strong>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
+        function renderMovCard({ tipoLabel, documento, quantidade, observacao, classe, meta1, meta2 }) {
+            let icon = 'icon-park-outline:transaction-order';
+            let qtdClass = 'qtd-neutra';
+
+            if (classe === 'entrada') {
+                icon = 'icon-park-outline:download';
+                qtdClass = 'qtd-entrada';
+            } else if (classe === 'saida') {
+                icon = 'icon-park-outline:upload';
+                qtdClass = 'qtd-saida';
+            } else if (classe === 'balanco') {
+                icon = 'icon-park-outline:refresh';
+                qtdClass = 'qtd-neutra';
+            } else {
+                icon = 'icon-park-outline:history-query';
+                qtdClass = 'qtd-neutra';
+            }
+
+            const qtdFmt = brNum(quantidade);
+            const obsHtml = observacao ? `<p>${escapeHtml(observacao)}</p>` : '';
+            const docSafe = escapeHtml(documento || '-');
+
+            let metaHtml = '';
+            if (documento) {
+                metaHtml += `
+                    <span class="meta-pill">
+                        <iconify-icon icon="icon-park-outline:doc-detail"></iconify-icon>
+                        ${docSafe}
+                    </span>
+                `;
+            }
+            if (meta1) {
+                metaHtml += `
+                    <span class="meta-pill">
+                        <iconify-icon icon="icon-park-outline:info"></iconify-icon>
+                        ${escapeHtml(meta1)}
+                    </span>
+                `;
+            }
+            if (meta2) {
+                metaHtml += `
+                    <span class="meta-pill">
+                        <iconify-icon icon="icon-park-outline:tag"></iconify-icon>
+                        ${escapeHtml(meta2)}
+                    </span>
+                `;
+            }
+
+            return `
+                <div class="mov-card mov-${classe}">
+                    <div class="mov-top">
+                        <div class="mov-type-wrap">
+                            <div class="mov-icon">
+                                <iconify-icon icon="${icon}"></iconify-icon>
+                            </div>
+                            <div class="mov-main">
+                                <h4>${escapeHtml(tipoLabel)}</h4>
+                                ${obsHtml}
+                            </div>
+                        </div>
+
+                        <div class="mov-qtd">
+                            <small>Quantidade</small>
+                            <strong class="${qtdClass}">${qtdFmt}</strong>
+                        </div>
+                    </div>
+
+                    ${metaHtml ? `<div class="mov-meta">${metaHtml}</div>` : ''}
+                </div>
+            `;
+        }
+
+        async function loadItems(unitId) {
+            if (!unitId) return;
+
+            const tbody = $('#item-table tbody');
+            tbody.html('<tr><td colspan="4" class="text-center">Carregando...</td></tr>');
+
+            try {
+                const response = await axios.post(baseUrl, {
+                    method: 'listInsumos',
+                    token: token,
+                    data: { unit_id: unitId }
+                });
+
+                if (response.data.success) {
+                    const items = response.data.insumos || [];
+                    tbody.empty();
+
+                    items.forEach(item => {
+                        tbody.append(`
+                            <tr>
+                                <td><b>${escapeHtml(String(item.codigo || ''))}</b></td>
+                                <td class="nome-prod">${escapeHtml(item.nome || '')}</td>
+                                <td>${escapeHtml(item.und || '')}</td>
+                                <td class="text-right">
+                                    <button class="btn btn-default btn-xs select-item" data-codigo="${escapeAttr(item.codigo)}" data-nome="${escapeAttr(item.nome)}">
+                                        <iconify-icon icon="icon-park-outline:check"></iconify-icon>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+
+                    $('#item-search').off('input').on('input', function () {
+                        const termo = $(this).val().toLowerCase();
+                        $('#item-table tbody tr').each(function () {
+                            const texto = $(this).text().toLowerCase();
+                            $(this).toggle(texto.indexOf(termo) > -1);
+                        });
+                    });
+
+                    $('.select-item').off('click').on('click', function () {
+                        const id = $(this).data('codigo');
+                        const nome = $(this).data('nome');
+                        $('#item-id').val(id);
+                        $('#item-description').val(nome);
+                        $('#itemModal').modal('hide');
+                    });
+                } else {
+                    tbody.html('<tr><td colspan="4" class="text-center text-danger">Erro ao carregar produtos.</td></tr>');
+                }
+            } catch (error) {
+                console.error(error);
+                tbody.html('<tr><td colspan="4" class="text-center text-danger">Falha na conexão.</td></tr>');
+            }
+        }
+
+        function brNum(v) {
+            if (v === null || v === undefined || isNaN(v)) return '-';
+            return Number(v).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 3
+            });
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '';
+            const [ano, mes, dia] = dataStr.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function escapeAttr(str) {
+            return String(str ?? '').replace(/"/g, '&quot;');
+        }
+    });
+</script>
+</body>
+</html>
