@@ -1,40 +1,23 @@
 <?php
-// 1. Recupera o Nome e o ID da sessão passados pela URL
-$sys_name = $_GET['sys_session_name'] ?? 'PHPSESSID'; // Pega 'PHPSESSID_MRKSolutions'
-$sys_id   = $_GET['sys_session_id']   ?? null;        // Pega '9db9e9...'
-
-if ($sys_id) {
-    // 2. FORÇA o PHP a usar essa sessão específica
-    session_name($sys_name);
-    session_id($sys_id);
-}
-
-// 3. Inicia a sessão (agora ele vai abrir a gaveta certa!)
+session_name('PHPSESSID_MRKSolutions');
 session_start();
 
-// -----------------------------------------------------------
-// TESTE DE DEBUG (Se funcionar, remova depois)
-/*
 if (!isset($_SESSION['MRKSolutions'])) {
-    echo "<h1>ERRO: Sessão vazia!</h1>";
-    echo "Nome usado: " . session_name() . "<br>";
-    echo "ID usado: " . session_id() . "<br>";
-    echo "<pre>"; print_r($_SESSION); echo "</pre>";
-    exit;
+    die("Sessão expirada. Faça login novamente.");
 }
-*/
-// -----------------------------------------------------------
 
-// 4. Captura os dados do Adianti
-// Se a sessão foi carregada corretamente, 'MRKSolutions' vai existir aqui.
-$appData = $_SESSION['MRKSolutions'] ?? [];
+$appData = $_SESSION['MRKSolutions'];
+
+echo '<pre>';
+echo json_encode($appData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+echo '</pre>';
 
 $token   = $appData['sessionid']    ?? '';
 $unit_id = $appData['userunitid']   ?? '';
 $user_id = $appData['userid']       ?? '';
 
 if (empty($token)) {
-    die("Acesso negado: Sessão encontrada, mas sem token.");
+    die("Acesso negado.");
 }
 ?>
 <!DOCTYPE html>

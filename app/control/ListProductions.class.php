@@ -8,15 +8,26 @@ class ListProductions extends TPage
     {
         parent::__construct();
 
+        echo session_name();
+
         $token = TSession::getValue('sessionid');
         $system_unit_id = TSession::getValue('userunitid');
+        $unit_id = TSession::getValue('userunitid');
 
 
         if ($_SERVER['SERVER_NAME'] == "localhost") {
-            $link = "http://localhost/portal-mrk/external/listProductions.html?token={$token}&system_unit_id={$system_unit_id}";
+            $link = "http://localhost/portal-mrk/external/listProd.php";
         } else {
-            $link = "https://portal.mrksolucoes.com.br/external/listProductions.html?token={$token}&system_unit_id={$system_unit_id}";
+            $link = "https://portal.mrksolucoes.com.br/external/listProd.php";
         }
+
+//        if ($_SERVER['SERVER_NAME'] == "localhost") {
+//            $link = "http://localhost/portal-mrk/external/listProductions.html?token={$token}&system_unit_id={$system_unit_id}";
+//        } else {
+//            $link = "https://portal.mrksolucoes.com.br/external/listProductions.html?token={$token}&system_unit_id={$system_unit_id}";
+//        }
+
+
         // ---- CONTAINER PRINCIPAL (TVBox) ----
         $this->container = new TVBox;
         $this->container->style = "width:100%; height:100vh; overflow:hidden; margin:0; padding:0;";

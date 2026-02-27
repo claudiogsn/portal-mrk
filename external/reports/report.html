@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal MRK - Carregando...</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --mrk-blue: #0B46AC;
+            --mrk-gray: #555;
+            --mrk-light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            padding: 20px;
+            color: #333;
+            background-color: #fff;
+        }
+
+        /* Estrutura do Conteúdo */
+        #report-content {
+            padding: 10px;
+        }
+
+        /* Cabeçalho */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 5px;
+        }
+
+        .title-area h1 {
+            font-family: 'Kanit', sans-serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--mrk-blue);
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .title-area h2 {
+            font-size: 18px;
+            color: var(--mrk-gray);
+            margin: 2px 0;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .unit-display {
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .logo img {
+            max-height: 65px;
+        }
+
+        /* Info Grid (Dados Adicionais) */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 12px;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .info-item b {
+            color: var(--mrk-blue);
+            font-weight: 600;
+        }
+
+        hr {
+            border: 0;
+            border-top: 2px solid #333;
+            margin: 15px 0;
+        }
+
+        /* Tabela de Dados */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        th {
+            background-color: var(--mrk-light);
+            color: var(--mrk-blue);
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 10px 8px;
+            border: 1px solid #ccc;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            line-height: 1.4;
+        }
+
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .bold { font-weight: bold; }
+
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        /* Assinaturas */
+        .signatures {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .sig-box {
+            width: 250px;
+            border-top: 1px solid #333;
+            text-align: center;
+            padding-top: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Ajustes de Impressão */
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none !important; }
+            #report-content { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="report-content">
+    <div class="header-container">
+        <div class="title-area">
+            <h1>Portal MRK</h1>
+            <h2 id="report-title"></h2> <div id="unit-name" class="unit-display"></div>
+        </div>
+        <div class="logo">
+            <img src="https://portal.mrksolucoes.com.br/app/templates/theme5/images/logo.png" alt="Logo">
+        </div>
+    </div>
+
+    <div class="info-grid" id="additional-info">
+    </div>
+
+    <hr>
+
+    <table id="main-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <div id="signature-section" class="signatures" style="display: none;">
+        <div class="sig-box">Responsável</div>
+        <div class="sig-box">Conferente / Direção</div>
+    </div>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const reportId = params.get('id');
+    const config = JSON.parse(localStorage.getItem(reportId));
+
+    if (!config) {
+        document.body.innerHTML = "<div style='text-align:center; margin-top:50px;'><h2>⚠️ Erro: Dados do relatório não encontrados.</h2><p>Certifique-se de que a consulta foi realizada corretamente.</p></div>";
+    } else {
+        renderAndAsk(config);
+    }
+
+    async function renderAndAsk(cfg) {
+        // 1. Configura Títulos
+        document.title = `Portal MRK - ${cfg.title || 'Relatório'}`;
+        document.getElementById('report-title').innerText = cfg.title || 'RELATÓRIO';
+        document.getElementById('unit-name').innerText = cfg.unit || '';
+
+        // 2. Informações Adicionais (Filtros, Datas, KPIs)
+        const infoDiv = document.getElementById('additional-info');
+        if (cfg.info && Array.isArray(cfg.info)) {
+            cfg.info.forEach(item => {
+                infoDiv.innerHTML += `<div class="info-item"><b>${item.label}:</b> ${item.value}</div>`;
+            });
+        }
+
+        // 3. Cabeçalho da Tabela
+        const thead = document.getElementById('table-head');
+        let headHtml = '<tr>';
+        cfg.columns.forEach(col => {
+            headHtml += `<th style="width: ${col.width || 'auto'}" class="text-${col.align || 'left'}">${col.label}</th>`;
+        });
+        thead.innerHTML = headHtml + '</tr>';
+
+        // 4. Corpo da Tabela
+        const tbody = document.getElementById('table-body');
+        cfg.data.forEach(row => {
+            let rowHtml = '<tr>';
+            cfg.columns.forEach(col => {
+                const val = row[col.key] !== undefined ? row[col.key] : '';
+                rowHtml += `<td class="text-${col.align || 'left'} ${col.bold ? 'bold' : ''}">${val}</td>`;
+            });
+            tbody.innerHTML += rowHtml + '</tr>';
+        });
+
+        // 5. Assinaturas
+        if (cfg.showSignature) {
+            document.getElementById('signature-section').style.display = 'flex';
+        }
+
+        // 6. Menu de Ações (SweetAlert2)
+        const { value: action } = await Swal.fire({
+            title: 'Relatório Pronto!',
+            text: 'Escolha o que deseja fazer com o documento:',
+            icon: 'info',
+            showConfirmButton: true,
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: '📥 Baixar PDF',
+            denyButtonText: '🔗 Compartilhar',
+            cancelButtonText: '🖨️ Imprimir',
+            confirmButtonColor: '#0B46AC',
+            denyButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            allowOutsideClick: false
+        });
+
+        // Configurações do PDF
+        const fileName = `${(cfg.title || 'Relatorio').replace(/\s+/g, '_')}.pdf`;
+        const element = document.getElementById('report-content');
+        const opt = {
+            margin: 10,
+            filename: fileName,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: cfg.orientation || 'portrait' }
+        };
+
+        // 7. Execução das Ações
+        if (action === true) {
+            // DOWNLOAD
+            html2pdf().set(opt).from(element).save();
+        }
+        else if (Swal.getDenyButton() && action === false) {
+            // COMPARTILHAR
+            Swal.fire({ title: 'Gerando arquivo...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            const pdfWorker = html2pdf().set(opt).from(element).outputPdf('arraybuffer');
+            pdfWorker.then(async (buffer) => {
+                const file = new File([buffer], fileName, { type: 'application/pdf' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: fileName,
+                        text: 'Segue relatório gerado pelo Portal MRK.',
+                        files: [file]
+                    });
+                    Swal.close();
+                } else {
+                    Swal.fire('Aviso', 'Seu navegador não suporta a função de compartilhamento de arquivos.', 'warning');
+                }
+            });
+        }
+        else if (action === undefined) {
+            // IMPRIMIR
+            window.print();
+        }
+    }
+</script>
+
+</body>
+</html>
