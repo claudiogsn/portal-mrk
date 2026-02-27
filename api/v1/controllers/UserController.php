@@ -164,8 +164,8 @@ class UserController {
         return ['success' => true, 'units' => $units];
     }
 
-   public static function getMenuMobile($user_id)
-    {
+   public static function getMenuMobile($user_id): array
+   {
         global $pdo;
 
         $stmt = $pdo->prepare("

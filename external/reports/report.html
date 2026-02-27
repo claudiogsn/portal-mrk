@@ -121,11 +121,18 @@
             background-color: #fafafa;
         }
 
+        /* 🔥 CORREÇÃO: Impede que as linhas da tabela sejam cortadas ao meio */
+        tr {
+            page-break-inside: avoid;
+        }
+
         /* Assinaturas */
         .signatures {
             margin-top: 60px;
             display: flex;
             justify-content: space-around;
+            /* 🔥 CORREÇÃO: Impede que as assinaturas sejam separadas ou cortadas */
+            page-break-inside: avoid;
         }
 
         .sig-box {
@@ -186,7 +193,6 @@
         renderAndAsk(config);
     }
 
-    // FUNÇÃO NOVA: Força a imagem a virar Base64 antes do gerador de PDF rodar
     async function loadLogoBase64() {
         return new Promise(async (resolve) => {
             try {
@@ -195,24 +201,22 @@
                 const blob = await response.blob();
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                    imgEl.src = reader.result; // Substitui a URL pela imagem em Base64
+                    imgEl.src = reader.result;
                     resolve();
                 };
                 reader.readAsDataURL(blob);
             } catch (error) {
-                console.warn("Aviso: Falha ao converter logo para base64. O PDF pode sair sem logo.", error);
-                resolve(); // Continua mesmo se der erro, pra não travar o app
+                console.warn("Aviso: Falha ao converter logo para base64.", error);
+                resolve();
             }
         });
     }
 
     async function renderAndAsk(cfg) {
-        // 1. Configura Títulos
         document.title = `Portal MRK - ${cfg.title || 'Relatório'}`;
         document.getElementById('report-title').innerText = cfg.title || 'RELATÓRIO';
         document.getElementById('unit-name').innerText = cfg.unit || '';
 
-        // 2. Informações Adicionais (Filtros, Datas, KPIs)
         const infoDiv = document.getElementById('additional-info');
         if (cfg.info && Array.isArray(cfg.info)) {
             cfg.info.forEach(item => {
@@ -220,7 +224,6 @@
             });
         }
 
-        // 3. Cabeçalho da Tabela
         const thead = document.getElementById('table-head');
         let headHtml = '<tr>';
         cfg.columns.forEach(col => {
@@ -228,7 +231,6 @@
         });
         thead.innerHTML = headHtml + '</tr>';
 
-        // 4. Corpo da Tabela
         const tbody = document.getElementById('table-body');
         cfg.data.forEach(row => {
             let rowHtml = '<tr>';
@@ -239,15 +241,12 @@
             tbody.innerHTML += rowHtml + '</tr>';
         });
 
-        // 5. Assinaturas
         if (cfg.showSignature) {
             document.getElementById('signature-section').style.display = 'flex';
         }
 
-        // 6. Aguarda a conversão da logo antes de exibir o menu
         await loadLogoBase64();
 
-        // 7. Menu de Ações (SweetAlert2)
         const { value: action } = await Swal.fire({
             title: 'Relatório Pronto!',
             text: 'Escolha o que deseja fazer com o documento:',
@@ -264,24 +263,24 @@
             allowOutsideClick: false
         });
 
-        // Configurações do PDF
         const fileName = `${(cfg.title || 'Relatorio').replace(/\s+/g, '_')}.pdf`;
         const element = document.getElementById('report-content');
+
+        // 🔥 CORREÇÃO: Adicionado o "pagebreak" para forçar o PDF a empurrar as linhas
+        // inteiras para a próxima página ao invés de serrá-las no meio.
         const opt = {
-            margin: 10,
+            margin: [10, 10, 15, 10], // Margens [Cima, Direita, Baixo, Esquerda]
             filename: fileName,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: cfg.orientation || 'portrait' }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: cfg.orientation || 'portrait' },
+            pagebreak: { mode: 'css', avoid: 'tr' }
         };
 
-        // 8. Execução das Ações
         if (action === true) {
-            // DOWNLOAD
             html2pdf().set(opt).from(element).save();
         }
         else if (Swal.getDenyButton() && action === false) {
-            // COMPARTILHAR
             Swal.fire({ title: 'Gerando arquivo...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             const pdfWorker = html2pdf().set(opt).from(element).outputPdf('arraybuffer');
@@ -300,7 +299,6 @@
             });
         }
         else if (action === undefined) {
-            // IMPRIMIR
             setTimeout(() => {
                 window.print();
             }, 500);
