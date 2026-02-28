@@ -840,7 +840,8 @@ class NotaFiscalEntradaController {
             if ($pdo->inTransaction()) $pdo->rollBack();
             return ['success' => false, 'message' => $e->getMessage()];
         }
-    }    public static function getItensCompradosPorPeriodo(array $data): array
+    }
+    public static function getItensCompradosPorPeriodo(array $data): array
     {
         global $pdo;
 
@@ -867,7 +868,7 @@ class NotaFiscalEntradaController {
                 'system_unit_id = :unit',
                 "tipo = 'c'",            // compras
                 "tipo_mov = 'entrada'",  // entradas
-                'data BETWEEN :dt_inicio AND :dt_fim'
+                'data_emissao BETWEEN :dt_inicio AND :dt_fim' // Mudou de data para data_emissao
             ];
             $paramsMov = [
                 ':unit'      => $unitId,

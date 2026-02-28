@@ -2123,12 +2123,13 @@ class DashboardController
                 // ✅ COMPRAS via estoque_nota
                 // ============================
                 $stmtCompras = $pdo->prepare("
-                SELECT 
-                    COALESCE(SUM(COALESCE(n.valor_total, n.valor_produtos, 0)), 0) AS total_compras
-                FROM estoque_nota n
-                WHERE n.system_unit_id = :unit
-                  AND n.data_emissao BETWEEN :dt_inicio AND :dt_fim
-                  -- AND n.incluida_estoque = 1
+                SELECT SUM(m.quantidade * COALESCE(m.valor, 0)) as total_compras
+                FROM movimentacao m
+                WHERE m.system_unit_id = :unit
+                  AND m.tipo = 'c'
+                  AND m.tipo_mov = 'entrada'
+                  AND m.status = 1
+                  AND m.data_emissao BETWEEN :dt_inicio AND :dt_fim
             ");
                 $stmtCompras->execute([
                     ':unit'      => $system_unit_id,

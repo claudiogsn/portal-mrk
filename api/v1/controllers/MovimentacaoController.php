@@ -3017,8 +3017,8 @@ class MovimentacaoController
                   AND p.codigo = CAST(m.produto AS UNSIGNED)
             WHERE m.system_unit_id = :unit
               AND m.status = 1
-              AND m.tipo_mov = 'entrada'
-              AND m.data BETWEEN :dt_inicio AND :dt_fim
+              AND m.tipo = 'c'
+              AND m.data_emissao BETWEEN :dt_inicio AND :dt_fim
               AND m.valor IS NOT NULL
               AND m.valor > 0
               AND m.produto REGEXP '^[0-9]+$'
