@@ -152,7 +152,7 @@ class ConferenciaCaixaController
         }
 
         try {
-            // 1. Busca Regras (agora trazendo também o fornecedor_id)
+            // 1. Busca Regras
             $stmtOpcaoRec = $pdo->prepare("
             SELECT nome, banco_id, prazo, taxa, plano_contas_id, fornecedor_id 
             FROM financeiro_opcoes_recebimento 
@@ -160,34 +160,43 @@ class ConferenciaCaixaController
             LIMIT 1
         ");
 
-            // 2. Busca Fornecedor pelo NOME (Fallback)
+            // 2. Busca Fornecedor pelo nome
             $stmtFindForn = $pdo->prepare("
-            SELECT id FROM financeiro_fornecedor 
+            SELECT id 
+            FROM financeiro_fornecedor 
             WHERE system_unit_id = ? AND razao = ? 
             LIMIT 1
         ");
 
-            // 3. Insere Fornecedor direto caso não exista (Fallback)
-            $stmtInsertForn = $pdo->prepare("
-            INSERT INTO financeiro_fornecedor (system_unit_id, razao, cnpj_cpf) 
-            VALUES (?, ?, ?)
+            // 3. Busca próximo código do fornecedor
+            $stmtNextFornCodigo = $pdo->prepare("
+            SELECT COALESCE(MAX(codigo), 0) + 1
+            FROM financeiro_fornecedor
+            WHERE system_unit_id = ?
         ");
 
-            // 4. Salva o vínculo para o futuro (Auto-correção)
+            // 4. Insere fornecedor fallback
+            $stmtInsertForn = $pdo->prepare("
+            INSERT INTO financeiro_fornecedor (system_unit_id, codigo, razao, cnpj_cpf) 
+            VALUES (?, ?, ?, ?)
+        ");
+
+            // 5. Salva vínculo do fornecedor
             $stmtLinkForn = $pdo->prepare("
             UPDATE financeiro_opcoes_recebimento 
             SET fornecedor_id = ? 
             WHERE system_unit_id = ? AND codigo = ?
         ");
 
-            // 5. Verifica se a conta já existe
+            // 6. Verifica se a conta já existe
             $stmtCheckConta = $pdo->prepare("
-            SELECT id FROM financeiro_conta 
+            SELECT id 
+            FROM financeiro_conta 
             WHERE system_unit_id = ? AND doc = ? AND tipo = 'c'
             LIMIT 1
         ");
 
-            // 6. Atualiza a conta caso já exista
+            // 7. Atualiza a conta existente
             $stmtUpdateConta = $pdo->prepare("
             UPDATE financeiro_conta SET
                 nome = ?,
@@ -203,29 +212,35 @@ class ConferenciaCaixaController
             WHERE id = ?
         ");
 
-            // Auxiliar para pegar dados exatos do fornecedor (para atualizar a conta com os nomes corretos)
-            $stmtDadosForn = $pdo->prepare("SELECT razao, cnpj_cpf FROM financeiro_fornecedor WHERE id = ?");
+            // 8. Dados exatos do fornecedor
+            $stmtDadosForn = $pdo->prepare("
+            SELECT razao, cnpj_cpf 
+            FROM financeiro_fornecedor 
+            WHERE id = ?
+        ");
 
             $contasParaLote = [];
 
             foreach ($items as $item) {
-                $codigoOpcao  = $item['codigo_opcao'];
-                $valor        = (float)$item['valor']; // Valor bruto
+                $codigoOpcao  = $item['codigo_opcao'] ?? $item['codigo'] ?? null;
+                $valor        = (float)($item['valor'] ?? 0);
                 $nomeOriginal = $item['nome_original'] ?? 'Desconhecido';
+
+                if (empty($codigoOpcao) || $valor <= 0) {
+                    continue;
+                }
 
                 $stmtOpcaoRec->execute([$systemUnitId, $codigoOpcao]);
                 $opcaoRecData = $stmtOpcaoRec->fetch(PDO::FETCH_ASSOC);
 
-                // Regras de Negócio Financeiras
-                $nomeOpcaoDb     = $opcaoRecData ? strtoupper(trim($opcaoRecData['nome'])) : strtoupper(trim($nomeOriginal));
-                $bancoId         = $opcaoRecData ? $opcaoRecData['banco_id'] : null;
-                $planoContasId   = $opcaoRecData ? $opcaoRecData['plano_contas_id'] : null;
-                $prazoDias       = $opcaoRecData ? (int)$opcaoRecData['prazo'] : 0;
-                $taxaPercentual  = $opcaoRecData ? (float)$opcaoRecData['taxa'] : 0.00;
+                $nomeOpcaoDb    = $opcaoRecData ? strtoupper(trim($opcaoRecData['nome'])) : strtoupper(trim($nomeOriginal));
+                $bancoId        = $opcaoRecData ? $opcaoRecData['banco_id'] : null;
+                $planoContasId  = $opcaoRecData ? $opcaoRecData['plano_contas_id'] : null;
+                $prazoDias      = $opcaoRecData ? (int)$opcaoRecData['prazo'] : 0;
+                $taxaPercentual = $opcaoRecData ? (float)$opcaoRecData['taxa'] : 0.00;
 
                 $fornecedorVinculado = $opcaoRecData ? $opcaoRecData['fornecedor_id'] : null;
 
-                // Cálculo do Valor Líquido (deduzindo a taxa)
                 $valorDesconto = $valor * ($taxaPercentual / 100);
                 $valorLiquido  = round($valor - $valorDesconto, 2);
 
@@ -235,7 +250,7 @@ class ConferenciaCaixaController
 
                 $fornecedorId = null;
 
-                // --- RESOLVENDO O FORNECEDOR ---
+                // Resolve fornecedor
                 if (!empty($fornecedorVinculado)) {
                     $fornecedorId = $fornecedorVinculado;
                 } else {
@@ -244,9 +259,18 @@ class ConferenciaCaixaController
 
                     if (!$fornecedorId) {
                         $codigoAjustado = str_pad($codigoOpcao, 2, '0', STR_PAD_LEFT);
-                        $cnpjFicticio = "00.000.000/0000-" . $codigoAjustado;
+                        $cnpjFicticio   = "00.000.000/0000-" . $codigoAjustado;
 
-                        $stmtInsertForn->execute([$systemUnitId, $nomeOpcaoDb, $cnpjFicticio]);
+                        $stmtNextFornCodigo->execute([$systemUnitId]);
+                        $novoCodigoFornecedor = (int)$stmtNextFornCodigo->fetchColumn();
+
+                        $stmtInsertForn->execute([
+                            $systemUnitId,
+                            $novoCodigoFornecedor,
+                            $nomeOpcaoDb,
+                            $cnpjFicticio
+                        ]);
+
                         $fornecedorId = $pdo->lastInsertId();
                     }
 
@@ -255,32 +279,29 @@ class ConferenciaCaixaController
                     }
                 }
 
-                // Garante que temos a razão e o CNPJ do fornecedor para preencher a conta
                 $stmtDadosForn->execute([$fornecedorId]);
                 $fornDb = $stmtDadosForn->fetch(PDO::FETCH_ASSOC);
+
                 $fornRazao = $fornDb['razao'] ?? $nomeOpcaoDb;
                 $fornCnpj  = $fornDb['cnpj_cpf'] ?? '';
 
-                // --- VERIFICA SE A CONTA JÁ EXISTE ---
                 $stmtCheckConta->execute([$systemUnitId, $documentoFormatado]);
                 $contaExistenteId = $stmtCheckConta->fetchColumn();
 
                 if ($contaExistenteId) {
-                    // ATUALIZA CONTA EXISTENTE
                     $stmtUpdateConta->execute([
-                        $fornRazao,             // nome
-                        $fornecedorId,          // entidade
-                        $fornCnpj,              // cgc
-                        $vencimentoCalculado,   // vencimento
-                        $valorLiquido,          // valor
-                        $bancoId,               // banco
-                        $planoContasId,         // plano_contas
-                        $codigoOpcao,           // forma_pagamento
-                        $obsFormatada,          // obs
-                        $contaExistenteId       // id (WHERE)
+                        $fornRazao,
+                        $fornecedorId,
+                        $fornCnpj,
+                        $vencimentoCalculado,
+                        $valorLiquido,
+                        $bancoId,
+                        $planoContasId,
+                        $codigoOpcao,
+                        $obsFormatada,
+                        $contaExistenteId
                     ]);
                 } else {
-                    // SEPARA PARA INSERIR NO LOTE
                     $contasParaLote[] = [
                         'fornecedor_id'   => $fornecedorId,
                         'documento'       => $documentoFormatado,
@@ -296,7 +317,6 @@ class ConferenciaCaixaController
                 }
             }
 
-            // --- DISPARAR LOTE (APENAS PARA AS NOVAS CONTAS) ---
             if (!empty($contasParaLote)) {
                 $payloadLote = [
                     'system_unit_id' => $systemUnitId,
@@ -318,7 +338,6 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
-
     public static function getPayloadConferencia($systemUnitId, $dataAnalise): array
     {
         global $pdo;
