@@ -170,16 +170,16 @@ class ConferenciaCaixaController
 
             // 3. Busca próximo código do fornecedor
             $stmtNextFornCodigo = $pdo->prepare("
-            SELECT COALESCE(MAX(codigo), 0) + 1
-            FROM financeiro_fornecedor
-            WHERE system_unit_id = ?
-        ");
+    SELECT COALESCE(MAX(CAST(codigo AS UNSIGNED)), 0) + 1
+    FROM financeiro_fornecedor
+    WHERE system_unit_id = ?
+");
 
             // 4. Insere fornecedor fallback
             $stmtInsertForn = $pdo->prepare("
-            INSERT INTO financeiro_fornecedor (system_unit_id, codigo, razao, cnpj_cpf) 
-            VALUES (?, ?, ?, ?)
-        ");
+    INSERT INTO financeiro_fornecedor (system_unit_id, codigo, razao, nome, cnpj_cpf) 
+    VALUES (?, ?, ?, ?, ?)
+");
 
             // 5. Salva vínculo do fornecedor
             $stmtLinkForn = $pdo->prepare("
@@ -267,7 +267,8 @@ class ConferenciaCaixaController
                         $stmtInsertForn->execute([
                             $systemUnitId,
                             $novoCodigoFornecedor,
-                            $nomeOpcaoDb,
+                            $nomeOpcaoDb,   // razao
+                            $nomeOpcaoDb,   // nome
                             $cnpjFicticio
                         ]);
 
