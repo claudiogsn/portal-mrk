@@ -7,6 +7,7 @@ ini_set('max_input_time', '600');
 ini_set('memory_limit', '512M');
 
 require_once __DIR__ . '/../database/db.php';
+require_once __DIR__ . '/../controllers/BiController.php';
 
 class UserController {
 

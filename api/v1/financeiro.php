@@ -1,4 +1,5 @@
 <?php
+$startTime = microtime(true);
 
 
 ini_set('post_max_size', '100M');
@@ -28,6 +29,7 @@ require_once 'controllers/FinanceiroBancoController.php';
 require_once 'controllers/ConferenciaCaixaController.php';
 require_once 'controllers/FinanceiroFormaPagamentoController.php';
 require_once 'controllers/FinanceiroOpcoesRecebimentoController.php';
+require_once 'controllers/UtilsController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -38,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
+
+$response = [];
+$user = 'anonymous';
 
 if (isset($data['method']) && isset($data['data'])) {
     $method = $data['method'];
@@ -600,6 +605,23 @@ if (isset($data['method']) && isset($data['data'])) {
 
         header('Content-Type: application/json');
         echo json_encode($response);
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        if (isset($method) && !in_array($method, $noAuthMethods)) {
+
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+
+            UtilsController::trackApiToSqs(
+                $user,
+                $method,
+                $requestData ?? $json,
+                $response,
+                $startTime
+            );
+        }
     } catch (Exception $e) {
         http_response_code(500);
         $response = ['error' => 'Erro interno do servidor: ' . $e->getMessage()];

@@ -11,9 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// 2. Importa a conexão global
-// Certifique-se de que o arquivo db.php cria a variável $pdo
+// 2. Importa a conexão global e as classes necessárias
 require_once __DIR__ . '/database/db.php';
+require_once __DIR__ . '/controllers/UserController.php';
 
 if (!isset($pdo)) {
     http_response_code(500);
@@ -34,9 +34,9 @@ if (empty($loginUsuario) || empty($senhaPlana)) {
 }
 
 try {
-    // 1. Busca o usuário ativo
+    // 1. Busca o usuário ativo apenas para validar a senha e pegar o login exato
     $stmt = $pdo->prepare("
-        SELECT id, name, login, email, password, system_unit_id 
+        SELECT id, login, password 
         FROM system_users 
         WHERE login = :login AND active = 'Y' 
         LIMIT 1
@@ -89,16 +89,20 @@ try {
 
     $pdo->commit();
 
-    // 6. Retorno Sucesso
+    // ==========================================================
+    // 6. Busca os detalhes completos do usuário usando o Controller
+    // ==========================================================
+    $userDetailsResult = UserController::getUserDetails($user['login']);
+
+    if (!$userDetailsResult['success']) {
+        // Como acabamos de validar o usuário, isso raramente deve acontecer, mas é bom prever.
+        throw new Exception($userDetailsResult['message'], 404);
+    }
+
+    // 7. Retorno Sucesso
     echo json_encode([
         'token' => $sessionId,
-        'user'  => [
-            'id'      => $user['id'],
-            'name'    => $user['name'],
-            'login'   => $user['login'],
-            'email'   => $user['email'],
-            'unit_id' => $user['system_unit_id'],
-        ]
+        'user'  => $userDetailsResult['userDetails']
     ]);
 
 } catch (Exception $e) {
@@ -107,6 +111,9 @@ try {
     }
 
     $code = $e->getCode() === 401 ? 401 : 500;
+    // Pega os 404 também caso o userDetails falhe (o código acima lança 404)
+    if ($e->getCode() === 404) $code = 404;
+
     http_response_code($code);
 
     echo json_encode([
