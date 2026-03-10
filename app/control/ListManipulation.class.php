@@ -13,9 +13,9 @@ class ListManipulation extends TPage
 
 
         if ($_SERVER['SERVER_NAME'] == "localhost") {
-            $link = "http://localhost/portal-mrk/external/listManipulation.php";
+            $link = "http://localhost/portal-mrk/external/listManipulacao.php";
         } else {
-            $link = "https://portal.mrksolucoes.com.br/external/listManipulation.php";
+            $link = "https://portal.mrksolucoes.com.br/external/listManipulacao.php";
         }
 
 
