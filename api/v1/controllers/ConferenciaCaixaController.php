@@ -14,7 +14,6 @@ class ConferenciaCaixaController
         if (!$result) throw new Exception("Unidade não encontrada.");
         return $result['custom_code'];
     }
-
     public static function saveConferencia($data): array
     {
         global $pdo;
@@ -170,16 +169,16 @@ class ConferenciaCaixaController
 
             // 3. Busca próximo código do fornecedor
             $stmtNextFornCodigo = $pdo->prepare("
-    SELECT COALESCE(MAX(CAST(codigo AS UNSIGNED)), 0) + 1
-    FROM financeiro_fornecedor
-    WHERE system_unit_id = ?
-");
+            SELECT COALESCE(MAX(CAST(codigo AS UNSIGNED)), 0) + 1
+            FROM financeiro_fornecedor
+            WHERE system_unit_id = ?
+        ");
 
             // 4. Insere fornecedor fallback
             $stmtInsertForn = $pdo->prepare("
-    INSERT INTO financeiro_fornecedor (system_unit_id, codigo, razao, nome, cnpj_cpf) 
-    VALUES (?, ?, ?, ?, ?)
-");
+            INSERT INTO financeiro_fornecedor (system_unit_id, codigo, razao, nome, cnpj_cpf) 
+            VALUES (?, ?, ?, ?, ?)
+        ");
 
             // 5. Salva vínculo do fornecedor
             $stmtLinkForn = $pdo->prepare("
@@ -244,7 +243,26 @@ class ConferenciaCaixaController
                 $valorDesconto = $valor * ($taxaPercentual / 100);
                 $valorLiquido  = round($valor - $valorDesconto, 2);
 
-                $vencimentoCalculado = date('Y-m-d', strtotime($dataContabil . " + {$prazoDias} days"));
+                // --- INÍCIO: NOVO CÁLCULO DE DIAS ÚTEIS ---
+                $dtVencimento = new DateTime($dataContabil);
+                $diasAdicionados = 0;
+
+                while ($diasAdicionados < $prazoDias) {
+                    $dtVencimento->modify('+1 day');
+                    // 'N' retorna 1 (Segunda) até 7 (Domingo). < 6 significa Segunda a Sexta.
+                    if ($dtVencimento->format('N') < 6) {
+                        $diasAdicionados++;
+                    }
+                }
+
+                // Se o prazo for 0 (mesmo dia), mas cair no fim de semana, avança para a próxima segunda-feira
+                if ($prazoDias == 0 && $dtVencimento->format('N') >= 6) {
+                    $dtVencimento->modify('next monday');
+                }
+
+                $vencimentoCalculado = $dtVencimento->format('Y-m-d');
+                // --- FIM: CÁLCULO DE DIAS ÚTEIS ---
+
                 $documentoFormatado  = "CONF-" . date('Ymd', strtotime($dataContabil)) . "-" . $codigoOpcao;
                 $obsFormatada        = "Criado via Conferência de Caixa ({$nomeOpcaoDb}) - Taxa Deduzida: {$taxaPercentual}%";
 
@@ -577,7 +595,6 @@ class ConferenciaCaixaController
             return ['success' => false, 'message' => 'Erro ao buscar detalhamento: ' . $e->getMessage()];
         }
     }
-
     public static function sendConferenciaWpp(int $systemUnitId, string $dataContabil, int $userId): array
     {
         global $pdo;
@@ -639,7 +656,6 @@ class ConferenciaCaixaController
         UtilsController::sendWhatsapp($userData['phone'], $msg);
         return ['success' => true, 'message' => 'Enviado com sucesso!'];
     }
-
     private static function getUserName($userId) {
         global $pdo;
         if(!$userId) return 'Não conferido';
