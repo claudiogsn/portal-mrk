@@ -173,6 +173,10 @@
             <action>ListProductions</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Fichas de Manipulacao">
+            <action>ListManipulation</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Importar Fichas Técnicas">
             <action>ImportarFichasTecnicas</action>
             <icon>fas:circle fa-fw</icon>

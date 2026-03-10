@@ -73,6 +73,7 @@ require_once 'controllers/MdeController.php';
 require_once 'controllers/UtilsController.php';
 require_once 'controllers/CategoriaController.php';
 require_once 'controllers/ProjecaoVendasController.php';
+require_once 'controllers/ManipulacaoController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -805,6 +806,90 @@ if (isset($data['method']) && isset($data['data'])) {
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
+                }
+                break;
+
+            // Métodos para ManipulacaoController
+            case 'createManipulacao':
+                if (isset($requestData['items']) && is_array($requestData['items'])) {
+                    $response = ManipulacaoController::createManipulacao($requestData['items']);
+                } else {
+                    http_response_code(400);
+                    $response = [
+                        'success' => false,
+                        'message' => 'Parâmetro "items" ausente ou inválido. Esperado: array de manipulações.'
+                    ];
+                }
+                break;
+
+            case 'updateManipulacao':
+                if (isset($requestData['updates']) && is_array($requestData['updates'])) {
+                    $response = ManipulacaoController::updateManipulacao($requestData['updates']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'Parâmetro "updates" ausente ou inválido. Deve ser um array de atualizações.'];
+                }
+                break;
+
+            case 'getManipulacaoById':
+                if (isset($requestData['product_id']) && isset($requestData['unit_id'])) {
+                    $response = ManipulacaoController::getManipulacaoById($requestData['product_id'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros product_id ou unit_id ausentes'];
+                }
+                break;
+
+            case 'deleteManipulacao':
+                if (isset($requestData['product_id'], $requestData['unit_id'])) {
+                    $response = ManipulacaoController::deleteManipulacao($requestData['product_id'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros product_id ou unit_id ausentes'];
+                }
+                break;
+
+            case 'listManipulacoes':
+                if (isset($requestData['unit_id'])) {
+                    $response = ManipulacaoController::listManipulacoes($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
+                }
+                break;
+
+            case 'expandFichaManipulacao':
+                if (isset($requestData['product_id'], $requestData['unit_id'])) {
+                    $response = ManipulacaoController::expandFichaManipulacao($requestData['product_id'], $requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['success' => false, 'message' => 'Parâmetros product_id e unit_id são obrigatórios'];
+                }
+                break;
+
+            case 'executeManipulacao':
+                // O método na classe continuou como executeProduction
+                $response = ManipulacaoController::executeProduction($requestData);
+                break;
+
+            case 'executeManipulacaoBatch':
+                // O método na classe continuou como executeProductionBatch
+                $response = ManipulacaoController::executeProductionBatch($requestData);
+                break;
+
+            case 'listManipulacoesRealizadasDetalhado':
+                $response = ManipulacaoController::listManipulacoesRealizadasDetalhado($requestData);
+                break;
+
+            case 'listManipulacoesRealizadasBasico':
+                $response = ManipulacaoController::listManipulacoesRealizadasBasico($requestData);
+                break;
+            case 'listInsumosComFichaStatus':
+                if (isset($requestData['unit_id'])) {
+                    $response = ManipulacaoController::listInsumosComFichaStatus($requestData['unit_id']);
+                } else {
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetro unit_id ausente'];
                 }
                 break;
 
