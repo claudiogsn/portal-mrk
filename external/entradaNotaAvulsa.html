@@ -615,34 +615,41 @@
 
     // ===== Carregar Edição =====
     async function carregarNotaAvulsa() {
-        const res = await axios.post(baseUrl, {
-            method: 'getNotaAvulsa', token,
-            data: { system_unit_id: Number(system_unit_id), nota_id: Number(nota_id) }
-        });
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getNotaAvulsa', token,
+                data: { system_unit_id: Number(system_unit_id), nota_id: Number(nota_id) }
+            });
 
-        if(res.data.success) {
-            const n = res.data.data.nota || res.data.data.nota_avulsa;
-            const its = res.data.data.itens;
+            if (res.data.success) {
+                const n = res.data.nota || res.data.nota_avulsa;
+                const its = res.data.itens || [];
 
-            $('#numero_nf').val(n.numero_nf);
-            $('#serie').val(n.serie);
-            $('#data_emissao').val(fmtDateInput(n.data_emissao));
-            $('#data_entrada').val(fmtDateInput(n.data_entrada));
-            $('#valor_frete').val(formatValorBR(n.valor_frete));
-            $('#selFornecedor').val(n.fornecedor_id).trigger('change');
+                $('#numero_nf').val(n.numero_nf);
+                $('#serie').val(n.serie);
+                $('#data_emissao').val(fmtDateInput(n.data_emissao));
+                $('#data_entrada').val(fmtDateInput(n.data_entrada));
+                $('#valor_frete').val(formatValorBR(n.valor_frete));
+                $('#selFornecedor').val(n.fornecedor_id).trigger('change');
 
-            itens = its.map((it, i) => ({
-                numero_item: i+1,
-                codigo_produto: it.codigo_produto,
-                descricao: it.descricao,
-                unidade: it.unidade,
-                quantidade: Number(it.quantidade),
-                valor_unitario: Number(it.valor_total) / Number(it.quantidade),
-                valor_total: Number(it.valor_total)
-            }));
+                itens = its.map((it, i) => ({
+                    numero_item: i + 1,
+                    codigo_produto: it.codigo_produto,
+                    descricao: it.descricao,
+                    unidade: it.unidade,
+                    quantidade: Number(it.quantidade),
+                    valor_unitario: Number(it.valor_unitario),
+                    valor_total: Number(it.valor_total)
+                }));
 
-            renderTabelaItens();
-            recalcularTotais();
+                renderTabelaItens();
+                recalcularTotais();
+            } else {
+                Swal.fire('Erro', res.data.message || 'Falha ao carregar a nota', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Erro', 'Ocorreu um erro de comunicação com o servidor.', 'error');
         }
     }
 
