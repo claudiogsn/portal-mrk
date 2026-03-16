@@ -295,6 +295,47 @@
             $('#modalPlano').modal('show');
         });
 
+        // --- AÇÃO: EXCLUIR PLANO ---
+        $(document).on('click', '.btnExcluir', function() {
+            const tr = $(this).closest('tr');
+            const id = tr.data('id');
+            const codigo = tr.data('codigo');
+
+            Swal.fire({
+                title: 'Tem certeza?',
+                text: `Deseja realmente excluir o plano de contas ${codigo}? Esta ação não pode ser desfeita.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--mrk-red)',
+                cancelButtonColor: '#888',
+                confirmButtonText: '<iconify-icon icon="icon-park-outline:check"></iconify-icon> Sim, excluir!',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Excluindo...', didOpen: () => Swal.showLoading() });
+
+                    try {
+                        // Assumindo que o seu backend espera o method 'deletePlano'
+                        const res = await axios.post(baseUrl, {
+                            method: 'deletePlano',
+                            token: token,
+                            data: { codigo: codigo, system_unit_id: system_unit_id }
+                        });
+
+                        // Verifica se o backend retornou algum erro (ex: chave estrangeira)
+                        if (res.data && res.data.error) {
+                            Swal.fire('Não foi possível excluir', res.data.error, 'warning');
+                        } else {
+                            Swal.fire({ icon: 'success', title: 'Excluído!', text: 'O plano foi removido.', timer: 1500, showConfirmButton: false });
+                            listarPlanos(); // Recarrega a tabela para sumir com a linha
+                        }
+                    } catch (e) {
+                        Swal.fire('Erro', 'Falha na comunicação com o servidor ao tentar excluir.', 'error');
+                    }
+                }
+            });
+        });
+
         $('#btnSalvar').click(async function() {
             const id = $('#planoId').val();
             const payload = { id, codigo: $('#codigo').val(), descricao: $('#descricao').val(), system_unit_id };
@@ -312,6 +353,8 @@
 
         listarPlanos();
     });
+
+
 </script>
 </body>
 </html>

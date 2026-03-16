@@ -213,6 +213,7 @@
 
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="script/planoContasTree.js"></script>
 <script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
@@ -233,7 +234,7 @@
 
     // ======= Caches =======
     let BANCOS_CACHE = [];
-    let PLANOS_CACHE = [];
+    // PLANOS_CACHE removido! O componente cuida disso agora.
     let contaLoaded = null;
 
     // ======= Helpers =======
@@ -260,19 +261,24 @@
         }
 
         $('#fornecedor').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
-        $('#plano_contas').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
         $('#forma_pagamento_id').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
 
-        // Carrega dependências em ordem
+        // Carrega dependências em ordem rigorosa!
         carregarFornecedores()
-            .then(() => carregarPlanos())
             .then(() => carregarFormasPagamento())
+            // 1. Carrega os dados da árvore
+            .then(() => PlanoContasTree.carregarDados(baseUrl, token, unit_id))
+            // 2. Renderiza o select principal vazio
+            .then(() => {
+                PlanoContasTree.renderizar('#plano_contas');
+            })
+            // 3. AGORA SIM, carrega os dados da conta para preencher a tela
             .then(() => carregarConta());
 
         // --- Eventos Parcelamento ---
         $('#chkParcelar').on('change', function(){
             const show = $(this).is(':checked');
-            if(show) $('#chkRateio').prop('checked', false).trigger('change'); // Exclusão mútua
+            if(show) $('#chkRateio').prop('checked', false).trigger('change');
             $('#areaParcelas').toggle(show);
             if (show) gerarParcelas(); else limparParcelasUI();
         });
@@ -282,7 +288,7 @@
         $('#chkRateio').on('change', function(){
             const show = $(this).is(':checked');
             if(show) {
-                $('#chkParcelar').prop('checked', false).trigger('change'); // Exclusão mútua
+                $('#chkParcelar').prop('checked', false).trigger('change');
                 $('#divPlanoPrincipal').addClass('hidden');
                 $('#plano_contas').val(null).trigger('change');
                 $('#areaRateio').slideDown();
@@ -297,7 +303,9 @@
                 atualizarTotalRateio();
             }
         });
+
         $('#btnAddRateioItem').on('click', () => adicionarItemRateio());
+
         $(document).on('click', '.btn-remove-rateio', function(){
             $(this).closest('.rateio-card').fadeOut(300, function(){ $(this).remove(); atualizarTotalRateio(); });
         });
@@ -338,11 +346,10 @@
 
             contaLoaded = res.data;
 
-            // Preenche dados básicos
             $('#doc').val(contaLoaded.doc || '');
             $('#emissao').val(contaLoaded.emissao || '');
             $('#vencimento').val(contaLoaded.vencimento || '');
-            $('#desconto').val(0); // backend padrão não guarda desconto separado na tabela final (normalmente já vem líquido), mas mantivemos estrutura
+            $('#desconto').val(0);
             $('#acrescimo').val(Number(contaLoaded.adic || 0));
             $('#obs_extra').val(contaLoaded.obs || '');
 
@@ -357,31 +364,24 @@
             }
 
             // === LÓGICA DE RATEIO NO LOAD ===
-            // Se o backend retornou itens_rateio, significa que é um lote
             if (contaLoaded.itens_rateio && Array.isArray(contaLoaded.itens_rateio) && contaLoaded.itens_rateio.length > 0) {
 
-                // 1. Marca o Checkbox
-                $('#chkRateio').prop('checked', true).trigger('change'); // isso dispara o slideDown
+                $('#chkRateio').prop('checked', true).trigger('change');
 
-                // 2. Define o Valor Total como a SOMA do grupo (vinda do backend ou somada aqui)
-                // Se o backend mandou 'valor_total_rateio', usa ele. Senão soma na mão.
                 let totalGrupo = contaLoaded.valor_total_rateio
                     ? parseFloat(contaLoaded.valor_total_rateio)
                     : contaLoaded.itens_rateio.reduce((acc, it) => acc + parseFloat(it.valor), 0);
 
                 $('#valor_total').val(totalGrupo);
-
-                // 3. Limpa cards vazios criados pelo trigger change
                 $('#listaRateioCards').empty();
 
-                // 4. Cria cards para cada item
+                // Cria cards para cada item do rateio que veio do banco
                 contaLoaded.itens_rateio.forEach(item => {
                     adicionarItemRateio(item.plano_contas, item.valor);
                 });
 
                 atualizarTotalRateio();
             } else {
-                // Conta normal
                 $('#valor_total').val(contaLoaded.valor || 0);
             }
 
@@ -399,18 +399,7 @@
         }catch(e){}
     }
 
-    async function carregarPlanos(){
-        try{
-            const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
-            PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            PLANOS_CACHE.sort((a,b) => a.codigo.localeCompare(b.codigo));
-
-            PLANOS_CACHE.forEach(p => {
-                const indent = '\u00A0'.repeat(Math.floor((p.codigo.length - 2) / 2) * 4);
-                $('#plano_contas').append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
-            });
-        }catch(e){}
-    }
+    // A FUNÇÃO carregarPlanos() FOI DELETADA!
 
     async function carregarFormasPagamento(){
         try{
@@ -428,7 +417,6 @@
         if (valorPreenchido !== null) {
             valorInput = parseFloat(valorPreenchido).toFixed(2);
         } else {
-            // Calcula restante se for novo card manual
             const totalAjustado = getValorAjustado();
             let somaAtual = 0;
             $('.valorRateio').each(function(){ somaAtual += parseFloat($(this).val()||0); });
@@ -455,15 +443,13 @@
 
         $('#listaRateioCards').append(html);
 
-        // Popula Select
-        const $sel = $(`#sel_${idUnico}`);
-        PLANOS_CACHE.forEach(p => {
-            const indent = '\u00A0'.repeat(Math.floor((p.codigo.length - 2) / 2) * 4);
-            $sel.append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
-        });
+        // Aplica a árvore no novo Select criado
+        PlanoContasTree.renderizar(`#sel_${idUnico}`);
 
-        if (planoPreSelecionado) $sel.val(planoPreSelecionado);
-        $sel.select2({ placeholder: 'Selecione o plano', width: '100%' });
+        // Se veio do banco, já seleciona a opção correspondente
+        if (planoPreSelecionado) {
+            $(`#sel_${idUnico}`).val(planoPreSelecionado).trigger('change');
+        }
 
         atualizarTotalRateio();
     }
@@ -528,27 +514,24 @@
     async function salvar(){
         if (!contaLoaded) return;
 
-        // 1. Coleta os valores brutos dos inputs
         const valorTotal  = parseFloat($('#valor_total').val() || 0);
         const desconto    = parseFloat($('#desconto').val() || 0);
         const acrescimo   = parseFloat($('#acrescimo').val() || 0);
         const valorLiquido = Math.max(0, valorTotal - desconto + acrescimo);
 
         const fornecedorId = $('#fornecedor').val();
-        const planoContas  = $('#plano_contas').val(); // Pode ser null se for rateio
+        const planoContas  = $('#plano_contas').val();
         const formaPagtoId = $('#forma_pagamento_id').val();
         const dataBaixa    = $('#baixa_dt').val();
 
-        // 2. Validações básicas antes de qualquer coisa
         if (!fornecedorId) return Swal.fire('Atenção', 'Selecione o Fornecedor.', 'warning');
         if (!formaPagtoId) return Swal.fire('Atenção', 'Selecione a Forma de Pagamento.', 'warning');
         if (!$('#doc').val()) return Swal.fire('Atenção', 'Informe o número do Documento.', 'warning');
         if (!$('#vencimento').val()) return Swal.fire('Atenção', 'Informe a Data de Vencimento.', 'warning');
 
-        // 3. Monta o objeto de dados base (comum a todos os cenários)
         const baseData = {
             id: Number(contaLoaded.id),
-            system_unit_id: Number(unit_id), // Faltava este campo crucial!
+            system_unit_id: Number(unit_id),
             usuario_id: user_id || null,
 
             entidade: Number(fornecedorId),
@@ -556,46 +539,30 @@
             emissao: $('#emissao').val(),
             vencimento: $('#vencimento').val(),
 
-            // Valores
-            valor: valorLiquido, // O backend espera o valor final a pagar
-            adic: acrescimo,     // Opcional, dependendo da sua regra de negócio
-            // desconto: desconto, // Se seu backend suportar, envie
+            valor: valorLiquido,
+            adic: acrescimo,
 
-            // Classificação
             forma_pagamento: Number(formaPagtoId),
-            // Se o backend usa 'banco' como ID do banco real ou da forma, envie aqui.
-            // Pelo seu histórico recente, forma_pagamento é o vínculo, e banco é opcional/automático
-            // Mas para garantir compatibilidade com código antigo:
             banco: Number(formaPagtoId),
 
             obs: $('#obs_extra').val(),
-
-            // Baixa (se preenchido)
             baixa_dt: dataBaixa || null
         };
 
         const isRateio = $('#chkRateio').is(':checked');
         const isParcelado = $('#chkParcelar').is(':checked');
 
-        // --- CENÁRIO 1: RATEIO (Edição Complexa) ---
         if (isRateio) {
-            // ... lógica de rateio mantida (requer endpoint especial) ...
             Swal.fire('Atenção', 'Edição de rateio não implementada neste endpoint simples.', 'info');
             return;
         }
-
-        // --- CENÁRIO 2: PARCELAMENTO (Geração de Novas Contas) ---
         else if (isParcelado) {
-            // ... lógica de parcelamento mantida ...
             Swal.fire('Info', 'Lógica de parcelamento aqui.', 'info');
             return;
         }
-
-        // --- CENÁRIO 3: CONTA ÚNICA (Padrão) ---
         else {
             if (!planoContas) return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
 
-            // Adiciona o plano de contas ao payload final
             baseData.plano_contas = planoContas;
 
             const payload = {
@@ -603,8 +570,6 @@
                 token: token,
                 data: baseData
             };
-
-            console.log("Enviando payload:", payload); // Debug útil
 
             Swal.fire({ title:'Salvando...', didOpen:()=>Swal.showLoading() });
 
@@ -614,9 +579,7 @@
 
                 if (res.data && res.data.success) {
                     Swal.fire('Sucesso', 'Conta atualizada com sucesso.', 'success').then(() => {
-                        // Tenta fechar modal no pai
                         if(typeof parent.fecharModalEditar === 'function') parent.fecharModalEditar();
-                        // Tenta atualizar grid no pai
                         if(parent.buscar) parent.buscar();
                     });
                 } else {
@@ -638,6 +601,6 @@
             if ($p(sel).length) { $p(sel).modal('hide'); fechou = true; }
         }
         if (!fechou) { $p('.modal.in, .modal.show').modal('hide'); }
-    }</script>
-</body>
+    }
+</script></body>
 </html>

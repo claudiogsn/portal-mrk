@@ -1358,24 +1358,21 @@ class FinanceiroContaController {
                 throw new Exception('Campo obrigatório ausente: id da conta.');
             }
 
+            // Nova Validação: Exige o Código do Banco OU a Forma de Pagamento (compatibilidade com telas antigas)
             if (
-                !isset($data['forma_pagamento']) &&
-                !isset($data['forma_pagamento_id'])
+                empty($data['banco']) &&
+                empty($data['forma_pagamento']) &&
+                empty($data['forma_pagamento_id'])
             ) {
-                throw new Exception('Campo obrigatório ausente: forma_pagamento.');
+                throw new Exception('Campo obrigatório ausente: código do banco ou forma_pagamento.');
             }
 
             $id         = (int)$data['id'];
             $usuario_id = $data['usuario_id'] ?? null;
 
-            // Compat
-            $formaPagamentoId = (int)($data['forma_pagamento']
-                ?? $data['forma_pagamento_id']);
-
             // 1) Busca conta
             $stConta = $pdo->prepare("
-            SELECT * 
-            FROM financeiro_conta 
+            SELECT * FROM financeiro_conta 
             WHERE id = :id 
             LIMIT 1
         ");
@@ -1392,43 +1389,52 @@ class FinanceiroContaController {
 
             $system_unit_id = (int)$contaAtual['system_unit_id'];
 
-            // 2) Busca forma de pagamento (e banco vinculado)
-            $stFP = $pdo->prepare("
-            SELECT id, banco_padrao_id
-            FROM financeiro_forma_pagamento
-            WHERE id = :id
-              AND system_unit_id = :unit
-              AND ativos = 1
-            LIMIT 1
-        ");
-            $stFP->execute([
-                ':id'   => $formaPagamentoId,
-                ':unit' => $system_unit_id
-            ]);
-
-            $formaPagamento = $stFP->fetch(PDO::FETCH_ASSOC);
-
-            if (!$formaPagamento) {
-                throw new Exception('Forma de pagamento inválida ou inativa.');
-            }
-
-            $bancoPadraoId = $formaPagamento['banco_padrao_id'] ?? null;
-
-            // 3) Campos de atualização
-            $baixa_dt = !empty($data['baixa_dt'])
-                ? $data['baixa_dt']
-                : date('Y-m-d');
+            // 2) Preparar Campos de Atualização base
+            $baixa_dt = !empty($data['baixa_dt']) ? $data['baixa_dt'] : date('Y-m-d');
 
             $camposUpdate = [
-                'baixa_dt'        => $baixa_dt,
-                'forma_pagamento'=> $formaPagamentoId
+                'baixa_dt' => $baixa_dt
             ];
 
-            // Banco vem AUTOMATICAMENTE da forma de pagamento
-            if (!empty($bancoPadraoId)) {
-                $camposUpdate['banco'] = $bancoPadraoId;
+            // 3) Lógica Inteligente: Define como vamos preencher o Banco
+            if (!empty($data['banco'])) {
+                // Cenário NOVO: Recebeu o código do banco direto da tela de quitação em lote
+                $camposUpdate['banco'] = $data['banco'];
+
+                // Opcional: Se no seu banco a coluna forma_pagamento for obrigatória,
+                // você pode replicar o código ou setar nulo. Se não for, basta não incluí-la no update.
+                $camposUpdate['forma_pagamento'] = $data['banco'];
+            } else {
+                // Cenário LEGADO: Recebeu forma de pagamento, vai buscar o banco vinculado
+                $formaPagamentoId = (int)($data['forma_pagamento'] ?? $data['forma_pagamento_id']);
+
+                $stFP = $pdo->prepare("
+                SELECT id, banco_padrao_id
+                FROM financeiro_forma_pagamento
+                WHERE id = :id
+                  AND system_unit_id = :unit
+                  AND ativos = 1
+                LIMIT 1
+            ");
+                $stFP->execute([
+                    ':id'   => $formaPagamentoId,
+                    ':unit' => $system_unit_id
+                ]);
+
+                $formaPagamento = $stFP->fetch(PDO::FETCH_ASSOC);
+
+                if (!$formaPagamento) {
+                    throw new Exception('Forma de pagamento inválida ou inativa.');
+                }
+
+                $camposUpdate['forma_pagamento'] = $formaPagamentoId;
+
+                if (!empty($formaPagamento['banco_padrao_id'])) {
+                    $camposUpdate['banco'] = $formaPagamento['banco_padrao_id'];
+                }
             }
 
+            // 4) Executa o Update
             $setParts    = [];
             $params      = [':id' => $id];
             $dadosDepois = $contaAtual;
@@ -1456,17 +1462,16 @@ class FinanceiroContaController {
                 ];
             }
 
-            // 4) Reload
+            // 5) Reload para pegar os dados frescos
             $stReload = $pdo->prepare("
-            SELECT * 
-            FROM financeiro_conta 
+            SELECT * FROM financeiro_conta 
             WHERE id = :id 
             LIMIT 1
         ");
             $stReload->execute([':id' => $id]);
             $contaAtualizada = $stReload->fetch(PDO::FETCH_ASSOC);
 
-            // 5) Auditoria
+            // 6) Auditoria
             self::logAuditoria(
                 'BAIXA',
                 'financeiro_conta',
@@ -1519,9 +1524,13 @@ class FinanceiroContaController {
                     throw new Exception("ID da conta ausente no item {$index}.");
                 }
 
-                // Valida apenas Data e Forma de Pagamento (Banco é automático na baixa individual)
-                if (empty($contaData['baixa_dt']) || empty($contaData['forma_pagamento'])) {
-                    throw new Exception("Campos incompletos (Data ou Forma de Pagamento) na conta ID {$contaData['id']}.");
+                // NOVA VALIDAÇÃO: Aceita 'banco' ou 'forma_pagamento' para manter a compatibilidade
+                if (empty($contaData['baixa_dt'])) {
+                    throw new Exception("Data de baixa ausente na conta ID {$contaData['id']}.");
+                }
+
+                if (empty($contaData['banco']) && empty($contaData['forma_pagamento'])) {
+                    throw new Exception("Banco ou Forma de Pagamento ausente na conta ID {$contaData['id']}.");
                 }
 
                 // Chama o método individual

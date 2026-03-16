@@ -723,7 +723,7 @@ class MdeController
                 JOIN financeiro_fornecedor ff ON en.fornecedor_id = ff.id 
                     AND ff.system_unit_id = en.system_unit_id
                 WHERE en.system_unit_id = :unit_id
-                ORDER BY en.data_emissao DESC";
+                ORDER BY en.created_at DESC";
 
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(':unit_id', $system_unit_id, PDO::PARAM_INT);

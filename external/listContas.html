@@ -30,22 +30,6 @@
             background-color: rgba(11, 70, 172, 0.15) !important;
         }
 
-        /* Estilos para os Cards de Quitação em Lote */
-        .card-quitacao {
-            border: 1px solid #ddd;
-            border-left: 4px solid var(--mrk-blue);
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            background: #fafafa;
-        }
-        .card-quitacao h5 {
-            margin-top: 0;
-            color: #333;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
         /* Aumentar um pouco a área de clique do checkbox para facilitar */
         .check-conta {
             cursor: pointer;
@@ -192,15 +176,28 @@
 </div>
 
 <div class="modal fade" id="modalQuitarLote" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h4 class="modal-title">Quitação de Contas em Lote</h4>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
-                <p class="muted mb-3">Preencha os dados de quitação para as contas selecionadas.</p>
-                <div id="containerCardsQuitar" style="max-height: 55vh; overflow-y: auto; padding-right: 5px;"></div>
+                <div class="alert alert-info">
+                    Você selecionou <strong><span id="qtdContasQuitar">0</span></strong> conta(s) totalizando <strong><span id="totalValorQuitar">R$ 0,00</span></strong>.
+                </div>
+                <p class="muted mb-3">As informações abaixo serão aplicadas a todas as contas selecionadas:</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Data de Baixa (Pagamento)</label>
+                        <input type="date" id="inputLoteBaixaDt" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Banco</label>
+                        <select id="inputLoteBanco" class="form-control" required>
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
@@ -329,12 +326,12 @@
     // === Variáveis Globais ===
     let contas = [];
     let contasFiltradasVisiveis = [];
-    let listaFormasPagamento = [];
+    let bancosCache = []; // Variável atualizada para guardar os bancos
 
     $(document).ready(function () {
         setDefaultMonth();
         checarIntegracaoF360();
-        carregarFormasPagamento();
+        listarBancos(); // Chama o novo loader
 
         $('#btnBuscar').click(buscar);
         $('#filtroStatus, #filtroRateio').on('change input', aplicarFiltrosLocais);
@@ -344,16 +341,18 @@
     });
 
     // === Funções Base ===
-    async function carregarFormasPagamento(){
+
+    // Novo Loader: Substitui o listFormasPagamento por listBancos
+    async function listarBancos() {
         try {
             const res = await axios.post(baseUrl, {
-                method: 'listFormasPagamento',
+                method: 'listBancos',
                 token,
-                data: { system_unit_id: Number(unit_id), apenasAtivos: true }
+                data: { system_unit_id: Number(unit_id), apenas_ativos: true }
             });
-            listaFormasPagamento = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-        } catch(e) {
-            console.error("Erro ao carregar formas de pagamento", e);
+            bancosCache = res.data.data || res.data || [];
+        } catch (e) {
+            console.error("Erro ao carregar bancos", e);
         }
     }
 
@@ -547,7 +546,6 @@
         atualizarTotaisPorSelecao();
     });
 
-    // Se a pessoa clica direto na caixa de seleção, mudamos a cor da linha
     $(document).on('change', '.check-conta', function() {
         const $tr = $(this).closest('tr');
 
@@ -564,13 +562,9 @@
         atualizarTotaisPorSelecao();
     });
 
-    // Se a pessoa clica na LINHA COM CTRL (impedimos conflito se ela clicou direto na caixinha)
     $(document).on('click', '.linha-conta', function(e) {
-        // Se a pessoa clicou exatamente num link, botão ou na própria checkbox, não fazemos nada,
-        // deixamos o evento natural da checkbox ou botão rodar
         if ($(e.target).closest('a, button, input[type="checkbox"]').length) return;
 
-        // Se clicou segurando Ctrl ou Cmd (Mac)
         if (e.ctrlKey || e.metaKey) {
             const $chk = $(this).find('.check-conta');
             $chk.prop('checked', !$chk.prop('checked')).trigger('change');
@@ -582,7 +576,7 @@
     });
 
     // ==========================================
-    // QUITAÇÃO EM LOTE
+    // QUITAÇÃO EM LOTE - UNIFICADO
     // ==========================================
     $(document).on('click', '#btnQuitarEmLote', function() {
         const selecionadas = $('.check-conta:checked');
@@ -591,75 +585,50 @@
             return Swal.fire('Atenção', 'Selecione ao menos uma conta para quitar.', 'warning');
         }
 
-        if (selecionadas.length > 10) {
-            return Swal.fire('Atenção', `Você selecionou ${selecionadas.length} contas. O limite máximo para quitação em lote é de 10 contas por vez.`, 'warning');
-        }
-
-        const container = $('#containerCardsQuitar');
-        container.empty();
-
-        const hoje = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 10);
-
-        let optionsFormas = '<option value="">Selecione...</option>';
-        listaFormasPagamento.forEach(f => {
-            const idValue = f.id || f.codigo;
-            optionsFormas += `<option value="${idValue}">${f.codigo} - ${f.nome}</option>`;
-        });
-
+        // Calcula total para mostrar no aviso
+        let totalValorQuitar = 0;
         selecionadas.each(function() {
             const id = $(this).val();
             const conta = contasFiltradasVisiveis.find(c => String(c.id) === String(id));
-
-            if (conta) {
-                const cardHtml = `
-                    <div class="card-quitacao" data-id="${conta.id}">
-                        <h5><iconify-icon icon="icon-park-outline:bill"></iconify-icon> ${conta.nome || '-'} (Doc: ${conta.doc || '-'}) - <strong>${toBRL(conta.valor)}</strong></h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label>Data de Baixa</label>
-                                <input type="date" class="form-control input-baixa-dt" value="${hoje}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Forma de Pagamento</label>
-                                <select class="form-control input-forma-pgto" required>
-                                    ${optionsFormas}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.append(cardHtml);
-            }
+            if(conta) totalValorQuitar += Number(conta.valor) || 0;
         });
+
+        // Preenche info visual
+        $('#qtdContasQuitar').text(selecionadas.length);
+        $('#totalValorQuitar').text(toBRL(totalValorQuitar));
+
+        // Define a data atual como padrão
+        const hoje = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().substring(0, 10);
+        $('#inputLoteBaixaDt').val(hoje);
+
+        // Preenche o Select utilizando o novo cache de Bancos
+        let optionsBancos = '<option value="">Selecione...</option>';
+        bancosCache.forEach(b => {
+            optionsBancos += `<option value="${b.codigo}">${b.codigo} - ${b.nome}</option>`;
+        });
+        $('#inputLoteBanco').html(optionsBancos);
 
         $('#modalQuitarLote').modal({ backdrop: 'static', keyboard: false }).modal('show');
     });
 
     $(document).on('click', '#btnConfirmarQuitarLote', async function() {
-        const cards = $('.card-quitacao');
+        const baixa_dt = $('#inputLoteBaixaDt').val();
+        const banco_id = $('#inputLoteBanco').val();
+
+        if (!baixa_dt || !banco_id) {
+            return Swal.fire('Atenção', 'Preencha a Data de Pagamento e o Banco.', 'warning');
+        }
+
         const payloadData = [];
-        let formValido = true;
-
-        cards.each(function() {
-            const id = $(this).data('id');
-            const baixa_dt = $(this).find('.input-baixa-dt').val();
-            const forma_pagamento = $(this).find('.input-forma-pgto').val();
-
-            if (!baixa_dt || !forma_pagamento) {
-                formValido = false;
-            }
-
+        $('.check-conta:checked').each(function() {
             payloadData.push({
-                id: Number(id),
+                id: Number($(this).val()),
                 usuario_id: username ? Number(username) : 0,
                 baixa_dt: baixa_dt,
-                forma_pagamento: Number(forma_pagamento)
+                banco: Number(banco_id),
+                forma_pagamento: Number(banco_id) // Enviando ambos para manter retrocompatibilidade com a API
             });
         });
-
-        if (!formValido) {
-            return Swal.fire('Atenção', 'Preencha Data e Forma de Pagamento em todos os cards.', 'warning');
-        }
 
         try {
             Swal.fire({ title: 'Processando quitação...', didOpen: () => Swal.showLoading() });
@@ -678,7 +647,7 @@
                 $('#modalQuitarLote').modal('hide');
 
                 $('#checkAllContas').prop('checked', false);
-                buscar();
+                buscar(); // Recarrega os dados da tabela
             } else {
                 Swal.fire('Erro', res.data?.message || 'Ocorreu um erro ao baixar as contas.', 'error');
             }

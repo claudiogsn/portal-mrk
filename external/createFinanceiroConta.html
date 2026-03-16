@@ -38,7 +38,7 @@
         .rateio-card {
             border: 1px solid #ddd;
             border-left: 4px solid #2196F3;
-            padding: 25px 15px 15px 15px; /* Top padding maior para o icone */
+            padding: 25px 15px 15px 15px;
             margin-bottom: 10px;
             background-color: #f9f9f9;
             border-radius: 4px;
@@ -54,7 +54,7 @@
             position: absolute;
             top: 8px;
             right: 10px;
-            color: #F44336; /* Vermelho */
+            color: #F44336;
             cursor: pointer;
             font-size: 18px;
             z-index: 10;
@@ -63,6 +63,12 @@
         .btn-remove-rateio:hover {
             color: #d32f2f;
             transform: scale(1.1);
+        }
+
+        /* Previne texto de quebrar nos itens da árvore e mantém alinhamento */
+        .select2-results__option {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
         }
     </style>
 </head>
@@ -224,6 +230,7 @@
 <script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="script/planoContasTree.js"></script>
 
 <script>
     // ======= Params e URLs =======
@@ -237,7 +244,7 @@
         : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
     let BANCOS_CACHE = [];
-    let PLANOS_CACHE = []; // Armazena os planos
+    let PLANOS_CACHE = [];
 
     // ======= Helpers =======
     function toBRL(v){ const n = Number(v)||0; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
@@ -257,23 +264,18 @@
 
     // ======= Init =======
     $(document).ready(() => {
-        // Select2 padrão
+        // Select2 padrão (plano_contas é inicializado dinamicamente depois)
         $('#fornecedor').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
-        $('#plano_contas').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
         $('#forma_pagamento_id').select2({ placeholder: 'Selecione...', allowClear: true, width: '100%' });
 
         carregarFornecedores();
         carregarPlanos();
         carregarBancos();
 
-        // --- Lógica Parcelamento (Bloqueia Rateio) ---
+        // --- Lógica Parcelamento ---
         $('#chkParcelar').on('change', function(){
             if($(this).is(':checked')) {
-                // Bloqueio/Desmarco Rateio
-                if($('#chkRateio').is(':checked')) {
-                    $('#chkRateio').prop('checked', false).trigger('change');
-                }
-
+                if($('#chkRateio').is(':checked')) { $('#chkRateio').prop('checked', false).trigger('change'); }
                 $('#areaParcelas').slideDown();
                 gerarParcelas();
             } else {
@@ -282,40 +284,27 @@
             }
         });
 
-        // --- Lógica Rateio (Bloqueia Parcelamento) ---
+        // --- Lógica Rateio ---
         $('#chkRateio').on('change', function(){
             if($(this).is(':checked')) {
-                // Bloqueio/Desmarco Parcelamento
-                if($('#chkParcelar').is(':checked')) {
-                    $('#chkParcelar').prop('checked', false).trigger('change');
-                }
-
-                // Esconde plano de contas principal (pois será definido por item no card)
+                if($('#chkParcelar').is(':checked')) { $('#chkParcelar').prop('checked', false).trigger('change'); }
                 $('#divPlanoPrincipal').addClass('hidden');
                 $('#plano_contas').val(null).trigger('change');
-
                 $('#areaRateio').slideDown();
 
-                // Se não houver cards, adiciona o primeiro automaticamente
-                if ($('.rateio-card').length === 0) {
-                    adicionarItemRateio();
-                }
+                if ($('.rateio-card').length === 0) { adicionarItemRateio(); }
                 atualizarTotalRateio();
             } else {
                 $('#divPlanoPrincipal').removeClass('hidden');
                 $('#areaRateio').slideUp();
-                $('#listaRateioCards').empty(); // limpa os cards
+                $('#listaRateioCards').empty();
                 atualizarTotalRateio();
             }
         });
 
-        // Botão adicionar card rateio
         $('#btnAddRateioItem').on('click', adicionarItemRateio);
-
-        // Geração de parcelas
         $('#btnGerarParcelas').on('click', gerarParcelas);
 
-        // Recalculos globais
         $('#qtParcelas, #valor_total, #desconto, #acrescimo, #vencimento, #doc').on('change input', () => {
             if ($('#chkParcelar').is(':checked')) gerarParcelas();
             if ($('#chkRateio').is(':checked')) atualizarTotalRateio();
@@ -324,10 +313,7 @@
         $(document).on('input change', '.valorParcela', atualizarTotalParcelas);
         $(document).on('input change', '.valorRateio', atualizarTotalRateio);
 
-        // ==== AQUI ESTÁ A LIXEIRA ====
-        // Remover card de rateio ao clicar na lixeira
         $(document).on('click', '.btn-remove-rateio', function(){
-            // Efeito visual de remoção
             $(this).closest('.rateio-card').fadeOut(300, function(){
                 $(this).remove();
                 atualizarTotalRateio();
@@ -346,24 +332,9 @@
         } catch(e){ console.error(e); }
     }
 
-    async function carregarPlanos(){
-        try{
-            const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
-            PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            PLANOS_CACHE.sort((a,b) => a.codigo.localeCompare(b.codigo));
-
-            // Popula o select principal
-            PLANOS_CACHE.forEach(p => {
-                const nivel = Math.floor((p.codigo.length - 2) / 2);
-                const indent = '\u00A0'.repeat(nivel * 4);
-                $('#plano_contas').append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
-            });
-        } catch(e){ console.error(e); }
-    }
-
     async function carregarBancos(){
         try {
-            const res = await axios.post(baseUrl, { method: 'listForma', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+            const res = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
             BANCOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
             BANCOS_CACHE.forEach(b => {
                 $('#forma_pagamento_id').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome||b.descricao), b.codigo));
@@ -371,20 +342,126 @@
         } catch(e){}
     }
 
+    // ======= LÓGICA DE ÁRVORE PARA PLANO DE CONTAS =======
+    async function carregarPlanos(){
+        try{
+            const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
+            PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+            PLANOS_CACHE.sort((a,b) => a.codigo.localeCompare(b.codigo));
+
+            // Define os Níveis e checa se a conta é "Pai"
+            PLANOS_CACHE.forEach(p => {
+                p.nivel = Math.floor((p.codigo.length - 2) / 2);
+                p.isParent = PLANOS_CACHE.some(child => child.codigo.startsWith(p.codigo) && child.codigo.length > p.codigo.length);
+            });
+
+            // Popula o select Principal
+            popularSelectPlanos($('#plano_contas'));
+
+        } catch(e){ console.error(e); }
+    }
+
+    function popularSelectPlanos($select) {
+        if ($select.hasClass("select2-hidden-accessible")) {
+            $select.select2('destroy');
+        }
+        $select.empty().append(new Option('Selecione...', ''));
+
+        PLANOS_CACHE.forEach(p => {
+            let $opt = $('<option>', {
+                value: p.codigo,
+                text: p.codigo + ' - ' + p.descricao,
+                'data-codigo': p.codigo,
+                'data-parent': p.isParent,
+                'data-nivel': p.nivel
+            });
+            $select.append($opt);
+        });
+
+        $select.select2({
+            placeholder: 'Selecione o plano',
+            allowClear: true,
+            width: '100%',
+            templateResult: formatarPlanoConta
+        });
+    }
+
+    function formatarPlanoConta(data) {
+        if (!data.id) return data.text; // Retorna normal se for o placeholder
+
+        let $el = $(data.element);
+        let codigo = $el.data('codigo');
+        let isParent = $el.data('parent') === true || $el.data('parent') === "true";
+        let nivel = parseInt($el.data('nivel')) || 0;
+
+        let padding = nivel * 20;
+        let fontWeight = isParent ? 'bold' : 'normal';
+
+        // Ícone clicável para itens "Pais" e bolinha vazia para itens "Filhos"
+        let icon = isParent
+            ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${codigo}" style="cursor:pointer; color:#2196F3; margin-right:8px; width:15px; text-align:center;"></i>`
+            : `<i class="fas fa-circle" style="color:#ddd; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
+
+        let $wrapper = $(`
+            <div class="tree-node" data-codigo="${codigo}" style="padding-left: ${padding}px; display:flex; align-items:center; font-weight: ${fontWeight};">
+                ${icon}
+                <span>${data.text}</span>
+            </div>
+        `);
+
+        return $wrapper;
+    }
+
+    // Intercepta o clique no ícone para Expandir/Recolher sem fechar o dropdown
+    $(document).on('mouseup', '.tree-toggle', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        let $icon = $(this);
+        let codigo = $icon.data('codigo');
+        let isExpanded = $icon.hasClass('fa-chevron-down');
+
+        if (isExpanded) {
+            // Recolhe os filhos
+            $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+            $('.tree-node').each(function() {
+                let childCode = $(this).data('codigo');
+                if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                    $(this).closest('.select2-results__option').hide();
+                    let $childIcon = $(this).find('.tree-toggle');
+                    if ($childIcon.length) {
+                        $childIcon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+                    }
+                }
+            });
+        } else {
+            // Expande os filhos
+            $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+            $('.tree-node').each(function() {
+                let childCode = $(this).data('codigo');
+                if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                    $(this).closest('.select2-results__option').show();
+                    let $childIcon = $(this).find('.tree-toggle');
+                    if ($childIcon.length) {
+                        $childIcon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+                    }
+                }
+            });
+        }
+    });
+
     // ======= Lógica Rateio (Cards) =======
     function adicionarItemRateio() {
         const idUnico = 'rateio_' + Date.now() + Math.floor(Math.random() * 1000);
-
-        // Tenta calcular o valor restante para preencher o input automaticamente
         const totalAjustado = getValorAjustado();
         let somaAtual = 0;
+
         $('.valorRateio').each(function(){ somaAtual += parseFloat($(this).val()||0); });
         const restante = Math.max(0, totalAjustado - somaAtual).toFixed(2);
 
         const html = `
             <div class="rateio-card" id="card_${idUnico}">
                 <i class="fa fa-trash btn-remove-rateio" title="Remover item"></i>
-
                 <div class="row">
                     <div class="col-md-8">
                         <label>Plano de Contas</label>
@@ -402,25 +479,16 @@
 
         $('#listaRateioCards').append(html);
 
-        // Popula o select deste card usando o cache
+        // Aplica a lógica da árvore customizada para os inputs de rateio dinâmicos
         const $sel = $(`#sel_${idUnico}`);
-        PLANOS_CACHE.forEach(p => {
-            const nivel = Math.floor((p.codigo.length - 2) / 2);
-            const indent = '\u00A0'.repeat(nivel * 4);
-            $sel.append(new Option(`${indent}${p.codigo} - ${p.descricao}`, p.codigo));
-        });
-
-        // Inicializa Select2
-        $sel.select2({ placeholder: 'Selecione o plano', width: '100%' });
+        popularSelectPlanos($sel);
 
         atualizarTotalRateio();
     }
 
     function atualizarTotalRateio() {
         let soma = 0;
-        $('.valorRateio').each(function(){
-            soma += parseFloat($(this).val() || 0);
-        });
+        $('.valorRateio').each(function(){ soma += parseFloat($(this).val() || 0); });
 
         const meta = getValorAjustado();
         $('#totalRateio').text(toBRL(soma));
@@ -505,7 +573,7 @@
         const formaSel = getFormaSelecionada();
         const bancoCod = formaSel ? formaSel.codigo : null;
 
-        // 1. RATEIO
+        // RATEIO
         if (isRateio) {
             let somaRateio = 0;
             const items = [];
@@ -543,7 +611,7 @@
                 });
             });
 
-            // 2. PARCELADO
+            // PARCELADO
         } else if (isParcelado) {
             let soma = 0;
             $('#tblParcelas tbody tr').each(function(){
@@ -574,7 +642,7 @@
             }
             if (contas.length === 0) return Swal.fire('Atenção', 'Gere as parcelas antes de salvar.', 'warning');
 
-            // 3. PADRÃO
+            // PADRÃO
         } else {
             contas.push({
                 fornecedor_id: Number(dadosBase.fornecedor_id),

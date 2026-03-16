@@ -122,9 +122,14 @@
         </div>
 
         <div class="row">
-          <div class="col-md-12">
-            <input type="checkbox" id="chkSomenteDivergentes" class="chk-col-blue" />
-            <label for="chkSomenteDivergentes" class="muted" style="margin-bottom: 0;">Exibir apenas itens com divergência</label>
+          <div class="col-md-4">
+            <label for="filtroDivergencia" class="muted">Exibir Diferenças</label>
+            <select id="filtroDivergencia" class="form-control">
+              <option value="TODOS">Todos os itens</option>
+              <option value="AMBOS">Somente Divergentes (Positivo ou Negativo)</option>
+              <option value="POSITIVO">Somente Positivos (+)</option>
+              <option value="NEGATIVO">Somente Negativos (-)</option>
+            </select>
           </div>
         </div>
       </div>
@@ -230,7 +235,7 @@
   // ====== BINDINGS ======
   $(document).ready(() => {
     $('#btnConsultar').on('click', onConsultar);
-    $('#chkSomenteDivergentes').on('change', renderTabelaComFiltro);
+    $('#filtroDivergencia').on('change', renderTabelaComFiltro); // EVENTO ATUALIZADO
     $('#btnExportPdf').on('click', onExportPdf);
   });
 
@@ -289,19 +294,25 @@
     }
   }
 
-  // ====== RENDER ======
+  // ====== RENDER E FILTRO ======
   function renderTabelaComFiltro() {
     if (!ultimoPayload || !Array.isArray(ultimoPayload.itens)) {
       renderTabela([]);
       return;
     }
 
-    const somenteDiverg = $('#chkSomenteDivergentes').is(':checked');
+    const filtro = $('#filtroDivergencia').val();
     let arr = ultimoPayload.itens.slice();
 
-    if (somenteDiverg) {
-      arr = arr.filter(i => i.divergencia !== null && Math.abs(i.divergencia) > 0.001);
-    }
+    arr = arr.filter(i => {
+      const diverg = i.divergencia !== null ? Number(i.divergencia) : 0;
+
+      // Avalia a regra conforme o filtro escolhido
+      if (filtro === 'AMBOS') return Math.abs(diverg) > 0.001;
+      if (filtro === 'POSITIVO') return diverg > 0.001;
+      if (filtro === 'NEGATIVO') return diverg < -0.001;
+      return true; // TODOS
+    });
 
     itensFiltrados = arr;
     renderTabela(arr);
@@ -374,22 +385,18 @@
 
   // ====== MODAL FUNÇÕES ======
   window.abrirModalExtrato = function(insumoId, insumoName) {
-    // Datas Originais
     const dt_inicio_raw = $('#dtInicio').val();
     const dt_fim_raw    = $('#dtFim').val();
 
-    // Lógica de adicionar 1 dia não é ideal sem ver o fuso,
-    // mas mantendo a lógica original do seu código:
-    // Se a data for YYYY-MM-DD, cria objeto Date
     const d = new Date(dt_inicio_raw + 'T00:00:00');
-    d.setDate(d.getDate() + 1); // +1 dia
+    d.setDate(d.getDate() + 1);
     const dtInicioAjustada = d.toISOString().split('T')[0];
 
     const qs = $.param({
       token: token,
       unit_id: system_unit_id,
       insumo_id: insumoId,
-      dt_inicio: dtInicioAjustada, // Usando a ajustada conforme original
+      dt_inicio: dtInicioAjustada,
       dt_fim: dt_fim_raw,
       redirect: 'true'
     });
@@ -407,15 +414,15 @@
 
   // ====== PDF EXPORT ======
   function onExportPdf() {
-    if (!ultimoPayload || !Array.isArray(ultimoPayload.itens) || ultimoPayload.itens.length === 0) {
-      return Swal.fire('Atenção', 'Consulte primeiro para gerar o PDF.', 'warning');
+    if (!itensFiltrados || itensFiltrados.length === 0) {
+      return Swal.fire('Atenção', 'Nenhum dado na tabela para gerar o PDF.', 'warning');
     }
 
     const pacote = {
       unidade: { id: system_unit_id, nome: unit_name },
       janela: ultimoPayload?.janela,
       mensagem: ultimoPayload?.mensagem || '',
-      itens: ultimoPayload.itens.map(x => ({
+      itens: itensFiltrados.map(x => ({
         nome_produto: x.nome_produto,
         saldo_inicial: Number(x.saldo_inicial || 0),
         entradas: Number(x.entradas || 0),
