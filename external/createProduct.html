@@ -104,6 +104,7 @@
                         <input type="checkbox" id="venda" class="chk-col-blue" /> <label for="venda">Venda</label>
                         <input type="checkbox" id="insumo" class="chk-col-blue" /> <label for="insumo">Insumo</label>
                         <input type="checkbox" id="composicao" class="chk-col-blue" /> <label for="composicao">Composição</label>
+                        <input type="checkbox" id="cop" class="chk-col-blue" /> <label for="cop">COP</label>
                     </div>
 
                     <div class="row">
@@ -140,13 +141,13 @@
                     </div>
 
                     <div class="row mt-2">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <label class="muted">Categoria *</label>
                             <select id="categoria" class="form-control select2" style="width: 100%;">
                                 <option value="">Carregando...</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="muted">Unidade *</label>
                             <select id="und" class="form-control">
                                 <option value="UND">Unidades (UND)</option>
@@ -336,6 +337,8 @@
 
             $('#und').val(produto.und || 'UND');
 
+            $('#cop').prop('checked', produto.cop == 1);
+
             $('#venda').prop('checked', produto.venda == 1);
             $('#insumo').prop('checked', produto.insumo == 1);
             $('#composicao').prop('checked', produto.composicao == 1);
@@ -464,6 +467,7 @@
             nome: nome,
             und: $('#und').val(),
             categoria: $('#categoria').val(),
+            cop: $('#cop').is(':checked') ? 1 : 0,
             venda: $('#venda').is(':checked') ? 1 : 0,
             composicao: $('#composicao').is(':checked') ? 1 : 0,
             insumo: $('#insumo').is(':checked') ? 1 : 0
