@@ -94,6 +94,10 @@
             <action>ReportCop</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="COP Analítico">
+            <action>ReportCopAnalitico</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Compras por Fornecedor">
             <action>ComprasFornecedor</action>
             <icon>fas:circle fa-fw</icon>

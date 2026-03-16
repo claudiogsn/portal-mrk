@@ -588,6 +588,15 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id, dt_inicio ou dt_fim ausentes'];
                 }
                 break;
+            case 'extratoCopAnalitico':
+                if (isset($requestData['system_unit_id'], $requestData['dt_inicio'], $requestData['dt_fim'])) {
+                    $response = MovimentacaoController::extratoCopAnalitico($requestData['system_unit_id'],$requestData['dt_inicio'], $requestData['dt_fim']);
+                }
+                else{
+                    http_response_code(400);
+                    $response = ['error' => 'Parâmetros system_unit_id, dt_inicio ou dt_fim ausentes'];
+                }
+                break;
             case 'getCurvaABCCompras':
                 $response = MovimentacaoController::getCurvaABCCompras($requestData);
                 break;

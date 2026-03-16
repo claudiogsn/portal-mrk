@@ -2839,6 +2839,149 @@ class MovimentacaoController
             return ['error' => $e->getMessage()];
         }
     }
+
+    public static function extratoCopAnalitico(int $systemUnitId, string $dtInicio, string $dtFim): array
+    {
+        try {
+            global $pdo;
+
+            // 1) Validação de Período (Max 10 dias)
+            $d1 = new DateTime($dtInicio);
+            $d2 = new DateTime($dtFim);
+            $diff = $d1->diff($d2)->days;
+
+            if ($diff > 10) {
+                return ['error' => 'Para o relatório analítico, o período máximo é de 10 dias.'];
+            }
+
+            // 2) Buscar todos os produtos COP para inicializar
+            $sqlProdutos = "SELECT codigo, nome, und, preco_custo FROM products WHERE system_unit_id = :unitId AND cop = 1";
+            $stmtProd = $pdo->prepare($sqlProdutos);
+            $stmtProd->execute([':unitId' => $systemUnitId]);
+            $produtos = [];
+            foreach ($stmtProd->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $produtos[$p['codigo']] = [
+                    'nome' => $p['nome'],
+                    'unidade' => $p['und'],
+                    'custo' => (float)$p['preco_custo'],
+                    'saldo_atual' => 0 // Aqui guardaremos o saldo contínuo
+                ];
+            }
+
+            // 3) Buscar o saldo inicial (último balanço antes da data de início)
+            // Opcional, mas recomendado para o Day 1 ter a base correta
+            $sqlSaldoBase = "
+            SELECT m.produto, m.quantidade 
+            FROM movimentacao m
+            WHERE m.system_unit_id = :unitId AND m.status = 1 
+              AND (m.tipo_mov = 'balanco' OR m.tipo = 'b')
+              AND DATE(m.data) < :ini
+            ORDER BY m.data DESC
+        ";
+            // Aqui o ideal seria um JOIN com MAX(data) ou iterar, mas simplificando para carregar o state:
+            $stmtBase = $pdo->prepare($sqlSaldoBase);
+            $stmtBase->execute([':unitId' => $systemUnitId, ':ini' => $dtInicio]);
+            foreach ($stmtBase->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                // Atualiza apenas se ainda estiver zerado (pegando o mais recente devido ao ORDER BY DESC)
+                if(isset($produtos[$row['produto']]) && $produtos[$row['produto']]['saldo_atual'] === 0) {
+                    $produtos[$row['produto']]['saldo_atual'] = (float)$row['quantidade'];
+                }
+            }
+
+            // 4) Gerar o array de dias no range (para garantir que dias sem movimento também apareçam)
+            $diasRelatorio = [];
+            for ($i = 0; $i <= $diff; $i++) {
+                $dataAtual = (clone $d1)->modify("+$i days")->format('Y-m-d');
+                $diasRelatorio[$dataAtual] = [];
+            }
+
+            // 5) Buscar movimentações e balanços do período, dia a dia
+            $sqlMov = "
+            SELECT 
+                DATE(m.data) as data_movimento,
+                m.produto,
+                SUM(CASE WHEN m.tipo_mov = 'entrada' THEN m.quantidade ELSE 0 END) AS entradas,
+                SUM(CASE WHEN m.tipo_mov = 'saida' THEN m.quantidade ELSE 0 END) AS saidas,
+                -- Pegamos o último balanço do dia, se houver
+                MAX(CASE WHEN (m.tipo_mov = 'balanco' OR m.tipo = 'b') THEN m.quantidade ELSE NULL END) AS saldo_balanco
+            FROM movimentacao m
+            WHERE m.system_unit_id = :unitId AND m.status = 1 
+              AND DATE(m.data) BETWEEN :ini AND :fim
+            GROUP BY DATE(m.data), m.produto
+            ORDER BY DATE(m.data) ASC
+        ";
+
+            $stmtMov = $pdo->prepare($sqlMov);
+            $stmtMov->execute([':unitId' => $systemUnitId, ':ini' => $dtInicio, ':fim' => $dtFim]);
+            $movimentacoes = $stmtMov->fetchAll(PDO::FETCH_ASSOC);
+
+            // Agrupar movimentações por data e produto para facilitar
+            $mapMov = [];
+            foreach ($movimentacoes as $m) {
+                $mapMov[$m['data_movimento']][$m['produto']] = $m;
+            }
+
+            // 6) Processar os dias iterativamente para calcular estoques e divergências
+            $resultadoFinal = [];
+
+            foreach ($diasRelatorio as $dataDia => $v) {
+                $itensDoDia = [];
+
+                foreach ($produtos as $idProd => &$prodData) {
+                    $movHoje = $mapMov[$dataDia][$idProd] ?? null;
+
+                    $entradas = $movHoje ? (float)$movHoje['entradas'] : 0;
+                    $saidas = $movHoje ? (float)$movHoje['saidas'] : 0;
+                    $balancoFeito = $movHoje && $movHoje['saldo_balanco'] !== null;
+                    $saldoBalanco = $balancoFeito ? (float)$movHoje['saldo_balanco'] : null;
+
+                    $saldoInicial = $prodData['saldo_atual'];
+                    $esperado = $saldoInicial + $entradas - $saidas;
+                    $divergencia = null;
+                    $valor_diferenca = 0;
+
+                    // Se teve contagem hoje, calcula a divergência e atualiza o saldo real
+                    if ($balancoFeito) {
+                        $divergencia = $saldoBalanco - $esperado;
+                        $valor_diferenca = $divergencia * $prodData['custo'];
+                        $prodData['saldo_atual'] = $saldoBalanco; // Reseta a base para o dia seguinte
+                    } else {
+                        $prodData['saldo_atual'] = $esperado; // Segue o baile com o saldo lógico
+                    }
+
+                    // Só adiciona ao relatório do dia se teve alguma movimentação ou contagem
+                    if ($entradas > 0 || $saidas > 0 || $balancoFeito) {
+                        $itensDoDia[] = [
+                            'produto' => $idProd,
+                            'nome_produto' => $prodData['nome'],
+                            'custo_unitario' => $prodData['custo'],
+                            'saldo_inicial' => $saldoInicial,
+                            'entradas' => $entradas,
+                            'saidas' => $saidas,
+                            'saldo_esperado' => $esperado,
+                            'saldo_final_balanco' => $saldoBalanco,
+                            'divergencia' => $divergencia,
+                            'valor_diferenca' => $valor_diferenca
+                        ];
+                    }
+                }
+
+                // Adiciona o dia no array final
+                $resultadoFinal[] = [
+                    'data' => $dataDia,
+                    'itens' => $itensDoDia
+                ];
+            }
+
+            return [
+                'mensagem' => "Análise diária de " . date('d/m/Y', strtotime($dtInicio)) . " a " . date('d/m/Y', strtotime($dtFim)),
+                'dias' => $resultadoFinal
+            ];
+
+        } catch (Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    }
     private static function buildCurvaABC(array $rows): array
     {
         // Normaliza e garante tipos

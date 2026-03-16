@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>COP Analítico Diário</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
+
+    <style>
+        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+
+        /* Card Padrão */
+        .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        /* Header e Filtros */
+        .header-flex { display: flex; align-items: center; justify-content: space-between; }
+        .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
+
+        /* Tabela Dentro do Acordeão */
+        .table thead th {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
+
+        /* Badges de Divergência */
+        .badge-div {
+            padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block;
+        }
+        .bg-green-light { background: #e8f5e9; color: var(--mrk-green); border: 1px solid #c8e6c9; }
+        .bg-red-light { background: #ffebee; color: var(--mrk-red); border: 1px solid #ffcdd2; }
+        .bg-gray-light { background: #f5f5f5; color: #777; border: 1px solid #ddd; }
+
+        /* Botão Ação Tabela */
+        .btn-action-icon {
+            color: var(--mrk-blue);
+            font-size: 18px;
+            transition: transform 0.2s;
+            cursor: pointer;
+            display: inline-flex;
+        }
+        .btn-action-icon:hover { transform: scale(1.1); color: var(--mrk-black); }
+
+        /* Rodapé de Totais */
+        .summary-footer {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+            text-align: right;
+            font-size: 14px;
+            color: #555;
+        }
+        .summary-footer b { font-weight: 600; margin-left: 5px; font-size: 16px; }
+
+        /* Modal Header Custom */
+        .modal-header.bg-gray { background-color: #f8f9fa; border-bottom: 1px solid #ddd; padding: 15px; }
+
+        /* Ajustes Acordeão */
+        .panel-heading a { text-decoration: none; }
+        .panel-heading a:hover { opacity: 0.8; }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+
+    <div class="card">
+        <div class="header header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:audit" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                RELATÓRIO DE AUDITORIA - COP ANALÍTICO DIÁRIO
+            </h2>
+        </div>
+
+        <div class="body">
+
+            <div class="filter-box">
+                <div class="row clearfix">
+                    <div class="col-md-4">
+                        <label class="muted">Data Inicial</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dtInicio" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="muted">Data Final (Max: 10 dias)</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
+                            <input type="date" id="dtFim" class="form-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4" style="margin-top: 22px;">
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btnConsultar" class="btn btn-primary waves-effect" style="flex: 1;">
+                                <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                                CONSULTAR
+                            </button>
+                            <button id="btnExportPdf" class="btn btn-default waves-effect" style="flex: 1;">
+                                <iconify-icon icon="icon-park-outline:file-pdf" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                                PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="muted">Filtrar Divergência</label>
+                        <select id="filtroDivergencia" class="form-control show-tick">
+                            <option value="todos">Todos os itens</option>
+                            <option value="negativa">Apenas Divergências Negativas (Faltas)</option>
+                            <option value="positiva">Apenas Divergências Positivas (Sobras)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="msgJanela" class="alert alert-info text-small" style="display: none; margin-bottom: 15px;"></div>
+
+            <div class="panel-group" id="accordion_dias" role="tablist" aria-multiselectable="true">
+                <div class="text-center muted" style="padding: 30px; font-size: 14px;">
+                    Utilize os filtros acima para consultar (intervalo máximo de 10 dias).
+                </div>
+            </div>
+
+            <div id="resumoTotaisGlobais" class="summary-footer" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalExtrato" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-fullscreen" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-gray">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="modalExtratoLabel" style="color: var(--mrk-black); font-family: 'Kanit', sans-serif;">
+                    <iconify-icon icon="icon-park-outline:chart-line" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon>
+                    Detalhes do Insumo
+                </h4>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="iframeExtrato" class="modal-iframe" src="about:blank" style="width: 100%; height: 80vh; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    // ====== CONFIG ======
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+        : 'http://localhost/portal-mrk/api/v1/index.php';
+
+    const baseUrlRedirect = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/external'
+        : 'http://localhost/portal-mrk/external';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const system_unit_id = urlParams.get('unit_id');
+    const unit_name = urlParams.get('unit_name');
+
+    // ====== STATE ======
+    let ultimoPayload = null;
+
+    // ====== UTILS ======
+    function brQty(v) {
+        if (v === null || v === undefined || isNaN(v)) return '-';
+        return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function brMoney(v) {
+        if (v === null || v === undefined || isNaN(v)) return '-';
+        return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    function formatDateBR(iso) {
+        if (!iso) return '';
+        const d = String(iso).slice(0,10).split('-');
+        if (d.length !== 3) return '';
+        return `${d[2]}/${d[1]}/${d[0]}`;
+    }
+
+    function badgeDivergencia(val) {
+        if (val === null || val === undefined || isNaN(val)) return '<span class="badge-div bg-gray-light">n/a</span>';
+        if (Math.abs(val) < 0.001) return '<span class="badge-div bg-green-light">OK</span>';
+        const cls = val > 0 ? 'bg-green-light' : 'bg-red-light';
+        const icon = val > 0 ? '+' : '';
+        return `<span class="badge-div ${cls}">${icon}${brQty(val)}</span>`;
+    }
+
+    // ====== BINDINGS ======
+    $(document).ready(() => {
+        $('#btnConsultar').on('click', onConsultar);
+        $('#filtroDivergencia').on('change', renderAcordeaoComFiltro);
+        $('#btnExportPdf').on('click', onExportPdf);
+    });
+
+    // ====== CONSULTA ======
+    async function onConsultar() {
+        const data_inicial = $('#dtInicio').val();
+        const data_final = $('#dtFim').val();
+
+        if (!token || !system_unit_id) return Swal.fire('Atenção', 'URL deve conter token e system_unit_id.', 'warning');
+        if (!data_inicial || !data_final) return Swal.fire('Atenção', 'Informe data inicial e data final.', 'warning');
+
+        // Validação de 10 dias no Frontend
+        const d1 = new Date(data_inicial);
+        const d2 = new Date(data_final);
+        const diffTime = Math.abs(d2 - d1);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 10) {
+            return Swal.fire('Bloqueado', 'O período máximo permitido para o relatório analítico é de 10 dias.', 'warning');
+        }
+
+        Swal.fire({ title: 'Consultando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'extratoCopAnalitico', // NOVO MÉTODO DO BACKEND
+                token,
+                data: {
+                    system_unit_id: Number(system_unit_id),
+                    dt_inicio: data_inicial,
+                    dt_fim: data_final
+                }
+            });
+
+            Swal.close();
+
+            if (res.data && res.data.error) {
+                $('#msgJanela').hide();
+                renderAcordeao([]);
+                return Swal.fire('Atenção', res.data.error, 'warning');
+            }
+
+            ultimoPayload = res.data || {};
+
+            if(ultimoPayload.mensagem) {
+                $('#msgJanela').text(ultimoPayload.mensagem).show();
+            } else {
+                $('#msgJanela').hide();
+            }
+
+            renderAcordeaoComFiltro();
+
+        } catch (e) {
+            Swal.close();
+            Swal.fire('Erro', 'Não foi possível consultar os dados. Verifique a conexão e tente novamente.', 'error');
+        }
+    }
+
+    // ====== RENDER ACORDEÃO ======
+    function renderAcordeaoComFiltro() {
+        if (!ultimoPayload || !Array.isArray(ultimoPayload.dias)) {
+            renderAcordeao([]);
+            return;
+        }
+
+        const filtroDiv = $('#filtroDivergencia').val();
+        let diasFiltrados = JSON.parse(JSON.stringify(ultimoPayload.dias));
+
+        if (filtroDiv !== 'todos') {
+            diasFiltrados.forEach(dia => {
+                dia.itens = dia.itens.filter(i => {
+                    if (i.divergencia === null) return false;
+                    if (filtroDiv === 'negativa') return i.divergencia < -0.001; // Faltas
+                    if (filtroDiv === 'positiva') return i.divergencia > 0.001;  // Sobras
+                    return true;
+                });
+            });
+        }
+
+        renderAcordeao(diasFiltrados);
+    }
+    function renderAcordeao(dias) {
+        const $accordion = $('#accordion_dias');
+        $accordion.empty();
+        $('#resumoTotaisGlobais').hide();
+
+        // Filtra dias que ficaram vazios após o checkbox de divergência
+        const diasComDados = dias.filter(dia => dia.itens && dia.itens.length > 0);
+
+        if(diasComDados.length === 0) {
+            $accordion.html('<div class="text-center muted" style="padding: 30px; font-size: 14px;">Nenhum registro ou divergência encontrado para o período selecionado.</div>');
+            return;
+        }
+
+        let globalValDiff = 0;
+
+        diasComDados.forEach((dia, index) => {
+            const collapseId = `collapse_dia_${index}`;
+            const headingId = `heading_dia_${index}`;
+
+            let tbodyHtml = '';
+            let diaValDiff = 0;
+
+            dia.itens.forEach(item => {
+                const custo = item.custo_unitario != null ? Number(item.custo_unitario) : null;
+                const diverg = item.divergencia != null ? Number(item.divergencia) : null;
+                const valorDiferenca = (custo != null && diverg != null) ? (custo * diverg) : null;
+
+                diaValDiff += Number(valorDiferenca || 0);
+                globalValDiff += Number(valorDiferenca || 0);
+
+                const linkDetalhes = item.produto
+                    ? `<a href="#" class="btn-action-icon" onclick="abrirModalExtrato(${item.produto}, '${item.nome_produto.replace(/'/g, "\\'")}', '${dia.data}')" title="Ver extrato do dia"><iconify-icon icon="icon-park-outline:preview-open"></iconify-icon></a>`
+                    : '-';
+
+                tbodyHtml += `
+          <tr>
+              <td class="text-center">${linkDetalhes}</td>
+              <td><strong>${item.nome_produto}</strong></td>
+              <td class="text-right">${brQty(item.saldo_inicial)}</td>
+              <td class="text-right text-success">${brQty(item.entradas)}</td>
+              <td class="text-right text-danger">${brQty(item.saidas)}</td>
+              <td class="text-right muted">${brQty(item.saldo_esperado)}</td>
+              <td class="text-right"><strong>${item.saldo_final_balanco != null ? brQty(item.saldo_final_balanco) : '-'}</strong></td>
+              <td class="text-center">${badgeDivergencia(diverg)}</td>
+              <td class="text-right muted text-small">${custo != null ? brMoney(custo) : '-'}</td>
+              <td class="text-right"><strong>${valorDiferenca != null ? brMoney(valorDiferenca) : '-'}</strong></td>
+          </tr>`;
+            });
+
+            const colorDestaque = diaValDiff < 0 ? 'var(--mrk-red)' : 'var(--mrk-green)';
+
+            const card = `
+        <div class="panel panel-default" style="margin-bottom: 10px; border-radius: 4px; overflow: hidden;">
+          <div class="panel-heading" role="tab" id="${headingId}" style="background: #f8f9fa;">
+            <h4 class="panel-title" style="display: flex; justify-content: space-between; align-items: center; margin: 0;">
+              <a role="button" data-toggle="collapse" href="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}" style="font-weight: 600; font-family: 'Kanit'; color: var(--mrk-blue); display: flex; align-items: center; gap: 5px;">
+                <iconify-icon icon="icon-park-outline:calendar-thirty" style="font-size: 18px;"></iconify-icon>
+                Data: ${formatDateBR(dia.data)}
+              </a>
+              <span style="font-size: 13px;">Impacto do Dia: <b style="color:${colorDestaque}; font-size: 14px;">${brMoney(diaValDiff)}</b></span>
+            </h4>
+          </div>
+          <div id="${collapseId}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="${headingId}">
+            <div class="panel-body" style="padding: 0;">
+              <div class="table-responsive">
+                <table class="table table-hover" style="margin-bottom: 0;">
+                  <thead>
+                    <tr>
+                      <th class="text-center" width="50">Detalhes</th>
+                      <th>Insumo</th>
+                      <th class="text-right">Saldo Inicial</th>
+                      <th class="text-right">Entradas</th>
+                      <th class="text-right">Saídas</th>
+                      <th class="text-right">Saldo Estimado</th>
+                      <th class="text-right">Balanço Contado</th>
+                      <th class="text-center">Dif. (Qtd)</th>
+                      <th class="text-right">Custo Unit.</th>
+                      <th class="text-right">Dif. (R$)</th>
+                    </tr>
+                  </thead>
+                  <tbody>${tbodyHtml}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+            $accordion.append(card);
+        });
+
+        // Abre o primeiro card automaticamente
+        $accordion.find('.collapse').first().collapse('show');
+
+        $('#resumoTotaisGlobais').html(`Impacto Acumulado no Período: <b style="color:${globalValDiff < 0 ? 'var(--mrk-red)' : 'var(--mrk-green)'}">${brMoney(globalValDiff)}</b>`).show();
+    }
+
+    // ====== MODAL FUNÇÕES ======
+    window.abrirModalExtrato = function(insumoId, insumoName, dataDoDia) {
+        const qs = $.param({
+            token: token,
+            unit_id: system_unit_id,
+            insumo_id: insumoId,
+            dt_inicio: dataDoDia,
+            dt_fim: dataDoDia, // Enviamos a mesma data para ver apenas o que rolou no dia exato
+            redirect: 'true'
+        });
+
+        const url = `${baseUrlRedirect}/extratoInsumo.html?${qs}`;
+        $('#modalExtratoLabel').html(`<iconify-icon icon="icon-park-outline:chart-line" style="vertical-align: middle; color: var(--mrk-blue);"></iconify-icon> ${insumoName} - ${formatDateBR(dataDoDia)}`);
+        $('#iframeExtrato').attr('src', url);
+        $('#modalExtrato').modal('show');
+    };
+
+    // ====== PDF EXPORT ======
+    function onExportPdf() {
+        if (!ultimoPayload || !Array.isArray(ultimoPayload.dias) || ultimoPayload.dias.length === 0) {
+            return Swal.fire('Atenção', 'Consulte primeiro para gerar o PDF.', 'warning');
+        }
+
+        const filtroDiv = $('#filtroDivergencia').val();
+        let diasParaPdf = JSON.parse(JSON.stringify(ultimoPayload.dias));
+
+        if (filtroDiv !== 'todos') {
+            diasParaPdf.forEach(dia => {
+                dia.itens = dia.itens.filter(i => {
+                    if (i.divergencia === null) return false;
+                    if (filtroDiv === 'negativa') return i.divergencia < -0.001;
+                    if (filtroDiv === 'positiva') return i.divergencia > 0.001;
+                    return true;
+                });
+            });
+        }
+
+        // Remove dias que ficaram vazios após o filtro
+        diasParaPdf = diasParaPdf.filter(dia => dia.itens && dia.itens.length > 0);
+
+        if(diasParaPdf.length === 0) {
+            return Swal.fire('Atenção', 'Não há dados para exportar com os filtros atuais.', 'warning');
+        }
+
+        const pacote = {
+            unidade: { id: system_unit_id, nome: unit_name },
+            janela: ultimoPayload.mensagem || '',
+            dias: diasParaPdf
+        };
+
+        localStorage.setItem('copAnaliticoPdfData', JSON.stringify(pacote));
+        window.open(`${baseUrlRedirect}/reports/cop_analitico.html`, '_blank');
+    }
+</script>
+</body>
+</html>
