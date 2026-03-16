@@ -802,15 +802,6 @@ class FinanceiroContaController {
                 throw new Exception("Data inválida: {$s}");
             };
 
-            $parseMoney = function ($v) {
-                if ($v === null || $v === '') return 0.0;
-                if (is_string($v)) {
-                    $v = str_replace(['.', ' '], ['', ''], $v);
-                    $v = str_replace(',', '.', $v);
-                }
-                if (!is_numeric($v)) throw new Exception("Valor numérico inválido: {$v}");
-                return round((float)$v, 2);
-            };
 
             // ===== Entrada =====
             if (empty($data['system_unit_id'])) {
@@ -841,9 +832,9 @@ class FinanceiroContaController {
                 $doc = trim((string)$c['documento']);
                 $emissao = $parseDate($c['emissao']);
                 $vencimento = $parseDate($c['vencimento']);
-                $valorBruto = $parseMoney($c['valor']);
-                $adicional = isset($c['adicional']) ? $parseMoney($c['adicional']) : 0.0;
-                $desconto = isset($c['desconto']) ? $parseMoney($c['desconto']) : 0.0;
+                $valorBruto = $c['valor'];
+                $adicional = $c['adicional'] ?? 0.0;
+                $desconto = $c['desconto'] ?? 0.0;
 
                 $planoContas = isset($c['plano_contas']) ? trim((string)$c['plano_contas']) : null;
                 $formaPgtoId = isset($c['forma_pagamento_id']) ? (int)$c['forma_pagamento_id'] : null;
@@ -1019,16 +1010,6 @@ class FinanceiroContaController {
                 throw new Exception("Data inválida: {$s}");
             };
 
-            $parseMoney = function ($v) {
-                if ($v === null || $v === '') return 0.0;
-                if (is_string($v)) {
-                    $v = str_replace(['.', ' '], ['', ''], $v);
-                    $v = str_replace(',', '.', $v);
-                }
-                if (!is_numeric($v)) throw new Exception("Valor numérico inválido: {$v}");
-                return round((float)$v, 2);
-            };
-
             $required = ['system_unit_id','fornecedor_id','documento','emissao','vencimento','valor'];
             foreach ($required as $k) {
                 if (!isset($data[$k]) || $data[$k] === '' || $data[$k] === null) {
@@ -1042,9 +1023,9 @@ class FinanceiroContaController {
             $doc             = trim((string)$data['documento']);
             $emissao         = $parseDate($data['emissao']);
             $vencimento      = $parseDate($data['vencimento']);
-            $valorBruto      = $parseMoney($data['valor']);
-            $adicional       = isset($data['adicional']) ? $parseMoney($data['adicional']) : 0.0;
-            $desconto        = isset($data['desconto'])  ? $parseMoney($data['desconto'])  : 0.0;
+            $valorBruto      = $data['valor'];
+            $adicional       = $data['adicional'] ?? 0.0;
+            $desconto        = $data['desconto'] ?? 0.0;
             $planoContas     = isset($data['plano_contas']) ? trim((string)$data['plano_contas']) : null;
             $formaPgtoId     = isset($data['forma_pagamento_id']) ? (int)$data['forma_pagamento_id'] : null;
             $chaveAcesso     = isset($data['chave_acesso']) ? trim((string)$data['chave_acesso']) : null;
