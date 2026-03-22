@@ -226,7 +226,13 @@ if (isset($data['method']) && isset($data['data'])) {
                 break;
             case 'importNotasPorChaves':
                 if (isset($requestData['system_unit_id']) && isset($requestData['chaves'])) {
-                    $response = MdeController::importNotasPorChaves($requestData['system_unit_id'], $requestData['chaves']);
+                    $dataEntrada = !empty($requestData['data_entrada']) ? $requestData['data_entrada'] : null;
+
+                    $response = MdeController::importNotasPorChaves(
+                        $requestData['system_unit_id'],
+                        $requestData['chaves'],
+                        $dataEntrada
+                    );
                 } else {
                     http_response_code(400);
                     $response = ['error' => 'Parâmetros system_unit_id ou chaves ausentes'];

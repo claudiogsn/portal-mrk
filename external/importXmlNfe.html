@@ -214,10 +214,14 @@
             <div class="card">
                 <div class="body">
                     <div class="row">
-                        <div class="col-sm-9">
+                        <div class="col-sm-6">
                             <label class="muted">Chave de Acesso</label>
                             <input type="text" id="chaveAcessoInput" class="form-control" maxlength="44" placeholder="Digite os 44 números da chave">
                             <span class="small-text"><iconify-icon icon="icon-park-outline:info"></iconify-icon> Informe apenas números.</span>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="muted">Data de Entrada (Opcional)</label>
+                            <input type="date" id="dataEntradaChave" class="form-control">
                         </div>
                         <div class="col-sm-3 text-right">
                             <label>&nbsp;</label><br>
@@ -490,6 +494,9 @@
         const chave = $("#chaveAcessoInput").val().replace(/\D/g, '');
         if(chave.length !== 44) return Swal.fire("Erro", "Chave inválida (deve ter 44 dígitos).", "error");
 
+        // Captura a data preenchida (se houver, senão vai vazia "")
+        const dataEntrada = $("#dataEntradaChave").val();
+
         $("#btnImportarChave").prop("disabled", true).html("Importando...");
         $("#resultadoChave").html("");
 
@@ -497,13 +504,21 @@
             const {data} = await axios.post(baseUrl, {
                 method: "importNotasPorChaves",
                 token,
-                data: { system_unit_id: unit_id, chaves: [chave] }
+                data: {
+                    system_unit_id: unit_id,
+                    chaves: [chave],
+                    data_entrada: dataEntrada
+                }
             });
 
             const item = data?.data?.itens?.[0];
             if(item?.success) {
                 $("#resultadoChave").html('<span class="status-ok"><i class="fas fa-check"></i> Importada com sucesso!</span>');
                 Swal.fire("Sucesso", "Nota importada.", "success");
+
+                // Opcional: Limpar os campos após o sucesso
+                $("#chaveAcessoInput").val('');
+                $("#dataEntradaChave").val('');
             } else {
                 $("#resultadoChave").html(`<span class="status-erro"><i class="fas fa-times"></i> ${item?.message || 'Erro'}</span>`);
             }

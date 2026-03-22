@@ -292,7 +292,7 @@ class MdeController
             'content' => $base64
         ];
     }
-    public static function importNotasPorChaves(int $system_unit_id, array $chaves): array
+    public static function importNotasPorChaves(int $system_unit_id, array $chaves, ?string $data_entrada = null): array
     {
         global $pdo;
 
@@ -379,8 +379,7 @@ class MdeController
                 $filePath = self::XML_DIR . '/' . $chave . '.xml';
                 UtilsController::saveFileOverwrite($filePath, $xmlString);
 
-                // 🚀 Importa diretamente do XML
-                $resp = self::importNotaFiscal($system_unit_id, $xmlString);
+                $resp = self::importNotaFiscal($system_unit_id, $xmlString, $data_entrada);
 
                 $resultados[] = [
                     'chave' => $chave,
@@ -545,7 +544,7 @@ class MdeController
 
         return $pdo->lastInsertId();
     }
-    public static function importNotaFiscal($system_unit_id, string $xmlString): array
+    public static function importNotaFiscal($system_unit_id, string $xmlString, ?string $data_entrada = null): array
     {
         global $pdo;
 
@@ -618,17 +617,15 @@ class MdeController
             }
 
             // =========================
-            // 5) INSERE NOTA
+            // 5) INSERE NOTA (com data_entrada opcional)
             // =========================
-            $stmt = $pdo->prepare("
-            INSERT INTO estoque_nota
-            (system_unit_id, fornecedor_id, chave_acesso, numero_nf, serie,
+            $campos = 'system_unit_id, fornecedor_id, chave_acesso, numero_nf, serie,
              data_emissao, data_saida, natureza_operacao,
-             valor_total, valor_produtos, valor_frete)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
+             valor_total, valor_produtos, valor_frete';
 
-            $stmt->execute([
+            $placeholders = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
+
+            $valores = [
                 $system_unit_id,
                 $fornecedor_id,
                 $chaveAcesso,
@@ -640,7 +637,21 @@ class MdeController
                 (float)$total->vNF,
                 (float)$total->vProd,
                 (float)$total->vFrete
-            ]);
+            ];
+
+            // Se data_entrada foi informada, inclui no INSERT
+            if ($data_entrada !== null && $data_entrada !== '') {
+                $campos .= ', data_entrada';
+                $placeholders .= ', ?';
+                $valores[] = $data_entrada;
+            }
+
+            $stmt = $pdo->prepare("
+            INSERT INTO estoque_nota ($campos)
+            VALUES ($placeholders)
+        ");
+
+            $stmt->execute($valores);
 
             $nota_id = (int)$pdo->lastInsertId();
 
