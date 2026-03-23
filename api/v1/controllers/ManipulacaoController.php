@@ -331,99 +331,136 @@ class ManipulacaoController
         }
     }
 
+    /**
+     * Executa Manipulação de Matéria-Prima
+     *
+     * Consome uma matéria-prima (insumo) e gera múltiplos itens de saída.
+     * Calcula perda automaticamente e gera movimentações separadas:
+     *   - saida: quantidade total da matéria-prima consumida
+     *   - perda: diferença entre manipulado e soma das saídas (se > 0)
+     *   - entrada: cada item de saída produzido
+     *
+     * @param array $data {
+     *   system_unit_id: int,
+     *   insumo_id: int,
+     *   quantidade_manipulada: float,
+     *   itens_saida: array [{ product_id: int, quantidade: float }, ...],
+     *   usuario_id: int|string,
+     *   data: string (Y-m-d),
+     *   allow_negative: bool (opcional, default false)
+     * }
+     * @return array
+     */
     public static function executeProduction($data): array
     {
         global $pdo;
 
-        $required = ["system_unit_id", "product_codigo", "quantidade_produzida"];
+        // ─── Validação dos campos obrigatórios ───────────────────────────
+        $required = ["system_unit_id", "insumo_id", "quantidade_manipulada", "itens_saida"];
         foreach ($required as $f) {
-            if (!isset($data[$f]) || $data[$f] === "") {
+            if (!isset($data[$f]) || $data[$f] === "" || $data[$f] === null) {
                 return ["success" => false, "message" => "O campo '$f' é obrigatório."];
             }
         }
 
-        $system_unit_id  = (int)$data["system_unit_id"];
-        $product_codigo  = (int)$data["product_codigo"];
-        $qtdProduzida    = (float)str_replace(",", ".", (string)$data["quantidade_produzida"]);
+        $system_unit_id       = (int)$data["system_unit_id"];
+        $insumo_id            = (int)$data["insumo_id"];
+        $quantidade_manipulada = (float)str_replace(",", ".", (string)$data["quantidade_manipulada"]);
+        $itens_saida_raw      = $data["itens_saida"];
 
         $usuario_id = $data["user"] ?? $data["usuario_id"] ?? null;
         if (!$usuario_id) {
-            return ["success" => false, "message" => "O campo 'user' (ou 'usuario_id') é obrigatório."];
+            return ["success" => false, "message" => "O campo 'usuario_id' (ou 'user') é obrigatório."];
         }
         $usuario_id = (string)$usuario_id;
 
-        $date_producao  = $data["date_producao"] ?? $data["data"] ?? date("Y-m-d");
-        $allow_negative = isset($data["allow_negative"]) ? (bool)$data["allow_negative"] : false;
+        $date_manipulacao = $data["date_producao"] ?? $data["data"] ?? date("Y-m-d");
+        $allow_negative   = isset($data["allow_negative"]) ? (bool)$data["allow_negative"] : false;
 
+        // ─── Validações básicas ──────────────────────────────────────────
         if ($system_unit_id <= 0) return ["success" => false, "message" => "system_unit_id inválido."];
-        if ($product_codigo <= 0) return ["success" => false, "message" => "product_codigo inválido."];
-        if ($qtdProduzida <= 0) return ["success" => false, "message" => "quantidade_produzida deve ser > 0."];
+        if ($insumo_id <= 0)      return ["success" => false, "message" => "insumo_id inválido."];
+        if ($quantidade_manipulada <= 0) return ["success" => false, "message" => "quantidade_manipulada deve ser > 0."];
 
-        try {
-            $stmtUnit = $pdo->prepare("SELECT name FROM system_unit WHERE id = :id LIMIT 1");
-            $stmtUnit->execute([":id" => $system_unit_id]);
-            $unidade_nome = (string)($stmtUnit->fetchColumn() ?: "Unidade #{$system_unit_id}");
+        if (!is_array($itens_saida_raw) || empty($itens_saida_raw)) {
+            return ["success" => false, "message" => "É necessário informar pelo menos 1 item de saída."];
+        }
 
-            $usuario_nome = null;
-            try {
-                $stmtUser = $pdo->prepare("SELECT name FROM system_users WHERE id = :id LIMIT 1");
-                $stmtUser->execute([":id" => (int)$usuario_id]);
-                $usuario_nome = $stmtUser->fetchColumn();
-            } catch (\Throwable $ignore) {
-                // Ignore se não tiver a tabela system_users
+        // ─── Filtra itens válidos (quantidade > 0) ──────────────────────
+        $itens_saida = [];
+        foreach ($itens_saida_raw as $idx => $item) {
+            $pid = (int)($item["product_id"] ?? 0);
+            $qty = (float)str_replace(",", ".", (string)($item["quantidade"] ?? 0));
+
+            if ($qty <= 0) continue; // ignora itens com quantidade <= 0
+            if ($pid <= 0) {
+                return ["success" => false, "message" => "product_id inválido no item de saída #" . ($idx + 1)];
             }
 
-            $hora_execucao = date("H:i");
+            $itens_saida[] = ["product_id" => $pid, "quantidade" => round($qty, 4)];
+        }
 
+        if (empty($itens_saida)) {
+            return ["success" => false, "message" => "Nenhum item de saída válido (quantidade > 0)."];
+        }
+
+        // ─── Cálculo de perda ────────────────────────────────────────────
+        $soma_saida = 0;
+        foreach ($itens_saida as $item) {
+            $soma_saida += $item["quantidade"];
+        }
+        $soma_saida = round($soma_saida, 4);
+        $perda = round($quantidade_manipulada - $soma_saida, 4);
+
+        if ($perda < 0) {
+            return [
+                "success" => false,
+                "message" => "Soma dos itens de saída ($soma_saida) excede a quantidade manipulada ($quantidade_manipulada)."
+            ];
+        }
+
+        // ─── Execução em transação ──────────────────────────────────────
+        try {
             $pdo->beginTransaction();
 
-            // Busca produto final
-            $stmt = $pdo->prepare("
-                SELECT id, codigo, nome, und, COALESCE(saldo,0) AS saldo
+            // Busca matéria-prima (insumo) com lock
+            $stmtInsumo = $pdo->prepare("
+                SELECT codigo, nome, und, COALESCE(saldo,0) AS saldo
                 FROM products
                 WHERE system_unit_id = :unit AND codigo = :codigo
                 FOR UPDATE
             ");
-            $stmt->execute([":unit" => $system_unit_id, ":codigo" => $product_codigo]);
-            $produtoFinal = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmtInsumo->execute([":unit" => $system_unit_id, ":codigo" => $insumo_id]);
+            $insumoData = $stmtInsumo->fetch(PDO::FETCH_ASSOC);
 
-            if (!$produtoFinal) {
+            if (!$insumoData) {
                 $pdo->rollBack();
-                return ["success" => false, "message" => "Produto final não encontrado nessa unidade."];
+                return ["success" => false, "message" => "Matéria-prima (insumo_id=$insumo_id) não encontrada nessa unidade."];
             }
 
-            // Busca Ficha Técnica
-            $stmt = $pdo->prepare("
-                SELECT
-                    p.insumo_id,
-                    p.quantity AS ficha_qtd,
-                    COALESCE(p.rendimento, NULL) AS rendimento,
-                    pr.codigo AS insumo_codigo,
-                    pr.nome   AS insumo_nome,
-                    pr.und    AS insumo_und,
-                    COALESCE(pr.saldo,0) AS insumo_saldo
-                FROM manipulation p
-                INNER JOIN products pr ON pr.codigo = p.insumo_id AND pr.system_unit_id = p.system_unit_id
-                WHERE p.system_unit_id = :unit AND p.product_id = :product_codigo
-                FOR UPDATE
-            ");
-            $stmt->execute([":unit" => $system_unit_id, ":product_codigo" => $product_codigo]);
-            $ficha = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            if (!$ficha || count($ficha) === 0) {
-                $pdo->rollBack();
-                return ["success" => false, "message" => "Ficha não encontrada para esse produto."];
+            // Valida existência dos produtos de saída (com lock)
+            foreach ($itens_saida as $item) {
+                $stmtCheck = $pdo->prepare("
+                    SELECT codigo, nome FROM products
+                    WHERE system_unit_id = :unit AND codigo = :codigo
+                    FOR UPDATE
+                ");
+                $stmtCheck->execute([":unit" => $system_unit_id, ":codigo" => $item["product_id"]]);
+                if (!$stmtCheck->fetch()) {
+                    $pdo->rollBack();
+                    return ["success" => false, "message" => "Produto de saída (codigo={$item['product_id']}) não encontrado nessa unidade."];
+                }
             }
 
-            // Geração de Documento MP (Manipulação de Produção)
-            $ultimoDoc = MovimentacaoController::getLastMov($system_unit_id, "mp");
-            $doc = MovimentacaoController::incrementDoc($ultimoDoc, "mp");
-            $tipo = "mp"; // CORRIGIDO PARA MP
-            $status = 1;
+            // ─── Geração de Documento MP (manipulação) ─────────────────
+            $ultimoDocMp = MovimentacaoController::getLastMov($system_unit_id, "mp");
+            $docMp       = MovimentacaoController::incrementDoc($ultimoDocMp, "mp");
+            $status      = 1;
+            $seqMp       = 1;
 
             $stmtInsMov = $pdo->prepare("
-                INSERT INTO movimentacao (system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO movimentacao (system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id, doc_par)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
             $stmtUpdSaldoByCodigo = $pdo->prepare("
@@ -432,57 +469,82 @@ class ManipulacaoController
                 WHERE system_unit_id = :unit AND codigo = :codigo
             ");
 
-            $seq = 1;
-            $insumosResumo = [];
+            // ─── 1. Movimentação de SAÍDA da matéria-prima (doc MP) ─────
+            //     Saída = soma dos itens de saída (quantidade aproveitada)
+            //     A perda sai separadamente no doc PM
+            $stmtInsMov->execute([
+                $system_unit_id, $status, $docMp, "mp", "saida",
+                $insumo_id, $seqMp++, $date_manipulacao, $date_manipulacao,
+                $soma_saida, $usuario_id, null
+            ]);
+            $stmtUpdSaldoByCodigo->execute([
+                ":delta"  => -1 * $soma_saida,
+                ":doc"    => $docMp,
+                ":unit"   => $system_unit_id,
+                ":codigo" => $insumo_id
+            ]);
 
-            // Saída de Insumos
-            foreach ($ficha as $row) {
-                $insumoCodigo = (int)$row["insumo_codigo"];
-                $fichaQtd = (float)$row["ficha_qtd"];
-                $rendimento = ($row["rendimento"] !== null && $row["rendimento"] > 0) ? (float)$row["rendimento"] : 1;
+            // ─── 2. Movimentações de ENTRADA dos itens de saída (doc MP) ─
+            $itensSaidaResumo = [];
+            foreach ($itens_saida as $item) {
+                $stmtInsMov->execute([
+                    $system_unit_id, $status, $docMp, "mp", "entrada",
+                    $item["product_id"], $seqMp++, $date_manipulacao, $date_manipulacao,
+                    $item["quantidade"], $usuario_id, null
+                ]);
+                $stmtUpdSaldoByCodigo->execute([
+                    ":delta"  => $item["quantidade"],
+                    ":doc"    => $docMp,
+                    ":unit"   => $system_unit_id,
+                    ":codigo" => $item["product_id"]
+                ]);
 
-                $consumo = (float)round($fichaQtd * ($qtdProduzida / $rendimento), 4);
-                $saldoAtual = (float)$row["insumo_saldo"];
-
-                if (!$allow_negative && $saldoAtual < $consumo) {
-                    $pdo->rollBack();
-                    return ["success" => false, "message" => "Saldo insuficiente no insumo {$row['insumo_nome']}."];
-                }
-
-                $stmtInsMov->execute([$system_unit_id, $status, $doc, $tipo, "saida", $insumoCodigo, $seq, $date_producao, $date_producao, $consumo, $usuario_id]);
-                $stmtUpdSaldoByCodigo->execute([":delta" => -1 * $consumo, ":doc" => $doc, ":unit" => $system_unit_id, ":codigo" => $insumoCodigo]);
-
-                $insumosResumo[] = [
-                    "codigo" => $insumoCodigo,
-                    "nome" => $row["insumo_nome"],
-                    "und" => $row["insumo_und"],
-                    "consumo" => $consumo
+                $itensSaidaResumo[] = [
+                    "codigo"     => $item["product_id"],
+                    "quantidade" => $item["quantidade"]
                 ];
-                $seq++;
             }
 
-            // Entrada do Produto Final
-            $stmtInsMov->execute([$system_unit_id, $status, $doc, $tipo, "entrada", $product_codigo, $seq, $date_producao, $date_producao, (float)round($qtdProduzida, 4), $usuario_id]);
-            $stmtUpdSaldoByCodigo->execute([":delta" => (float)round($qtdProduzida, 4), ":doc" => $doc, ":unit" => $system_unit_id, ":codigo" => $product_codigo]);
+            // ─── 3. PERDA em documento separado PM (se > 0) ─────────────
+            $docPm = null;
+            if ($perda > 0) {
+                $ultimoDocPm = MovimentacaoController::getLastMov($system_unit_id, "pm");
+                $docPm       = MovimentacaoController::incrementDoc($ultimoDocPm, "pm");
+
+                // Perda: tipo "pm", tipo_mov "saida", doc_par aponta para o doc MP
+                $stmtInsMov->execute([
+                    $system_unit_id, $status, $docPm, "pm", "saida",
+                    $insumo_id, 1, $date_manipulacao, $date_manipulacao,
+                    $perda, $usuario_id, $docMp
+                ]);
+                $stmtUpdSaldoByCodigo->execute([
+                    ":delta"  => -1 * $perda,
+                    ":doc"    => $docPm,
+                    ":unit"   => $system_unit_id,
+                    ":codigo" => $insumo_id
+                ]);
+            }
 
             $pdo->commit();
 
             return [
-                "success" => true,
-                "message" => "Produção executada com sucesso!",
-                "doc" => $doc,
-                "data_producao" => $date_producao,
-                "produto_final" => [
-                    "codigo" => $product_codigo,
-                    "nome" => $produtoFinal["nome"],
-                    "quantidade_produzida" => (float)round($qtdProduzida, 4)
+                "success"     => true,
+                "message"     => "Manipulação de matéria-prima executada com sucesso!",
+                "doc"         => $docMp,
+                "doc_perda"   => $docPm,
+                "data"        => $date_manipulacao,
+                "insumo"      => [
+                    "codigo"     => $insumo_id,
+                    "nome"       => $insumoData["nome"],
+                    "quantidade" => round($quantidade_manipulada, 4)
                 ],
-                "insumos" => $insumosResumo
+                "perda"       => $perda,
+                "itens_saida" => $itensSaidaResumo
             ];
 
         } catch (Exception $e) {
             if ($pdo && $pdo->inTransaction()) $pdo->rollBack();
-            return ["success" => false, "message" => "Erro ao executar produção: " . $e->getMessage()];
+            return ["success" => false, "message" => "Erro ao executar manipulação: " . $e->getMessage()];
         }
     }
 
@@ -693,7 +755,7 @@ class ManipulacaoController
         try {
             // Busca todos os produtos que são insumos (matérias-primas)
             $stmt = $pdo->prepare("
-                SELECT p.codigo, p.nome, p.compravel,
+                SELECT p.codigo, p.nome, p.und, p.compravel,
                     EXISTS (
                         SELECT 1
                         FROM manipulation m

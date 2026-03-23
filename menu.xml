@@ -255,6 +255,10 @@
             <action>ExecutarProducao</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Lançar Manipulação">
+            <action>ExecutarManipulacao</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Aprovação de Movimentações">
             <action>AprovarMovimentacoes</action>
             <icon>fas:circle fa-fw</icon>
