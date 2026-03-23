@@ -346,21 +346,25 @@
     <script>
         'use strict';
 
-        const baseUrl = MRK.apiUrl;
-        const token = MRK.token;
-        const system_unit_id = "<?= $_SESSION['system_unit_id'] ?? $_SESSION['MRK_USER_DETAILS']['system_unit_id'] ?>";
-        const user_id        = MRK.userId;
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
 
-        // Estado da Tela
-        let fichaItens = [];
-        let insumosDisponiveis = [];
-        let unidadeInsumo = '';
+        const token          = "<?php echo $token; ?>";
+        const system_unit_id = "<?php echo $unit_id; ?>";
+        const user_id        = "<?php echo $user_id; ?>";
 
+        let fichaItens = [];           // itens da ficha carregados
+        let insumosDisponiveis = [];   // lista de matérias-primas
+        let unidadeInsumo = '';        // unidade da matéria-prima selecionada
+
+        // Unidades que usam 3 casas decimais
         const UNIDADES_DECIMAL = ['KG', 'LT', 'L', 'M', 'M2', 'M3'];
 
         /* ===========================
-           HELPERS E MÁSCARAS
+           HELPERS
         =========================== */
+
         function isDecimalUnit(unit) {
             return UNIDADES_DECIMAL.includes(String(unit || '').toUpperCase().trim());
         }
@@ -371,14 +375,14 @@
 
         function toFloat(value) {
             if (value === null || value === undefined || value === '') return 0;
-            let txt = String(value).replace(/\./g, '').replace(',', '.');
-            let n = parseFloat(txt);
+            var txt = String(value).replace(/\./g, '').replace(',', '.');
+            var n = parseFloat(txt);
             return isNaN(n) ? 0 : n;
         }
 
         function formatBR(value, unit) {
-            let decimals = getDecimals(unit);
-            let num = parseFloat(value || 0);
+            var decimals = getDecimals(unit);
+            var num = parseFloat(value || 0);
             return num.toLocaleString('pt-BR', {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
@@ -401,125 +405,110 @@
             }
         }
 
-        function showLoading(title = 'Carregando...') {
+        function showLoading(title) {
+            title = title || 'Carregando...';
             Swal.fire({
                 title: title,
                 allowOutsideClick: false,
                 allowEscapeKey: false,
-                didOpen: () => { Swal.showLoading(); }
+                didOpen: function() { Swal.showLoading(); }
             });
         }
 
+        function closeLoading() {
+            Swal.close();
+        }
+
         /* ===========================
-           INICIALIZAÇÃO E DADOS
+           CARREGAR MATÉRIAS-PRIMAS
         =========================== */
-        $(document).ready(function() {
-            // Inicializa Select2
-            $('#selectInsumo').select2({
-                placeholder: "Toque para buscar...",
-                allowClear: true,
-                width: '100%',
-                dropdownCssClass: "text-sm"
-            });
-
-            // Set Date
-            const hoje = new Date().toISOString().split('T')[0];
-            $('#dataManipulacao').val(hoje);
-
-            carregarInsumos();
-
-            // Eventos
-            $('#selectInsumo').on('change', function() {
-                const val = $(this).val();
-                $('#quantidadeManipulada').val('');
-
-                if(val) {
-                    $('#quantidadeManipulada').prop('disabled', false);
-                    carregarFichaDoInsumo(val);
-                } else {
-                    $('#quantidadeManipulada').prop('disabled', true);
-                    $('#secaoFicha').addClass('hidden');
-                    $('#msgSemFicha').addClass('hidden');
-                    $('#lblUndBase').text('');
-                }
-            });
-
-            $('#quantidadeManipulada').on('input', function() {
-                let masked = applyQuantityMask($(this).val(), unidadeInsumo);
-                $(this).val(masked);
-                atualizarResumo();
-            });
-
-            $('#gridItensFicha').on('input', '.input-qtd-item', function() {
-                let index = Number($(this).data('index'));
-                let und = $(this).data('und') || '';
-                let masked = applyQuantityMask($(this).val(), und);
-                $(this).val(masked);
-
-                let valor = toFloat(masked);
-                if (fichaItens[index]) {
-                    fichaItens[index].quantidade = valor;
-                }
-                atualizarResumo();
-            });
-
-            $('#btnExecutar').on('click', executarManipulacao);
-        });
 
         async function carregarInsumos() {
-            showLoading('Buscando Matérias-Primas...');
             try {
-                const res = await axios.post(baseUrl, {
+                var res = await axios.post(baseUrl, {
                     method: 'listInsumosComFichaStatus',
                     token: token,
                     data: { unit_id: system_unit_id }
                 });
 
-                if (!res.data.success) throw new Error(res.data.message || 'Falha ao carregar');
+                if (!res.data.success) {
+                    throw new Error(res.data.message || 'Falha ao carregar matérias-primas');
+                }
 
-                insumosDisponiveis = (res.data.produtos || []).filter(p => Number(p.tem_ficha) === 1);
-
-                const $select = $('#selectInsumo');
-                $select.empty().append(new Option('', '', true, true));
-
-                insumosDisponiveis.forEach(item => {
-                    let label = `${item.codigo} - ${item.nome}`;
-                    let opt = new Option(label, item.codigo);
-                    $(opt).data('und', item.und || '');
-                    $select.append(opt);
+                insumosDisponiveis = (res.data.produtos || []).filter(function(p) {
+                    return Number(p.tem_ficha) === 1;
                 });
 
-                Swal.close();
+                preencherSelectInsumo();
             } catch (err) {
+                console.error(err);
                 Swal.fire('Erro', 'Erro ao carregar matérias-primas.', 'error');
             }
         }
 
+        function preencherSelectInsumo() {
+            var $select = $('#selectInsumo');
+
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+
+            $select.empty();
+            $select.append(new Option('', '', true, true));
+
+            insumosDisponiveis.forEach(function(item) {
+                var label = item.codigo + ' - ' + item.nome;
+                var opt = new Option(label, item.codigo);
+                // Guarda a unidade no data-attribute
+                $(opt).data('und', item.und || '');
+                $select.append(opt);
+            });
+
+            $select.select2({
+                width: '100%',
+                placeholder: 'Pesquisar matéria-prima...',
+                allowClear: true
+            });
+        }
+
+        /* ===========================
+           CARREGAR FICHA DO INSUMO
+        =========================== */
+
         async function carregarFichaDoInsumo(codigoInsumo) {
             fichaItens = [];
-            $('#secaoFicha').addClass('hidden');
-            $('#msgSemFicha').addClass('hidden');
+            $('#secaoFicha').removeClass('ativo');
+            $('#msgSemFicha').hide();
 
-            if (!codigoInsumo) return;
+            if (!codigoInsumo) {
+                renderGrid();
+                return;
+            }
 
-            let insumoObj = insumosDisponiveis.find(i => String(i.codigo) === String(codigoInsumo));
+            // Pega a unidade do insumo selecionado
+            var insumoObj = insumosDisponiveis.find(function(i) { return String(i.codigo) === String(codigoInsumo); });
             unidadeInsumo = insumoObj ? (insumoObj.und || '') : '';
-            $('#lblUndBase').text(`(${unidadeInsumo})`);
 
             showLoading('Carregando ficha...');
 
             try {
-                const res = await axios.post(baseUrl, {
+                var res = await axios.post(baseUrl, {
                     method: 'listManipulacoes',
                     token: token,
                     data: { unit_id: system_unit_id }
                 });
 
-                if (!res.data.success) throw new Error('Erro ao carregar ficha');
+                if (!res.data.success) {
+                    throw new Error(res.data.message || 'Erro ao carregar ficha');
+                }
 
-                let itensEncontrados = [];
-                (res.data.producoes || []).forEach(prodFinal => {
-                    (prodFinal.insumos || []).forEach(insumo => {
+                var producoes = res.data.producoes || [];
+                var itensEncontrados = [];
+
+                // Na tabela manipulation: insumo_id = matéria-prima, product_id = subproduto
+                // listManipulacoes agrupa por product_id, cada um com seus insumos
+                producoes.forEach(function(prodFinal) {
+                    (prodFinal.insumos || []).forEach(function(insumo) {
                         if (Number(insumo.insumo_id) === Number(codigoInsumo)) {
                             itensEncontrados.push({
                                 product_id: prodFinal.produto,
@@ -531,77 +520,82 @@
                     });
                 });
 
-                Swal.close();
+                closeLoading();
 
                 if (itensEncontrados.length === 0) {
-                    $('#msgSemFicha').removeClass('hidden');
+                    $('#msgSemFicha').show();
                     return;
                 }
 
                 fichaItens = itensEncontrados;
-                $('#secaoFicha').removeClass('hidden');
+                $('#secaoFicha').addClass('ativo');
                 renderGrid();
 
             } catch (err) {
+                console.error(err);
+                closeLoading();
                 Swal.fire('Erro', err.message || 'Erro ao carregar ficha.', 'error');
             }
         }
 
         /* ===========================
-           RENDER E RESUMO
+           GRID E RESUMO
         =========================== */
+
         function renderGrid() {
-            const container = $('#gridItensFicha').empty();
+            var tbody = $('#gridItensFicha').empty();
 
-            fichaItens.forEach((item, index) => {
-                let und = item.unidade || '';
-                let valorFormatado = formatBR(item.quantidade, und);
+            if (fichaItens.length === 0) {
+                tbody.append(
+                    '<tr><td colspan="4" class="text-center" style="padding:30px; color:#999;">Nenhum item de saída na ficha.</td></tr>'
+                );
+                atualizarResumo();
+                return;
+            }
 
-                const card = `
-                <div class="card p-3 flex flex-col gap-2">
-                    <div class="flex justify-between items-start">
-                        <div class="pr-2">
-                            <div class="text-[10px] text-gray-400 font-bold mb-0.5">CÓD: ${item.product_id}</div>
-                            <div class="text-xs font-semibold text-gray-800 leading-tight">${item.nome}</div>
-                        </div>
-                        <div class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-bold shrink-0">
-                            ${und || 'UN'}
-                        </div>
-                    </div>
+            fichaItens.forEach(function(item, index) {
+                var und = item.unidade || '';
+                var decimals = getDecimals(und);
+                var valorFormatado = formatBR(item.quantidade, und);
 
-                    <div class="mt-2 flex items-center gap-2">
-                        <span class="text-xs text-gray-500 font-semibold w-full">Qtd. Consumida:</span>
-                        <input type="text"
-                               class="input-mobile input-qtd-item text-center font-bold !py-1.5"
-                               data-index="${index}"
-                               data-und="${und}"
-                               value="${valorFormatado}"
-                               inputmode="decimal">
-                    </div>
-                </div>
-            `;
-                container.append(card);
+                tbody.append(
+                    '<tr>' +
+                    '<td><b>' + item.product_id + '</b></td>' +
+                    '<td>' + item.nome + '</td>' +
+                    '<td class="text-center">' + (und || '-') + '</td>' +
+                    '<td class="text-center">' +
+                    '<input type="text" ' +
+                    'class="form-control input-grid-qtd input-qtd-item" ' +
+                    'data-index="' + index + '" ' +
+                    'data-und="' + und + '" ' +
+                    'value="' + valorFormatado + '" ' +
+                    'inputmode="decimal"' +
+                    '>' +
+                    '</td>' +
+                    '</tr>'
+                );
             });
 
             atualizarResumo();
         }
 
         function atualizarResumo() {
-            let qtdManipulada = toFloat($('#quantidadeManipulada').val());
-            let totalSaida = 0;
+            var qtdManipulada = toFloat($('#quantidadeManipulada').val());
 
-            fichaItens.forEach(item => {
+            var totalSaida = 0;
+            fichaItens.forEach(function(item) {
                 totalSaida += (parseFloat(item.quantidade) || 0);
             });
-
             totalSaida = Math.round(totalSaida * 10000) / 10000;
-            let perda = Math.round((qtdManipulada - totalSaida) * 10000) / 10000;
 
-            $('#metricTotalSaida').text(`${formatBR(totalSaida, unidadeInsumo)} ${unidadeInsumo}`);
+            var perda = Math.round((qtdManipulada - totalSaida) * 10000) / 10000;
 
-            const $perda = $('#valorPerda');
-            $perda.text(`${formatBR(perda, unidadeInsumo)} ${unidadeInsumo}`);
+            // Resumo usa a unidade do insumo (matéria-prima)
+            $('#metricQtdManipulada').text(formatBR(qtdManipulada, unidadeInsumo));
+            $('#metricTotalSaida').text(formatBR(totalSaida, unidadeInsumo));
+            $('#valorPerda').text(formatBR(perda, unidadeInsumo));
 
+            var $perda = $('#valorPerda');
             $perda.removeClass('perda-ok perda-alerta');
             if (perda < 0) {
                 $perda.addClass('perda-alerta');
@@ -611,65 +605,81 @@
         }
 
         /* ===========================
-           EXECUÇÃO
+           EXECUTAR MANIPULAÇÃO
         =========================== */
+
         async function executarManipulacao() {
-            let insumo_id = Number($('#selectInsumo').val());
-            let quantidade_manipulada = toFloat($('#quantidadeManipulada').val());
-            let data = $('#dataManipulacao').val();
+            var insumo_id = Number($('#selectInsumo').val());
+            var quantidade_manipulada = toFloat($('#quantidadeManipulada').val());
+            var data = $('#dataManipulacao').val();
 
-            let itens_saida = fichaItens
-                .filter(item => (parseFloat(item.quantidade) || 0) > 0)
-                .map(item => ({
-                    product_id: Number(item.product_id),
-                    quantidade: parseFloat(item.quantidade) || 0
-                }));
+            // Monta itens_saida com os campos corretos do backend: product_id e quantidade
+            var itens_saida = fichaItens
+                .filter(function(item) { return (parseFloat(item.quantidade) || 0) > 0; })
+                .map(function(item) {
+                    return {
+                        product_id: Number(item.product_id),
+                        quantidade: parseFloat(item.quantidade) || 0
+                    };
+                });
 
-            let totalSaida = 0;
-            itens_saida.forEach(item => totalSaida += item.quantidade);
-            let perda = Math.round((quantidade_manipulada - totalSaida) * 10000) / 10000;
+            var totalSaida = 0;
+            itens_saida.forEach(function(item) { totalSaida += item.quantidade; });
+            var perda = Math.round((quantidade_manipulada - totalSaida) * 10000) / 10000;
 
             // Validações
-            if (!insumo_id) return Swal.fire('Atenção', 'Selecione uma matéria-prima.', 'warning');
-            if (!quantidade_manipulada || quantidade_manipulada <= 0) return Swal.fire('Atenção', 'Informe a quantidade manipulada.', 'warning');
-            if (itens_saida.length === 0) return Swal.fire('Atenção', 'Nenhum item de saída válido.', 'warning');
-            if (perda < 0) return Swal.fire('Atenção', `A soma da saída (${formatBR(totalSaida, unidadeInsumo)}) não pode ser maior que a base manipulada (${formatBR(quantidade_manipulada, unidadeInsumo)}).`, 'warning');
+            if (!insumo_id) {
+                Swal.fire('Atenção', 'Selecione uma matéria-prima.', 'warning');
+                return;
+            }
 
-            let nomeInsumo = $('#selectInsumo option:selected').text();
+            if (!quantidade_manipulada || quantidade_manipulada <= 0) {
+                Swal.fire('Atenção', 'Informe a quantidade manipulada.', 'warning');
+                return;
+            }
 
-            let listaItensHtml = itens_saida.map(item => {
-                let f = fichaItens.find(x => Number(x.product_id) === Number(item.product_id));
-                return `<div class="flex justify-between text-xs border-b border-gray-100 py-1">
-                        <span class="truncate pr-2">${f ? f.nome : item.product_id}</span>
-                        <strong class="shrink-0">${formatBR(item.quantidade, f?f.unidade:'')}</strong>
-                    </div>`;
-            }).join('');
+            if (itens_saida.length === 0) {
+                Swal.fire('Atenção', 'Nenhum item de saída com quantidade válida.', 'warning');
+                return;
+            }
 
-            const htmlResumo = `
-            <div class="text-left">
-                <div class="mb-3 bg-gray-50 p-2 rounded text-xs">
-                    <p class="mb-1"><span class="text-gray-500">Base:</span> <strong class="text-[var(--mrk-blue)]">${nomeInsumo}</strong></p>
-                    <p><span class="text-gray-500">Qtd:</span> <strong class="text-[var(--mrk-blue)]">${formatBR(quantidade_manipulada, unidadeInsumo)} ${unidadeInsumo}</strong></p>
-                </div>
-                <div class="max-h-32 overflow-y-auto mb-3 bg-gray-50 p-2 rounded">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Itens de Saída</p>
-                    ${listaItensHtml}
-                </div>
-                <div class="flex justify-between items-center bg-amber-50 text-amber-800 p-2 rounded text-sm font-bold">
-                    <span>Perda Calculada:</span>
-                    <span>${formatBR(perda, unidadeInsumo)} ${unidadeInsumo}</span>
-                </div>
-            </div>
-        `;
+            if (perda < 0) {
+                Swal.fire('Atenção', 'A soma dos itens de saída (' + formatBR(totalSaida, unidadeInsumo) + ') não pode ser maior que a quantidade manipulada (' + formatBR(quantidade_manipulada, unidadeInsumo) + ').', 'warning');
+                return;
+            }
 
-            const confirmacao = await Swal.fire({
-                title: '<span class="text-lg">Confirmar Execução?</span>',
+            // Nome do insumo para exibir
+            var nomeInsumo = $('#selectInsumo option:selected').text();
+
+            // Resumo HTML
+            var listaItens = '';
+            itens_saida.forEach(function(item) {
+                var fichaItem = fichaItens.find(function(f) { return Number(f.product_id) === Number(item.product_id); });
+                var nome = fichaItem ? fichaItem.nome : item.product_id;
+                var und = fichaItem ? fichaItem.unidade : '';
+                listaItens += '<tr><td>' + nome + '</td><td class="text-right">' + formatBR(item.quantidade, und) + '</td></tr>';
+            });
+
+            var htmlResumo =
+                '<div style="text-align:left; font-size:13px;">' +
+                '<p><b>Matéria-prima:</b> ' + nomeInsumo + '</p>' +
+                '<p><b>Qtd. manipulada:</b> ' + formatBR(quantidade_manipulada, unidadeInsumo) + '</p>' +
+                '<table class="table table-condensed" style="font-size:12px; margin-top:10px;">' +
+                '<thead><tr><th>Item de Saída</th><th class="text-right">Quantidade</th></tr></thead>' +
+                '<tbody>' + listaItens + '</tbody>' +
+                '</table>' +
+                '<p><b>Perda:</b> ' + formatBR(perda, unidadeInsumo) + '</p>' +
+                '</div>';
+
+            var confirmacao = await Swal.fire({
+                title: 'Confirmar execução?',
                 html: htmlResumo,
+                icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Sim, Executar',
+                confirmButtonText: 'Sim, executar',
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#f59e0b',
-                reverseButtons: true
+                confirmButtonColor: '#F5A623',
+                width: 550
             });
 
             if (!confirmacao.isConfirmed) return;
@@ -677,7 +687,7 @@
             showLoading('Executando manipulação...');
 
             try {
-                const payload = {
+                var payload = {
                     system_unit_id: system_unit_id,
                     insumo_id: insumo_id,
                     quantidade_manipulada: quantidade_manipulada,
@@ -686,32 +696,89 @@
                     data: data || undefined
                 };
 
-                const res = await axios.post(baseUrl, {
+                var res = await axios.post(baseUrl, {
                     method: 'executeManipulacao',
                     token: token,
                     data: payload
                 });
 
-                if (!res.data.success) throw new Error(res.data.message || 'Falha ao executar');
+                closeLoading();
+
+                if (!res.data.success) {
+                    throw new Error(res.data.message || 'Falha ao executar manipulação');
+                }
 
                 await Swal.fire({
                     icon: 'success',
-                    title: 'Sucesso!',
-                    html: `<div class="text-sm">
-                        <p>Documento: <b>${res.data.doc || '-'}</b></p>
-                        ${res.data.doc_perda ? `<p>Doc. Perda: <b>${res.data.doc_perda}</b></p>` : ''}
-                        <p class="mt-2 text-green-600 font-bold">Perda: ${formatBR(res.data.perda || 0, unidadeInsumo)} ${unidadeInsumo}</p>
-                       </div>`
+                    title: 'Manipulação executada!',
+                    html:
+                        '<div style="font-size:14px;">' +
+                        '<p><b>Documento:</b> ' + (res.data.doc || '-') + '</p>' +
+                        (res.data.doc_perda ? '<p><b>Doc. Perda:</b> ' + res.data.doc_perda + '</p>' : '') +
+                        '<p><b>Perda registrada:</b> ' + formatBR(res.data.perda || 0, unidadeInsumo) + '</p>' +
+                        '</div>'
                 });
 
-                // Reset
+                // Limpa formulário
                 $('#selectInsumo').val(null).trigger('change');
                 $('#quantidadeManipulada').val('');
+                unidadeInsumo = '';
+                fichaItens = [];
+                $('#secaoFicha').removeClass('ativo');
+                renderGrid();
 
             } catch (err) {
+                console.error(err);
+                closeLoading();
                 Swal.fire('Erro', err.message || 'Erro ao executar manipulação.', 'error');
             }
         }
+
+        /* ===========================
+           EVENTOS
+        =========================== */
+
+        $(document).ready(function() {
+
+            // Data padrão = hoje
+            var hoje = new Date().toISOString().split('T')[0];
+            $('#dataManipulacao').val(hoje);
+
+            carregarInsumos();
+
+            // Ao selecionar matéria-prima, carrega ficha
+            $('#selectInsumo').on('change', function() {
+                var val = $(this).val();
+                $('#quantidadeManipulada').val('');
+                carregarFichaDoInsumo(val);
+            });
+
+            // Máscara no campo quantidade manipulada (usa unidade do insumo)
+            $('#quantidadeManipulada').on('input', function() {
+                var masked = applyQuantityMask($(this).val(), unidadeInsumo);
+                $(this).val(masked);
+                atualizarResumo();
+            });
+
+            // Máscara e atualização nos inputs da grid (usa unidade de cada produto)
+            $('#gridItensFicha').on('input', '.input-qtd-item', function() {
+                var index = Number($(this).data('index'));
+                var und = $(this).data('und') || '';
+                var masked = applyQuantityMask($(this).val(), und);
+                $(this).val(masked);
+
+                var valor = toFloat(masked);
+                if (fichaItens[index]) {
+                    fichaItens[index].quantidade = valor;
+                }
+                atualizarResumo();
+            });
+
+            // Botão executar
+            $('#btnExecutar').on('click', function() {
+                executarManipulacao();
+            });
+        });
     </script>
     </body>
     </html>
