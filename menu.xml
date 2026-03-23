@@ -106,6 +106,10 @@
             <action>ProducoesRealizadas</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
+          <menuitem label="Manipulações Realizadas">
+            <action>ReportManipulacao</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
 
             <menuitem label="Produtos Comprados">
                 <action>ListCompras</action>

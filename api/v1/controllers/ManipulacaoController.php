@@ -783,5 +783,118 @@ class ManipulacaoController
             ];
         }
     }
+
+    public static function getRelatorioManipulacao($data): array
+    {
+        global $pdo;
+
+        $system_unit_id = $data['unit_id'] ?? null;
+        $data_inicio    = $data['data_inicio'] ?? date('Y-m-d');
+        $data_fim       = $data['data_fim'] ?? date('Y-m-d');
+
+        if (!$system_unit_id) {
+            return ["success" => false, "message" => "Unidade não informada."];
+        }
+
+        try {
+            // Query principal: Busca todos os documentos MP no período
+            // Agrupa os dados para montar o relatório
+            $query = "
+            SELECT 
+                m.doc AS doc_mp,
+                DATE_FORMAT(m.data, '%d/%m/%Y') as data_formatada,
+                
+                -- Dados da Matéria-Prima (Saída no MP)
+                MAX(CASE WHEN m.tipo_mov = 'saida' THEN p.codigo END) as insumo_codigo,
+                MAX(CASE WHEN m.tipo_mov = 'saida' THEN p.nome END) as insumo_nome,
+                MAX(CASE WHEN m.tipo_mov = 'saida' THEN p.und END) as insumo_und,
+                SUM(CASE WHEN m.tipo_mov = 'saida' THEN m.quantidade ELSE 0 END) as qtd_aproveitada,
+                
+                -- Busca a Perda (Documento PM vinculado)
+                COALESCE((
+                    SELECT SUM(quantidade) 
+                    FROM movimentacao 
+                    WHERE system_unit_id = :unit 
+                      AND tipo = 'pm' 
+                      AND doc_par = m.doc
+                ), 0) as qtd_perda,
+                
+                -- Subquery para listar os produtos resultantes
+                (
+                    SELECT JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'codigo', sub_p.codigo,
+                            'nome', sub_p.nome,
+                            'und', sub_p.und,
+                            'quantidade', sub_m.quantidade
+                        )
+                    )
+                    FROM movimentacao sub_m
+                    JOIN products sub_p ON sub_p.codigo = sub_m.produto AND sub_p.system_unit_id = sub_m.system_unit_id
+                    WHERE sub_m.system_unit_id = :unit
+                      AND sub_m.doc = m.doc
+                      AND sub_m.tipo = 'mp'
+                      AND sub_m.tipo_mov = 'entrada'
+                ) as itens_resultantes
+
+            FROM movimentacao m
+            JOIN products p ON p.codigo = m.produto AND p.system_unit_id = m.system_unit_id
+            WHERE m.system_unit_id = :unit
+              AND m.tipo = 'mp'
+              AND m.data BETWEEN :data_inicio AND :data_fim
+            GROUP BY m.doc, m.data
+            ORDER BY m.data DESC, m.doc DESC
+        ";
+
+            $stmt = $pdo->prepare($query);
+            $stmt->execute([
+                ':unit' => $system_unit_id,
+                ':data_inicio' => $data_inicio,
+                ':data_fim' => $data_fim
+            ]);
+
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $relatorio = [];
+
+            foreach ($resultados as $row) {
+                $qtd_aproveitada = (float)$row['qtd_aproveitada'];
+                $qtd_perda = (float)$row['qtd_perda'];
+
+                // Reconstroi a quantidade total manipulada que foi informada no input
+                $qtd_total_manipulada = $qtd_aproveitada + $qtd_perda;
+
+                // Calcula a porcentagem de perda
+                $perc_perda = 0;
+                if ($qtd_total_manipulada > 0) {
+                    $perc_perda = ($qtd_perda / $qtd_total_manipulada) * 100;
+                }
+
+                $relatorio[] = [
+                    'doc_mp' => $row['doc_mp'],
+                    'data' => $row['data_formatada'],
+                    'insumo' => [
+                        'codigo' => $row['insumo_codigo'],
+                        'nome' => $row['insumo_nome'],
+                        'und' => $row['insumo_und'],
+                    ],
+                    'metricas' => [
+                        'qtd_total_manipulada' => round($qtd_total_manipulada, 4),
+                        'qtd_aproveitada' => round($qtd_aproveitada, 4),
+                        'qtd_perda' => round($qtd_perda, 4),
+                        'perc_perda' => round($perc_perda, 2)
+                    ],
+                    'itens_resultantes' => json_decode($row['itens_resultantes'], true) ?? []
+                ];
+            }
+
+            return [
+                "success" => true,
+                "data" => $relatorio
+            ];
+
+        } catch (Exception $e) {
+            return ["success" => false, "message" => "Erro ao buscar relatório: " . $e->getMessage()];
+        }
+    }
 }
 ?>

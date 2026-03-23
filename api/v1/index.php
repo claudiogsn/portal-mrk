@@ -882,6 +882,10 @@ if (isset($data['method']) && isset($data['data'])) {
                 }
                 break;
 
+            case 'getRelatorioManipulacao':
+                $response = ManipulacaoController::getRelatorioManipulacao($requestData);
+                break;
+
             case 'executeManipulacao':
                 // O método na classe continuou como executeProduction
                 $response = ManipulacaoController::executeProduction($requestData);
