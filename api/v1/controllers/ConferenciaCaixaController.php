@@ -385,13 +385,13 @@ class ConferenciaCaixaController
             $sqlVendas = "
             SELECT
                 UPPER(TRIM(descricao)) AS meio_original,
-                NULL AS codigo_meio_pdv,
+                id_m AS codigo_meio_pdv,
                 SUM(valor) AS total_venda
             FROM api_pagamentos
             WHERE id_loja = :loja_id
               AND data_contabil = :data_analise
               AND (status_pagamento IS NULL OR status_pagamento <> 'cancelado')
-            GROUP BY UPPER(TRIM(descricao))
+            GROUP BY id_m
         ";
 
             $stmtRaw = $pdo->prepare($sqlVendas);
