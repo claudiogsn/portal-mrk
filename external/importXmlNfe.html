@@ -533,8 +533,14 @@
     // UTILS
     // ==============================
     function truncate(str, n){ return (str.length > n) ? str.substr(0, n-1) + '…' : str; }
-    function formatDateBr(s) { if(!s) return ''; const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString('pt-BR'); }
-
+    function formatDateBr(s) {
+        if (!s) return '';
+        const parts = s.split('-');
+        if (parts.length === 3) {
+            return parts[2] + '/' + parts[1] + '/' + parts[0];
+        }
+        return s;
+    }
     // Visualizar PDF
     $(document).on('click', '.btnViewPdf', async function(e) {
         e.preventDefault();
