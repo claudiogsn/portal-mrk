@@ -1052,6 +1052,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ou itens ausente'];
                 }
                 break;
+            case 'saveSaidaAvulsaItems':
+                $response = MovimentacaoController::saveSaidaAvulsaItems($requestData);
+                break;
             case 'getRelatorioPerdas':
                 if (isset($requestData['system_unit_id'])) {
                     $response = MovimentacaoController::getRelatorioPerdas($requestData);

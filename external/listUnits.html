@@ -19,11 +19,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 
     <style>
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.2) !important;
+            backdrop-filter: blur(5px) !important;
+            -webkit-backdrop-filter: blur(5px) !important;
+        }
+
+        .modal-backdrop.in {
+            opacity: 1 !important;
+        }
+
         html, body { background: transparent !important; }
 
         body { padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
-        /* Card Principal */
         .card {
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             border: 1px solid #eee;
@@ -425,6 +434,34 @@
     function limparCnpj(v) { return v ? v.replace(/\D/g, '') : ''; }
 
     $(document).ready(() => {
+        // Quando QUALQUER modal for aberto
+        $('.modal').on('show.bs.modal', function () {
+            if (window.parent && window.parent.document) {
+                // 1. Cria o fundo com desfoque (blur) estilo modo retrato no painel do Adianti
+                $(window.parent.document.body).append(
+                    '<div id="parent-modal-backdrop" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: 1040; transition: all 0.3s ease;"></div>'
+                );
+
+                // 2. Eleva o z-index do seu iframe para ele ficar acima desse fundo desfocado
+                const iframe = window.parent.document.getElementById('iframe_external');
+                if (iframe) {
+                    iframe.style.position = 'relative';
+                    iframe.style.zIndex = '1050';
+                }
+            }
+        });
+
+// A parte do 'hidden.bs.modal' para remover o fundo continua exatamente igual!
+        $('.modal').on('hidden.bs.modal', function () {
+            if (window.parent && window.parent.document) {
+                $(window.parent.document).find('#parent-modal-backdrop').remove();
+                const iframe = window.parent.document.getElementById('iframe_external');
+                if (iframe) {
+                    iframe.style.zIndex = 'auto';
+                }
+            }
+        });
+
         $('#novoCnpj, #editCnpj').mask('00.000.000/0000-00');
 
         listarUnidades();

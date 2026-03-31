@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lançamento de Perdas | Portal MRK</title>
+    <title>Saída Avulsa | Portal MRK</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +18,6 @@
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        /* ====== AJUSTES GERAIS MRK ====== */
         html, body { background: transparent !important; }
         body { font-family: 'Poppins', sans-serif; }
         .container-fluid { padding-top: 15px; }
@@ -34,12 +33,10 @@
         label { font-family: 'Kanit', sans-serif; font-weight: 500; color: #666; font-size: 12px; margin-bottom: 5px; }
         .form-control { height: 38px; border-radius: 6px; border: 1px solid #ddd; font-family: 'Poppins', sans-serif; }
 
-        /* Select2 MRK Style */
         .select2-container--default .select2-selection--single { height: 38px !important; border: 1px solid #ddd !important; border-radius: 6px !important; }
         .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 36px !important; padding-left: 12px; color: #555; }
         .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px !important; }
 
-        /* Skeleton Loading */
         .skeleton {
             background-color: #e2e5e7;
             background-image: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
@@ -51,7 +48,6 @@
         }
         @keyframes skeleton-loading { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
 
-        /* Tabela MRK */
         .table thead th {
             background-color: #f8f9fa;
             color: var(--mrk-blue);
@@ -70,34 +66,44 @@
 <div class="container-fluid">
     <div class="card">
         <div class="header">
-            <h2><iconify-icon icon="icon-park-outline:delete-mode" width="24"></iconify-icon> LANÇAMENTO DE PERDAS NO ESTOQUE</h2>
+            <h2><iconify-icon icon="icon-park-outline:outbound" width="24"></iconify-icon> LANÇAMENTO DE SAÍDA AVULSA</h2>
         </div>
         <div class="body">
-            <form id="perdaForm">
+            <form id="saidaForm">
                 <div class="row clearfix">
                     <div class="col-md-2 mb-2">
-                        <label>Data da Perda</label>
-                        <input type="date" id="perda-date" class="form-control" required>
+                        <label>Data da Saída</label>
+                        <input type="date" id="saida-date" class="form-control" required>
                     </div>
-                    <div class="col-md-4 mb-2">
+                    <div class="col-md-2 mb-2">
+                        <label>Tipo de Saída</label>
+                        <select id="saida-tipo" class="form-control">
+                            <option value="s">Saída</option>
+                            <option value="c">Consumo</option>
+                            <option value="p">Perda</option>
+                            <option value="v">Venda</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8 mb-2">
+                        <label>Observação *</label>
+                        <input type="text" id="saida-obs" class="form-control" placeholder="Informe o motivo ou observação do documento...">
+                    </div>
+                </div>
+
+                <div class="row clearfix" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #eee;">
+                    <div class="col-md-6 mb-2">
                         <label>Pesquisar Produto</label>
                         <div id="selProdutoWrapper">
                             <select id="selProduto" class="form-control select2" style="width: 100%;"></select>
                         </div>
                     </div>
-                    <div class="col-md-2 mb-2">
+                    <div class="col-md-3 mb-2">
                         <label>Quantidade</label>
-                        <input type="text" id="perda-quantidade" class="form-control text-center" placeholder="0" style="font-weight: bold;">
+                        <input type="text" id="saida-quantidade" class="form-control text-center" placeholder="0" style="font-weight: bold;">
                     </div>
-                    <div class="col-md-4 mb-2">
-                        <label>Motivo da Perda *</label>
-                        <input type="text" id="perda-motivo" class="form-control" placeholder="Descreva o motivo...">
-                    </div>
-                </div>
-                <div class="row clearfix">
-                    <div class="col-md-2 col-md-offset-10">
-                        <button type="button" id="add-perda-item" class="btn btn-primary btn-block" style="height: 38px; background-color: var(--mrk-blue) !important;">
-                            <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> ADICIONAR
+                    <div class="col-md-3 mb-2" style="margin-top: 24px;">
+                        <button type="button" id="add-saida-item" class="btn btn-primary btn-block" style="height: 38px; background-color: var(--mrk-blue) !important;">
+                            <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> ADICIONAR ITEM
                         </button>
                     </div>
                 </div>
@@ -108,14 +114,13 @@
     <div class="card" style="margin-top: 20px;">
         <div class="body p-0">
             <div class="table-responsive">
-                <table id="perda-table" class="table table-hover mb-0">
+                <table id="saida-table" class="table table-hover mb-0">
                     <thead>
                     <tr>
                         <th class="col-action">Excluir</th>
                         <th style="width: 100px;">Código</th>
-                        <th>Descrição do Produto</th>
-                        <th class="text-center">Quantidade</th>
-                        <th>Motivo</th>
+                        <th style="text-align: left;">Descrição do Produto</th>
+                        <th class="text-center" style="width: 150px;">Quantidade</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -126,9 +131,9 @@
     </div>
 
     <div class="text-center mt-4">
-        <button type="button" id="submit-perda" class="btn btn-success btn-lg" style="background-color: var(--mrk-green) !important; padding: 10px 40px;">
+        <button type="button" id="submit-saida" class="btn btn-success btn-lg" style="background-color: var(--mrk-green) !important; padding: 10px 40px;">
             <iconify-icon icon="icon-park-outline:check-one" style="vertical-align: middle; margin-right: 8px;"></iconify-icon>
-            CONFIRMAR LANÇAMENTO DE PERDAS
+            CONFIRMAR SAÍDA AVULSA
         </button>
     </div>
 </div>
@@ -149,32 +154,30 @@
 
         let listaProdutos = [];
 
-        $('#perda-date').val(new Date().toISOString().split('T')[0]);
+        $('#saida-date').val(new Date().toISOString().split('T')[0]);
 
-        // ====== MÁSCARA INTELIGENTE (5 DÍGITOS LIMITE) ======
         function applyQuantityMask(val, unit) {
             const unidade = String(unit || '').toUpperCase().trim();
             let v = val.replace(/\D/g, '');
 
             if (['KG', 'LT', 'L', 'M', 'M2', 'M3'].includes(unidade)) {
                 if (v === '') return '';
-                if (v.length > 8) v = v.substring(0, 8); // 5 antes + 3 depois
+                if (v.length > 8) v = v.substring(0, 8);
                 let valorNum = (parseInt(v) / 1000).toFixed(3);
                 return valorNum.replace('.', ',');
             } else {
-                if (v.length > 5) v = v.substring(0, 5); // 5 total
+                if (v.length > 5) v = v.substring(0, 5);
                 return v;
             }
         }
 
-        $('#perda-quantidade').on('input', function() {
+        $('#saida-quantidade').on('input', function() {
             const cod = $('#selProduto').val();
             const p = listaProdutos.find(x => String(x.codigo) === String(cod));
             const unit = p ? p.und : 'UN';
             $(this).val(applyQuantityMask($(this).val(), unit));
         });
 
-        // CARREGAR SELECT2 (Com Skeleton)
         async function loadSelectData() {
             const wrapper = $('#selProdutoWrapper');
             const originalHtml = wrapper.html();
@@ -204,21 +207,27 @@
         }
 
         $('#selProduto').on('change', function() {
-            $('#perda-quantidade').val('').focus();
+            $('#saida-quantidade').val('').focus();
         });
 
-        // ADICIONAR AO GRID
-        $('#add-perda-item').click(function () {
-            const codigo = $('#selProduto').val();
-            const quantidade = $('#perda-quantidade').val();
-            const motivo = $('#perda-motivo').val();
+        function checkCabecalhoLock() {
+            if ($('#saida-table tbody tr').length > 0) {
+                $('#saida-tipo').prop('disabled', true);
+            } else {
+                $('#saida-tipo').prop('disabled', false);
+            }
+        }
 
-            if (!codigo || !quantidade || !motivo.trim()) {
-                Swal.fire('Atenção', 'Preencha o produto, quantidade e motivo.', 'warning');
+        $('#add-saida-item').click(function () {
+            const codigo = $('#selProduto').val();
+            const quantidade = $('#saida-quantidade').val();
+
+            if (!codigo || !quantidade) {
+                Swal.fire('Atenção', 'Preencha o produto e a quantidade.', 'warning');
                 return;
             }
 
-            if ($(`#perda-table tbody tr[data-cod="${codigo}"]`).length > 0) {
+            if ($(`#saida-table tbody tr[data-cod="${codigo}"]`).length > 0) {
                 Swal.fire('Erro', 'Este produto já foi adicionado!', 'error');
                 return;
             }
@@ -233,39 +242,44 @@
                     <td class="text-center"><b>${codigo}</b></td>
                     <td>${p.nome} <small class="text-muted">(${p.und})</small></td>
                     <td class="text-center"><b>${quantidade}</b></td>
-                    <td>${motivo}</td>
                 </tr>
             `;
 
-            $('#perda-table tbody').append(row);
+            $('#saida-table tbody').append(row);
 
-            // Reset
             $('#selProduto').val(null).trigger('change');
-            $('#perda-quantidade, #perda-motivo').val('');
+            $('#saida-quantidade').val('');
+            checkCabecalhoLock();
         });
 
-        $('#perda-table').on('click', '.remove-item', function() {
+        $('#saida-table').on('click', '.remove-item', function() {
             $(this).closest('tr').remove();
+            checkCabecalhoLock();
         });
 
-        // CONFIRMAR LANÇAMENTO
-        $('#submit-perda').click(async function () {
+        $('#submit-saida').click(async function () {
+            const obs = $('#saida-obs').val().trim();
+            if (!obs) {
+                return Swal.fire('Atenção', 'Informe a observação geral para o documento.', 'warning');
+            }
+
             const items = [];
-            $('#perda-table tbody tr').each(function (index) {
+            $('#saida-table tbody tr').each(function (index) {
                 const row = $(this);
                 items.push({
                     codigo: row.data('cod'),
                     seq: index + 1,
-                    quantidade: row.find('td:nth-child(4)').text().trim().replace(',', '.'),
-                    motivo: row.find('td:nth-child(5)').text().trim()
+                    quantidade: row.find('td:nth-child(4)').text().trim().replace(',', '.')
                 });
             });
 
             if (items.length === 0) return Swal.fire('Atenção', 'Adicione itens à lista primeiro.', 'info');
 
+            const tipoSelecionado = $('#saida-tipo option:selected').text();
+
             const confirm = await Swal.fire({
                 title: 'Confirmar Lançamento?',
-                text: 'Os itens serão baixados do estoque como perda.',
+                text: `Os itens serão baixados do estoque como: ${tipoSelecionado}.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Sim, Confirmar',
@@ -277,12 +291,14 @@
 
                 try {
                     const response = await axios.post(baseUrl, {
-                        method: 'savePerdaItems',
+                        method: 'saveSaidaAvulsaItems',
                         token: token,
                         data: {
                             system_unit_id: unit_id,
                             user: username,
-                            date_perda: $('#perda-date').val(),
+                            date_saida: $('#saida-date').val(),
+                            tipo_saida: $('#saida-tipo').val(),
+                            observacao: obs, // Enviando a observação no nível do documento
                             itens: items
                         }
                     });
@@ -292,30 +308,34 @@
                     if (response.data.success) {
                         Swal.fire({
                             title: 'Sucesso!',
-                            text: 'Perdas lançadas. Deseja imprimir o comprovante?',
+                            text: 'Saída lançada com sucesso. Deseja imprimir o comprovante?',
                             icon: 'success',
                             showCancelButton: true,
                             confirmButtonText: 'Imprimir',
                             cancelButtonText: 'Fechar'
                         }).then(res => {
                             if (res.isConfirmed) {
-                                localStorage.setItem('perdaPdfData', JSON.stringify({
+                                localStorage.setItem('saidaPdfData', JSON.stringify({
                                     doc: response.data.doc,
+                                    tipo_nome: tipoSelecionado,
                                     unit_name: response.data.unit_name,
                                     user_name: response.data.user_name,
                                     datetime: response.data.datetime,
+                                    observacao: obs, // Passando para o PDF
                                     itens: response.data.itens || []
                                 }));
                                 const redirect = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/external' : 'http://localhost/portal-mrk/external';
-                                window.open(`${redirect}/reports/perda.html`, '_blank');
+                                window.open(`${redirect}/reports/saida_avulsa.html`, '_blank');
                             }
-                            $('#perda-table tbody').empty();
+                            $('#saida-table tbody').empty();
+                            $('#saida-obs').val('');
+                            checkCabecalhoLock();
                         });
                     } else {
                         throw new Error(response.data.message);
                     }
                 } catch (e) {
-                    Swal.fire('Erro', e.message || 'Erro ao processar perdas.', 'error');
+                    Swal.fire('Erro', e.message || 'Erro ao processar saída.', 'error');
                 }
             }
         });
@@ -323,6 +343,5 @@
         loadSelectData();
     });
 </script>
-
 </body>
 </html>

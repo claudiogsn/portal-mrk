@@ -2599,6 +2599,143 @@ class MovimentacaoController
         }
     }
 
+    public static function saveSaidaAvulsaItems($data): array
+    {
+        global $pdo;
+
+        // 'observacao' agora é exigida na raiz do $data
+        $requiredFields = ["system_unit_id", "itens", "user", "date_saida", "tipo_saida", "observacao"];
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
+                return [
+                    "success" => false,
+                    "message" => "O campo '$field' é obrigatório.",
+                ];
+            }
+        }
+
+        if (!is_array($data["itens"]) || count($data["itens"]) === 0) {
+            return [
+                "success" => false,
+                "message" => "É necessário incluir ao menos um item.",
+            ];
+        }
+
+        $system_unit_id = $data["system_unit_id"];
+        $itens = $data["itens"];
+        $data_saida = $data["date_saida"];
+        $tipo_saida_classificacao = $data["tipo_saida"];
+        $observacao_documento = $data["observacao"]; // Observação única do documento
+        $usuario_id = $data["user"];
+
+        $tipo_base = "sa";
+
+        $ultimoDoc = self::getLastMov($system_unit_id, $tipo_base);
+        $doc = self::incrementDoc($ultimoDoc, $tipo_base);
+
+        $tipo_mov = "saida";
+        $status = 1;
+
+        $itensSalvos = [];
+
+        try {
+            $pdo->beginTransaction();
+
+            foreach ($itens as $item) {
+                foreach (["codigo", "seq", "quantidade"] as $field) {
+                    if (!isset($item[$field])) {
+                        $pdo->rollBack();
+                        return [
+                            "success" => false,
+                            "message" => "O campo '$field' é obrigatório para cada item.",
+                        ];
+                    }
+                }
+
+                $codigo = $item["codigo"];
+                $seq = $item["seq"];
+                $quantidade = $item["quantidade"];
+                $valor = $item["valor"] ?? null;
+
+                $stmtProd = $pdo->prepare("SELECT nome, und FROM products WHERE system_unit_id = :unit_id AND codigo = :codigo LIMIT 1");
+                $stmtProd->execute([
+                    ':unit_id' => $system_unit_id,
+                    ':codigo' => $codigo
+                ]);
+                $produto = $stmtProd->fetch(PDO::FETCH_ASSOC);
+
+                $nomeProduto = $produto['nome'] ?? 'Produto não encontrado';
+                $unidade = $produto['und'] ?? '-';
+
+                // Gravando a mesma observação_documento para todos os itens no banco
+                $stmt = $pdo->prepare("
+            INSERT INTO movimentacao 
+            (system_unit_id, status, doc, tipo, tipo_mov, tipo_saida, produto, seq, data, data_original, valor, quantidade, observacao, usuario_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+                $stmt->execute([
+                    $system_unit_id,
+                    $status,
+                    $doc,
+                    $tipo_base,
+                    $tipo_mov,
+                    $tipo_saida_classificacao,
+                    $codigo,
+                    $seq,
+                    $data_saida,
+                    $data_saida,
+                    $valor,
+                    $quantidade,
+                    $observacao_documento, // <-- Usa a obs geral
+                    $usuario_id,
+                ]);
+
+                if ($stmt->rowCount() == 0) {
+                    $pdo->rollBack();
+                    return [
+                        "success" => false,
+                        "message" => "Falha ao lançar saída do item $codigo.",
+                    ];
+                }
+
+                $itensSalvos[] = [
+                    'codigo'     => $codigo,
+                    'nome'       => $nomeProduto,
+                    'quantidade' => number_format($quantidade, 3, ',', '.'),
+                    'unidade'    => $unidade
+                ];
+            }
+
+            $stmtLoja = $pdo->prepare("SELECT name FROM system_unit WHERE id = :id");
+            $stmtLoja->execute([':id' => $system_unit_id]);
+            $loja = $stmtLoja->fetch(PDO::FETCH_ASSOC);
+            $nomeLoja = $loja['name'] ?? 'Loja não encontrada';
+
+            $stmtUser = $pdo->prepare("SELECT name FROM system_users WHERE id = :id");
+            $stmtUser->execute([':id' => $usuario_id]);
+            $usuario = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            $nomeUsuario = $usuario['name'] ?? 'Usuário não encontrado';
+
+            $pdo->commit();
+
+            return [
+                "success" => true,
+                "message" => "Saída Avulsa lançada com sucesso.",
+                "doc" => $doc,
+                "unit_name" => $nomeLoja,
+                "user_name" => $nomeUsuario,
+                "datetime" => date('d/m/Y H:i:s'),
+                "itens" => $itensSalvos
+            ];
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            return [
+                "success" => false,
+                "message" => "Erro ao lançar saída avulsa: " . $e->getMessage(),
+            ];
+        }
+    }
     public static function getRelatorioPerdas(array $data)
     {
         global $pdo;
