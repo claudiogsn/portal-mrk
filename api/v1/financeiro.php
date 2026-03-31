@@ -556,6 +556,9 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'getMapaDeContas':
                 $response = FinanceiroContaController::getMapaDeContas($requestData);
                 break;
+            case 'editarContasEmLote':
+                $response = FinanceiroContaController::editarContasEmLote($requestData);
+                break;
 
             case 'getResumoConferencia':
                 $response = ConferenciaCaixaController::getResumoGeral(

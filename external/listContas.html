@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
@@ -22,6 +24,15 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
+        /* CSS da Árvore do Plano de Contas */
+        .select2-results__option {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+        }
+        .select2-container--default .select2-selection--single { height: 34px !important; border: 1px solid #ccc !important; border-radius: 4px !important;}
+        .select2-selection__rendered { line-height: 32px !important; }
+        .select2-selection__arrow { height: 34px !important; }
+
         /* Estilos para a Multi-seleção */
         .linha-conta:hover {
             background-color: rgba(11, 70, 172, 0.05) !important;
@@ -36,6 +47,10 @@
             width: 16px;
             height: 16px;
         }
+
+        /* Botão Editar em Massa */
+        .btn-mrk-blue { background-color: #0B46AC !important; border-color: #0B46AC !important; color: #fff !important; }
+        .btn-mrk-blue:hover { filter: brightness(1.1); color: #fff !important; }
     </style>
 </head>
 
@@ -96,12 +111,17 @@
                     </select>
                 </div>
 
-                <div class="col-lg-3 col-md-4 col-sm-12 col-xs-12" style="margin-bottom: 15px;">
+                <div class="col-lg-3 col-md-12 col-sm-12 col-xs-12" style="margin-bottom: 15px;">
                     <label class="hidden-sm hidden-xs">&nbsp;</label><br class="hidden-sm hidden-xs">
                     <div style="display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap;">
                         <button class="btn btn-primary" id="btnBuscar" title="Buscar">
                             <iconify-icon icon="icon-park-outline:search" width="16" style="vertical-align: middle;"></iconify-icon>
                         </button>
+
+                        <button class="btn btn-mrk-blue" id="btnEditarEmLote" title="Editar Selecionadas">
+                            <iconify-icon icon="icon-park-outline:edit" width="16" style="vertical-align: middle;"></iconify-icon> Editar em Massa
+                        </button>
+
                         <button class="btn btn-warning" id="btnQuitarEmLote" title="Quitar Selecionadas">
                             <iconify-icon icon="icon-park-outline:check-one" width="16" style="vertical-align: middle;"></iconify-icon> Quitar
                         </button>
@@ -175,6 +195,62 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalEditarLote" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" style="color: #0B46AC;">
+                    <iconify-icon icon="icon-park-outline:edit" style="vertical-align: text-bottom;"></iconify-icon> Edição em Massa
+                </h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong><span id="qtdContasEditar">0</span></strong> conta(s) selecionada(s) para alteração.
+                </div>
+                <p class="text-muted" style="font-size: 12px; margin-bottom: 15px;">
+                    Apenas os campos preenchidos serão alterados. O que ficar em branco será ignorado.
+                </p>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Plano de Contas</label>
+                        <select id="inputLoteEditPlanoConta" class="form-control">
+                            <option value="">-- Não alterar --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Data de Vencimento</label>
+                        <input type="date" id="inputLoteEditVencimento" class="form-control">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Forma de Pagamento</label>
+                        <select id="inputLoteEditFormaPgto" class="form-control">
+                            <option value="">-- Não alterar --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Banco</label>
+                        <select id="inputLoteEditBanco" class="form-control">
+                            <option value="">-- Não alterar --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Data de Baixa</label>
+                        <input type="date" id="inputLoteEditBaixaDt" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-mrk-blue" id="btnConfirmarEditarLote">
+                    Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalQuitarLote" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -183,7 +259,7 @@
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-info">
+                <div class="alert alert-warning">
                     Você selecionou <strong><span id="qtdContasQuitar">0</span></strong> conta(s) totalizando <strong><span id="totalValorQuitar">R$ 0,00</span></strong>.
                 </div>
                 <p class="muted mb-3">As informações abaixo serão aplicadas a todas as contas selecionadas:</p>
@@ -283,6 +359,9 @@
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="script/planoContasTree.js"></script>
+
 
 <script>
     // === Configs ===
@@ -298,6 +377,7 @@
     const token   = urlParams.get('token');
     const unit_id = urlParams.get('unit_id');
     const username = urlParams.get('username') || '';
+    let PLANOS_CACHE = [];
 
     $('#btnOpenExportF360').hide();
 
@@ -326,12 +406,18 @@
     // === Variáveis Globais ===
     let contas = [];
     let contasFiltradasVisiveis = [];
-    let bancosCache = []; // Variável atualizada para guardar os bancos
+    let bancosCache = [];
+    let planosContaCache = [];
+    let formasPgtoCache = [];
 
     $(document).ready(function () {
         setDefaultMonth();
         checarIntegracaoF360();
-        listarBancos(); // Chama o novo loader
+
+        // Carrega dados para os Combos de edição/quitação
+        listarBancos();
+        listarPlanosEFormas();
+        PlanoContasTree.carregarDados(baseUrl, token, unit_id);
 
         $('#btnBuscar').click(buscar);
         $('#filtroStatus, #filtroRateio').on('change input', aplicarFiltrosLocais);
@@ -341,8 +427,6 @@
     });
 
     // === Funções Base ===
-
-    // Novo Loader: Substitui o listFormasPagamento por listBancos
     async function listarBancos() {
         try {
             const res = await axios.post(baseUrl, {
@@ -354,6 +438,26 @@
         } catch (e) {
             console.error("Erro ao carregar bancos", e);
         }
+    }
+
+    async function listarPlanosEFormas() {
+        try {
+            const resFormas = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id) } });
+            if(resFormas.data) formasPgtoCache = resFormas.data.data || resFormas.data || [];
+
+            const resPlanos = await axios.post(baseUrl, { method: 'listCategoriasFinanceiro', token, data: { system_unit_id: Number(unit_id) } });
+            if(resPlanos.data) {
+                planosContaCache = resPlanos.data.data || resPlanos.data || [];
+
+                // NOVO: Calcular os níveis para a árvore
+                planosContaCache.sort((a,b) => (a.codigo||'').localeCompare(b.codigo||''));
+                planosContaCache.forEach(p => {
+                    p.codigo = p.codigo || '';
+                    p.nivel = Math.floor((p.codigo.length - 2) / 2);
+                    p.isParent = planosContaCache.some(child => child.codigo.startsWith(p.codigo) && child.codigo.length > p.codigo.length);
+                });
+            }
+        } catch (e) { console.error("Endpoints secundários não encontrados.", e); }
     }
 
     async function buscar(){
@@ -657,6 +761,97 @@
         }
     });
 
+    // ==========================================
+    // EDIÇÃO EM MASSA
+    // ==========================================
+    $(document).on('click', '#btnEditarEmLote', function() {
+        const selecionadas = $('.check-conta:checked');
+
+        if (selecionadas.length === 0) {
+            return Swal.fire('Atenção', 'Selecione ao menos uma conta na lista para editar.', 'warning');
+        }
+
+        $('#qtdContasEditar').text(selecionadas.length);
+
+        // Reseta os campos do modal (vazio = não alterar)
+        $('#modalEditarLote input, #modalEditarLote select').val('');
+
+        // Popula as opções (usando caches)
+        let htmlBancos = '<option value="">-- Não alterar --</option>';
+        bancosCache.forEach(b => htmlBancos += `<option value="${b.codigo}">${b.codigo} - ${b.nome}</option>`);
+        $('#inputLoteEditBanco').html(htmlBancos);
+
+        PlanoContasTree.renderizar('#inputLoteEditPlanoConta');
+
+        let htmlFormas = '<option value="">-- Não alterar --</option>';
+        formasPgtoCache.forEach(f => htmlFormas += `<option value="${f.codigo}">${f.nome}</option>`);
+        $('#inputLoteEditFormaPgto').html(htmlFormas);
+
+        $('#modalEditarLote').modal({ backdrop: 'static', keyboard: false }).modal('show');
+    });
+
+    $(document).on('click', '#btnConfirmarEditarLote', async function() {
+        const campos = {
+            plano_contas: $('#inputLoteEditPlanoConta').val(),
+            vencimento: $('#inputLoteEditVencimento').val(),
+            forma_pagamento: $('#inputLoteEditFormaPgto').val(),
+            banco: $('#inputLoteEditBanco').val(),
+            data_baixa: $('#inputLoteEditBaixaDt').val()
+        };
+
+        Object.keys(campos).forEach(key => {
+            if (!campos[key]) delete campos[key];
+        });
+
+        if (Object.keys(campos).length === 0) {
+            return Swal.fire('Atenção', 'Você não preencheu nenhum campo para ser alterado.', 'warning');
+        }
+
+        const ids = $('.check-conta:checked').map(function() { return Number($(this).val()); }).get();
+
+        const confirm = await Swal.fire({
+            title: 'Tem certeza?',
+            html: `Você vai alterar os dados de <b>${ids.length}</b> conta(s). Esta ação não pode ser desfeita.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, aplicar alterações',
+            confirmButtonColor: '#0B46AC'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        Swal.fire({ title: 'Processando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const payload = {
+                method: 'editarContasEmLote',
+                token: token,
+                data: {
+                    system_unit_id: Number(unit_id),
+                    usuario_id: username,
+                    ids: ids,
+                    dados: campos
+                }
+            };
+
+            const res = await axios.post(baseUrl, payload);
+
+            Swal.close();
+
+            if (res.data && res.data.success !== false) {
+                Swal.fire('Sucesso!', 'Contas atualizadas com sucesso.', 'success');
+                $('#modalEditarLote').modal('hide');
+                $('#checkAllContas').prop('checked', false);
+                buscar();
+            } else {
+                Swal.fire('Erro', res.data?.message || 'Ocorreu um erro ao atualizar.', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+        }
+    });
+
     // === Export F360 ===
     let expRows = [];
     const F360_EMPRESA_CNPJ = '26.144.579/0001-50';
@@ -782,6 +977,93 @@
             buscar();
         } catch (e){ Swal.fire('Erro', 'Falha na comunicação.', 'error'); }
     }
+
+    function popularSelectPlanos($select) {
+        if ($select.hasClass("select2-hidden-accessible")) {
+            $select.select2('destroy');
+        }
+        $select.empty().append(new Option('-- Não alterar --', ''));
+
+        planosContaCache.forEach(p => {
+            // Nota: Se a sua tabela guarda ID ou CÓDIGO do plano, altere o "value" abaixo.
+            // O padrão da sua listagem estava usando p.id
+            let $opt = $('<option>', {
+                value: p.id,
+                text: p.codigo + ' - ' + (p.descricao || p.nome),
+                'data-codigo': p.codigo,
+                'data-parent': p.isParent,
+                'data-nivel': p.nivel
+            });
+            $select.append($opt);
+        });
+
+        $select.select2({
+            placeholder: '-- Não alterar --',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#modalEditarLote'), // Necessário para Select2 dentro de Modal do Bootstrap
+            templateResult: formatarPlanoConta
+        });
+    }
+
+    function formatarPlanoConta(data) {
+        if (!data.id) return data.text;
+
+        let $el = $(data.element);
+        let codigo = $el.data('codigo');
+        let isParent = $el.data('parent') === true || $el.data('parent') === "true";
+        let nivel = parseInt($el.data('nivel')) || 0;
+
+        let padding = nivel * 20;
+        let fontWeight = isParent ? 'bold' : 'normal';
+
+        let icon = isParent
+            ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${codigo}" style="cursor:pointer; color:#2196F3; margin-right:8px; width:15px; text-align:center;"></i>`
+            : `<i class="fas fa-circle" style="color:#ddd; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
+
+        return $(`
+            <div class="tree-node" data-codigo="${codigo}" style="padding-left: ${padding}px; display:flex; align-items:center; font-weight: ${fontWeight};">
+                ${icon}
+                <span>${data.text}</span>
+            </div>
+        `);
+    }
+
+    // Ação de expandir e recolher
+    $(document).on('mouseup', '.tree-toggle', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        let $icon = $(this);
+        let codigo = $icon.data('codigo');
+        let isExpanded = $icon.hasClass('fa-chevron-down');
+
+        if (isExpanded) {
+            $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+            $('.tree-node').each(function() {
+                let childCode = $(this).data('codigo');
+                if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                    $(this).closest('.select2-results__option').hide();
+                    let $childIcon = $(this).find('.tree-toggle');
+                    if ($childIcon.length) {
+                        $childIcon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+                    }
+                }
+            });
+        } else {
+            $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+            $('.tree-node').each(function() {
+                let childCode = $(this).data('codigo');
+                if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                    $(this).closest('.select2-results__option').show();
+                    let $childIcon = $(this).find('.tree-toggle');
+                    if ($childIcon.length) {
+                        $childIcon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+                    }
+                }
+            });
+        }
+    });
 </script>
 </body>
 </html>

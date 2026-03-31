@@ -2265,6 +2265,117 @@ class FinanceiroContaController {
         }
     }
 
+    public static function editarContasEmLote($payload) {
+        global $pdo;
+
+        $system_unit_id = $payload['system_unit_id'] ?? 0;
+        $ids            = $payload['ids'] ?? [];
+        $dadosUpdate    = $payload['dados'] ?? [];
+        $usuario_id     = $payload['usuario_id'] ?? null; // Captura o usuário do payload
+
+        // Validações básicas de segurança
+        if (empty($system_unit_id)) {
+            return ['success' => false, 'message' => 'Unidade não informada.'];
+        }
+        if (empty($ids) || !is_array($ids)) {
+            return ['success' => false, 'message' => 'Nenhuma conta foi selecionada.'];
+        }
+        if (empty($dadosUpdate)) {
+            return ['success' => false, 'message' => 'Nenhum dado válido para atualizar.'];
+        }
+
+        // Mapeamento seguro: vincula a chave do JSON recebida ao nome exato da coluna no Banco de Dados
+        $colunasPermitidas = [
+            'plano_contas'    => 'plano_contas',
+            'vencimento'      => 'vencimento',
+            'forma_pagamento' => 'forma_pagamento',
+            'banco'           => 'banco',
+            'data_baixa'      => 'baixa_dt'
+        ];
+
+        $setQueryParts = [];
+        $parametrosQuery = [];
+
+        // Monta a string do SET dinamicamente (Ex: SET vencimento = ?, banco = ?)
+        foreach ($dadosUpdate as $key => $value) {
+            if (array_key_exists($key, $colunasPermitidas) && $value !== '') {
+                $colunaDB = $colunasPermitidas[$key];
+                $setQueryParts[] = "{$colunaDB} = ?";
+                $parametrosQuery[] = $value;
+            }
+        }
+
+        // Trava de segurança extra
+        if (empty($setQueryParts)) {
+            return ['success' => false, 'message' => 'Nenhum campo autorizado para atualização.'];
+        }
+
+        $placeholdersIN = implode(',', array_fill(0, count($ids), '?'));
+
+        try {
+            $pdo->beginTransaction();
+
+            // 1. Busca os dados de todas as contas ANTES da alteração (Para Auditoria)
+            $paramsSelect = array_merge($ids, [$system_unit_id]);
+            $sqlSelect = "SELECT * FROM financeiro_conta WHERE id IN ($placeholdersIN) AND system_unit_id = ?";
+
+            $stmtAntes = $pdo->prepare($sqlSelect);
+            $stmtAntes->execute($paramsSelect);
+            $contasAntes = $stmtAntes->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapAntes = [];
+            foreach ($contasAntes as $conta) {
+                $mapAntes[$conta['id']] = $conta;
+            }
+
+            // 2. Executa o UPDATE em lote
+            $parametrosUpdate = array_merge($parametrosQuery, $ids, [$system_unit_id]);
+
+            $sqlUpd = "UPDATE financeiro_conta SET " . implode(', ', $setQueryParts) . ", updated_at = CURRENT_TIMESTAMP 
+                       WHERE id IN ($placeholdersIN) AND system_unit_id = ?";
+
+            $stmtUpd = $pdo->prepare($sqlUpd);
+            $stmtUpd->execute($parametrosUpdate);
+            $linhasAfetadas = $stmtUpd->rowCount();
+
+            // 3. Busca os dados DEPOIS da alteração
+            $stmtDepois = $pdo->prepare($sqlSelect);
+            $stmtDepois->execute($paramsSelect);
+            $contasDepois = $stmtDepois->fetchAll(PDO::FETCH_ASSOC);
+
+            // 4. Registra cada item na Auditoria
+            foreach ($contasDepois as $contaDep) {
+                $idConta = $contaDep['id'];
+                $contaAnt = $mapAntes[$idConta] ?? null;
+
+                self::logAuditoria(
+                    'UPDATE_LOTE',
+                    'financeiro_conta',
+                    $idConta,
+                    $contaAnt,
+                    $contaDep,
+                    $system_unit_id,
+                    $usuario_id
+                );
+            }
+
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Lote de contas atualizado com sucesso.',
+                'linhas_afetadas' => $linhasAfetadas
+            ];
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return [
+                'success' => false,
+                'message' => 'Erro SQL ao atualizar em massa: ' . $e->getMessage()
+            ];
+        }
+    }
 
 
 
