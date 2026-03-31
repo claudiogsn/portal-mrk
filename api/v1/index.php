@@ -888,7 +888,7 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'executeManipulacao':
                 // O método na classe continuou como executeProduction
-                $response = ManipulacaoController::executeProduction($requestData);
+                $response = ManipulacaoController::executeManipulacao($requestData);
                 break;
 
             case 'executeManipulacaoBatch':

@@ -651,7 +651,8 @@ if (empty($token)) {
             .map(function(item) {
                 return {
                     product_id: Number(item.product_id),
-                    quantidade: parseFloat(item.quantidade) || 0
+                    quantidade: parseFloat(item.quantidade) || 0,
+                    peso_conversao: parseFloat(item.peso_conversao) || 1
                 };
             });
 

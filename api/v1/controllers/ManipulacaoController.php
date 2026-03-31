@@ -331,27 +331,8 @@ class ManipulacaoController
         }
     }
 
-    /**
-     * Executa Manipulação de Matéria-Prima
-     *
-     * Consome uma matéria-prima (insumo) e gera múltiplos itens de saída.
-     * Calcula perda automaticamente e gera movimentações separadas:
-     *   - saida: quantidade total da matéria-prima consumida
-     *   - perda: diferença entre manipulado e soma das saídas (se > 0)
-     *   - entrada: cada item de saída produzido
-     *
-     * @param array $data {
-     *   system_unit_id: int,
-     *   insumo_id: int,
-     *   quantidade_manipulada: float,
-     *   itens_saida: array [{ product_id: int, quantidade: float }, ...],
-     *   usuario_id: int|string,
-     *   data: string (Y-m-d),
-     *   allow_negative: bool (opcional, default false)
-     * }
-     * @return array
-     */
-    public static function executeProduction($data): array
+
+    public static function executeManipulacao($data): array
     {
         global $pdo;
 
@@ -375,7 +356,6 @@ class ManipulacaoController
         $usuario_id = (string)$usuario_id;
 
         $date_manipulacao = $data["date_producao"] ?? $data["data"] ?? date("Y-m-d");
-        $allow_negative   = isset($data["allow_negative"]) ? (bool)$data["allow_negative"] : false;
 
         // ─── Validações básicas ──────────────────────────────────────────
         if ($system_unit_id <= 0) return ["success" => false, "message" => "system_unit_id inválido."];
@@ -386,36 +366,45 @@ class ManipulacaoController
             return ["success" => false, "message" => "É necessário informar pelo menos 1 item de saída."];
         }
 
-        // ─── Filtra itens válidos (quantidade > 0) ──────────────────────
+        // ─── Filtra itens válidos e aplica a conversão ──────────────────
         $itens_saida = [];
+        $soma_saida_convertida = 0;
+
         foreach ($itens_saida_raw as $idx => $item) {
             $pid = (int)($item["product_id"] ?? 0);
             $qty = (float)str_replace(",", ".", (string)($item["quantidade"] ?? 0));
 
-            if ($qty <= 0) continue; // ignora itens com quantidade <= 0
+            // NOVO: Pega o peso de conversão (se não for enviado, assume 1)
+            $conversao = (float)str_replace(",", ".", (string)($item["peso_conversao"] ?? 1));
+
+            if ($qty <= 0) continue;
             if ($pid <= 0) {
                 return ["success" => false, "message" => "product_id inválido no item de saída #" . ($idx + 1)];
             }
 
-            $itens_saida[] = ["product_id" => $pid, "quantidade" => round($qty, 4)];
+            // Calcula quanto esse item consumiu da matéria prima em KG
+            $qtd_convertida = $qty * $conversao;
+            $soma_saida_convertida += $qtd_convertida;
+
+            $itens_saida[] = [
+                "product_id" => $pid,
+                "quantidade" => round($qty, 4),                     // Entrada no estoque (Ex: UN)
+                "quantidade_convertida" => round($qtd_convertida, 4) // Saída no estoque (Ex: KG)
+            ];
         }
 
         if (empty($itens_saida)) {
             return ["success" => false, "message" => "Nenhum item de saída válido (quantidade > 0)."];
         }
 
-        // ─── Cálculo de perda ────────────────────────────────────────────
-        $soma_saida = 0;
-        foreach ($itens_saida as $item) {
-            $soma_saida += $item["quantidade"];
-        }
-        $soma_saida = round($soma_saida, 4);
-        $perda = round($quantidade_manipulada - $soma_saida, 4);
+        // ─── Cálculo de perda na unidade da Matéria Prima ────────────────
+        $soma_saida_convertida = round($soma_saida_convertida, 4);
+        $perda = round($quantidade_manipulada - $soma_saida_convertida, 4);
 
         if ($perda < 0) {
             return [
                 "success" => false,
-                "message" => "Soma dos itens de saída ($soma_saida) excede a quantidade manipulada ($quantidade_manipulada)."
+                "message" => "A soma convertida dos itens de saída ($soma_saida_convertida) excede a quantidade manipulada ($quantidade_manipulada)."
             ];
         }
 
@@ -423,13 +412,7 @@ class ManipulacaoController
         try {
             $pdo->beginTransaction();
 
-            // Busca matéria-prima (insumo) com lock
-            $stmtInsumo = $pdo->prepare("
-                SELECT codigo, nome, und, COALESCE(saldo,0) AS saldo
-                FROM products
-                WHERE system_unit_id = :unit AND codigo = :codigo
-                FOR UPDATE
-            ");
+            $stmtInsumo = $pdo->prepare("SELECT codigo, nome, und, COALESCE(saldo,0) AS saldo FROM products WHERE system_unit_id = :unit AND codigo = :codigo FOR UPDATE");
             $stmtInsumo->execute([":unit" => $system_unit_id, ":codigo" => $insumo_id]);
             $insumoData = $stmtInsumo->fetch(PDO::FETCH_ASSOC);
 
@@ -438,13 +421,8 @@ class ManipulacaoController
                 return ["success" => false, "message" => "Matéria-prima (insumo_id=$insumo_id) não encontrada nessa unidade."];
             }
 
-            // Valida existência dos produtos de saída (com lock)
             foreach ($itens_saida as $item) {
-                $stmtCheck = $pdo->prepare("
-                    SELECT codigo, nome FROM products
-                    WHERE system_unit_id = :unit AND codigo = :codigo
-                    FOR UPDATE
-                ");
+                $stmtCheck = $pdo->prepare("SELECT codigo, nome FROM products WHERE system_unit_id = :unit AND codigo = :codigo FOR UPDATE");
                 $stmtCheck->execute([":unit" => $system_unit_id, ":codigo" => $item["product_id"]]);
                 if (!$stmtCheck->fetch()) {
                     $pdo->rollBack();
@@ -452,39 +430,30 @@ class ManipulacaoController
                 }
             }
 
-            // ─── Geração de Documento MP (manipulação) ─────────────────
             $ultimoDocMp = MovimentacaoController::getLastMov($system_unit_id, "mp");
             $docMp       = MovimentacaoController::incrementDoc($ultimoDocMp, "mp");
             $status      = 1;
             $seqMp       = 1;
 
-            $stmtInsMov = $pdo->prepare("
-                INSERT INTO movimentacao (system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id, doc_par)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-
-            $stmtUpdSaldoByCodigo = $pdo->prepare("
-                UPDATE products
-                SET saldo = COALESCE(saldo,0) + :delta, ultimo_doc = :doc, updated_at = CURRENT_TIMESTAMP
-                WHERE system_unit_id = :unit AND codigo = :codigo
-            ");
+            $stmtInsMov = $pdo->prepare("INSERT INTO movimentacao (system_unit_id, status, doc, tipo, tipo_mov, produto, seq, data, data_original, quantidade, usuario_id, doc_par) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmtUpdSaldoByCodigo = $pdo->prepare("UPDATE products SET saldo = COALESCE(saldo,0) + :delta, ultimo_doc = :doc, updated_at = CURRENT_TIMESTAMP WHERE system_unit_id = :unit AND codigo = :codigo");
 
             // ─── 1. Movimentação de SAÍDA da matéria-prima (doc MP) ─────
-            //     Saída = soma dos itens de saída (quantidade aproveitada)
-            //     A perda sai separadamente no doc PM
+            // ATENÇÃO: Aqui usamos o volume CONVERTIDO (KG) consumido pelos itens
             $stmtInsMov->execute([
                 $system_unit_id, $status, $docMp, "mp", "saida",
                 $insumo_id, $seqMp++, $date_manipulacao, $date_manipulacao,
-                $soma_saida, $usuario_id, null
+                $soma_saida_convertida, $usuario_id, null
             ]);
             $stmtUpdSaldoByCodigo->execute([
-                ":delta"  => -1 * $soma_saida,
+                ":delta"  => -1 * $soma_saida_convertida,
                 ":doc"    => $docMp,
                 ":unit"   => $system_unit_id,
                 ":codigo" => $insumo_id
             ]);
 
             // ─── 2. Movimentações de ENTRADA dos itens de saída (doc MP) ─
+            // ATENÇÃO: Aqui usamos a quantidade real da embalagem/unidade produzida (Ex: UN)
             $itensSaidaResumo = [];
             foreach ($itens_saida as $item) {
                 $stmtInsMov->execute([
@@ -511,7 +480,6 @@ class ManipulacaoController
                 $ultimoDocPm = MovimentacaoController::getLastMov($system_unit_id, "pm");
                 $docPm       = MovimentacaoController::incrementDoc($ultimoDocPm, "pm");
 
-                // Perda: tipo "pm", tipo_mov "saida", doc_par aponta para o doc MP
                 $stmtInsMov->execute([
                     $system_unit_id, $status, $docPm, "pm", "saida",
                     $insumo_id, 1, $date_manipulacao, $date_manipulacao,
@@ -547,7 +515,6 @@ class ManipulacaoController
             return ["success" => false, "message" => "Erro ao executar manipulação: " . $e->getMessage()];
         }
     }
-
     public static function executeProductionBatch($data): array
     {
         global $pdo;
