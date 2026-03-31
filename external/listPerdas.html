@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório de Perdas de Estoque</title>
+    <title>Relatório de Saídas Avulsas</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
@@ -18,7 +18,6 @@
     <style>
         body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
-        /* Card Principal */
         .card {
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             border: 1px solid #eee;
@@ -27,7 +26,6 @@
             border-radius: 6px;
         }
 
-        /* --- KPIs Internos --- */
         .kpi-card {
             background: #fff;
             padding: 15px;
@@ -41,30 +39,22 @@
             height: 100%;
         }
         .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-
         .kpi-card.blue   { border-left: 4px solid var(--mrk-blue); }
         .kpi-card.red    { border-left: 4px solid var(--mrk-red); }
         .kpi-card.orange { border-left: 4px solid var(--mrk-amber); }
-
         .kpi-title { font-size: 11px; color: #888; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 5px; }
         .kpi-value { font-size: 22px; font-weight: 700; font-family: 'Kanit', sans-serif; color: var(--mrk-black); }
-
-        /* Cor específica para valor financeiro de perda */
         .kpi-card.red .kpi-value { color: var(--mrk-red); }
 
-        .kpi-bg-icon {
-            position: absolute; right: 15px; top: 15px; font-size: 28px; opacity: 0.15;
-        }
+        .kpi-bg-icon { position: absolute; right: 15px; top: 15px; font-size: 28px; opacity: 0.15; }
         .kpi-card.blue .kpi-bg-icon { color: var(--mrk-blue); }
         .kpi-card.red .kpi-bg-icon { color: var(--mrk-red); }
         .kpi-card.orange .kpi-bg-icon { color: var(--mrk-amber); }
 
-        /* Filtros */
         .header-flex { display: flex; align-items: center; justify-content: space-between; }
         .filter-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
         .input-group-addon { background-color: #f0f4f8; border: 1px solid #ddd; border-right: none; color: var(--mrk-blue); }
 
-        /* Tabela */
         .table thead th {
             font-family: 'Kanit', sans-serif;
             color: var(--mrk-blue);
@@ -76,11 +66,27 @@
         }
         .table tbody td { font-size: 12px; vertical-align: middle !important; border-top: 1px solid #f1f1f1; }
 
-        /* Skeleton */
+        .badge-tipo {
+            padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+        }
+        .bg-saida { background-color: #e2e8f0; color: #475569; }
+        .bg-consumo { background-color: #dbeafe; color: #1e40af; }
+        .bg-venda { background-color: #dcfce7; color: #166534; }
+        .bg-perda { background-color: #fee2e2; color: #991b1b; }
+
         .skeleton-wrapper { display: none; margin-top: 20px; }
         .skeleton { background: #e0e0e0; border-radius: 4px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
         .sk-row { height: 40px; width: 100%; margin-bottom: 8px; }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* Estilos Linha Expansível */
+        .row-agrupada { cursor: pointer; transition: background 0.2s; }
+        .row-agrupada:hover { background-color: #f4f6f8 !important; }
+        .inner-table-wrapper { display: none; padding: 15px; background: #fdfdfd; border-bottom: 2px solid #ddd; }
+        .inner-table { width: 100%; background: #fff; border: 1px solid #e9ecef; border-radius: 6px; overflow: hidden; }
+        .inner-table th { background: #f1f3f5; font-size: 11px; padding: 8px; }
+        .inner-table td { padding: 8px; font-size: 11px; border-top: 1px solid #eee; }
+        .btn-expand { background: none; border: none; color: var(--mrk-blue); font-size: 18px; outline: none; }
     </style>
 </head>
 
@@ -91,8 +97,8 @@
     <div class="card">
         <div class="header header-flex">
             <h2>
-                <iconify-icon icon="icon-park-outline:emotion-unhappy" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
-                RELATÓRIO DE PERDAS DE ESTOQUE
+                <iconify-icon icon="icon-park-outline:outbound" width="24" style="color: var(--mrk-blue); vertical-align: bottom; margin-right: 5px;"></iconify-icon>
+                RELATÓRIO DE SAÍDAS AVULSAS
             </h2>
         </div>
 
@@ -100,24 +106,47 @@
 
             <div class="filter-box">
                 <div class="row clearfix">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="muted">Data Inicial</label>
                         <div class="input-group">
                             <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
                             <input type="date" id="dtInicio" class="form-control">
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="muted">Data Final</label>
                         <div class="input-group">
                             <span class="input-group-addon"><iconify-icon icon="icon-park-outline:calendar"></iconify-icon></span>
                             <input type="date" id="dtFim" class="form-control">
                         </div>
                     </div>
+                    <div class="col-md-2">
+                        <label class="muted">Filtrar por Tipo</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:filter"></iconify-icon></span>
+                            <select id="selTipoSaida" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="s">Saída</option>
+                                <option value="c">Consumo</option>
+                                <option value="p">Perda</option>
+                                <option value="v">Venda</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="muted">Visualização</label>
+                        <div class="input-group">
+                            <span class="input-group-addon"><iconify-icon icon="icon-park-outline:view-grid-list"></iconify-icon></span>
+                            <select id="selVisao" class="form-control">
+                                <option value="agrupado">Agrupado (Documento)</option>
+                                <option value="detalhado">Detalhado (Produtos)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="col-md-3" style="margin-top: 22px;">
                         <button id="btnConsultar" class="btn btn-primary btn-block waves-effect">
                             <iconify-icon icon="icon-park-outline:search" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
-                            CONSULTAR
+                            CONSULTAR DADOS
                         </button>
                     </div>
                 </div>
@@ -131,21 +160,21 @@
             <div class="row clearfix" style="margin-bottom: 20px;">
                 <div class="col-md-4">
                     <div class="kpi-card blue">
-                        <span class="kpi-title">Registros</span>
+                        <span class="kpi-title">Itens Registrados</span>
                         <span class="kpi-value" id="kpiRegistros">0</span>
                         <iconify-icon icon="icon-park-outline:list-numbers" class="kpi-bg-icon"></iconify-icon>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="kpi-card orange">
-                        <span class="kpi-title">Qtd. Perdida</span>
+                        <span class="kpi-title">Volume Total (Qtd)</span>
                         <span class="kpi-value" id="kpiQtd">0,00</span>
                         <iconify-icon icon="icon-park-outline:cube" class="kpi-bg-icon"></iconify-icon>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="kpi-card red">
-                        <span class="kpi-title">Valor da Perda</span>
+                        <span class="kpi-title">Custo / Valor Total</span>
                         <span class="kpi-value" id="kpiValor">R$ 0,00</span>
                         <iconify-icon icon="icon-park-outline:trend-two" class="kpi-bg-icon"></iconify-icon>
                     </div>
@@ -154,10 +183,10 @@
 
             <div class="row clearfix" style="margin-bottom: 15px;">
                 <div class="col-md-6">
-                    <label class="muted">Filtrar Produtos</label>
+                    <label class="muted">Busca Rápida</label>
                     <div class="input-group">
                         <span class="input-group-addon"><iconify-icon icon="icon-park-outline:search"></iconify-icon></span>
-                        <input type="text" id="filtroProduto" class="form-control" placeholder="Buscar por código ou nome...">
+                        <input type="text" id="filtroProduto" class="form-control" placeholder="Buscar por código, produto, doc ou observação...">
                     </div>
                 </div>
             </div>
@@ -172,21 +201,10 @@
 
             <div class="table-responsive" id="table-area">
                 <table class="table table-hover" id="tabela-perdas">
-                    <thead>
-                    <tr>
-                        <th class="nowrap" width="100">Data</th>
-                        <th class="nowrap">Doc</th>
-                        <th class="nowrap">Cód.</th>
-                        <th>Produto</th>
-                        <th class="text-center">Unid.</th>
-                        <th class="text-right">Qtd</th>
-                        <th class="text-right">Custo Unit.</th>
-                        <th class="text-right">Valor Perda</th>
-                        <th>Usuário</th>
-                    </tr>
+                    <thead id="thead-tabela">
                     </thead>
                     <tbody>
-                    <tr><td colspan="9" class="text-center muted" style="padding: 30px;">Selecione o período e clique em <b>CONSULTAR</b>.</td></tr>
+                    <tr><td colspan="11" class="text-center muted" style="padding: 30px;">Selecione o período e clique em <b>CONSULTAR DADOS</b>.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -201,7 +219,6 @@
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
-    // ====== CONFIG ======
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
@@ -211,11 +228,9 @@
     const system_unit_id  = urlParams.get('system_unit_id');
     const unit_name       = urlParams.get('unit_name');
 
-    // ====== STATE ======
-    let ultimoResultado = []; // dados crus vindos do backend
-    let listaFiltrada   = []; // após filtro por produto
+    let ultimoResultado = [];
+    let listaFiltrada   = [];
 
-    // ====== UTILS ======
     function brNumber(v) {
         if (v === null || v === undefined || isNaN(v)) return '-';
         return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
@@ -257,9 +272,17 @@
         let t; return function(){ clearTimeout(t); const args = arguments; t = setTimeout(() => fn.apply(null, args), ms); }
     }
 
-    // ====== INIT ======
+    function getTipoBadge(tipo) {
+        switch(tipo) {
+            case 'c': return '<span class="badge-tipo bg-consumo">Consumo</span>';
+            case 'p': return '<span class="badge-tipo bg-perda">Perda</span>';
+            case 'v': return '<span class="badge-tipo bg-venda">Venda</span>';
+            case 's': return '<span class="badge-tipo bg-saida">Saída</span>';
+            default:  return '<span class="badge-tipo bg-saida">Indefinido</span>';
+        }
+    }
+
     $(document).ready(function () {
-        // Datas Padrão: Hoje e -7 dias
         const hoje = new Date();
         const y  = hoje.getFullYear();
         const m  = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -282,16 +305,17 @@
 
         $('#btnConsultar').on('click', onConsultar);
         $('#filtroProduto').on('input', debounce(aplicarFiltroProduto, 200));
+        $('#selVisao').on('change', aplicarFiltroProduto); // Atualiza na hora ao trocar a visão
 
         if (!token || !system_unit_id) {
             Swal.fire('Atenção', 'Parâmetros de sistema ausentes.', 'warning');
         }
     });
 
-    // ====== CONSULTA ======
     async function onConsultar() {
         const data_inicial = $('#dtInicio').val();
         const data_final   = $('#dtFim').val();
+        const tipo_saida   = $('#selTipoSaida').val();
 
         if (!data_inicial || !data_final) {
             return Swal.fire('Atenção', 'Informe o período.', 'warning');
@@ -301,17 +325,18 @@
 
         try {
             const res = await axios.post(baseUrl, {
-                method: 'getRelatorioPerdas',
+                method: 'getRelatorioSaidasAvulsas',
                 token: token,
                 data: {
                     system_unit_id: Number(system_unit_id),
                     data_inicial: data_inicial,
-                    data_final: data_final
+                    data_final: data_final,
+                    tipo_saida: tipo_saida
                 }
             });
 
             if (!res.data || res.data.success === false) {
-                const msg = res.data && res.data.message ? res.data.message : 'Erro ao consultar perdas.';
+                const msg = res.data && res.data.message ? res.data.message : 'Erro ao consultar saídas.';
                 toggleLoading(false);
                 ultimoResultado = [];
                 aplicarFiltroProduto();
@@ -319,7 +344,7 @@
             }
 
             ultimoResultado = Array.isArray(res.data.data) ? res.data.data : [];
-            aplicarFiltroProduto(); // Atualiza tabela e KPIs
+            aplicarFiltroProduto();
 
             toggleLoading(false);
 
@@ -330,7 +355,6 @@
         }
     }
 
-    // ====== FILTROS & KPIS ======
     function aplicarFiltroProduto() {
         const termo = normalizarString($('#filtroProduto').val());
 
@@ -338,14 +362,22 @@
             listaFiltrada = ultimoResultado.slice();
         } else {
             listaFiltrada = ultimoResultado.filter(item => {
+                const doc = String(item.doc || '').toLowerCase();
                 const cod = String(item.codigo_produto || item.produto || '').toLowerCase();
                 const nome = normalizarString(item.nome_produto || '');
-                return cod.indexOf(termo) !== -1 || nome.indexOf(termo) !== -1;
+                const obs = normalizarString(item.observacao || '');
+                return doc.indexOf(termo) !== -1 || cod.indexOf(termo) !== -1 || nome.indexOf(termo) !== -1 || obs.indexOf(termo) !== -1;
             });
         }
 
-        renderTabela(listaFiltrada);
         renderKPIs(listaFiltrada);
+
+        const visao = $('#selVisao').val();
+        if (visao === 'agrupado') {
+            renderTabelaAgrupada(listaFiltrada);
+        } else {
+            renderTabelaDetalhada(listaFiltrada);
+        }
     }
 
     function renderKPIs(itens) {
@@ -353,7 +385,6 @@
         let totalVal = 0;
 
         itens.forEach(row => {
-            // Lógica de custo (mesma do original)
             let custoUnit = null;
             if (row.preco_custo != null) {
                 custoUnit = Number(row.preco_custo);
@@ -362,10 +393,10 @@
             }
 
             const qtd = Number(row.quantidade || 0);
-            const valPerda = (custoUnit != null ? (custoUnit * qtd) : null);
+            const valTotal = (custoUnit != null ? (custoUnit * qtd) : null);
 
             totalQtd += qtd;
-            if (valPerda != null) totalVal += valPerda;
+            if (valTotal != null) totalVal += valTotal;
         });
 
         $('#kpiRegistros').text(itens.length);
@@ -373,13 +404,30 @@
         $('#kpiValor').text(brMoney(totalVal));
     }
 
-    // ====== RENDER TABELA ======
-    function renderTabela(itens) {
+    // ===== RENDERIZAÇÃO DETALHADA (Padrão Antigo) =====
+    function renderTabelaDetalhada(itens) {
+        const $thead = $('#thead-tabela');
         const $tbody = $('#tabela-perdas tbody');
+
+        $thead.html(`
+            <tr>
+                <th class="nowrap" width="80">Data</th>
+                <th class="nowrap">Doc</th>
+                <th class="text-center nowrap">Tipo</th>
+                <th class="nowrap">Cód.</th>
+                <th>Produto</th>
+                <th class="text-center">Unid.</th>
+                <th class="text-right">Qtd</th>
+                <th class="text-right">Custo Unit.</th>
+                <th class="text-right">Custo Total</th>
+                <th>Observação</th>
+                <th>Usuário</th>
+            </tr>
+        `);
         $tbody.empty();
 
         if (!itens || !itens.length) {
-            $tbody.append('<tr><td colspan="9" class="text-center muted" style="padding:30px;">Nenhuma perda encontrada.</td></tr>');
+            $tbody.append('<tr><td colspan="11" class="text-center muted" style="padding:30px;">Nenhuma saída encontrada para os filtros aplicados.</td></tr>');
             return;
         }
 
@@ -392,24 +440,177 @@
             }
 
             const qtd = Number(row.quantidade || 0);
-            const valPerda = (custoUnit != null ? (custoUnit * qtd) : null);
+            const valTotal = (custoUnit != null ? (custoUnit * qtd) : null);
 
             const tr = `
                 <tr>
                     <td class="nowrap">${formatDateBR(row.data)}</td>
                     <td class="nowrap"><strong>${escapeHtml(row.doc)}</strong></td>
+                    <td class="text-center">${getTipoBadge(row.tipo_saida)}</td>
                     <td class="nowrap text-muted">${escapeHtml(row.codigo_produto || row.produto)}</td>
                     <td>${escapeHtml(row.nome_produto)}</td>
                     <td class="text-center nowrap"><span class="badge" style="background:#eee; color:#555;">${escapeHtml(row.unidade || '-')}</span></td>
-                    <td class="text-right">${brNumber(qtd)}</td>
+                    <td class="text-right"><strong>${brNumber(qtd)}</strong></td>
                     <td class="text-right text-small muted">${custoUnit != null ? brMoney(custoUnit) : '-'}</td>
-                    <td class="text-right" style="color:var(--mrk-red);"><strong>${valPerda != null ? brMoney(valPerda) : '-'}</strong></td>
+                    <td class="text-right" style="color:var(--mrk-red);"><strong>${valTotal != null ? brMoney(valTotal) : '-'}</strong></td>
+                    <td class="text-muted" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(row.observacao)}">${escapeHtml(row.observacao || '-')}</td>
                     <td>${escapeHtml(row.usuario_nome || '-')}</td>
                 </tr>
             `;
             $tbody.append(tr);
         });
     }
+
+    // ===== RENDERIZAÇÃO AGRUPADA (Nova) =====
+    function renderTabelaAgrupada(itens) {
+        const $thead = $('#thead-tabela');
+        const $tbody = $('#tabela-perdas tbody');
+
+        $thead.html(`
+            <tr>
+                <th width="40" class="text-center"><iconify-icon icon="icon-park-outline:down-c"></iconify-icon></th>
+                <th class="nowrap" width="80">Data</th>
+                <th class="nowrap">Documento</th>
+                <th class="text-center nowrap">Tipo</th>
+                <th class="text-center">Qtd Itens</th>
+                <th class="text-right">Vol. Total</th>
+                <th class="text-right">Custo Total</th>
+                <th>Observação Geral</th>
+                <th>Usuário Resp.</th>
+            </tr>
+        `);
+        $tbody.empty();
+
+        if (!itens || !itens.length) {
+            $tbody.append('<tr><td colspan="9" class="text-center muted" style="padding:30px;">Nenhuma saída encontrada para os filtros aplicados.</td></tr>');
+            return;
+        }
+
+        // Agrupando pelo Documento
+        const documentos = {};
+
+        itens.forEach(row => {
+            const docKey = row.doc || 'SEM_DOC';
+
+            if (!documentos[docKey]) {
+                documentos[docKey] = {
+                    doc: docKey,
+                    data: row.data,
+                    tipo_saida: row.tipo_saida,
+                    observacao: row.observacao,
+                    usuario_nome: row.usuario_nome,
+                    totalQtdItens: 0,
+                    volumeTotal: 0,
+                    custoTotal: 0,
+                    produtos: []
+                };
+            }
+
+            let custoUnit = null;
+            if (row.preco_custo != null) {
+                custoUnit = Number(row.preco_custo);
+            } else if (row.valor != null && row.quantidade) {
+                custoUnit = Number(row.valor) / Number(row.quantidade);
+            }
+
+            const qtd = Number(row.quantidade || 0);
+            const valTotal = (custoUnit != null ? (custoUnit * qtd) : null);
+
+            documentos[docKey].totalQtdItens += 1;
+            documentos[docKey].volumeTotal += qtd;
+            if (valTotal != null) documentos[docKey].custoTotal += valTotal;
+
+            documentos[docKey].produtos.push({
+                codigo: row.codigo_produto || row.produto,
+                nome: row.nome_produto,
+                unidade: row.unidade,
+                quantidade: qtd,
+                custoUnit: custoUnit,
+                valTotal: valTotal
+            });
+        });
+
+        // Desenhando a tabela agrupada
+        Object.values(documentos).forEach(doc => {
+            const safeId = doc.doc.replace(/\W/g, ''); // Remove caracteres especiais para o ID do HTML
+
+            // Linha Principal (Mestre)
+            const trMaster = `
+                <tr class="row-agrupada" onclick="toggleDoc('${safeId}')">
+                    <td class="text-center"><button class="btn-expand"><iconify-icon id="icon-${safeId}" icon="icon-park-outline:down"></iconify-icon></button></td>
+                    <td class="nowrap">${formatDateBR(doc.data)}</td>
+                    <td class="nowrap"><strong>${escapeHtml(doc.doc)}</strong></td>
+                    <td class="text-center">${getTipoBadge(doc.tipo_saida)}</td>
+                    <td class="text-center"><b>${doc.totalQtdItens}</b></td>
+                    <td class="text-right">${brNumber(doc.volumeTotal)}</td>
+                    <td class="text-right" style="color:var(--mrk-red);"><strong>${brMoney(doc.custoTotal)}</strong></td>
+                    <td class="text-muted" style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(doc.observacao)}">${escapeHtml(doc.observacao || '-')}</td>
+                    <td>${escapeHtml(doc.usuario_nome || '-')}</td>
+                </tr>
+            `;
+
+            // Linha Secundária (Detalhe Oculto)
+            let trInnerHtml = `
+                <tr id="inner-${safeId}" style="display:none;">
+                    <td colspan="9" style="padding:0; border:none;">
+                        <div class="inner-table-wrapper">
+                            <table class="inner-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:100px;">Cód. Produto</th>
+                                        <th>Descrição do Produto</th>
+                                        <th class="text-center" style="width:80px;">Unidade</th>
+                                        <th class="text-right" style="width:100px;">Quantidade</th>
+                                        <th class="text-right" style="width:120px;">Custo Unit.</th>
+                                        <th class="text-right" style="width:120px;">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+
+            doc.produtos.forEach(prod => {
+                trInnerHtml += `
+                    <tr>
+                        <td class="text-muted">${escapeHtml(prod.codigo)}</td>
+                        <td><strong>${escapeHtml(prod.nome)}</strong></td>
+                        <td class="text-center"><span class="badge" style="background:#eee; color:#555;">${escapeHtml(prod.unidade || '-')}</span></td>
+                        <td class="text-right">${brNumber(prod.quantidade)}</td>
+                        <td class="text-right muted">${prod.custoUnit != null ? brMoney(prod.custoUnit) : '-'}</td>
+                        <td class="text-right" style="color:var(--mrk-red);">${prod.valTotal != null ? brMoney(prod.valTotal) : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            trInnerHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            $tbody.append(trMaster);
+            $tbody.append(trInnerHtml);
+        });
+    }
+
+    // Função global para expandir/recolher
+    window.toggleDoc = function(id) {
+        const $inner = $(`#inner-${id}`);
+        const $icon = $(`#icon-${id}`);
+
+        // Verifica se está visível para fechar, ou oculto para abrir
+        if ($inner.is(':visible')) {
+            $inner.find('.inner-table-wrapper').slideUp(200, function() {
+                $inner.hide();
+            });
+            $icon.attr('icon', 'icon-park-outline:down');
+        } else {
+            $inner.show();
+            $inner.find('.inner-table-wrapper').slideDown(200);
+            $icon.attr('icon', 'icon-park-outline:up');
+        }
+    };
 </script>
 </body>
 </html>

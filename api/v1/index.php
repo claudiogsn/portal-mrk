@@ -1063,6 +1063,9 @@ if (isset($data['method']) && isset($data['data'])) {
                     $response = ['error' => 'Parâmetros system_unit_id ausente'];
                 }
                 break;
+            case 'getRelatorioSaidasAvulsas':
+                $response = MovimentacaoController::getRelatorioSaidasAvulsas($requestData);
+                break;
             case 'listBalance':
                 if (isset($requestData['system_unit_id'])) {
                     // Verifica se as datas estão presentes e as atribui, caso contrário passa null

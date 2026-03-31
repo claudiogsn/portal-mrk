@@ -2821,6 +2821,100 @@ class MovimentacaoController
         }
     }
 
+    public static function getRelatorioSaidasAvulsas(array $data)
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = isset($data['system_unit_id']) ? (int)$data['system_unit_id'] : 0;
+            $data_inicial   = $data['data_inicial'] ?? null;
+            $data_final     = $data['data_final']   ?? null;
+
+            if (!$system_unit_id || !$data_inicial || !$data_final) {
+                return [
+                    'success' => false,
+                    'message' => 'Parâmetros obrigatórios: system_unit_id, data_inicial, data_final'
+                ];
+            }
+
+            // Filtros opcionais
+            $produto    = $data['produto']    ?? null; // Código do produto
+            $doc        = $data['doc']        ?? null; // Documento específico
+            $tipo_saida = $data['tipo_saida'] ?? null; // 's', 'c', 'p', 'v'
+
+            $sql = "
+        SELECT
+            m.id,
+            m.system_unit_id,
+            m.doc,
+            m.tipo,
+            m.tipo_mov,
+            m.tipo_saida,          -- Novo campo: classificação
+            m.observacao,          -- Novo campo: motivo geral
+            m.produto              AS codigo_produto,
+            m.seq,
+            m.data,
+            m.data_emissao,
+            m.data_original,
+            m.quantidade,
+            m.valor,
+            m.usuario_id,
+            u.name             AS usuario_nome,
+            p.nome             AS nome_produto,
+            p.und              AS unidade,
+            p.preco_custo
+        FROM movimentacao m
+        LEFT JOIN products p
+               ON p.system_unit_id = m.system_unit_id
+              AND p.codigo         = m.produto
+        LEFT JOIN system_users u
+               ON u.id             = m.usuario_id
+        WHERE m.tipo           = 'sa' -- ATUALIZADO: Busca todas as Saídas Avulsas
+          AND m.system_unit_id = :unit_id
+          AND m.status         = 1
+          AND m.data BETWEEN :data_inicial AND :data_final
+        ";
+
+            $params = [
+                ':unit_id'      => $system_unit_id,
+                ':data_inicial' => $data_inicial,
+                ':data_final'   => $data_final,
+            ];
+
+            // Aplica filtro de Tipo de Saída se o usuário selecionar algo diferente de "Todos"
+            if (!empty($tipo_saida)) {
+                $sql .= " AND m.tipo_saida = :tipo_saida";
+                $params[':tipo_saida'] = $tipo_saida;
+            }
+
+            if (!empty($produto)) {
+                $sql .= " AND m.produto = :produto";
+                $params[':produto'] = $produto;
+            }
+
+            if (!empty($doc)) {
+                $sql .= " AND m.doc = :doc";
+                $params[':doc'] = $doc;
+            }
+
+            $sql .= " ORDER BY m.data, m.doc, m.seq";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'data'    => $rows,
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar relatório de saídas avulsas: ' . $e->getMessage(),
+            ];
+        }
+    }
+
     public static function extratoCopEntreBalancos(int $systemUnitId, string $dtInicio, string $dtFim): array
     {
         try {

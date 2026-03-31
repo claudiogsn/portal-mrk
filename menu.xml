@@ -135,7 +135,7 @@
             <action>VendasDetalhado</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-            <menuitem label="Relatório de Perdas">
+            <menuitem label="Relatório de Saidas Avulsas">
                 <action>ListarPerdas</action>
                 <icon>fas:circle fa-fw</icon>
             </menuitem>
@@ -255,6 +255,10 @@
       <menuitem label="Movimentações">
         <icon>fas:external-link-alt fa-fw</icon>
         <menu>
+          <menuitem label="Saida Avulsa">
+            <action>PerdasEstoque</action>
+            <icon>fas:circle fa-fw</icon>
+          </menuitem>
           <menuitem label="Lançar Produção">
             <action>ExecutarProducao</action>
             <icon>fas:circle fa-fw</icon>
@@ -275,10 +279,7 @@
             <action>AjustePrecoCusto</action>
             <icon>fas:circle fa-fw</icon>
           </menuitem>
-            <menuitem label="Lançar Perdas">
-                <action>PerdasEstoque</action>
-                <icon>fas:circle fa-fw</icon>
-            </menuitem>
+
         </menu>
       </menuitem>
       <menuitem label="Diferenças de Estoque">
