@@ -520,7 +520,7 @@ if (empty($token)) {
                             nome: prodFinal.nome,
                             unidade: prodFinal.unidade || '',
                             quantidade: parseFloat(insumo.quantity || 0),
-                            peso_conversao: 1 // Inicializa o fator de conversão como 1,000 KG
+                            peso_conversao: 0 // Inicializa o fator de conversão como 1,000 KG
                         });
                     }
                 });

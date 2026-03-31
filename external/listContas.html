@@ -177,7 +177,7 @@
                         <th style="width:40px; text-align:center;">Tipo</th>
                         <th>Entidade</th>
                         <th>Documento</th>
-                        <th>Emissão</th>
+                        <th>Lançamento</th> <th>Emissão</th>
                         <th>Vencimento</th>
                         <th>Observação</th>
                         <th>Banco</th>
@@ -549,11 +549,13 @@
         tbody.empty();
 
         if (!lista || !lista.length){
-            tbody.append('<tr><td colspan="14" class="text-center muted">Nenhum registro encontrado.</td></tr>');
+            // Colspan alterado de 14 para 15
+            tbody.append('<tr><td colspan="15" class="text-center muted">Nenhum registro encontrado.</td></tr>');
             return;
         }
 
         for (const n of lista){
+            const lancamento = fmtDate(n.created_at); // NOVO CAMPO EXTRAÍDO DA API
             const emissao    = fmtDate(n.emissao);
             const vencimento = fmtDate(n.vencimento);
             const pagamento  = fmtDate(n.baixa_dt);
@@ -576,40 +578,39 @@
             let bancoTexto = n.banco_codigo && n.banco_nome ? `${n.banco_codigo} - ${n.banco_nome}` : (n.banco_nome || n.banco_codigo || '');
 
             tbody.append(`
-              <tr class="linha-conta" title="Use Ctrl+Clique para selecionar (ou clique na caixa)" style="cursor: pointer;">
-               <td class="text-center" style="vertical-align: middle;">
-                    <input type="checkbox" id="check_${n.id}" name="check_${n.id}" class="check-conta" value="${n.id}">
-                    <label for="check_${n.id}" style="margin-bottom: 0; cursor: pointer;"></label>
-                </td>
-                <td style="vertical-align: middle;">
-                  <a href="#" class="btn-edit-conta" title="Editar" data-id="${n.id}" style="color:var(--mrk-blue);">
-                    <iconify-icon icon="icon-park-outline:edit" width="18"></iconify-icon>
-                  </a>
-                </td>
-                <td style="vertical-align: middle;">
-                  <a href="#" class="btn-delete-conta" title="Excluir"
-                     data-id="${n.id}" data-nome="${(n.nome ?? '').replace(/"/g,'&quot;')}"
-                     data-doc="${n.doc ?? ''}" data-emissao="${emissao}" data-vencimento="${vencimento}" data-valor="${n.valor ?? 0}"
-                     style="color:var(--mrk-red);">
-                    <iconify-icon icon="icon-park-outline:delete" width="18"></iconify-icon>
-                  </a>
-                </td>
-                <td class="text-center" style="vertical-align: middle;">${tipoIcon}</td>
-                <td style="vertical-align: middle;">${n.nome ?? ''}</td>
-                <td style="vertical-align: middle;">${n.doc ?? ''}</td>
-                <td style="vertical-align: middle;">${emissao}</td>
-                <td style="vertical-align: middle;">${vencimento}</td>
-                <td title="${n.obs ?? ''}" style="vertical-align: middle;">${n.obs ? String(n.obs).slice(0, 50) + '...' : ''}</td>
-                <td style="vertical-align: middle;">${bancoTexto}</td>
-                <td class="text-center" style="vertical-align: middle;">${rateioBadge}</td>
-                <td style="vertical-align: middle;">${statusBadge}</td>
-                <td style="vertical-align: middle;">${pagamento}</td>
-                <td class="text-right" style="vertical-align: middle;"><strong>${toBRL(n.valor)}</strong></td>
-              </tr>
-            `);
+          <tr class="linha-conta" title="Use Ctrl+Clique para selecionar (ou clique na caixa)" style="cursor: pointer;">
+           <td class="text-center" style="vertical-align: middle;">
+                <input type="checkbox" id="check_${n.id}" name="check_${n.id}" class="check-conta" value="${n.id}">
+                <label for="check_${n.id}" style="margin-bottom: 0; cursor: pointer;"></label>
+            </td>
+            <td style="vertical-align: middle;">
+              <a href="#" class="btn-edit-conta" title="Editar" data-id="${n.id}" style="color:var(--mrk-blue);">
+                <iconify-icon icon="icon-park-outline:edit" width="18"></iconify-icon>
+              </a>
+            </td>
+            <td style="vertical-align: middle;">
+              <a href="#" class="btn-delete-conta" title="Excluir"
+                 data-id="${n.id}" data-nome="${(n.nome ?? '').replace(/"/g,'&quot;')}"
+                 data-doc="${n.doc ?? ''}" data-emissao="${emissao}" data-vencimento="${vencimento}" data-valor="${n.valor ?? 0}"
+                 style="color:var(--mrk-red);">
+                <iconify-icon icon="icon-park-outline:delete" width="18"></iconify-icon>
+              </a>
+            </td>
+            <td class="text-center" style="vertical-align: middle;">${tipoIcon}</td>
+            <td style="vertical-align: middle;">${n.nome ?? ''}</td>
+            <td style="vertical-align: middle;">${n.doc ?? ''}</td>
+            <td style="vertical-align: middle;">${lancamento}</td> <td style="vertical-align: middle;">${emissao}</td>
+            <td style="vertical-align: middle;">${vencimento}</td>
+            <td title="${n.obs ?? ''}" style="vertical-align: middle;">${n.obs ? String(n.obs).slice(0, 50) + '...' : ''}</td>
+            <td style="vertical-align: middle;">${bancoTexto}</td>
+            <td class="text-center" style="vertical-align: middle;">${rateioBadge}</td>
+            <td style="vertical-align: middle;">${statusBadge}</td>
+            <td style="vertical-align: middle;">${pagamento}</td>
+            <td class="text-right" style="vertical-align: middle;"><strong>${toBRL(n.valor)}</strong></td>
+          </tr>
+        `);
         }
     }
-
     function fmtDate(iso) {
         if (!iso) return '';
         const s = String(iso).slice(0, 10);
