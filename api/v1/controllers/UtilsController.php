@@ -184,25 +184,19 @@ class UtilsController
         return [$code ?: 0, $body ?: '', $err];
     }
 
-
     public static function trackApiToSqs($user, $method, $request, $response, $startTime): void
     {
-        // 1. Configurações de Ambiente
-        $accessKey = self::getEnvCustom('AWS_ACCESS_KEY_ID');
-        $secretKey = self::getEnvCustom('AWS_SECRET_ACCESS_KEY');
-        $region    = self::getEnvCustom('AWS_REGION');
-        $service   = 'sqs';
-        $queueUrl  = self::getEnvCustom('AWS_QUEUE_URL');
+        // 1. Configurações (pode mover para .env)
+        $rabbitHost  = self::getEnvCustom('RABBITMQ_HOST') ?: 'localhost';
+        $rabbitPort  = self::getEnvCustom('RABBITMQ_HTTP_PORT') ?: '15672';
+        $rabbitUser  = self::getEnvCustom('RABBITMQ_USER') ?: 'guest';
+        $rabbitPass  = self::getEnvCustom('RABBITMQ_PASS') ?: 'guest';
+        $rabbitVhost = self::getEnvCustom('RABBITMQ_VHOST') ?: '/';
+        $queue       = self::getEnvCustom('RABBITMQ_QUEUE_TELEMETRIA') ?: 'telemetria_logs';
 
-        if (!$queueUrl || !$accessKey) {
-            error_log("SQS Tracking abortado: Credenciais ausentes.");
-            return;
-        }
-
-        // 2. Cálculo de Tempo e Limite de Tamanho (Proteção de Carga)
+        // 2. Cálculo de Tempo e Limite de Tamanho (mesma lógica anterior)
         $execTime = (microtime(true) - $startTime) * 1000;
 
-        // Limite de 60KB para o log (o SQS aceita até 256KB, mas 60KB é seguro para o SQL)
         $maxSize = 60 * 1024;
         $responseJson = json_encode($response);
 
@@ -216,64 +210,55 @@ class UtilsController
             $logResponse = $response;
         }
 
-        // 3. Montagem do Payload
+        // 3. Montagem do Payload (idêntico ao anterior — o worker Node.js consome no mesmo formato)
         $payload = json_encode([
-            'user'    => $user ?? 'anonymous',
-            'method'  => $method ?? 'unknown',
-            'status'  => http_response_code(),
-            'exec_ms' => round($execTime, 2),
-            'request' => $request,
+            'user'     => $user ?? 'anonymous',
+            'method'   => $method ?? 'unknown',
+            'status'   => http_response_code(),
+            'exec_ms'  => round($execTime, 2),
+            'request'  => $request,
             'response' => $logResponse,
-            'ip'      => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-            'date'    => date('Y-m-d H:i:s')
+            'ip'       => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
+            'date'     => date('Y-m-d H:i:s')
         ]);
 
-        // 4. AWS Signature v4
-        $now = gmdate('Ymd\THis\Z');
-        $date = gmdate('Ymd');
-        $params = http_build_query([
-            'Action' => 'SendMessage',
-            'MessageBody' => $payload,
-            'Version' => '2012-11-05'
+        // 4. Publish via RabbitMQ HTTP API
+        $vhostEncoded = urlencode($rabbitVhost);
+        $exchangeName = urlencode('amq.default'); // Exchange padrão — roteia direto pela routing_key = nome da fila
+        $url = "http://{$rabbitHost}:{$rabbitPort}/api/exchanges/{$vhostEncoded}/{$exchangeName}/publish";
+
+        $body = json_encode([
+            'properties'       => [
+                'delivery_mode' => 2, // persistente (sobrevive restart do RabbitMQ)
+                'content_type'  => 'application/json'
+            ],
+            'routing_key'      => $queue,
+            'payload'          => $payload,
+            'payload_encoding' => 'string'
         ]);
-
-        $parsedUrl = parse_url($queueUrl);
-        $host = $parsedUrl['host'] ?? '';
-        $canonicalUri = $parsedUrl['path'] ?? '/';
-
-        $canonicalHeaders = "host:$host\nx-amz-date:$now\n";
-        $signedHeaders = 'host;x-amz-date';
-        $payloadHash = hash('sha256', $params);
-
-        $canonicalRequest = "POST\n$canonicalUri\n\n$canonicalHeaders\n$signedHeaders\n$payloadHash";
-        $credentialScope = "$date/$region/$service/aws4_request";
-        $stringToSign = "AWS4-HMAC-SHA256\n$now\n$credentialScope\n" . hash('sha256', $canonicalRequest);
-
-        $sign = function ($key, $msg) {
-            return hash_hmac('sha256', (string)$msg, $key, true);
-        };
-
-        $kSigning = $sign($sign($sign($sign('AWS4' . $secretKey, $date), $region), $service), 'aws4_request');
-        $signature = hash_hmac('sha256', $stringToSign, $kSigning);
-
-        $authorizationHeader = "AWS4-HMAC-SHA256 Credential=$accessKey/$credentialScope, SignedHeaders=$signedHeaders, Signature=$signature";
 
         // 5. Envio "Fire and Forget" via cURL
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL            => $queueUrl,
+            CURLOPT_URL            => $url,
             CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $params,
-            CURLOPT_RETURNTRANSFER => true, // Mantemos true para o PHP processar internamente
-            CURLOPT_TIMEOUT_MS     => 800,  // Se em 0.8s não for, aborta para não travar o worker
-            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT_MS     => 800,  // Mesmo timeout do SQS anterior
+            CURLOPT_USERPWD        => "{$rabbitUser}:{$rabbitPass}",
             CURLOPT_HTTPHEADER     => [
-                "Authorization: $authorizationHeader",
-                "x-amz-date: $now",
-                "Content-Type: application/x-www-form-urlencoded"
+                'Content-Type: application/json'
             ]
         ]);
 
-        curl_exec($ch);
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+
+
+        // Log de erro (opcional — só para debug)
+        if ($httpCode !== 200 || $error) {
+            error_log("RabbitMQ publish falhou: HTTP {$httpCode} | Erro: {$error} | Response: {$result}");
+        }
     }
 }
