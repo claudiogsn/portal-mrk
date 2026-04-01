@@ -78,9 +78,15 @@
     .sidebar-menu img,
     .nav-sidebar img,
     .list img {
-        width: 20px !important;
-        height: 20px !important;
-        opacity: 0.7;
+        width: 18px !important;  /* Reduzi sutilmente para 18px para casar melhor com a altura do texto */
+        height: 18px !important;
+        object-fit: contain !important;
+        opacity: 0.7 !important;
+        margin-right: 8px !important;
+
+        /* A MÁGICA DO ALINHAMENTO FINO: */
+        position: relative !important;
+        top: -2px !important; /* Altera esse valor para subir ou descer (-1px, -2px, -3px...) */
     }
     /* CLASSE PARA CENTRALIZAR O NOME DA EMPRESA */
     @media (min-width: 992px) {
