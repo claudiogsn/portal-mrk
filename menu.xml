@@ -17,12 +17,16 @@
         </menuitem>
     </menu>
   </menuitem>
+  <menuitem label="Open Finance">
+    <icon>icon-open-finance fa-fw</icon>
+    <action>OpenFinanceContas</action>
+  </menuitem>
   <menuitem label="Financeiro">
     <icon>fas:dollar-sign fa-fw</icon>
     <menu>
       <menuitem label="Conferencia de Caixa">
         <action>ConferenciaCaixa</action>
-        <icon>fas:circle fa-fw</icon>
+        <icon>fas:dollar-sign fa-fw</icon>
       </menuitem>
       <menuitem label="Relatórios Financeiro">
             <icon>fas:circle fa-fw</icon>
@@ -320,6 +324,10 @@
       <menuitem label="Estabelecimentos">
         <action>Estabelecimento</action>
         <icon>fas:university fa-fw</icon>
+      </menuitem>
+      <menuitem label="Open Finance - Estabelecimentos">
+        <action>OpenFinancePagadores</action>
+        <icon>fas:circle fa-fw</icon>
       </menuitem>
       <menuitem label="Grupo de Estabelecimentos">
         <action>GrupoEstabelecimento</action>

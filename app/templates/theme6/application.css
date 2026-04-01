@@ -1317,6 +1317,22 @@ a.nav-link:not(.active):hover {
 	border-bottom-color: #ddd;
 }
 
+/* Classe customizada para o ícone do Open Finance */
+.icon-open-finance {
+    display: inline-block;
+    width: 18px;  /* Ajuste a largura do ícone */
+    height: 18px; /* Ajuste a altura do ícone */
+
+    /* URL da imagem (recomendo baixar e colocar na sua pasta images/) */
+    background-image: url('https://openfinancebrasil.org.br/wp-content/themes/openbank/assets/img/favicon.png');
+
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    vertical-align: middle;
+    margin-right: 5px; /* Espaço entre o ícone e o texto */
+}
+
 
 
 
