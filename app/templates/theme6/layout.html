@@ -73,6 +73,7 @@
     }
 </script>
 <style>
+    /* Força o tamanho da imagem PNG usada como ícone no menu do Adianti */
     #side-menu img,
     .sidebar-menu img,
     .nav-sidebar img,
@@ -80,10 +81,10 @@
         width: 20px !important;
         height: 20px !important;
         object-fit: contain !important;
-        vertical-align: middle !important;
+        vertical-align: sub !important; /* Muda de 'middle' para 'sub' ou 'baseline' ajuda no alinhamento fino */
         margin-right: 8px !important;
-        margin-top: -3px !important; /* Ajuda a centralizar com o texto */
-        opacity: 0.7; /* Deixa com uma cor um pouco mais suave para combinar com os ícones cinzas */
+        margin-top: -1px !important; /* Ajuste fino: tente 0, -1px ou 1px até ficar perfeito no olho */
+        opacity: 0.7;
     }
     /* CLASSE PARA CENTRALIZAR O NOME DA EMPRESA */
     @media (min-width: 992px) {
