@@ -4,7 +4,7 @@ require_once __DIR__ . '/../database/db.php';
 
 class OpenFinanceController {
 
-    private $apiUrl = 'https://api.pagamentobancario.com.br'; // Produção: https://api.pagamentobancario.com.br
+    private $apiUrl = 'https://staging.pagamentobancario.com.br'; // staging: https://staging.pagamentobancario.com.br
     private $cnpjSh = '34040373000108';
     private $tokenSh = 'ea51433317728a404d0312fdef236f62';
 
