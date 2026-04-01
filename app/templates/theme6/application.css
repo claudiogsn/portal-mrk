@@ -1317,16 +1317,6 @@ a.nav-link:not(.active):hover {
 	border-bottom-color: #ddd;
 }
 
-/* Trava o tamanho das imagens usadas como ícone no menu lateral */
-.sidebar-menu img, .nav-sidebar img {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-    margin-right: 8px; /* Dá um espacinho entre a logo e o texto "Open Finance" */
-}
-
-
-
 @media (max-width: 500px) {
     .ls-closed section.content {
         margin-left: 0 !important;
