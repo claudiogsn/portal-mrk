@@ -18,7 +18,7 @@
     </menu>
   </menuitem>
   <menuitem label="Open Finance">
-    <icon>icon-open-finance fa-fw</icon>
+    <icon>app/images/logo-openfinance.png</icon>
     <action>OpenFinanceContas</action>
   </menuitem>
   <menuitem label="Financeiro">
