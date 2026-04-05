@@ -16,6 +16,89 @@
     --btn-radius: 6px; /* Soft Square */
 }
 
+::-webkit-scrollbar {
+    display: none; /* Safari e Chrome */
+}
+/* =========================================
+   REGRAS GLOBAIS EXTRAS (Modal, Labels, Header)
+   ========================================= */
+
+/* --- Modal Flutuante (Modo Retrato/Blur) --- */
+.modal-flutuante {
+    max-width: 900px !important;
+    width: 90% !important;
+    margin: 5vh auto !important;
+}
+
+/* Fundo unificado com Blur e cor da marca MRK */
+.modal-backdrop.in, .modal-backdrop.show {
+    opacity: 1 !important;
+    background-color: rgba(41, 50, 73, 0.5) !important; /* Azul escuro da marca */
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* --- Modal Fullscreen --- */
+.modal-fullscreen {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.modal-fullscreen .modal-dialog {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+.modal-fullscreen .modal-content {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+}
+.modal-fullscreen .modal-header {
+    flex: 0 0 auto;
+    background: #fff;
+    z-index: 10;
+    border-bottom: 1px solid #ddd;
+}
+.modal-fullscreen .modal-body {
+    flex: 1 1 auto;
+    overflow-y: hidden; /* Evita rolagem dupla com iframe */
+    padding: 0 !important;
+    position: relative;
+}
+
+/* Iframe dentro de modais */
+.modal-iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 80vh;
+    border: none;
+}
+.modal-iframe-full {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+.modal-backdrop {
+    background-color: rgba(41, 50, 73, 0.4) !important; /* Azul escuro da marca com transparência */
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+.modal-backdrop.in, .modal-backdrop.show {
+    opacity: 1 !important;
+}
+
 /* --- Reset e Tipografia Global --- */
 html, body {
     background-color: transparent !important;

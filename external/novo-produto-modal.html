@@ -2,142 +2,193 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
-    <title>Novo Produto – Formulário (sem modal)</title>
+    <title>Novo Produto</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Bootstrap + AdminBSB base -->
+    <link href="https://fonts.googleapis.com/css?family=Kanit:300,400,600,700&subset=latin,cyrillic-ext" rel="stylesheet">
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
 
-    <!-- Ícones / libs -->
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
     <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
+
     <style>
-        /* ====== FUNDO TRANSPARENTE PARA IFRAME ====== */
-        html, body {
-            background: transparent !important;
+        /* ==============================================================
+           ESTILOS GERAIS E PADRÃO MRK
+           ============================================================== */
+        html, body, .container-fluid, .card, .card .body,
+        .content, .content .container-fluid { background: #ffffff !important; font-family: 'Kanit', sans-serif; }
+
+        .card { border-radius: 8px; box-shadow: none; border: none; margin-bottom: 0; }
+        .header h2 { font-weight: 600 !important; color: #1E88E5 !important; margin: 0; padding-bottom: 15px; }
+
+        label { font-weight: 600; color: #444; font-size: 13px; margin-bottom: 5px; }
+
+        /* Inputs customizados */
+        .form-control {
+            border-radius: 6px;
+            border: 1px solid #cfd8dc;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+            height: 38px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus { border-color: #1E88E5; box-shadow: 0 0 5px rgba(30,136,229,0.3); }
+        .form-control[readonly] { background-color: #f1f3f4 !important; cursor: not-allowed; }
+
+        /* Remove spinners */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* ==============================================================
+           FIELDSETS AGRUPADORES (Padrão MRK)
+           ============================================================== */
+        .mrk-fieldset {
+            border: 1px solid #e0e6ed;
+            border-radius: 8px;
+            padding: 25px 20px 10px 20px;
+            margin-bottom: 25px;
+            background-color: #ffffff;
+            position: relative;
+        }
+        .mrk-legend {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1565C0;
+            width: auto;
+            border-bottom: none;
+            padding: 5px 15px;
+            margin-bottom: 0;
+            background: #e3f2fd;
+            border-radius: 20px;
+            position: absolute;
+            top: -18px;
+            left: 20px;
+            border: 1px solid #bbdefb;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        /* AdminBSB costuma pintar o body pelo tema */
-        body.theme-blue,
-        body.theme-red,
-        body.theme-green,
-        body.theme-purple,
-        body.theme-black {
-            background: transparent !important;
-        }
+        .row-spacing { margin-bottom: 15px; }
 
-        /* Evita “placa cinza” atrás do conteúdo */
-        .container-fluid,
-        .tab-content {
-            background: transparent !important;
-        }
+        /* Estilos Específicos da Tela */
+        .help-err { color: #D32F2F; font-size: 12px; display: none; font-weight: 600; margin-top: 4px; }
+        .input-error { border: 1px solid #D32F2F !important; box-shadow: 0 0 4px rgba(211, 47, 47, 0.2) !important; }
+        .rule-hint { display: block; margin-top: 15px; background: #fffde7; border: 1px solid #fff59d; color: #f57f17; padding: 10px; border-radius: 6px; font-weight: 500; font-size: 13px; }
 
-        /* Se quiser manter os cards bem “clean” */
-        .card,
-        .card .body {
-            background: rgba(255, 255, 255, 0.98) !important;
-        }
+        .btn-success { background-color: #2E7D32 !important; box-shadow: 0 3px 6px rgba(46,125,50,0.3) !important; padding: 8px 25px; font-size: 14px;}
+        .btn-success:hover { background-color: #1B5E20 !important; }
 
-
-        body { background:#f7f9fc; }
-        .page-wrap { max-width: 900px; margin: 32px auto; }
-        .card { border-radius: 8px; }
-        .card .header { background:#2196F3; color:#fff; padding:12px 16px; border-top-left-radius:8px; border-top-right-radius:8px; }
-        .help-err { color:#e53935; font-size:12px; display:none; }
-        .input-error { border:1px solid #e53935 !important; }
-        .swal2-container { z-index: 2000 !important; }
-        .rule-hint { display:inline-block; margin-top:8px; }
-        .btn-space { gap:8px; display:flex; flex-wrap:wrap; }
+        .btn-gerar { margin-top: 27px; height: 38px; border-radius: 6px; box-shadow: none; }
     </style>
 </head>
 <body class="theme-blue">
 
-<div class="page-wrap">
-    <div class="card">
-<!--        <div class="header">-->
-<!--            <h4 style="margin:0; display:flex; align-items:center; gap:8px;">-->
-<!--                <i class="fa fa-box-open"></i> Novo Produto-->
-<!--            </h4>-->
-<!--        </div>-->
-        <div class="body">
-            <!-- TAGS -->
-            <div class="demo-checkbox">
-                <input type="checkbox" id="np_venda" class="chk-col-blue" />
-                <label for="np_venda">Venda</label>
+<div class="container-fluid" style="padding-top: 20px;">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="header" style="padding-left: 0;">
+                    <h2><i class="fas fa-box-open"></i> Cadastro de Produto</h2>
+                </div>
 
-                <input type="checkbox" id="np_insumo" class="chk-col-blue" />
-                <label for="np_insumo">Insumo</label>
+                <div class="body" style="padding: 0;">
 
-                <input type="checkbox" id="np_composicao" class="chk-col-blue" />
-                <label for="np_composicao">Composição</label>
-            </div>
+                    <div class="mrk-fieldset" style="margin-top: 15px;">
+                        <div class="mrk-legend"><i class="fas fa-tags"></i> Tipo do Produto</div>
 
-            <!-- Código + Gerar -->
-            <div class="row" style="margin-top:10px;">
-                <div class="col-sm-6">
-                    <label for="np_codigo">Código *</label>
-                    <div style="position:relative;">
-                        <input type="number" id="np_codigo" class="form-control" />
-                        <small id="np_errCodigo" class="help-err">Erro</small>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="demo-checkbox" style="display: flex; gap: 20px; align-items: center; margin-bottom: 0;">
+                                    <div>
+                                        <input type="checkbox" id="np_venda" class="filled-in chk-col-blue" />
+                                        <label for="np_venda" style="margin-bottom: 0;">Produto de Venda</label>
+                                    </div>
+                                    <div>
+                                        <input type="checkbox" id="np_insumo" class="filled-in chk-col-blue" />
+                                        <label for="np_insumo" style="margin-bottom: 0;">Insumo (Matéria Prima)</label>
+                                    </div>
+                                    <div>
+                                        <input type="checkbox" id="np_composicao" class="filled-in chk-col-blue" />
+                                        <label for="np_composicao" style="margin-bottom: 0;">Composição (Receita)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="mrk-fieldset">
+                        <div class="mrk-legend"><i class="fas fa-barcode"></i> Identificação</div>
+
+                        <div class="row row-spacing">
+                            <div class="col-md-4 col-sm-6">
+                                <label for="np_codigo">Código do Sistema *</label>
+                                <div class="input-group" style="margin-bottom: 0;">
+                                    <input type="number" id="np_codigo" class="form-control" placeholder="Ex: 1001" style="border-top-right-radius: 0; border-bottom-right-radius: 0;" />
+                                    <span class="input-group-btn">
+                                        <button class="btn btn-primary btn-gerar" type="button" id="np_btnGerar" title="Gerar Código Automático" style="margin-top: 0; border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                                            <i class="fas fa-magic"></i> Gerar
+                                        </button>
+                                    </span>
+                                </div>
+                                <div id="np_errCodigo" class="help-err">Erro</div>
+                            </div>
+
+                            <div class="col-md-4 col-sm-6">
+                                <label for="np_codigo_pdv">Código PDV / Código de Barras</label>
+                                <input type="text" id="np_codigo_pdv" class="form-control" placeholder="Opcional">
+                            </div>
+
+                            <div class="col-md-12" style="margin-top: 15px;">
+                                <label for="np_nome">Nome do Produto *</label>
+                                <input type="text" id="np_nome" class="form-control" placeholder="Digite o nome completo do produto">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mrk-fieldset">
+                        <div class="mrk-legend"><i class="fas fa-layer-group"></i> Classificação e Medida</div>
+
+                        <div class="row row-spacing">
+                            <div class="col-md-6">
+                                <label for="np_categoria">Categoria *</label>
+                                <select id="np_categoria" class="form-control">
+                                    <option value="">Carregando categorias...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="np_und">Unidade de Medida *</label>
+                                <select id="np_und" class="form-control">
+                                    <option value="UND">Unidades (UND)</option>
+                                    <option value="L">Litros (L)</option>
+                                    <option value="PCT">Pacotes (PCT)</option>
+                                    <option value="KG">Quilogramas (KG)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rule-hint">
+                        <i class="fas fa-info-circle"></i> <b>Regras do Sistema:</b> Insumo (código com 5 ou mais dígitos) • Venda (código até 4 dígitos) • Insumo e Composição não podem ser marcados juntos.
+                    </div>
+
+                    <div class="text-right" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px; padding-bottom: 20px;">
+                        <button type="button" id="np_fechar" class="btn btn-default waves-effect" style="margin-right: 10px;">
+                            Cancelar
+                        </button>
+                        <button type="button" id="np_salvar" class="btn btn-success waves-effect">
+                            <i class="fa fa-save" style="margin-right: 5px;"></i> SALVAR PRODUTO
+                        </button>
+                    </div>
+
                 </div>
-                <div class="col-sm-3">
-                    <label>&nbsp;</label><br>
-                    <a href="javascript:void(0);" id="np_btnGerar" title="Gerar Código">
-                        <i class="fa fa-plus"></i> Gerar
-                    </a>
-                </div>
-            </div>
-
-            <!-- PDV -->
-            <div class="form-group" style="margin-top:10px;">
-                <label for="np_codigo_pdv">Código PDV</label>
-                <input type="text" id="np_codigo_pdv" class="form-control" placeholder="Código utilizado no PDV">
-            </div>
-
-            <!-- Nome -->
-            <div class="form-group">
-                <label for="np_nome">Nome *</label>
-                <input type="text" id="np_nome" class="form-control" placeholder="Nome do produto">
-            </div>
-
-            <!-- Categoria + Unidade -->
-            <div class="row">
-                <div class="col-sm-6">
-                    <label for="np_categoria">Categoria *</label>
-                    <select id="np_categoria" class="form-control">
-                        <option value="">Selecione</option>
-                    </select>
-                </div>
-                <div class="col-sm-6">
-                    <label for="np_und">Unidade *</label>
-                    <select id="np_und" class="form-control">
-                        <option value="UND">Unidades (UND)</option>
-                        <option value="L">Litros (L)</option>
-                        <option value="PCT">Pacotes (PCT)</option>
-                        <option value="KG">Quilogramas (KG)</option>
-                    </select>
-                </div>
-            </div>
-
-            <span class="label label-default rule-hint">
-        Regras: Insumo (código ≥ 5 dígitos) • Venda (código ≤ 4 dígitos) • Insumo × Composição são exclusivos
-      </span>
-
-            <hr>
-
-            <div class="btn-space">
-                <button id="np_salvar" class="btn btn-primary">
-                    <i class="fa fa-save"></i> Salvar
-                </button>
-                <button id="np_fechar" class="btn btn-default">
-                    <i class="fa fa-times"></i> Fechar
-                </button>
             </div>
         </div>
     </div>
@@ -189,13 +240,14 @@
                     data: { unit_id: CONFIG.system_unit_id }
                 });
                 const sel = $('#np_categoria');
-                sel.empty().append('<option value="">Selecione</option>');
+                sel.empty().append('<option value="">Selecione...</option>');
                 (resp.data?.categorias || []).forEach(c => {
                     sel.append(`<option value="${c.codigo}">${c.nome}</option>`);
                 });
                 if(selected) sel.val(String(selected));
             }catch(e){
                 console.warn('Falha ao carregar categorias', e);
+                $('#np_categoria').empty().append('<option value="">Erro ao carregar</option>');
             }
         }
 
@@ -225,11 +277,11 @@
                 return false;
             }
             if(isInsumo && codigo.length < 5){
-                setErrCodigo('Insumos devem ter código com no mínimo 5 dígitos.');
+                setErrCodigo('Insumos devem ter no mínimo 5 dígitos.');
                 return false;
             }
             if(!isInsumo && codigo.length > 4){
-                setErrCodigo('Produtos de venda devem ter código até 4 dígitos.');
+                setErrCodigo('Vendas devem ter até 4 dígitos.');
                 return false;
             }
 
@@ -244,7 +296,7 @@
                     return false;
                 }
             }catch(e){
-                setErrCodigo('Erro ao verificar disponibilidade do código.');
+                setErrCodigo('Erro ao verificar código.');
                 return false;
             }
 
@@ -264,9 +316,9 @@
             const composicao = $('#np_composicao').is(':checked') ? 1 : 0;
 
             if(!(await validarCodigoDisponivel())) return;
-            if(!nome){ Swal.fire('Atenção','Informe o nome.','warning'); return; }
+            if(!nome){ Swal.fire('Atenção','Informe o nome do produto.','warning'); return; }
             if(!categoria){ Swal.fire('Atenção','Selecione a categoria.','warning'); return; }
-            if(!und){ Swal.fire('Atenção','Selecione a unidade.','warning'); return; }
+            if(!und){ Swal.fire('Atenção','Selecione a unidade de medida.','warning'); return; }
 
             const data = {
                 sku_zig: $('#np_codigo_pdv').val() || '',
@@ -281,7 +333,7 @@
             };
 
             try{
-                toastLoading('Salvando...');
+                toastLoading('Salvando produto...');
                 const resp = await axios.post(CONFIG.baseUrl, { method:'createProduto', token:CONFIG.token, data });
                 toastClose();
 
@@ -292,34 +344,40 @@
 
                 const criado = resp.data?.produto || { ...data };
 
-                // ✅ Se estiver em iframe e o PAI tiver callback, entrega para o PAI e encerra aqui.
+                // Se estiver em iframe e o PAI tiver callback
                 try {
                     if (window.parent && typeof window.parent.onNovoProdutoSalvo === 'function') {
                         window.parent.onNovoProdutoSalvo(criado);
-                        return; // não exibe alert no filho; o pai assume feedback/fechamento
+                        return;
                     }
                 } catch(_) {}
 
-                // Fallback: aberto direto (sem pai)
                 await Swal.fire('Sucesso','Produto criado com sucesso!','success');
-                window.history.length > 1 ? window.history.back() : window.close();
+                fechar();
 
             }catch(e){
-                toastErr('Erro ao salvar produto.');
+                toastErr('Erro de comunicação ao salvar produto.');
                 console.error(e);
             }
         }
 
+        // ==============================================================
+        // LÓGICA DE FECHAR (Agora força o fechamento do Modal no PAI)
+        // ==============================================================
         function fechar(){
-            // se estiver embutido, peça para o pai esconder o iframe
-            try {
-                if (window.parent && typeof window.parent.fecharIframeNovoProduto === 'function') {
-                    window.parent.fecharIframeNovoProduto();
-                    return;
+            const $p = (window.parent && window.parent.$) ? window.parent.$ : null;
+
+            if ($p) {
+                // Tenta fechar usando o ID específico que você me passou antes
+                if ($p('#modalNovoInsumoIframe').length) {
+                    $p('#modalNovoInsumoIframe').modal('hide');
                 }
-            } catch(_) {}
-            // fallback: voltar/fechar
-            window.history.length > 1 ? window.history.back() : window.close();
+                // Fallback: Fecha qualquer modal aberto na tela de trás
+                $p('.modal.in, .modal.show').modal('hide');
+            } else {
+                // Se não estiver dentro de um modal/iframe, faz o back do navegador
+                window.history.length > 1 ? window.history.back() : window.close();
+            }
         }
 
         function bindUI(){
@@ -331,8 +389,8 @@
             $('#np_salvar').on('click', salvar);
             $('#np_fechar').on('click', fechar);
 
-            // foco inicial
-            setTimeout(()=>{ document.getElementById('np_nome')?.focus(); }, 200);
+            // Foco inicial
+            setTimeout(()=>{ document.getElementById('np_codigo')?.focus(); }, 300);
         }
 
         $(document).ready(bindUI);

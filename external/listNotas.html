@@ -19,7 +19,6 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 
     <link href="bsb/css/style.css" rel="stylesheet">
-    <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
@@ -28,57 +27,6 @@
         /* Ajustes de Layout */
         .header-flex { display: flex; align-items: center; justify-content: space-between; }
         .btn-header-group { display: flex; gap: 10px; }
-
-        /* Ajuste Select2 para tema MRK */
-        .select2-container .select2-selection--single {
-            height: 34px !important;
-            border: 1px solid #ccc !important;
-        }
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 34px !important;
-            font-family: 'Poppins', sans-serif;
-            color: #555;
-        }
-
-        /* --- CORREÇÃO DO MODAL FULLSCREEN --- */
-        .modal-fullscreen {
-            padding-right: 0 !important; /* Evita shift do scroll */
-        }
-        .modal-fullscreen .modal-dialog {
-            width: 100vw;       /* Força largura total da viewport */
-            height: 100vh;      /* Força altura total da viewport */
-            max-width: none;    /* Remove limite do bootstrap */
-            margin: 0;          /* Remove margens */
-            padding: 0;
-        }
-        .modal-fullscreen .modal-content {
-            height: 100%;       /* Ocupa todo o dialog */
-            border: 0;
-            border-radius: 0;
-            display: flex;      /* Flexbox para gerenciar Header vs Body */
-            flex-direction: column;
-        }
-        .modal-fullscreen .modal-header {
-            flex: 0 0 auto;     /* Altura fixa baseada no conteúdo */
-            background: #fff;
-            z-index: 10;
-            border-bottom: 1px solid #ddd;
-        }
-        .modal-fullscreen .modal-body {
-            flex: 1 1 auto;     /* Cresce para ocupar o resto da tela */
-            padding: 0 !important;
-            overflow: hidden;   /* Evita scroll duplo com o iframe */
-            position: relative;
-        }
-        .modal-iframe-full {
-            position: absolute; /* Garante que ocupe o container relativo */
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: block;
-        }
 
         /* Botão Fechar Modal Vermelho */
         .close-x-red {
@@ -107,7 +55,7 @@
 
         /* Ajuste Chave de Acesso */
         .chave-acesso {
-            font-family: 'Poppins', monospace; /* Monospace ajuda na leitura de números */
+            font-family: 'Poppins', monospace;
             font-size: 11px;
             color: #555;
             letter-spacing: 0.5px;
@@ -252,43 +200,31 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalImportacao" tabindex="-1">
-    <div class="modal-dialog modal-lg" style="width: 90%; max-width: 1200px;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" style="font-family: 'Kanit', sans-serif;">Importar XML</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body p-0">
-                <iframe id="iframeImportacao" style="width:100%; height:600px; border:none;"></iframe>
+<div class="modal fade" id="modalImportacao" tabindex="-1" data-backdrop="true" data-keyboard="true">
+    <div class="modal-dialog modal-flutuante" style="max-width: 1200px !important;">
+        <div class="modal-content" style="border: none; border-radius: 12px; background: transparent; box-shadow: none;">
+            <div class="modal-body" style="padding: 0 !important; overflow: hidden; border-radius: 12px;">
+                <iframe id="iframeImportacao" style="width: 100%; height: 85vh; border: none; display: block; border-radius: 12px; background: #fff;"></iframe>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalFinanceiroIframe" tabindex="-1">
-    <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title"></h4>
-                <button type="button" class="close close-x-red" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <iframe id="iframeFinanceiro" class="modal-iframe-full"></iframe>
+<div class="modal fade" id="modalFinanceiroIframe" tabindex="-1" data-backdrop="true" data-keyboard="true">
+    <div class="modal-dialog modal-flutuante">
+        <div class="modal-content" style="border: none; border-radius: 12px; background: transparent; box-shadow: none;">
+            <div class="modal-body" style="padding: 0 !important; overflow: hidden; border-radius: 12px;">
+                <iframe id="iframeFinanceiro" style="width: 100%; height: 85vh; border: none; display: block; border-radius: 12px; background: #fff;"></iframe>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalEntradaEstoque" tabindex="-1">
-    <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title"></h4>
-                <button type="button" class="close close-x-red" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <iframe id="iframeEntradaEstoque" class="modal-iframe-full"></iframe>
+<div class="modal fade" id="modalEntradaEstoque" tabindex="-1" data-backdrop="true" data-keyboard="true">
+    <div class="modal-dialog modal-flutuante" style="max-width: 95% !important; width: 95% !important; margin: 2.5vh auto !important;">
+        <div class="modal-content" style="border: none; border-radius: 12px; background: transparent; box-shadow: none;">
+            <div class="modal-body" style="padding: 0 !important; overflow: hidden; border-radius: 12px;">
+                <iframe id="iframeEntradaEstoque" style="width: 100%; height: 95vh; border: none; display: block; border-radius: 12px; background: #fff;"></iframe>
             </div>
         </div>
     </div>
@@ -365,7 +301,7 @@
         const chave = $(this).data('chave') || '';
         const id    = $(this).data('id') || '';
         const fornecedor = $(this).data('fornecedor') || '';
-        const urlIframe = `${baseUrlRedirect}/external/financeiroNota.html?token=${token}&unit_id=${unit_id}&chave_acesso=${chave}&id=${id}&fornecedor=${encodeURIComponent(fornecedor)}`;
+        const urlIframe = `${baseUrlRedirect}/external/financeiroConta.html?modo=nota&token=${token}&unit_id=${unit_id}&chave_acesso=${chave}&id=${id}&fornecedor=${encodeURIComponent(fornecedor)}`;
         $('#iframeFinanceiro').attr('src', urlIframe);
         $('#modalFinanceiroIframe').modal('show');
     });
