@@ -43,7 +43,7 @@ if (empty($token) || empty($unit_id)) {
         .upsell-panel {
             background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             max-width: 650px; margin: 40px auto; padding: 50px 40px; text-align: center;
-            border-top: 5px solid #000; /* Cor do Open Finance */
+            border-top: 5px solid #000;
         }
         .upsell-logo { max-width: 250px; margin-bottom: 30px; }
         .upsell-title { font-family: 'Kanit', sans-serif; font-size: 24px; color: #222; font-weight: 700; margin-bottom: 15px; }
@@ -77,7 +77,8 @@ if (empty($token) || empty($unit_id)) {
 
         .account-card { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; transition: all 0.3s ease; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; height: calc(100% - 20px); }
         .account-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
-        .account-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600; }
+        .account-header { padding: 15px 20px; display: flex; align-items: center; gap: 12px; font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600; }
+        .account-header .bank-logo { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; background: rgba(255,255,255,0.9); padding: 3px; flex-shrink: 0; }
         .account-body { padding: 20px; flex-grow: 1; }
         .account-info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
         .account-info-label { color: #888; font-weight: 500; }
@@ -104,6 +105,16 @@ if (empty($token) || empty($unit_id)) {
         .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; }
         .form-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; margin-top: 10px; display: block;}
         .form-control { border-radius: 4px; font-size: 13px; }
+
+        /* Bank logo preview no modal */
+        .bank-preview { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee; }
+        .bank-preview img { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; }
+        .bank-preview .bank-preview-name { font-weight: 600; font-size: 14px; color: #333; font-family: 'Kanit', sans-serif; }
+        .bank-preview .bank-preview-code { font-size: 11px; color: #999; }
+
+        /* Btn extrato no footer */
+        .btn-extrato { color: var(--mrk-blue); border-color: var(--mrk-blue); border-radius: 6px; font-size: 11px; font-weight: 600; background: transparent; padding: 4px 10px; transition: 0.2s; }
+        .btn-extrato:hover { background: var(--mrk-blue); color: #fff; }
     </style>
 </head>
 
@@ -237,6 +248,13 @@ if (empty($token) || empty($unit_id)) {
                                 <option value="755">755 - Bank Of America</option>
                                 <option value="756">756 - Banco Sicoob</option>
                             </select>
+                            <div id="bankPreview" class="bank-preview" style="display: none;">
+                                <img id="bankPreviewLogo" src="" alt="">
+                                <div>
+                                    <div class="bank-preview-name" id="bankPreviewName"></div>
+                                    <div class="bank-preview-code" id="bankPreviewCode"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -286,18 +304,37 @@ if (empty($token) || empty($unit_id)) {
     const token = "<?php echo $token; ?>";
     const system_unit_id = "<?php echo $unit_id; ?>";
 
+    const LOGO_TOKEN = 'pk_P0veRzAeSuCornQ7nz584Q';
+    function bankLogoUrl(domain) {
+        return domain ? `https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=64&format=png` : '';
+    }
+
     const bankBrands = {
-        "001": { name: "Banco do Brasil", bg: "#FCE80A", text: "#0038A8", icon: "ri:bank-fill" },
-        "033": { name: "Santander", bg: "#EC0000", text: "#FFFFFF", icon: "ri:bank-fill" },
-        "104": { name: "Caixa", bg: "#005CA9", text: "#F39200", icon: "ri:bank-fill" },
-        "208": { name: "BTG Pactual", bg: "#003B73", text: "#FFFFFF", icon: "ri:bank-fill" },
-        "237": { name: "Bradesco", bg: "#CC092F", text: "#FFFFFF", icon: "ri:bank-fill" },
-        "341": { name: "Itaú", bg: "#EC7000", text: "#0047BB", icon: "ri:bank-fill" },
-        "748": { name: "Sicredi", bg: "#00A13A", text: "#FFFFFF", icon: "ri:bank-fill" },
-        "756": { name: "Sicoob", bg: "#003641", text: "#00AE9D", icon: "ri:bank-fill" },
-        "365": { name: "K8 Fintech", bg: "#111111", text: "#FFFFFF", icon: "ri:bank-fill" },
-        "077": { name: "Banco Inter", bg: "#FF7A00", text: "#FFFFFF", icon: "ri:bank-fill" },
-        "default": { name: "Banco", bg: "#607D8B", text: "#FFFFFF", icon: "ri:bank-fill" }
+        "001": { name: "Banco do Brasil", bg: "#FCE80A", text: "#0038A8", domain: "bb.com.br" },
+        "003": { name: "Banco da Amazônia", bg: "#005BAA", text: "#FFFFFF", domain: "bancoamazonia.com.br" },
+        "004": { name: "Banco do Nordeste", bg: "#004B87", text: "#FFFFFF", domain: "bnb.gov.br" },
+        "021": { name: "Banestes", bg: "#003B7B", text: "#FFFFFF", domain: "banestes.com.br" },
+        "033": { name: "Santander", bg: "#EC0000", text: "#FFFFFF", domain: "santander.com.br" },
+        "041": { name: "Banrisul", bg: "#004B87", text: "#FFFFFF", domain: "banrisul.com.br" },
+        "070": { name: "BRB", bg: "#003B73", text: "#FFFFFF", domain: "brb.com.br" },
+        "077": { name: "Banco Inter", bg: "#FF7A00", text: "#FFFFFF", domain: "inter.co" },
+        "104": { name: "Caixa Econômica", bg: "#005CA9", text: "#F39200", domain: "caixa.gov.br" },
+        "136": { name: "Unicred", bg: "#00A651", text: "#FFFFFF", domain: "unicred.com.br" },
+        "208": { name: "BTG Pactual", bg: "#003B73", text: "#FFFFFF", domain: "btgpactual.com" },
+        "212": { name: "Banco Original", bg: "#00A650", text: "#FFFFFF", domain: "original.com.br" },
+        "237": { name: "Bradesco", bg: "#CC092F", text: "#FFFFFF", domain: "bradesco.com.br" },
+        "260": { name: "Nubank", bg: "#820AD1", text: "#FFFFFF", domain: "nubank.com.br" },
+        "318": { name: "Banco BMG", bg: "#FF6600", text: "#FFFFFF", domain: "bancobmg.com.br" },
+        "329": { name: "QI Tech", bg: "#1A1A2E", text: "#FFFFFF", domain: "qitech.com.br" },
+        "336": { name: "C6 Bank", bg: "#1A1A1A", text: "#FFFFFF", domain: "c6bank.com.br" },
+        "341": { name: "Itaú", bg: "#EC7000", text: "#FFFFFF", domain: "itau.com.br" },
+        "365": { name: "K8 Fintech", bg: "#111111", text: "#FFFFFF", domain: "" },
+        "422": { name: "Safra", bg: "#003B73", text: "#FFFFFF", domain: "safra.com.br" },
+        "745": { name: "Citibank", bg: "#003B70", text: "#FFFFFF", domain: "citibank.com" },
+        "748": { name: "Sicredi", bg: "#00A13A", text: "#FFFFFF", domain: "sicredi.com.br" },
+        "755": { name: "Bank of America", bg: "#012169", text: "#FFFFFF", domain: "bankofamerica.com" },
+        "756": { name: "Sicoob", bg: "#003641", text: "#00AE9D", domain: "sicoob.com.br" },
+        "default": { name: "Banco", bg: "#607D8B", text: "#FFFFFF", domain: "" }
     };
 
     let contasBrutas = [];
@@ -315,14 +352,37 @@ if (empty($token) || empty($unit_id)) {
     }
 
     $(document).ready(() => {
-        // Passo 1: Verifica Permissão de Acesso ao Módulo
         verificarOpenFinanceAtivo();
 
         $('#btnSync').on('click', () => { carregarContasLocais(); });
         $('#btnSaveAccount').on('click', salvarConta);
+
+        // Preview do logo ao selecionar banco no modal
+        $('#bank_code').on('change', function() {
+            const code = $(this).val();
+            const $preview = $('#bankPreview');
+
+            if (!code) {
+                $preview.hide();
+                return;
+            }
+
+            const brand = bankBrands[code] || bankBrands["default"];
+            const logoUrl = bankLogoUrl(brand.domain);
+
+            $('#bankPreviewName').text(brand.name);
+            $('#bankPreviewCode').text('Código: ' + code);
+
+            if (logoUrl) {
+                $('#bankPreviewLogo').attr('src', logoUrl).show();
+            } else {
+                $('#bankPreviewLogo').hide();
+            }
+
+            $preview.show();
+        });
     });
 
-    // ================= VERIFICAÇÃO DE MÓDULO =================
     async function verificarOpenFinanceAtivo() {
         try {
             const res = await axios.post(baseUrl, {
@@ -333,10 +393,9 @@ if (empty($token) || empty($unit_id)) {
 
             $('#loading-screen').hide();
 
-            // Se o controller que criamos retornar exists = true, a unidade tem o módulo contratado.
             if (res.data && res.data.exists === true) {
                 $('#dashboard-content').fadeIn();
-                carregarContasLocais(); // Carrega as contas da unidade
+                carregarContasLocais();
             } else {
                 $('#unauthorized-content').fadeIn();
             }
@@ -346,8 +405,6 @@ if (empty($token) || empty($unit_id)) {
             $('#unauthorized-content').fadeIn();
         }
     }
-
-    // ================= BACKEND CALLS =================
 
     async function carregarContasLocais() {
         toggleLoadingGrid(true);
@@ -402,7 +459,11 @@ if (empty($token) || empty($unit_id)) {
         }
     }
 
-    async function verificarStatusConta(accountHash, btnElement) {
+    // ==========================================
+    // FLUXO DE VERIFICAÇÃO E SOLICITAÇÃO 365 DIAS
+    // ==========================================
+
+    async function verificarStatusConta(accountId, accountHash, btnElement) {
         const originalHtml = btnElement.innerHTML;
         btnElement.innerHTML = '<iconify-icon icon="icon-park-outline:loading" class="fa-spin"></iconify-icon> Verificando...';
         btnElement.disabled = true;
@@ -418,7 +479,16 @@ if (empty($token) || empty($unit_id)) {
                 const statusApi = res.data.data.statusOpenfinance || 'PENDENTE_ATIVACAO';
 
                 if (statusApi === 'ATIVO' || statusApi === 'CONECTADO') {
-                    Swal.fire('Sucesso!', 'Sua conta foi conectada e sincronizada!', 'success');
+                    Swal.fire({
+                        title: 'Banco Conectado!',
+                        text: 'Sua conta foi autorizada! Estamos iniciando a importação do extrato...',
+                        icon: 'success',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+
+                    solicitarExtratoInicial(accountId);
+
                 } else {
                     Swal.fire('Atenção', `A conta ainda consta como: ${statusApi}.`, 'info');
                 }
@@ -436,6 +506,36 @@ if (empty($token) || empty($unit_id)) {
             btnElement.disabled = false;
         }
     }
+
+    async function solicitarExtratoInicial(accountId) {
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'requestStatementFromLastYear',
+                token: token,
+                data: {
+                    system_unit_id: system_unit_id,
+                    account_id: accountId
+                }
+            });
+
+            if (!res.data.error && res.data.status === 'success') {
+                setTimeout(() => {
+                    Swal.fire('Importação Iniciada', 'Os extratos dos últimos 365 dias estão sendo importados em segundo plano. Isso pode levar alguns minutos.', 'success');
+                }, 2600);
+            } else {
+                setTimeout(() => {
+                    Swal.fire('Aviso', res.data.message || 'A conta foi conectada, mas houve um aviso ao solicitar o extrato histórico.', 'warning');
+                }, 2600);
+            }
+        } catch (e) {
+            console.error('Erro ao solicitar extrato de 365 dias:', e);
+            setTimeout(() => {
+                Swal.fire('Aviso', 'A conta foi conectada, mas ocorreu uma falha de rede ao tentar puxar o histórico.', 'warning');
+            }, 2600);
+        }
+    }
+
+    // ==========================================
 
     function revogarAcesso(accountHash) {
         Swal.fire({
@@ -476,10 +576,9 @@ if (empty($token) || empty($unit_id)) {
         window.open(url, 'OpenFinanceAuth', `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no`);
     }
 
-    // ================= UI / RENDER =================
-
     function abrirModalNovaConta() {
         $('#formAccount')[0].reset();
+        $('#bankPreview').hide();
         $('#modalAccount').modal('show');
     }
 
@@ -502,6 +601,7 @@ if (empty($token) || empty($unit_id)) {
         lista.forEach(item => {
             const statusAtual = item.status_openfinance ? item.status_openfinance.toUpperCase() : 'PENDENTE_ATIVACAO';
             const isPendente = statusAtual === 'PENDENTE_ATIVACAO';
+            const isAtivo = !isPendente && statusAtual !== 'REVOGADO';
 
             if(isPendente) pendentes++;
 
@@ -519,12 +619,22 @@ if (empty($token) || empty($unit_id)) {
 
             const brand = bankBrands[item.bank_code] || bankBrands["default"];
             const bankName = item.bank_code === "365" ? "K8 Fintech" : brand.name;
+            const logoUrl = bankLogoUrl(brand.domain);
+
+            const logoHtml = logoUrl
+                ? `<img src="${logoUrl}" class="bank-logo" alt="${bankName}" onerror="this.style.display='none'">`
+                : `<iconify-icon icon="icon-park-outline:bank"></iconify-icon>`;
+
+            // Botão de extrato para contas ativas
+            const btnExtrato = isAtivo
+                ? `<a href="OFTransactions.php?account_id=${item.id}" class="btn btn-xs btn-extrato" title="Ver Extrato"><iconify-icon icon="icon-park-outline:list-view" style="vertical-align: sub;"></iconify-icon> Extrato</a>`
+                : '';
 
             let cardHtml = `
                 <div class="col-md-4">
                     <div class="account-card">
                         <div class="account-header" style="background-color: ${brand.bg}; color: ${brand.text};">
-                            <iconify-icon icon="icon-park-outline:bank"></iconify-icon>
+                            ${logoHtml}
                             <span>${bankName} <small style="opacity: 0.8; font-weight: 400; font-size: 12px;">(${item.bank_code})</small></span>
                         </div>
 
@@ -545,7 +655,7 @@ if (empty($token) || empty($unit_id)) {
                                     <button class="btn-connect" style="flex: 1;" onclick="abrirPopupBanco('${item.openfinance_link}')">
                                         <iconify-icon icon="icon-park-outline:link-cloud" style="vertical-align: sub; font-size: 14px;"></iconify-icon> CONECTAR
                                     </button>
-                                    <button class="btn btn-default" style="flex: 1; border-color: #ddd; color: #555; border-radius: 6px; font-size: 11px; font-weight: 600;" onclick="verificarStatusConta('${item.account_hash}', this)">
+                                    <button class="btn btn-default" style="flex: 1; border-color: #ddd; color: #555; border-radius: 6px; font-size: 11px; font-weight: 600;" onclick="verificarStatusConta('${item.id}', '${item.account_hash}', this)">
                                         <iconify-icon icon="icon-park-outline:refresh" style="vertical-align: sub;"></iconify-icon> VERIFICAR
                                     </button>
                                 </div>
@@ -556,9 +666,9 @@ if (empty($token) || empty($unit_id)) {
                             <small class="text-muted" style="font-size: 10px;">
                                 Hash: ${escapeHtml(item.account_hash).substring(0,6)}...
                             </small>
-                            <button class="btn btn-xs btn-default" style="color: #d33; border-color: transparent;" title="Revogar/Remover" onclick="revogarAcesso('${item.account_hash}')">
-                                <iconify-icon icon="icon-park-outline:delete"></iconify-icon> Revogar
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                ${btnExtrato}
+                            </div>
                         </div>
                     </div>
                 </div>

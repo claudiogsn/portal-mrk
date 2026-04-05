@@ -826,19 +826,12 @@ class OpenFinanceController {
         $account_id = $request['account_id'];
         $date_start = $request['date_start'] ?? date('Y-m-01');
         $date_end = $request['date_end'] ?? date('Y-m-t');
-        $type = $request['type'] ?? null;
 
         $sql = "SELECT * FROM pluggy_transactions 
                 WHERE system_unit_id = ? AND account_id = ? 
-                AND date BETWEEN ? AND ?";
+                AND date BETWEEN ? AND ? ORDER BY date DESC, id DESC";
         $params = [$system_unit_id, $account_id, $date_start, $date_end];
 
-        if ($type && in_array($type, ['credit', 'debit'])) {
-            $sql .= " AND type = ?";
-            $params[] = $type;
-        }
-
-        $sql .= " ORDER BY date DESC, id DESC";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -962,6 +955,112 @@ class OpenFinanceController {
                 'status' => 'success',
                 'exists' => false
             ];
+        }
+    }
+
+    public function requestStatementFromLastYear($request) {
+        global $pdo;
+        $system_unit_id = $request['system_unit_id'];
+        $account_id = $request['account_id'];
+        $user_id = $request['user_id'] ?? null; // Opcional, caso a chamada parta de uma ação manual no painel
+
+        // 1. Buscar a conta e os dados do pagador associado para montar o Header
+        $stmt = $pdo->prepare("
+            SELECT a.id as account_id, a.account_hash, p.id as payer_id, p.cpf_cnpj 
+            FROM pluggy_accounts a
+            INNER JOIN pluggy_payers p ON p.id = a.payer_id
+            WHERE a.id = ? AND a.system_unit_id = ? AND a.active = 1
+        ");
+        $stmt->execute([$account_id, $system_unit_id]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$data) {
+            return ['status' => 'error', 'message' => 'Conta bancária não encontrada ou inativa.'];
+        }
+
+        $account_hash = $data['account_hash'];
+        $payer_cpf_cnpj = $data['cpf_cnpj'];
+        $payer_id = $data['payer_id'];
+
+        // 2. Definir o período: Hoje e os últimos 365 dias
+        $dateEnd = date('Y-m-d');
+        $dateStart = date('Y-m-d', strtotime('-365 days'));
+
+        // 3. Montar o payload
+        $payload = [
+            'dateStart' => $dateStart,
+            'dateEnd' => $dateEnd,
+            'today' => false,
+            'accountHash' => $account_hash,
+            'statementType' => 'BANK'
+        ];
+
+        try {
+            // 4. Dispara a requisição usando o client interno já existente
+            $apiResponse = $this->apiRequest(
+                'POST',
+                '/api/v1/statement/openfinance',
+                $payload,
+                $payer_cpf_cnpj,
+                $system_unit_id
+            );
+
+            // A API pode retornar uniqueId ou uniqueid dependendo de variações do JSON
+            $uniqueId = $apiResponse['uniqueId'] ?? $apiResponse['uniqueid'] ?? null;
+
+            if (!$uniqueId) {
+                throw new Exception("A API da TecnoSpeed não retornou o uniqueId.");
+            }
+
+            // 5. Salva na fila de importação (pluggy_statement_imports) com status processing
+            $stmtInsert = $pdo->prepare("
+                INSERT IGNORE INTO pluggy_statement_imports 
+                (system_unit_id, account_id, unique_id, status, date_start, date_end)
+                VALUES (?, ?, ?, 'processing', ?, ?)
+            ");
+            $stmtInsert->execute([
+                $system_unit_id,
+                $account_id,
+                $uniqueId,
+                $dateStart,
+                $dateEnd
+            ]);
+
+            // 6. Opcional: Registra o sucesso na tabela de eventos para fins de auditoria (igual ao worker Node)
+            $this->logExtratoEvent($system_unit_id, $payer_id, $account_id, $user_id, 'manual', 'success', "Protocolo {$uniqueId} solicitado com sucesso.");
+
+            return [
+                'status' => 'success',
+                'message' => "Solicitação enviada com sucesso! Protocolo: {$uniqueId}.",
+                'unique_id' => $uniqueId,
+                'data' => $apiResponse
+            ];
+
+        } catch (Exception $e) {
+            // Registra a falha na tabela de eventos
+            $this->logExtratoEvent($system_unit_id, $payer_id, $account_id, $user_id, 'manual', 'error', "Falha ao solicitar extrato: " . $e->getMessage());
+
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Helper privado para replicar o registrarEvento do Node.js
+     */
+    private function logExtratoEvent($system_unit_id, $payer_id, $account_id, $user_id, $event_type, $status, $message) {
+        global $pdo;
+        try {
+            $stmt = $pdo->prepare("
+                INSERT INTO pluggy_extrato_events 
+                (system_unit_id, payer_id, account_id, user_id, event_type, status, message)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$system_unit_id, $payer_id, $account_id, $user_id, $event_type, $status, $message]);
+        } catch (Exception $e) {
+            error_log("[OpenFinance] Erro ao registrar evento de extrato: " . $e->getMessage());
         }
     }
 }

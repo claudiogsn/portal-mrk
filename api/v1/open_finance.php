@@ -60,6 +60,12 @@ if (isset($data['method']) && isset($data['data'])) {
                 $ctrl = new OpenFinanceController();
                 $response = $ctrl->checkPayerExists($requestData);
                 break;
+
+
+            case 'requestStatementFromLastYear':
+                $ctrl = new OpenFinanceController();
+                $response = $ctrl->requestStatementFromLastYear($requestData);
+                break;
             // =========================================================================
 // OPEN FINANCE - PAINEL ADMINISTRATIVO (GLOBAL)
 // =========================================================================
@@ -144,15 +150,6 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = $ctrl->listLocalAccounts($requestData);
                 break;
 
-// =========================================================================
-// OPEN FINANCE - CONEXÃO / REVOGAÇÃO
-// =========================================================================
-
-            case 'openFinanceConnect':
-                $ctrl = new OpenFinanceController();
-                $response = $ctrl->connectOpenFinance($requestData);
-                break;
-
             case 'openFinanceRevoke':
                 $ctrl = new OpenFinanceController();
                 $response = $ctrl->revokeOpenFinance($requestData);
@@ -162,7 +159,7 @@ if (isset($data['method']) && isset($data['data'])) {
 // OPEN FINANCE - TRANSAÇÕES E HISTÓRICO
 // =========================================================================
 
-            case 'openFinanceListTransactions':
+            case 'listInternalTransactions':
                 $ctrl = new OpenFinanceController();
                 $response = $ctrl->listInternalTransactions($requestData);
                 break;

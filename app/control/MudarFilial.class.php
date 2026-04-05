@@ -63,7 +63,7 @@ class MudarFilial extends \Adianti\Control\TWindow
 
             $options = [];
             foreach ($unitsList as $unit) {
-                $options[$unit->id] = $unit->name;
+                $options[$unit->id] = $unit->id . ' - ' . $unit->name;
             }
 
             $combo->addItems($options);
@@ -82,9 +82,17 @@ class MudarFilial extends \Adianti\Control\TWindow
         TSession::setValue('userunitid', $data->system_unit_id);
         $IDUnidade = TSession::getValue('userunitid');
 
-        // Consulta nome da unidade
         TTransaction::open('permission');
+
+        $userId = TSession::getValue('userid');
         $conn = TTransaction::get();
+
+        $sth = $conn->prepare("UPDATE system_users SET system_unit_id = :unit_id WHERE id = :user_id");
+        $sth->bindParam(':unit_id', $IDUnidade, PDO::PARAM_INT);
+        $sth->bindParam(':user_id', $userId, PDO::PARAM_INT);
+        $sth->execute();
+
+        // Consulta nome da unidade
         $sth = $conn->prepare("SELECT name FROM system_unit WHERE id = :id LIMIT 1");
         $sth->bindParam(':id', $IDUnidade, PDO::PARAM_INT);
         $sth->execute();
@@ -97,5 +105,6 @@ class MudarFilial extends \Adianti\Control\TWindow
         new TMessage('info', "Modificado para Unidade $IDUnidade - $NomeUnidade");
 
         $callback = TSession::getValue('last_class') ?? 'WelcomeView';
-        AdiantiCoreApplication::gotoPage($callback);    }
+        AdiantiCoreApplication::gotoPage($callback);
+    }
 }
