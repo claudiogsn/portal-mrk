@@ -33,7 +33,7 @@ if (empty($token)) {
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        body { background-color: #f9f9f9; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
         .card {
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);

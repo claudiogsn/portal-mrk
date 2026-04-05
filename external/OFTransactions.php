@@ -33,7 +33,7 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        body { background-color: #f9f9f9; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
         .card { box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; border-top: 3px solid var(--mrk-blue) !important; margin-bottom: 20px; border-radius: 6px; }
         .header-flex { display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #eee; }

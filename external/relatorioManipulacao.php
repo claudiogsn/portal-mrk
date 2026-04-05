@@ -32,7 +32,7 @@ if (empty($token)) {
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        body { background-color: #f9f9f9; padding: 20px; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        body { background-color: #f9f9f9; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
 
         /* Card Principal */
         .card {
