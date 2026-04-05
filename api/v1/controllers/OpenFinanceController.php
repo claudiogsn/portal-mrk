@@ -984,7 +984,8 @@ class OpenFinanceController {
 
         // 2. Definir o período: Hoje e os últimos 365 dias
         $dateEnd = date('Y-m-d');
-        $dateStart = date('Y-m-d', strtotime('-365 days'));
+        $dateStart = '2026-01-01';
+        //$dateStart = date('Y-m-d', strtotime('-365 days'));
 
         // 3. Montar o payload
         $payload = [
