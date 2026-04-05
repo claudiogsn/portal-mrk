@@ -511,17 +511,53 @@
                 }
             });
 
-            const item = data?.data?.itens?.[0];
-            if(item?.success) {
-                $("#resultadoChave").html('<span class="status-ok"><i class="fas fa-check"></i> Importada com sucesso!</span>');
-                Swal.fire("Sucesso", "Nota importada.", "success");
+            // Verifica se a API rodou até o fim (mesmo que com erros de negócio)
+            if (data.success && data.data) {
+                let ok = 0;
+                let fail = 0;
+                let detalhesErro = [];
 
-                // Opcional: Limpar os campos após o sucesso
-                $("#chaveAcessoInput").val('');
-                $("#dataEntradaChave").val('');
+                // Percorre o array de resultados retornados pelo PHP
+                data.data.forEach(item => {
+                    if (item.success) {
+                        ok++;
+                    } else {
+                        fail++;
+                        const chaveCurta = item.chave ? item.chave.slice(-4) : 'N/A';
+                        detalhesErro.push(`Final <b>${chaveCurta}</b>: ${item.message}`);
+                    }
+                });
+
+                if (fail === 0) {
+                    $("#resultadoChave").html('<span class="status-ok"><i class="fas fa-check"></i> Importação concluída!</span>');
+                    Swal.fire("Sucesso", `${ok} nota(s) importada(s) com sucesso.`, "success");
+
+                    $("#chaveAcessoInput").val('');
+                    $("#dataEntradaChave").val('');
+                } else if (ok > 0 && fail > 0) {
+                    const errosHtml = `<div style="text-align: left; font-size: 13px; margin-top: 10px;">${detalhesErro.join('<br>')}</div>`;
+                    $("#resultadoChave").html(`<span class="status-erro" style="color: var(--mrk-amber);"><i class="fas fa-exclamation-triangle"></i> Parcial: ${ok} OK, ${fail} Erros</span>`);
+                    Swal.fire({
+                        title: "Importação Parcial",
+                        html: `<b>${ok}</b> nota(s) importada(s).<br><b>${fail}</b> falharam:<br>${errosHtml}`,
+                        icon: "warning"
+                    });
+
+                    $("#chaveAcessoInput").val('');
+                } else {
+                    const errosHtml = `<div style="text-align: left; font-size: 13px; margin-top: 10px;">${detalhesErro.join('<br>')}</div>`;
+                    $("#resultadoChave").html(`<span class="status-erro"><i class="fas fa-times"></i> Nenhuma nota importada</span>`);
+                    Swal.fire({
+                        title: "Falha na Importação",
+                        html: `Motivo(s):<br>${errosHtml}`,
+                        icon: "error"
+                    });
+                }
+
             } else {
-                $("#resultadoChave").html(`<span class="status-erro"><i class="fas fa-times"></i> ${item?.message || 'Erro'}</span>`);
+                $("#resultadoChave").html(`<span class="status-erro"><i class="fas fa-times"></i> ${data.message || 'Erro crítico'}</span>`);
             }
+
         } catch(e) {
             $("#resultadoChave").html('<span class="status-erro">Erro de conexão</span>');
         } finally {

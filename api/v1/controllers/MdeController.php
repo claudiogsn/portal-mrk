@@ -41,11 +41,11 @@ class MdeController
             // 1) CNPJ DA UNIDADE
             // ===============================
             $stmt = $pdo->prepare("
-            SELECT cnpj 
-              FROM system_unit 
-             WHERE id = :id 
-             LIMIT 1
-        ");
+        SELECT cnpj 
+          FROM system_unit 
+         WHERE id = :id 
+         LIMIT 1
+    ");
             $stmt->bindValue(':id', $system_unit_id, PDO::PARAM_INT);
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -63,10 +63,10 @@ class MdeController
             // 2) BUSCA CHAVES DEVOLVIDAS
             // ===============================
             $stmtDev = $pdo->prepare("
-            SELECT chave_acesso
-              FROM estoque_nota_devolvida
-             WHERE system_unit_id = :unit
-        ");
+        SELECT chave_acesso
+          FROM estoque_nota_devolvida
+         WHERE system_unit_id = :unit
+    ");
             $stmtDev->bindValue(':unit', $system_unit_id, PDO::PARAM_INT);
             $stmtDev->execute();
 
@@ -81,6 +81,9 @@ class MdeController
             $lastId = null;
             $allInvoices = [];
             $loopCount = 0;
+
+            // Array para guardar as respostas brutas (raw) da API
+            $rawApiResponses = [];
 
             do {
                 $query = [
@@ -112,6 +115,9 @@ class MdeController
                     return ['success' => false, 'message' => 'Erro na resposta da API'];
                 }
 
+                // Armazena a resposta bruta desta página
+                $rawApiResponses[] = $json;
+
                 $invoices = $json['data']['invoices'] ?? [];
                 $count    = $json['data']['count'] ?? 0;
                 $total    = $json['data']['total'] ?? 0;
@@ -130,12 +136,12 @@ class MdeController
             // 4) PREPARA CHECK DE IMPORTAÇÃO
             // ===============================
             $selNota = $pdo->prepare("
-            SELECT id
-              FROM estoque_nota
-             WHERE system_unit_id = :unit
-               AND chave_acesso = :chave
-             LIMIT 1
-        ");
+        SELECT id
+          FROM estoque_nota
+         WHERE system_unit_id = :unit
+           AND chave_acesso = :chave
+         LIMIT 1
+    ");
 
             $notas = [];
 
@@ -189,15 +195,15 @@ class MdeController
                     'cnpj'      => $cnpjUnidade,
                     'periodo'   => ['inicio' => $data_inicial, 'fim' => $data_final],
                     'total_api' => count($notas),
-                    'notas'     => $notas
+                    'notas'     => $notas,
+                    'raw'       => $rawApiResponses // <-- CAMPO ADICIONADO AQUI
                 ]
             ];
 
         } catch (Throwable $e) {
             return ['success' => false, 'message' => 'Erro inesperado: ' . $e->getMessage()];
         }
-    }
-    public static function baixarArquivo(int $system_unit_id, string $chaveAcesso, string $tipo): array
+    }    public static function baixarArquivo(int $system_unit_id, string $chaveAcesso, string $tipo): array
     {
         // normalizações/validações
         $tipo = strtolower(trim($tipo));
