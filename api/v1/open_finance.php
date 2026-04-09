@@ -173,6 +173,14 @@ if (isset($data['method']) && isset($data['data'])) {
                 $ctrl = new OpenFinanceController();
                 $response = $ctrl->listIntegrationLogs($requestData);
                 break;
+            case 'getExtrato':
+                $ctrl = new OpenFinanceController();
+                $response = $ctrl->getExtrato($requestData);
+                break;
+            case 'getStatementLogs':
+                $ctrl = new OpenFinanceController();
+                $response = $ctrl->getStatementLogs($requestData);
+                break;
 
 
 

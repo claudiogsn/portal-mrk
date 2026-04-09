@@ -1064,4 +1064,150 @@ class OpenFinanceController {
             error_log("[OpenFinance] Erro ao registrar evento de extrato: " . $e->getMessage());
         }
     }
+
+    // =========================================================================
+    // EXTRATOS BANCÁRIOS (TRANSAÇÕES)
+    // =========================================================================
+
+    /**
+     * Retorna os extratos (transações) locais de uma conta com filtro de data.
+     */
+    public function getExtrato($request) {
+        global $pdo;
+
+        $system_unit_id = $request['system_unit_id'] ?? null;
+        $account_id = $request['account_id'] ?? null;
+
+        if (!$system_unit_id || !$account_id) {
+            return [
+                'status' => 'error',
+                'message' => 'O ID da unidade e o ID da conta são obrigatórios.'
+            ];
+        }
+
+        // Se a data não for informada, o padrão será os últimos 30 dias
+        $date_start = $request['date_start'] ?? date('Y-m-d', strtotime('-30 days'));
+        $date_end   = $request['date_end']   ?? date('Y-m-d');
+
+        try {
+            // Busca todas as transações da conta no intervalo de datas, ordenadas da mais recente para a mais antiga
+            $sql = "SELECT * FROM pluggy_transactions 
+                    WHERE system_unit_id = ? 
+                      AND account_id = ? 
+                      AND date BETWEEN ? AND ? 
+                    ORDER BY date DESC, id DESC";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                $system_unit_id,
+                $account_id,
+                $date_start,
+                $date_end
+            ]);
+
+            $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Retorna a estrutura padronizada para o frontend consumir facilmente
+            return [
+                'status'  => 'success',
+                'message' => count($transactions) . ' transação(ões) encontrada(s).',
+                'data'    => $transactions,
+                'filters' => [
+                    'date_start' => $date_start,
+                    'date_end'   => $date_end
+                ]
+            ];
+
+        } catch (Exception $e) {
+            error_log("[OpenFinance] Erro ao listar extrato: " . $e->getMessage());
+
+            return [
+                'status'  => 'error',
+                'message' => 'Ocorreu um erro interno ao buscar os extratos no banco de dados.'
+            ];
+        }
+    }
+    // =========================================================================
+    // LOGS DE INTEGRAÇÃO (DEBUG)
+    // =========================================================================
+
+    /**
+     * Retorna os logs de integração de um protocolo (unique_id) específico de extrato.
+     */
+    public function getStatementLogs($request) {
+        global $pdo;
+
+        $system_unit_id = $request['system_unit_id'] ?? null;
+        $unique_id = $request['unique_id'] ?? null;
+
+        if (!$system_unit_id || !$unique_id) {
+            return [
+                'status' => 'error',
+                'message' => 'O ID da unidade e o ID do protocolo (unique_id) são obrigatórios.'
+            ];
+        }
+
+        try {
+            // Usa o LIKE para buscar qualquer log onde o endpoint contenha o unique_id
+            $sql = "SELECT 
+                        id, 
+                        endpoint, 
+                        method, 
+                        http_code, 
+                        error_message, 
+                        execution_time_ms, 
+                        created_at, 
+                        request_body, 
+                        response_body 
+                    FROM pluggy_integration_logs 
+                    WHERE system_unit_id = ? 
+                      AND endpoint LIKE ? 
+                    ORDER BY created_at DESC";
+
+            $stmt = $pdo->prepare($sql);
+
+            // Ex: busca por '%U8_TRQ2FhSrjqE%' para garantir que pega a URL independente do formato exato salvo
+            $stmt->execute([
+                $system_unit_id,
+                "%" . $unique_id . "%"
+            ]);
+
+            $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Tentar decodificar o JSON com validação para evitar erro de depreciação no PHP 8.1+
+            foreach ($logs as &$log) {
+
+                // Trata request_body
+                if (is_string($log['request_body']) && trim($log['request_body']) !== '') {
+                    $reqDecoded = json_decode($log['request_body'], true);
+                    $log['request_body_decoded'] = (json_last_error() === JSON_ERROR_NONE) ? $reqDecoded : $log['request_body'];
+                } else {
+                    $log['request_body_decoded'] = $log['request_body']; // Mantém null
+                }
+
+                // Trata response_body
+                if (is_string($log['response_body']) && trim($log['response_body']) !== '') {
+                    $resDecoded = json_decode($log['response_body'], true);
+                    $log['response_body_decoded'] = (json_last_error() === JSON_ERROR_NONE) ? $resDecoded : $log['response_body'];
+                } else {
+                    $log['response_body_decoded'] = $log['response_body']; // Mantém null
+                }
+            }
+
+            return [
+                'status'  => 'success',
+                'message' => count($logs) . ' log(s) encontrado(s).',
+                'data'    => $logs
+            ];
+
+        } catch (Exception $e) {
+            error_log("[OpenFinance] Erro ao buscar logs do extrato: " . $e->getMessage());
+
+            return [
+                'status'  => 'error',
+                'message' => 'Ocorreu um erro interno ao buscar os logs.'
+            ];
+        }
+    }
+
 }
