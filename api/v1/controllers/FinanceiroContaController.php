@@ -215,11 +215,11 @@ class FinanceiroContaController {
             $getFornecedor = function ($id) use (&$fornCache, $pdo, $system_unit_id) {
                 if (!isset($fornCache[$id])) {
                     $st = $pdo->prepare("
-                    SELECT cnpj_cpf, razao
-                    FROM financeiro_fornecedor
-                    WHERE id = :id AND system_unit_id = :unit
-                    LIMIT 1
-                ");
+                SELECT cnpj_cpf, razao
+                FROM financeiro_fornecedor
+                WHERE id = :id AND system_unit_id = :unit
+                LIMIT 1
+            ");
                     $st->execute([':id' => $id, ':unit' => $system_unit_id]);
                     $row = $st->fetch(PDO::FETCH_ASSOC);
                     if (!$row) throw new Exception("Fornecedor {$id} não encontrado.");
@@ -250,19 +250,19 @@ class FinanceiroContaController {
 
             // ===== INSERT =====
             $stmtIns = $pdo->prepare("
-            INSERT INTO financeiro_conta
-            (
-                system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
-                valor, plano_contas, banco, forma_pagamento, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento,
-                rateio, rateio_id
-            )
-            VALUES
-            (
-                :system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
-                :valor, :plano_contas, :banco, :forma_pagamento, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL,
-                :rateio, :rateio_id
-            )
-        ");
+        INSERT INTO financeiro_conta
+        (
+            system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
+            valor, plano_contas, banco, forma_pagamento, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento,
+            rateio, rateio_id
+        )
+        VALUES
+        (
+            :system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
+            :valor, :plano_contas, :banco, :forma_pagamento, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL,
+            :rateio, :rateio_id
+        )
+    ");
 
             $ids = [];
 
@@ -283,6 +283,10 @@ class FinanceiroContaController {
                 $forma_pagamento = array_key_exists('forma_pagamento', $c) ? $c['forma_pagamento'] : (array_key_exists('forma_pagamento_id', $c) ? $c['forma_pagamento_id'] : null);
                 $adic = isset($c['acrescimo']) ? $c['acrescimo'] : (isset($c['adicional']) ? $c['adicional'] : 0);
 
+                // NOVO: Extrai e normaliza o tipo
+                $tipoBruto = isset($c['tipo']) ? strtolower(trim($c['tipo'])) : 'd';
+                $tipoFinal = ($tipoBruto === 'r') ? 'c' : (($tipoBruto === 'd') ? 'd' : $tipoBruto);
+
                 if (!is_numeric($valor)) throw new Exception("Conta #".($idx+1).": valor inválido.");
                 if ($valor + 0 <= 0) throw new Exception("Conta #".($idx+1).": valor deve ser > 0.");
 
@@ -292,7 +296,7 @@ class FinanceiroContaController {
                     ':nome'            => $nome,
                     ':entidade'        => $c['fornecedor_id'],
                     ':cgc'             => $forn['cgc'],
-                    ':tipo'            => isset($c['tipo']) ? $c['tipo'] : 'd', // Lote permite forçar tipo (nós forçamos 'c' no createContaCredito)
+                    ':tipo'            => $tipoFinal, // Lote permite forçar tipo devidamente normalizado
                     ':doc'             => $c['documento'],
                     ':emissao'         => $c['emissao'],
                     ':vencimento'      => $c['vencimento'],
@@ -464,6 +468,12 @@ class FinanceiroContaController {
                 $data['forma_pagamento'] = $data['forma_pagamento_id'];
             }
 
+            // NOVO: Normaliza o tipo caso venha do frontend (R = Receita/Crédito, D = Despesa/Débito)
+            if (isset($data['tipo'])) {
+                $t = strtolower(trim($data['tipo']));
+                $data['tipo'] = ($t === 'r') ? 'c' : (($t === 'd') ? 'd' : $t);
+            }
+
             // 🔍 Buscar conta atual (para comparação e system_unit_id)
             $stCheck = $pdo->prepare("SELECT * FROM financeiro_conta WHERE id = :id LIMIT 1");
             $stCheck->execute([':id' => $id]);
@@ -476,7 +486,7 @@ class FinanceiroContaController {
             $system_unit_id = (int)$contaAtual['system_unit_id'];
             $usuario_id = $data['usuario_id'] ?? null;
 
-            // 🧭 Campos permitidos (inclui forma_pagamento)
+            // 🧭 Campos permitidos (inclui forma_pagamento e tipo)
             $camposPermitidos = [
                 'nome','entidade','cgc','tipo','doc','emissao','vencimento','baixa_dt',
                 'valor','plano_contas','banco','forma_pagamento','obs','inc_ope','bax_ope','comp_dt',
@@ -494,9 +504,9 @@ class FinanceiroContaController {
                     if ($campo === 'plano_contas' && !empty($data['plano_contas'])) {
                         $plano = trim($data['plano_contas']);
                         $stPlano = $pdo->prepare("
-                        SELECT id FROM financeiro_plano 
-                        WHERE system_unit_id = :unit AND codigo = :codigo LIMIT 1
-                    ");
+                    SELECT id FROM financeiro_plano 
+                    WHERE system_unit_id = :unit AND codigo = :codigo LIMIT 1
+                ");
                         $stPlano->execute([':unit' => $system_unit_id, ':codigo' => $plano]);
                         if (!$stPlano->fetch(PDO::FETCH_ASSOC)) {
                             throw new Exception("Plano de contas '{$plano}' não encontrado para esta unidade.");
@@ -514,8 +524,8 @@ class FinanceiroContaController {
             }
 
             $sql = "UPDATE financeiro_conta 
-                SET " . implode(', ', $setParts) . ", updated_at = CURRENT_TIMESTAMP 
-                WHERE id = :id";
+            SET " . implode(', ', $setParts) . ", updated_at = CURRENT_TIMESTAMP 
+            WHERE id = :id";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
@@ -836,22 +846,27 @@ class FinanceiroContaController {
                 $adicional = $c['adicional'] ?? 0.0;
                 $desconto = $c['desconto'] ?? 0.0;
 
+                // NOVO: Extrai e normaliza o tipo
+                $tipoBruto = isset($c['tipo']) ? strtolower(trim($c['tipo'])) : 'd';
+                $tipo = ($tipoBruto === 'r') ? 'c' : (($tipoBruto === 'd') ? 'd' : $tipoBruto);
+
                 $planoContas = isset($c['plano_contas']) ? trim((string)$c['plano_contas']) : null;
                 $formaPgtoId = isset($c['forma_pagamento_id']) ? (int)$c['forma_pagamento_id'] : null;
                 $obsExtra    = isset($c['obs_extra']) ? trim((string)$c['obs_extra']) : '';
                 $chaveAcesso = isset($c['chave_acesso']) ? trim((string)$c['chave_acesso']) : null;
 
                 $norm[] = [
-                    'entidade' => $entidade,
-                    'doc' => $doc,
-                    'emissao' => $emissao,
-                    'vencimento' => $vencimento,
-                    'valorBruto' => $valorBruto,
-                    'adicional' => $adicional,
-                    'desconto' => $desconto,
+                    'entidade'    => $entidade,
+                    'doc'         => $doc,
+                    'emissao'     => $emissao,
+                    'vencimento'  => $vencimento,
+                    'valorBruto'  => $valorBruto,
+                    'adicional'   => $adicional,
+                    'desconto'    => $desconto,
+                    'tipo'        => $tipo,
                     'planoContas' => $planoContas,
                     'formaPgtoId' => $formaPgtoId,
-                    'obsExtra' => $obsExtra,
+                    'obsExtra'    => $obsExtra,
                     'chaveAcesso' => $chaveAcesso,
                 ];
 
@@ -865,9 +880,9 @@ class FinanceiroContaController {
 
             // ===== Verifica duplicidades =====
             $stChk = $pdo->prepare("
-            SELECT id FROM financeiro_conta 
-            WHERE system_unit_id = :unit AND entidade = :ent AND doc = :doc LIMIT 1
-        ");
+        SELECT id FROM financeiro_conta 
+        WHERE system_unit_id = :unit AND entidade = :ent AND doc = :doc LIMIT 1
+    ");
             foreach ($pairs as $p) {
                 $stChk->execute([':unit' => $system_unit_id, ':ent' => $p['entidade'], ':doc' => $p['doc']]);
                 if ($stChk->fetchColumn()) {
@@ -880,11 +895,11 @@ class FinanceiroContaController {
             $getFornecedor = function (int $ent) use (&$fornCache, $pdo, $system_unit_id) {
                 if (!isset($fornCache[$ent])) {
                     $st = $pdo->prepare("
-                    SELECT cnpj_cpf, razao
-                    FROM financeiro_fornecedor
-                    WHERE id = :id AND system_unit_id = :unit
-                    LIMIT 1
-                ");
+                SELECT cnpj_cpf, razao
+                FROM financeiro_fornecedor
+                WHERE id = :id AND system_unit_id = :unit
+                LIMIT 1
+            ");
                     $st->execute([':id' => $ent, ':unit' => $system_unit_id]);
                     $row = $st->fetch(PDO::FETCH_ASSOC);
 
@@ -912,13 +927,13 @@ class FinanceiroContaController {
             $nextCodigo = ($minCodigo !== null) ? ((int)$minCodigo - 1) : 0;
 
             $stmtIns = $pdo->prepare("
-            INSERT INTO financeiro_conta
-            (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
-             valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
-            VALUES
-            (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
-             :valor, :plano_contas, :banco, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL)
-        ");
+        INSERT INTO financeiro_conta
+        (system_unit_id, codigo, nome, entidade, cgc, tipo, doc, emissao, vencimento, baixa_dt,
+         valor, plano_contas, banco, obs, inc_ope, bax_ope, comp_dt, adic, comissao, local, cheque, dt_cheque, segmento)
+        VALUES
+        (:system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
+         :valor, :plano_contas, :banco, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL)
+    ");
 
             $ids = [];
 
@@ -927,7 +942,6 @@ class FinanceiroContaController {
 
                 // Nome da conta = razão social do fornecedor
                 $nome = $forn['razao'];
-
 
                 $valorFinal = round($c['valorBruto'] + $c['adicional'] - $c['desconto'], 2);
                 if ($valorFinal < 0) throw new Exception("Valor final não pode ser negativo (item #" . ($i + 1) . ").");
@@ -938,7 +952,7 @@ class FinanceiroContaController {
                     ':nome'           => $nome,
                     ':entidade'       => $c['entidade'],
                     ':cgc'            => $forn['cgc'],
-                    ':tipo'           => 'd',
+                    ':tipo'           => $c['tipo'], // NOVO: Manda a variável processada
                     ':doc'            => $c['doc'],
                     ':emissao'        => $c['emissao'],
                     ':vencimento'     => $c['vencimento'],
@@ -964,11 +978,11 @@ class FinanceiroContaController {
             // Marca notas como incluídas
             if (!empty($chaves)) {
                 $stU = $pdo->prepare("
-                UPDATE estoque_nota
-                SET incluida_financeiro = 1, updated_at = CURRENT_TIMESTAMP
-                WHERE system_unit_id = :unit AND chave_acesso = :chave
-                LIMIT 1
-            ");
+            UPDATE estoque_nota
+            SET incluida_financeiro = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE system_unit_id = :unit AND chave_acesso = :chave
+            LIMIT 1
+        ");
                 foreach (array_keys($chaves) as $ch) {
                     $stU->execute([':unit' => $system_unit_id, ':chave' => $ch]);
                 }
