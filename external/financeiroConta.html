@@ -386,7 +386,6 @@
             if (notaFornecedor) $('#fornecedor_nome').val(notaFornecedor);
             $('#doc').prop('readonly', true);
 
-            // TRAVA PARA NOTA FISCAL: Força despesa e desabilita opção
             $('#tipoDespesa').prop('checked', true);
             $('input[name="tipo_conta"]').prop('disabled', true);
         }
@@ -648,7 +647,11 @@
 
             if (contaLoaded.entidade) $('#fornecedor').val(String(contaLoaded.entidade)).trigger('change');
             if (contaLoaded.plano_contas) $('#plano_contas').val(String(contaLoaded.plano_contas)).trigger('change');
-            if (contaLoaded.baixa_dt) $('#baixa_dt').val(contaLoaded.baixa_dt.substring(0, 10));
+
+            // Alteração: Carrega a baixa com segurança (evitando erros com 0000-00-00 do BD)
+            if (contaLoaded.baixa_dt && !String(contaLoaded.baixa_dt).startsWith('0000')) {
+                $('#baixa_dt').val(String(contaLoaded.baixa_dt).substring(0, 10));
+            }
 
             let bancoVal = contaLoaded.forma_pagamento || contaLoaded.banco;
             if (bancoVal) $('#forma_pagamento').val(String(bancoVal)).trigger('change');
@@ -726,7 +729,6 @@
         const vencInicial = $('#vencimento').val();
         const totalAjustado = getValorAjustado();
 
-        // NOVO: Verifica pré-requisitos para poder gerar parcelas
         let camposFaltantes = [];
         if (totalAjustado <= 0) camposFaltantes.push("Valor Total");
         if (!docBase) camposFaltantes.push("Documento");
@@ -737,7 +739,6 @@
             $('#textoFaltantesParcela').text(camposFaltantes.join(', '));
             limparParcelasUI();
 
-            // Se o usuário clicar forçado no botão, mostra Toast
             if (e && e.type === 'click') {
                 Swal.fire({
                     toast: true,
@@ -818,7 +819,27 @@
         try {
             let res;
             if (MODO === 'edit') {
-                res = await axios.post(baseUrl, { method: 'editConta', token, data: Object.assign({ id: Number(editId), system_unit_id: Number(unit_id), usuario_id: user_id || null, tipo: contas[0].tipo, entidade: contas[0].fornecedor_id, doc: contas[0].documento, emissao: contas[0].emissao, vencimento: contas[0].vencimento, valor: Math.max(0, contas[0].valor - contas[0].desconto + contas[0].adicional), adic: contas[0].adicional, plano_contas: contas[0].plano_contas, forma_pagamento: contas[0].forma_pagamento, banco: contas[0].banco, obs: contas[0].obs_extra, baixa_dt: $('#baixa_dt').val() || null }) });
+                res = await axios.post(baseUrl, {
+                    method: 'editConta',
+                    token,
+                    data: Object.assign({
+                        id: Number(editId),
+                        system_unit_id: Number(unit_id),
+                        usuario_id: user_id || null,
+                        tipo: contas[0].tipo,
+                        entidade: contas[0].fornecedor_id,
+                        doc: contas[0].documento,
+                        emissao: contas[0].emissao,
+                        vencimento: contas[0].vencimento,
+                        baixa_dt: contas[0].baixa_dt, // Alteração: Envia a data que foi setada na base
+                        valor: Math.max(0, contas[0].valor - contas[0].desconto + contas[0].adicional),
+                        adic: contas[0].adicional,
+                        plano_contas: contas[0].plano_contas,
+                        forma_pagamento: contas[0].forma_pagamento,
+                        banco: contas[0].banco,
+                        obs: contas[0].obs_extra
+                    })
+                });
             } else if (MODO === 'nota') {
                 res = await axios.post(baseUrl, { method: 'lancarNotaNoFinanceiroContaLote', token, data: { system_unit_id: Number(unit_id), contas: contas } });
             } else {
@@ -843,6 +864,7 @@
             documento: ($('#doc').val() || '').trim(),
             emissao: $('#emissao').val() || null,
             vencimento: $('#vencimento').val(),
+            baixa_dt: $('#baixa_dt').val() || null, // Alteração: Data lida aqui de forma organizada
             valor: valor,
             desconto: desconto,
             adicional: acrescimo,
