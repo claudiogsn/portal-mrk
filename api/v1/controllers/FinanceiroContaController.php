@@ -206,8 +206,7 @@ class FinanceiroContaController {
             $rateio_id = null;
 
             if ($rateio === 1) {
-                // Se tiver UtilsController use: $rateio_id = UtilsController::uuidv4();
-                $rateio_id = UtilsController::uuidv4();
+                $rateio_id = method_exists('UtilsController', 'uuidv4') ? UtilsController::uuidv4() : uniqid();
             }
 
             // ===== Função utilitária de fornecedor =====
@@ -233,7 +232,6 @@ class FinanceiroContaController {
             };
 
             // ===== Controle Inteligente de Transação =====
-            // Só inicia a transação se nenhuma outra estiver ativa
             if (!$pdo->inTransaction()) {
                 $pdo->beginTransaction();
                 $isTransactionCreator = true;
@@ -248,7 +246,8 @@ class FinanceiroContaController {
             $minCodigo = $stMin->fetchColumn();
             $nextCodigo = ($minCodigo !== null) ? ($minCodigo - 1) : 0;
 
-            // ===== INSERT =====
+            // ===== INSERT CONTA FINANCEIRA =====
+            // Alteração: Mudei "NULL" para ":baixa_dt" para gravar a data que vem da transação
             $stmtIns = $pdo->prepare("
         INSERT INTO financeiro_conta
         (
@@ -258,11 +257,17 @@ class FinanceiroContaController {
         )
         VALUES
         (
-            :system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, NULL,
+            :system_unit_id, :codigo, :nome, :entidade, :cgc, :tipo, :doc, :emissao, :vencimento, :baixa_dt,
             :valor, :plano_contas, :banco, :forma_pagamento, :obs, NULL, NULL, NULL, :adic, 0.00, NULL, NULL, NULL, NULL,
             :rateio, :rateio_id
         )
-    ");
+        ");
+
+            // ===== PREPARE VÍNCULO DA TRANSAÇÃO =====
+            $stmtVinculo = $pdo->prepare("
+            INSERT INTO financeiro_transacao_vinculo (system_unit_id, financeiro_conta_id, pluggy_transaction_id) 
+            VALUES (:system_unit_id, :conta_id, :trans_id)
+        ");
 
             $ids = [];
 
@@ -283,7 +288,10 @@ class FinanceiroContaController {
                 $forma_pagamento = array_key_exists('forma_pagamento', $c) ? $c['forma_pagamento'] : (array_key_exists('forma_pagamento_id', $c) ? $c['forma_pagamento_id'] : null);
                 $adic = isset($c['acrescimo']) ? $c['acrescimo'] : (isset($c['adicional']) ? $c['adicional'] : 0);
 
-                // NOVO: Extrai e normaliza o tipo
+                // Pega a baixa (Se vier vazia, joga null)
+                $baixa_dt = !empty($c['baixa_dt']) ? $c['baixa_dt'] : null;
+
+                // Extrai e normaliza o tipo
                 $tipoBruto = isset($c['tipo']) ? strtolower(trim($c['tipo'])) : 'd';
                 $tipoFinal = ($tipoBruto === 'r') ? 'c' : (($tipoBruto === 'd') ? 'd' : $tipoBruto);
 
@@ -296,10 +304,11 @@ class FinanceiroContaController {
                     ':nome'            => $nome,
                     ':entidade'        => $c['fornecedor_id'],
                     ':cgc'             => $forn['cgc'],
-                    ':tipo'            => $tipoFinal, // Lote permite forçar tipo devidamente normalizado
+                    ':tipo'            => $tipoFinal,
                     ':doc'             => $c['documento'],
                     ':emissao'         => $c['emissao'],
                     ':vencimento'      => $c['vencimento'],
+                    ':baixa_dt'        => $baixa_dt,
                     ':valor'           => $valor,
                     ':plano_contas'    => $plano_contas,
                     ':banco'           => $banco,
@@ -312,6 +321,14 @@ class FinanceiroContaController {
 
                 $id = $pdo->lastInsertId();
                 $ids[] = $id;
+
+                if (!empty($c['pluggy_transaction_id'])) {
+                    $stmtVinculo->execute([
+                        ':system_unit_id' => $system_unit_id,
+                        ':conta_id'       => $id,
+                        ':trans_id'       => $c['pluggy_transaction_id']
+                    ]);
+                }
 
                 // Log Auditoria
                 if (method_exists(__CLASS__, 'logAuditoria')) {

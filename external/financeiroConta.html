@@ -174,7 +174,7 @@
                     </div>
                 </div>
 
-                <div class="row">
+                <div class="row" id="areaChecksAdicionais">
                     <div class="col-md-12">
                         <hr style="margin-top:0;">
                     </div>
@@ -284,6 +284,9 @@
 <script src="script/planoContasTree.js"></script>
 
 <script>
+    // ==============================================================
+    // PARÂMETROS DA URL
+    // ==============================================================
     const urlParams = new URLSearchParams(window.location.search);
     const token     = urlParams.get('token');
     const unit_id   = urlParams.get('system_unit_id') || urlParams.get('unit_id');
@@ -296,6 +299,16 @@
     const notaIdNota      = urlParams.get('id_nota') || urlParams.get('id');
     const notaFornecedor  = decodeURIComponent(urlParams.get('fornecedor') || '');
 
+    // Params MODO=transacao
+    const transacaoId    = urlParams.get('transacao_id');
+    const transacaoDesc  = urlParams.get('transacao_desc') ? decodeURIComponent(urlParams.get('transacao_desc')) : '';
+    const transacaoValor = urlParams.get('transacao_valor');
+    const transacaoData  = urlParams.get('transacao_data');
+    const transacaoTipo  = urlParams.get('transacao_tipo');
+
+    // ==============================================================
+    // URLS BASE
+    // ==============================================================
     const baseUrl = window.location.hostname !== 'localhost'
         ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
         : 'http://localhost/portal-mrk/api/v1/financeiro.php';
@@ -304,10 +317,16 @@
         ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
         : 'http://localhost/portal-mrk/api/v1/index.php';
 
+    // ==============================================================
+    // CACHES
+    // ==============================================================
     let BANCOS_CACHE  = [];
     let PLANOS_CACHE  = [];
     let contaLoaded   = null;
 
+    // ==============================================================
+    // HELPERS
+    // ==============================================================
     function pad2(n) { return String(n).padStart(2, '0'); }
 
     function addMonths(dateStr, months) {
@@ -362,17 +381,34 @@
         return $('#forma_pagamento').val();
     }
 
+    // ==============================================================
+    // INICIALIZAÇÃO E LÓGICA DE TELA
+    // ==============================================================
     $(document).ready(function () {
         configurarTelaPorModo();
         inicializarEventos();
         carregarDados();
+
+        // ==========================================================
+        // NOVO: AUTO-AJUSTE DE ALTURA DO IFRAME (Evita barra de rolagem)
+        // ==========================================================
+        if (window.parent && window.parent.document.getElementById('iframeNovaConta')) {
+            const resizeObserver = new ResizeObserver(() => {
+                const docHeight = document.documentElement.scrollHeight;
+                // Adiciona uma pequena margem (20px) para evitar cortes
+                window.parent.document.getElementById('iframeNovaConta').style.height = (docHeight + 20) + 'px';
+            });
+            // Vigia qualquer mudança de tamanho do body do iframe
+            resizeObserver.observe(document.body);
+        }
     });
 
     function configurarTelaPorModo() {
         const titulos = {
             create: '<i class="fas fa-file-invoice-dollar"></i> Nova Conta Financeira',
             edit:   '<i class="fas fa-edit"></i> Editar Conta Financeira',
-            nota:   '<i class="fas fa-file-import"></i> Inclusão Financeira (Nota Fiscal)'
+            nota:   '<i class="fas fa-file-import"></i> Inclusão Financeira (Nota Fiscal)',
+            transacao: '<i class="fas fa-exchange-alt"></i> Novo Lançamento via Transação'
         };
         $('#tituloTela').html(titulos[MODO] || titulos.create);
 
@@ -385,9 +421,29 @@
             $('#divFornecedorReadonly').show();
             if (notaFornecedor) $('#fornecedor_nome').val(notaFornecedor);
             $('#doc').prop('readonly', true);
+        }
 
-            $('#tipoDespesa').prop('checked', true);
-            $('input[name="tipo_conta"]').prop('disabled', true);
+        if (MODO === 'transacao') {
+            $('#colBaixa').show();
+            $('#areaChecksAdicionais').hide();
+
+            if (transacaoData) {
+                const dataFormatada = transacaoData.split('T')[0];
+                $('#emissao').val(dataFormatada);
+                $('#vencimento').val(dataFormatada);
+                $('#baixa_dt').val(dataFormatada);
+            }
+            if (transacaoValor) {
+                $('#valor_total').val(formatMoney(transacaoValor));
+            }
+            if (transacaoTipo === 'credit') {
+                $('#tipoReceita').prop('checked', true);
+            } else if (transacaoTipo === 'debit') {
+                $('#tipoDespesa').prop('checked', true);
+            }
+            if (transacaoDesc) {
+                $('#obs_extra').val(`Gerado a partir da transação bancária: ${transacaoDesc}`);
+            }
         }
     }
 
@@ -397,27 +453,11 @@
         }
         $('#forma_pagamento').select2({ placeholder: 'Selecione a forma...', allowClear: true, width: '100%' });
 
-        $(document).on('select2:selecting', '#plano_contas, .select-rateio-plano', function(e) {
-            var data = e.params.args.data;
-            var isParent = $(data.element).data('parent');
-
-            if (isParent === true || isParent === "true" || isParent === 1) {
-                e.preventDefault();
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3500,
-                    icon: 'warning',
-                    title: 'Selecione uma conta filha (último nível) para fazer o lançamento.'
-                });
-            }
-        });
-
         $(document).on('input', '.money-input', function () {
             applyMoneyMask(this);
         });
 
+        // Toggle Parcelas
         $('#chkParcelar').on('change', function () {
             if ($(this).is(':checked')) {
                 if ($('#chkRateio').is(':checked')) $('#chkRateio').prop('checked', false).trigger('change');
@@ -429,6 +469,7 @@
             }
         });
 
+        // Toggle Rateio
         $('#chkRateio').on('change', function () {
             if ($(this).is(':checked')) {
                 if ($('#chkParcelar').is(':checked')) $('#chkParcelar').prop('checked', false).trigger('change');
@@ -476,6 +517,9 @@
         });
     }
 
+    // ==============================================================
+    // CARREGAMENTO DE DADOS
+    // ==============================================================
     async function carregarDados() {
         try {
             if (MODO === 'nota') {
@@ -487,7 +531,12 @@
                 if (!token || !editId) return Swal.fire('Atenção', 'Parâmetros ausentes.', 'warning');
                 await carregarFornecedores();
                 await carregarBancos();
-                await carregarPlanos();
+                if (typeof PlanoContasTree !== 'undefined' && PlanoContasTree.carregarDados) {
+                    await PlanoContasTree.carregarDados(baseUrl, token, unit_id);
+                    PlanoContasTree.renderizar('#plano_contas');
+                } else {
+                    await carregarPlanos();
+                }
                 await carregarConta();
             } else {
                 await carregarFornecedores();
@@ -518,19 +567,10 @@
             const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
             PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
             PLANOS_CACHE.sort((a, b) => a.codigo.localeCompare(b.codigo));
-
             PLANOS_CACHE.forEach(p => {
                 p.nivel = Math.floor((p.codigo.length - 2) / 2);
-                p.isParent = PLANOS_CACHE.some(child => child.codigo.startsWith(p.codigo) && child.codigo !== p.codigo);
-
-                let ancestors = PLANOS_CACHE.filter(a => p.codigo.startsWith(a.codigo) && a.codigo !== p.codigo);
-                ancestors.sort((a,b) => a.codigo.length - b.codigo.length);
-
-                let pathText = ancestors.map(a => a.descricao || a.nome).join(' / ');
-                let fullName = p.descricao || p.nome || '';
-                p.searchPath = pathText ? (pathText + ' / ' + fullName) : fullName;
+                p.isParent = PLANOS_CACHE.some(child => child.codigo.startsWith(p.codigo) && child.codigo.length > p.codigo.length);
             });
-
             popularSelectPlanos($('#plano_contas'));
         } catch (e) { console.error(e); }
     }
@@ -538,24 +578,13 @@
     function popularSelectPlanos($select) {
         if ($select.hasClass("select2-hidden-accessible")) $select.select2('destroy');
         $select.empty().append(new Option('Selecione...', ''));
-
         PLANOS_CACHE.forEach(p => {
             $select.append($('<option>', {
-                value: p.codigo,
-                text: p.codigo + ' - ' + p.searchPath,
-                'data-codigo': p.codigo,
-                'data-parent': p.isParent,
-                'data-nivel': p.nivel,
-                'data-nome': p.descricao || p.nome || ''
+                value: p.codigo, text: p.codigo + ' - ' + (p.descricao || p.nome || ''),
+                'data-codigo': p.codigo, 'data-parent': p.isParent, 'data-nivel': p.nivel
             }));
         });
-
-        $select.select2({
-            placeholder: 'Selecione o plano',
-            allowClear: true,
-            width: '100%',
-            templateResult: formatarPlanoConta
-        });
+        $select.select2({ placeholder: 'Selecione o plano', allowClear: true, width: '100%', templateResult: formatarPlanoConta });
     }
 
     function formatarPlanoConta(data) {
@@ -567,8 +596,7 @@
         let icon = isParent
             ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${$el.data('codigo')}" style="cursor:pointer; color:#1E88E5; margin-right:8px; width:15px; text-align:center;"></i>`
             : `<i class="fas fa-circle" style="color:#cfd8dc; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
-
-        return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight};">${icon}<span style="font-size: 13.5px;">${data.text}</span></div>`);
+        return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight};">${icon}<span>${data.text}</span></div>`);
     }
 
     $(document).on('mouseup', '.tree-toggle', function (e) {
@@ -641,17 +669,9 @@
             setMoneyValue('#acrescimo', contaLoaded.adic || 0);
             $('#obs_extra').val(contaLoaded.obs || '');
 
-            if (contaLoaded.tipo) {
-                $(`input[name="tipo_conta"][value="${contaLoaded.tipo}"]`).prop('checked', true);
-            }
-
             if (contaLoaded.entidade) $('#fornecedor').val(String(contaLoaded.entidade)).trigger('change');
             if (contaLoaded.plano_contas) $('#plano_contas').val(String(contaLoaded.plano_contas)).trigger('change');
-
-            // Alteração: Carrega a baixa com segurança (evitando erros com 0000-00-00 do BD)
-            if (contaLoaded.baixa_dt && !String(contaLoaded.baixa_dt).startsWith('0000')) {
-                $('#baixa_dt').val(String(contaLoaded.baixa_dt).substring(0, 10));
-            }
+            if (contaLoaded.baixa_dt) $('#baixa_dt').val(contaLoaded.baixa_dt.substring(0, 10));
 
             let bancoVal = contaLoaded.forma_pagamento || contaLoaded.banco;
             if (bancoVal) $('#forma_pagamento').val(String(bancoVal)).trigger('change');
@@ -669,6 +689,9 @@
         } catch (e) { Swal.fire('Erro', 'Falha ao carregar a conta.', 'error'); }
     }
 
+    // ==============================================================
+    // GERAÇÃO DE LÓGICAS (RATEIO / PARCELA)
+    // ==============================================================
     function adicionarItemRateio(planoPreSelecionado = null, valorPreenchido = null) {
         const idUnico = 'rateio_' + Date.now() + Math.floor(Math.random() * 1000);
         let valorInput = '';
@@ -698,9 +721,11 @@
         </div>`;
 
         $('#listaRateioCards').append(html);
-
-        popularSelectPlanos($(`#sel_${idUnico}`));
-
+        if (typeof PlanoContasTree !== 'undefined' && PlanoContasTree.renderizar) {
+            PlanoContasTree.renderizar(`#sel_${idUnico}`);
+        } else {
+            popularSelectPlanos($(`#sel_${idUnico}`));
+        }
         if (planoPreSelecionado) $(`#sel_${idUnico}`).val(planoPreSelecionado).trigger('change');
         atualizarTotalRateio();
     }
@@ -723,36 +748,14 @@
         $('#tblParcelas tbody').empty(); $('#totalParcelas').text('R$ 0,00'); $('#avisoParcelas').hide();
     }
 
-    function gerarParcelas(e) {
+    function gerarParcelas() {
         const qt = Math.max(1, parseInt($('#qtParcelas').val() || '1'));
         const docBase = ($('#doc').val() || '').trim();
+        const emissao = $('#emissao').val();
         const vencInicial = $('#vencimento').val();
         const totalAjustado = getValorAjustado();
 
-        let camposFaltantes = [];
-        if (totalAjustado <= 0) camposFaltantes.push("Valor Total");
-        if (!docBase) camposFaltantes.push("Documento");
-        if (!vencInicial) camposFaltantes.push("Vencimento");
-
-        if (camposFaltantes.length > 0) {
-            $('#avisoPreRequisitosParcela').fadeIn();
-            $('#textoFaltantesParcela').text(camposFaltantes.join(', '));
-            limparParcelasUI();
-
-            if (e && e.type === 'click') {
-                Swal.fire({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3500,
-                    icon: 'warning',
-                    title: 'Preencha os dados obrigatórios listados para gerar as parcelas.'
-                });
-            }
-            return;
-        } else {
-            $('#avisoPreRequisitosParcela').hide();
-        }
+        if (!docBase || !vencInicial || totalAjustado <= 0) return;
 
         const base = Math.floor((totalAjustado / qt) * 100) / 100;
         let soma = 0;
@@ -779,11 +782,14 @@
         $('#avisoParcelas').toggle(Math.abs(soma - getValorAjustado()) > 0.01);
     }
 
+    // ==============================================================
+    // SALVAR
+    // ==============================================================
     async function salvar() {
         const isParcelado = $('#chkParcelar').is(':checked'), isRateio = $('#chkRateio').is(':checked');
         const formaCod = getFormaCodigo(), planoContas = $('#plano_contas').val();
 
-        if (!getFornecedorId()) return Swal.fire('Atenção', 'Selecione o Fornecedor/Cliente.', 'warning');
+        if (!getFornecedorId()) return Swal.fire('Atenção', 'Selecione o Fornecedor.', 'warning');
         if (!$('#doc').val()) return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
         if (!$('#vencimento').val()) return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
         if (!formaCod) return Swal.fire('Atenção', 'Selecione a Forma de Pagamento.', 'warning');
@@ -818,33 +824,9 @@
 
         try {
             let res;
-            if (MODO === 'edit') {
-                res = await axios.post(baseUrl, {
-                    method: 'editConta',
-                    token,
-                    data: Object.assign({
-                        id: Number(editId),
-                        system_unit_id: Number(unit_id),
-                        usuario_id: user_id || null,
-                        tipo: contas[0].tipo,
-                        entidade: contas[0].fornecedor_id,
-                        doc: contas[0].documento,
-                        emissao: contas[0].emissao,
-                        vencimento: contas[0].vencimento,
-                        baixa_dt: contas[0].baixa_dt, // Alteração: Envia a data que foi setada na base
-                        valor: Math.max(0, contas[0].valor - contas[0].desconto + contas[0].adicional),
-                        adic: contas[0].adicional,
-                        plano_contas: contas[0].plano_contas,
-                        forma_pagamento: contas[0].forma_pagamento,
-                        banco: contas[0].banco,
-                        obs: contas[0].obs_extra
-                    })
-                });
-            } else if (MODO === 'nota') {
-                res = await axios.post(baseUrl, { method: 'lancarNotaNoFinanceiroContaLote', token, data: { system_unit_id: Number(unit_id), contas: contas } });
-            } else {
-                res = await axios.post(baseUrl, { method: 'createContaLote', token, data: { system_unit_id: Number(unit_id), usuario_id: user_id || null, rateio: isRateio ? 1 : 0, contas: contas } });
-            }
+            if (MODO === 'edit') res = await axios.post(baseUrl, { method: 'editConta', token, data: Object.assign({ id: Number(editId), system_unit_id: Number(unit_id), usuario_id: user_id || null, entidade: contas[0].fornecedor_id, doc: contas[0].documento, emissao: contas[0].emissao, vencimento: contas[0].vencimento, valor: Math.max(0, contas[0].valor - contas[0].desconto + contas[0].adicional), adic: contas[0].adicional, plano_contas: contas[0].plano_contas, forma_pagamento: contas[0].forma_pagamento, banco: contas[0].banco, obs: contas[0].obs_extra, baixa_dt: $('#baixa_dt').val() || null }) });
+            else if (MODO === 'nota') res = await axios.post(baseUrl, { method: 'lancarNotaNoFinanceiroContaLote', token, data: { system_unit_id: Number(unit_id), contas: contas } });
+            else res = await axios.post(baseUrl, { method: 'createContaLote', token, data: { system_unit_id: Number(unit_id), usuario_id: user_id || null, rateio: isRateio ? 1 : 0, contas: contas } });
 
             Swal.close();
             if (res.data && res.data.success) {
@@ -856,23 +838,7 @@
     }
 
     function montarContaBase(valor, plano, desconto = 0, acrescimo = 0) {
-        const tipoConta = (MODO === 'nota') ? 'D' : ($('input[name="tipo_conta"]:checked').val() || 'D');
-
-        const base = {
-            tipo: tipoConta,
-            fornecedor_id: Number(getFornecedorId()),
-            documento: ($('#doc').val() || '').trim(),
-            emissao: $('#emissao').val() || null,
-            vencimento: $('#vencimento').val(),
-            baixa_dt: $('#baixa_dt').val() || null, // Alteração: Data lida aqui de forma organizada
-            valor: valor,
-            desconto: desconto,
-            adicional: acrescimo,
-            plano_contas: plano,
-            forma_pagamento: getFormaCodigo() ? Number(getFormaCodigo()) : null,
-            banco: getFormaCodigo() ? Number(getFormaCodigo()) : null,
-            obs_extra: $('#obs_extra').val()
-        };
+        const base = { fornecedor_id: Number(getFornecedorId()), documento: ($('#doc').val() || '').trim(), emissao: $('#emissao').val() || null, vencimento: $('#vencimento').val(), valor: valor, desconto: desconto, adicional: acrescimo, plano_contas: plano, forma_pagamento: getFormaCodigo() ? Number(getFormaCodigo()) : null, banco: getFormaCodigo() ? Number(getFormaCodigo()) : null, obs_extra: $('#obs_extra').val() };
         if (MODO === 'nota') base.chave_acesso = $('#chave_acesso').val();
         return base;
     }
@@ -886,3 +852,4 @@
 </script>
 </body>
 </html>
+}

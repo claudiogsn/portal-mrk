@@ -159,7 +159,6 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
             </h2>
         </div>
 
-        <!-- Linha 1: Conta (custom), Datas, Botão Buscar -->
         <div class="filter-section">
             <div class="filter-group" style="flex: 2; min-width: 280px;">
                 <label>Conta Bancária</label>
@@ -175,7 +174,6 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
                         <div class="bank-selector-list" id="bankList"></div>
                     </div>
                 </div>
-                <!-- Hidden input para manter compatibilidade -->
                 <input type="hidden" id="account_id" value="">
             </div>
             <div class="filter-group">
@@ -193,7 +191,6 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
             </div>
         </div>
 
-        <!-- Linha 2: Tipo + Pesquisa -->
         <div class="filter-row-2">
             <div class="filter-group" style="flex: 0 0 180px; min-width: 180px;">
                 <label>Tipo</label>
@@ -252,14 +249,26 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
                         <th width="120">Tipo</th>
                         <th>Descrição da Transação</th>
                         <th width="150" class="text-right">Valor</th>
+                        <th width="120" class="text-center">Ações</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr>
-                        <td colspan="4" class="text-center muted" style="padding: 40px;">Selecione uma conta e clique em buscar.</td>
+                        <td colspan="5" class="text-center muted" style="padding: 40px;">Selecione uma conta e clique em buscar.</td>
                     </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modalNovaConta" tabindex="-1">
+    <div class="modal-dialog modal-flutuante">
+        <div class="modal-content" style="border: none; border-radius: 12px; background: transparent; box-shadow: none;">
+            <div class="modal-body" style="padding: 0 !important; overflow: hidden; border-radius: 12px;">
+                <iframe id="iframeNovaConta" class="modal-iframe" style="width: 100%; height: 85vh; border: none; display: block; border-radius: 12px; background: #fff;"></iframe>
             </div>
         </div>
     </div>
@@ -321,6 +330,37 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
     let contasCarregadas = [];
     let selectedAccountId = '';
     let dropdownOpen = false;
+
+    // ====== FUNÇÕES EXPOSTAS PARA O IFRAME ======
+    // O formulário de finanças dentro do Iframe vai tentar chamar `window.parent.buscar()` após salvar
+    window.buscar = function() {
+        $('#modalNovaConta').modal('hide');
+        // Recarrega o extrato para quem sabe mostrar algum indicador visual de que a transação já foi vinculada
+        buscarExtrato();
+    };
+
+    // Função que o botão da tabela vai chamar para abrir o modal
+    function abrirModalVinculoTransacao(idTransacao, descEncoded, valorOriginal, dataFormatada, tipoTransacao) {
+        // Transforma o desc para URL seguro e o valor para absoluto
+        let valorAbsoluto = Math.abs(parseFloat(valorOriginal));
+
+        // Monta a URL passando as infos da transação como parâmetro
+        let url = `financeiroConta.html?token=${token}&system_unit_id=${system_unit_id}&modo=transacao` +
+            `&transacao_id=${encodeURIComponent(idTransacao)}` +
+            `&transacao_desc=${descEncoded}` +
+            `&transacao_valor=${valorAbsoluto}` +
+            `&transacao_data=${dataFormatada}` +
+            `&transacao_tipo=${tipoTransacao}`;
+
+        // Altera a origem do iframe e abre o modal
+        $('#iframeNovaConta').attr('src', url);
+        $('#modalNovaConta').modal('show');
+    }
+
+    // Limpa o src do iframe ao fechar para evitar acúmulo em memória
+    $('#modalNovaConta').on('hidden.bs.modal', function () {
+        $('#iframeNovaConta').attr('src', '');
+    });
 
     // ====== UTILS ======
     function formatarMoeda(v) { return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -563,7 +603,7 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
             toggleLoading(false);
             allTransactions = [];
             Swal.fire('Erro', 'Falha ao buscar o extrato no servidor.', 'error');
-            $('#tabela-extrato tbody').html('<tr><td colspan="4" class="text-center text-danger" style="padding: 30px;">Erro ao carregar dados.</td></tr>');
+            $('#tabela-extrato tbody').html('<tr><td colspan="5" class="text-center text-danger" style="padding: 30px;">Erro ao carregar dados.</td></tr>');
         }
     }
 
@@ -588,7 +628,7 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
         $tbody.empty();
 
         if (lista.length === 0) {
-            $tbody.append('<tr><td colspan="4" class="text-center muted" style="padding: 40px;"><iconify-icon icon="icon-park-outline:inbox" style="font-size: 30px; color: #ddd; display: block; margin-bottom: 10px;"></iconify-icon>Nenhuma transação encontrada.</td></tr>');
+            $tbody.append('<tr><td colspan="5" class="text-center muted" style="padding: 40px;"><iconify-icon icon="icon-park-outline:inbox" style="font-size: 30px; color: #ddd; display: block; margin-bottom: 10px;"></iconify-icon>Nenhuma transação encontrada.</td></tr>');
             atualizarKPIs(0, 0);
             $('#result-counter').hide();
             return;
@@ -609,12 +649,22 @@ $url_account_id = isset($_GET['account_id']) ? intval($_GET['account_id']) : '';
 
             const descHtml = searchTerm ? highlightText(tx.description, searchTerm) : escapeHtml(tx.description);
 
+            // Tratamento especial da descrição para enviar na URL
+            const escDesc = encodeURIComponent(tx.description || '');
+
+            // Define o ID correto provido pela API
+            const txId = tx.pluggy_transaction_id || tx.id;
+
+            // Botão Ações
+            const btnLancar = `<button class="btn btn-sm btn-success" title="Vincular Conta Financeira" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; border: none; box-shadow: 0 2px 4px rgba(46,125,50,0.3);" onclick="abrirModalVinculoTransacao('${txId}', '${escDesc}', '${valor}', '${tx.date}', '${tx.type}')"><iconify-icon icon="icon-park-outline:plus" style="vertical-align: sub; font-size: 13px; margin-right: 3px;"></iconify-icon> Lançar</button>`;
+
             $tbody.append(`
                 <tr>
                     <td class="text-muted" style="font-weight:500;">${formatarDataBR(tx.date)}</td>
                     <td>${badgeTipo}</td>
                     <td style="color:#444;">${descHtml}</td>
                     <td class="text-right ${valClass}">${icon} ${formatarMoeda(valor)}</td>
+                    <td class="text-center">${btnLancar}</td>
                 </tr>
             `);
         });
