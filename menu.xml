@@ -393,6 +393,10 @@
   <menuitem label="Logs">
     <icon>fas:desktop fa-fw</icon>
     <menu>
+      <menuitem label="Open Finance - Extratos">
+        <action>OpenFinanceExtratos</action>
+        <icon>fas:circle fa-fw</icon>
+      </menuitem>
       <menuitem label="Dashboard">
         <action>SystemLogDashboard</action>
         <icon>fas:tachometer-alt fa-fw</icon>
