@@ -62,6 +62,12 @@
         .radio-custom { display: flex; gap: 15px; margin-top: 5px; }
         .radio-custom label { margin-bottom: 0; cursor: pointer; }
         .radio-custom input[type="radio"]:disabled + label { color: #999 !important; cursor: not-allowed; }
+
+        /* Ajuste visual para itens desabilitados no Select2 ficarem bonitos como títulos */
+        .select2-results__option[aria-disabled="true"] {
+            background-color: transparent !important;
+            color: #1565C0 !important;
+        }
     </style>
 </head>
 <body class="theme-blue">
@@ -281,6 +287,7 @@
 <script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script src="script/planoContasTree.js"></script>
 
 <script>
@@ -299,7 +306,6 @@
     const notaIdNota      = urlParams.get('id_nota') || urlParams.get('id');
     const notaFornecedor  = decodeURIComponent(urlParams.get('fornecedor') || '');
 
-    // Params MODO=transacao
     const transacaoId    = urlParams.get('transacao_id');
     const transacaoDesc  = urlParams.get('transacao_desc') ? decodeURIComponent(urlParams.get('transacao_desc')) : '';
     const transacaoValor = urlParams.get('transacao_valor');
@@ -341,9 +347,7 @@
         if (typeof str === 'number') return str;
         let clean = String(str).replace(/[R$\s]/g, '').trim();
         if (!clean) return 0;
-        if (clean.indexOf(',') > -1) {
-            clean = clean.replace(/\./g, '').replace(',', '.');
-        }
+        if (clean.indexOf(',') > -1) { clean = clean.replace(/\./g, '').replace(',', '.'); }
         return parseFloat(clean) || 0;
     }
 
@@ -377,28 +381,21 @@
         return $('#fornecedor').val();
     }
 
-    function getFormaCodigo() {
-        return $('#forma_pagamento').val();
-    }
+    function getFormaCodigo() { return $('#forma_pagamento').val(); }
 
     // ==============================================================
-    // INICIALIZAÇÃO E LÓGICA DE TELA
+    // INICIALIZAÇÃO
     // ==============================================================
     $(document).ready(function () {
         configurarTelaPorModo();
         inicializarEventos();
         carregarDados();
 
-        // ==========================================================
-        // NOVO: AUTO-AJUSTE DE ALTURA DO IFRAME (Evita barra de rolagem)
-        // ==========================================================
         if (window.parent && window.parent.document.getElementById('iframeNovaConta')) {
             const resizeObserver = new ResizeObserver(() => {
                 const docHeight = document.documentElement.scrollHeight;
-                // Adiciona uma pequena margem (20px) para evitar cortes
                 window.parent.document.getElementById('iframeNovaConta').style.height = (docHeight + 20) + 'px';
             });
-            // Vigia qualquer mudança de tamanho do body do iframe
             resizeObserver.observe(document.body);
         }
     });
@@ -412,52 +409,35 @@
         };
         $('#tituloTela').html(titulos[MODO] || titulos.create);
 
-        if (MODO === 'edit') {
-            $('#colBaixa').show();
-        }
-
+        if (MODO === 'edit') { $('#colBaixa').show(); }
         if (MODO === 'nota') {
             $('#divFornecedorSelect').hide();
             $('#divFornecedorReadonly').show();
             if (notaFornecedor) $('#fornecedor_nome').val(notaFornecedor);
             $('#doc').prop('readonly', true);
         }
-
         if (MODO === 'transacao') {
             $('#colBaixa').show();
             $('#areaChecksAdicionais').hide();
-
             if (transacaoData) {
                 const dataFormatada = transacaoData.split('T')[0];
                 $('#emissao').val(dataFormatada);
                 $('#vencimento').val(dataFormatada);
                 $('#baixa_dt').val(dataFormatada);
             }
-            if (transacaoValor) {
-                $('#valor_total').val(formatMoney(transacaoValor));
-            }
-            if (transacaoTipo === 'credit') {
-                $('#tipoReceita').prop('checked', true);
-            } else if (transacaoTipo === 'debit') {
-                $('#tipoDespesa').prop('checked', true);
-            }
-            if (transacaoDesc) {
-                $('#obs_extra').val(`Gerado a partir da transação bancária: ${transacaoDesc}`);
-            }
+            if (transacaoValor) { $('#valor_total').val(formatMoney(transacaoValor)); }
+            if (transacaoTipo === 'credit') { $('#tipoReceita').prop('checked', true); }
+            else if (transacaoTipo === 'debit') { $('#tipoDespesa').prop('checked', true); }
+            if (transacaoDesc) { $('#obs_extra').val(`Gerado a partir da transação bancária: ${transacaoDesc}`); }
         }
     }
 
     function inicializarEventos() {
-        if (MODO !== 'nota') {
-            $('#fornecedor').select2({ placeholder: 'Selecione ou digite...', allowClear: true, width: '100%' });
-        }
+        if (MODO !== 'nota') { $('#fornecedor').select2({ placeholder: 'Selecione ou digite...', allowClear: true, width: '100%' }); }
         $('#forma_pagamento').select2({ placeholder: 'Selecione a forma...', allowClear: true, width: '100%' });
 
-        $(document).on('input', '.money-input', function () {
-            applyMoneyMask(this);
-        });
+        $(document).on('input', '.money-input', function () { applyMoneyMask(this); });
 
-        // Toggle Parcelas
         $('#chkParcelar').on('change', function () {
             if ($(this).is(':checked')) {
                 if ($('#chkRateio').is(':checked')) $('#chkRateio').prop('checked', false).trigger('change');
@@ -469,7 +449,6 @@
             }
         });
 
-        // Toggle Rateio
         $('#chkRateio').on('change', function () {
             if ($(this).is(':checked')) {
                 if ($('#chkParcelar').is(':checked')) $('#chkParcelar').prop('checked', false).trigger('change');
@@ -494,27 +473,15 @@
             if ($('#chkRateio').is(':checked')) atualizarTotalRateio();
         });
 
-        $(document).on('input change', '.valorParcela', function () {
-            applyMoneyMask(this);
-            atualizarTotalParcelas();
-        });
-        $(document).on('input change', '.valorRateio', function () {
-            applyMoneyMask(this);
-            atualizarTotalRateio();
-        });
+        $(document).on('input change', '.valorParcela', function () { applyMoneyMask(this); atualizarTotalParcelas(); });
+        $(document).on('input change', '.valorRateio', function () { applyMoneyMask(this); atualizarTotalRateio(); });
 
         $(document).on('click', '.btn-remove-rateio', function () {
-            $(this).closest('.rateio-card').fadeOut(300, function () {
-                $(this).remove();
-                atualizarTotalRateio();
-            });
+            $(this).closest('.rateio-card').fadeOut(300, function () { $(this).remove(); atualizarTotalRateio(); });
         });
 
         $('#btnSalvar').on('click', salvar);
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { e.preventDefault(); fecharModalParent(); }
-        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); fecharModalParent(); } });
     }
 
     // ==============================================================
@@ -531,12 +498,8 @@
                 if (!token || !editId) return Swal.fire('Atenção', 'Parâmetros ausentes.', 'warning');
                 await carregarFornecedores();
                 await carregarBancos();
-                if (typeof PlanoContasTree !== 'undefined' && PlanoContasTree.carregarDados) {
-                    await PlanoContasTree.carregarDados(baseUrl, token, unit_id);
-                    PlanoContasTree.renderizar('#plano_contas');
-                } else {
-                    await carregarPlanos();
-                }
+                // FORÇANDO SEMPRE O USO DO CARREGAMENTO LOCAL, IGNORANDO O SCRIPT EXTERNO
+                await carregarPlanos();
                 await carregarConta();
             } else {
                 await carregarFornecedores();
@@ -575,14 +538,57 @@
         } catch (e) { console.error(e); }
     }
 
-    function getPlanoFullPath(codigo) {
-        let path = [];
-        PLANOS_CACHE.forEach(p => {
-            if (codigo.startsWith(p.codigo)) {
-                path.push(p.descricao || p.nome || '');
+    // ==============================================================
+    // LÓGICA DO PLANO DE CONTAS (ITENS 8 E 9 CORRIGIDOS)
+    // ==============================================================
+
+    // Função MATCH CUSTOMIZADA para o Select2 não sumir com os pais quando você pesquisa um filho
+    function customPlanoMatcher(params, data) {
+        if ($.trim(params.term) === '') { return data; }
+        if (typeof data.text === 'undefined') { return null; }
+
+        let term = params.term.toLowerCase();
+        let text = data.text.toLowerCase();
+        let $el = $(data.element);
+        let codigo = $el.data('codigo');
+
+        // Se não tem código (como o placeholder "Selecione..."), verifica normalmente
+        if (!codigo) {
+            return text.indexOf(term) > -1 ? data : null;
+        }
+
+        // Match direto (se bate com o nome ou código da linha atual)
+        if (text.indexOf(term) > -1) {
+            return data;
+        }
+
+        // Se eu pesquisei Aluguel (Filho), o Select2 verifica se o código atual é Pai de algum "Aluguel"
+        let hasMatchingChild = PLANOS_CACHE.some(p => {
+            if (p.codigo.startsWith(codigo) && p.codigo.length > codigo.length) {
+                let childText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
+                return childText.indexOf(term) > -1;
             }
+            return false;
         });
-        return path.join(' > ');
+
+        if (hasMatchingChild) {
+            return data; // O filho deu match, então MANTÉM O PAI na lista
+        }
+
+        // Se eu pesquisei Despesas (Pai), o Select2 garante que vai mostrar os filhos desse pai
+        let hasMatchingParent = PLANOS_CACHE.some(p => {
+            if (codigo.startsWith(p.codigo) && codigo.length > p.codigo.length) {
+                let parentText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
+                return parentText.indexOf(term) > -1;
+            }
+            return false;
+        });
+
+        if (hasMatchingParent) {
+            return data; // O pai deu match, MANTÉM O FILHO na lista
+        }
+
+        return null;
     }
 
     function popularSelectPlanos($select) {
@@ -590,15 +596,18 @@
         $select.empty().append(new Option('Selecione...', ''));
 
         PLANOS_CACHE.forEach(p => {
-            let fullPath = getPlanoFullPath(p.codigo);
+            let nome = p.descricao || p.nome || '';
             let opt = $('<option>', {
                 value: p.codigo,
-                text: p.codigo + ' - ' + fullPath,
+                text: p.codigo + ' - ' + nome, // Mantido formato original (Código - Nome)
                 'data-codigo': p.codigo,
+                'data-nome': nome,
                 'data-parent': p.isParent,
                 'data-nivel': p.nivel
             });
 
+            // ATENÇÃO (Item 8): Adicionando 'disabled' o Select2 INCLUI O PAI NA LISTA,
+            // mas IMPEDE QUE SEJA SELECIONADO NATIVAMENTE.
             if (p.isParent) {
                 opt.prop('disabled', true);
             }
@@ -610,22 +619,29 @@
             placeholder: 'Selecione o plano',
             allowClear: true,
             width: '100%',
-            templateResult: formatarPlanoConta
+            templateResult: formatarPlanoConta,
+            matcher: customPlanoMatcher // Registra nossa lógica avançada de hierarquia no search
         });
     }
 
     function formatarPlanoConta(data) {
         if (!data.id) return data.text;
         let $el = $(data.element);
+
         let padding = (parseInt($el.data('nivel')) || 0) * 20;
         let isParent = $el.data('parent') === true || $el.data('parent') === "true";
+
         let fontWeight = isParent ? 'bold' : 'normal';
+        let color = isParent ? '#1565C0' : '#444'; // Pais ficam com cor azul forte
+
         let icon = isParent
-            ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${$el.data('codigo')}" style="cursor:pointer; color:#1E88E5; margin-right:8px; width:15px; text-align:center;"></i>`
+            ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${$el.data('codigo')}" style="margin-right:8px; width:15px; text-align:center;"></i>`
             : `<i class="fas fa-circle" style="color:#cfd8dc; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
-        return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight};">${icon}<span>${data.text}</span></div>`);
+
+        return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight}; color:${color};">${icon}<span>${data.text}</span></div>`);
     }
 
+    // Toggle para esconder/mostrar as filhas quando clica na setinha do pai (se necessário)
     $(document).on('mouseup', '.tree-toggle', function (e) {
         e.stopPropagation(); e.preventDefault();
         let $icon = $(this), codigo = $icon.data('codigo');
@@ -689,8 +705,9 @@
             if (!res.data || !res.data.id) return Swal.fire('Erro', 'Conta não encontrada.', 'error');
             contaLoaded = res.data;
 
-            const tipoConta = contaLoaded.tipo_conta || contaLoaded.tipo || contaLoaded.natureza || 'D';
-            if (tipoConta === 'R' || tipoConta === 'Receita') {
+            // Tratativa reforçada para identificar o tipo real
+            const tipoConta = String(contaLoaded.tipo_conta || contaLoaded.tipo || contaLoaded.natureza || 'D').toUpperCase();
+            if (tipoConta === 'R' || tipoConta === 'RECEITA' || tipoConta === 'C' || tipoConta === 'CREDITO') {
                 $('#tipoReceita').prop('checked', true);
             } else {
                 $('#tipoDespesa').prop('checked', true);
@@ -726,7 +743,7 @@
     }
 
     // ==============================================================
-    // GERAÇÃO DE LÓGICAS (RATEIO / PARCELA)
+    // RATEIO / PARCELA
     // ==============================================================
     function adicionarItemRateio(planoPreSelecionado = null, valorPreenchido = null) {
         const idUnico = 'rateio_' + Date.now() + Math.floor(Math.random() * 1000);
@@ -757,11 +774,10 @@
         </div>`;
 
         $('#listaRateioCards').append(html);
-        if (typeof PlanoContasTree !== 'undefined' && PlanoContasTree.renderizar) {
-            PlanoContasTree.renderizar(`#sel_${idUnico}`);
-        } else {
-            popularSelectPlanos($(`#sel_${idUnico}`));
-        }
+
+        // REPLICANDO A MESMA LÓGICA NO RATEIO
+        popularSelectPlanos($(`#sel_${idUnico}`));
+
         if (planoPreSelecionado) $(`#sel_${idUnico}`).val(planoPreSelecionado).trigger('change');
         atualizarTotalRateio();
     }
@@ -888,4 +904,3 @@
 </script>
 </body>
 </html>
-}
