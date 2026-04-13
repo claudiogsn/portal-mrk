@@ -575,16 +575,43 @@
         } catch (e) { console.error(e); }
     }
 
+    function getPlanoFullPath(codigo) {
+        let path = [];
+        PLANOS_CACHE.forEach(p => {
+            if (codigo.startsWith(p.codigo)) {
+                path.push(p.descricao || p.nome || '');
+            }
+        });
+        return path.join(' > ');
+    }
+
     function popularSelectPlanos($select) {
         if ($select.hasClass("select2-hidden-accessible")) $select.select2('destroy');
         $select.empty().append(new Option('Selecione...', ''));
+
         PLANOS_CACHE.forEach(p => {
-            $select.append($('<option>', {
-                value: p.codigo, text: p.codigo + ' - ' + (p.descricao || p.nome || ''),
-                'data-codigo': p.codigo, 'data-parent': p.isParent, 'data-nivel': p.nivel
-            }));
+            let fullPath = getPlanoFullPath(p.codigo);
+            let opt = $('<option>', {
+                value: p.codigo,
+                text: p.codigo + ' - ' + fullPath,
+                'data-codigo': p.codigo,
+                'data-parent': p.isParent,
+                'data-nivel': p.nivel
+            });
+
+            if (p.isParent) {
+                opt.prop('disabled', true);
+            }
+
+            $select.append(opt);
         });
-        $select.select2({ placeholder: 'Selecione o plano', allowClear: true, width: '100%', templateResult: formatarPlanoConta });
+
+        $select.select2({
+            placeholder: 'Selecione o plano',
+            allowClear: true,
+            width: '100%',
+            templateResult: formatarPlanoConta
+        });
     }
 
     function formatarPlanoConta(data) {
@@ -662,6 +689,13 @@
             if (!res.data || !res.data.id) return Swal.fire('Erro', 'Conta não encontrada.', 'error');
             contaLoaded = res.data;
 
+            const tipoConta = contaLoaded.tipo_conta || contaLoaded.tipo || contaLoaded.natureza || 'D';
+            if (tipoConta === 'R' || tipoConta === 'Receita') {
+                $('#tipoReceita').prop('checked', true);
+            } else {
+                $('#tipoDespesa').prop('checked', true);
+            }
+
             $('#doc').val(contaLoaded.doc || '');
             $('#emissao').val(contaLoaded.emissao || '');
             $('#vencimento').val(contaLoaded.vencimento || '');
@@ -686,7 +720,9 @@
             } else {
                 setMoneyValue('#valor_total', contaLoaded.valor || 0);
             }
-        } catch (e) { Swal.fire('Erro', 'Falha ao carregar a conta.', 'error'); }
+        } catch (e) {
+            Swal.fire('Erro', 'Falha ao carregar a conta.', 'error');
+        }
     }
 
     // ==============================================================
