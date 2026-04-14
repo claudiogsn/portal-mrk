@@ -216,4 +216,113 @@ class FinanceiroBancoController
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+
+    public static function linkOpenFinanceAccount(array $data): array
+    {
+        global $pdo;
+
+        // 1. Coleta e validação dos dados enviados no payload
+        $financeiro_banco_id = isset($data['financeiro_banco_id']) ? (int)$data['financeiro_banco_id'] : 0;
+        $pluggy_account_id   = isset($data['pluggy_account_id']) ? (int)$data['pluggy_account_id'] : 0;
+        $system_unit_id      = isset($data['system_unit_id']) ? (int)$data['system_unit_id'] : 0;
+
+        if (!$financeiro_banco_id || !$pluggy_account_id || !$system_unit_id) {
+            return [
+                'success' => false,
+                'message' => 'Parâmetros inválidos ou incompletos.'
+            ];
+        }
+
+        try {
+            // Inicia a transação para garantir que ambas as tabelas sejam atualizadas juntas
+            $pdo->beginTransaction();
+
+            // 2. Busca os dados reais da conta importada do Open Finance
+            $stmtOF = $pdo->prepare("
+                SELECT agency, account_number, account_number_digit 
+                FROM pluggy_accounts 
+                WHERE id = ? AND system_unit_id = ?
+            ");
+            $stmtOF->execute([$pluggy_account_id, $system_unit_id]);
+            $contaOF = $stmtOF->fetch(PDO::FETCH_ASSOC);
+
+            if (!$contaOF) {
+                $pdo->rollBack();
+                return [
+                    'success' => false,
+                    'message' => 'Conta do Open Finance não encontrada na base.'
+                ];
+            }
+
+            // Formata a conta unindo o número e o dígito (caso exista)
+            $agencia = $contaOF['agency'];
+            $contaCorrente = $contaOF['account_number'];
+            if (!empty($contaOF['account_number_digit'])) {
+                $contaCorrente .= '-' . $contaOF['account_number_digit'];
+            }
+
+            // 3. Atualiza a tabela do Financeiro (Vínculo + Sobrescrita de Ag/Conta)
+            $stmtBanco = $pdo->prepare("
+                UPDATE financeiro_banco 
+                SET pluggy_account_id = ?, 
+                    agencia = ?, 
+                    conta = ? 
+                WHERE id = ? AND system_unit_id = ?
+            ");
+            $stmtBanco->execute([
+                $pluggy_account_id,
+                $agencia,
+                $contaCorrente,
+                $financeiro_banco_id,
+                $system_unit_id
+            ]);
+
+            // 4. Atualiza a tabela do Pluggy (Para manter a relação bilateral que criamos)
+            $stmtPluggy = $pdo->prepare("
+                UPDATE pluggy_accounts 
+                SET financeiro_banco_id = ? 
+                WHERE id = ? AND system_unit_id = ?
+            ");
+            $stmtPluggy->execute([
+                $financeiro_banco_id,
+                $pluggy_account_id,
+                $system_unit_id
+            ]);
+
+            // Salva as alterações definitivamente no banco de dados
+            $pdo->commit();
+
+            return [
+                'success' => true,
+                'message' => 'Contas vinculadas com sucesso e dados atualizados!'
+            ];
+
+        } catch (\PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            // Verifica o erro de UNIQUE constraint
+            if ($e->getCode() == 23000) {
+                return [
+                    'success' => false,
+                    'message' => 'Esta conta já possui um vínculo com outro banco ou registro.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Erro interno ao tentar vincular: ' . $e->getMessage()
+            ];
+        } catch (\Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return [
+                'success' => false,
+                'message' => 'Erro genérico ao tentar vincular: ' . $e->getMessage()
+            ];
+        }
+    }
 }

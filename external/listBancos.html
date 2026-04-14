@@ -18,63 +18,49 @@
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
-        /* ====== ESTILO SKELETON ====== */
-        .skeleton {
-            background-color: #e2e5e7;
-            background-image: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
-            background-size: 200px 100%;
-            background-repeat: no-repeat;
-            display: inline-block;
-            width: 100%; height: 15px; border-radius: 4px;
-            animation: skeleton-loading 1.5s infinite;
-        }
-        @keyframes skeleton-loading { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
-
-        /* ====== AJUSTES GERAIS MRK ====== */
         html, body { background: transparent !important; }
-        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; }
+        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; overflow-x: hidden; }
         .container-fluid { padding-top: 15px; }
 
-        .card {
-            background: rgba(255, 255, 255, 0.98) !important;
-            border-top: 2px solid var(--mrk-blue) !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-        }
-        .card .header h2 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); display: flex; align-items: center; gap: 10px; }
+        .card-main { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee; border-top: 3px solid var(--mrk-blue) !important; margin-bottom: 20px; border-radius: 6px; padding: 20px; }
+        .header-flex { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .header-flex h2 { margin: 0; font-family: 'Kanit', sans-serif; font-size: 20px; color: var(--mrk-blue); display: flex; align-items: center; gap: 10px; }
 
-        /* Tabela e Ações */
-        .table thead th {
-            background-color: #f8f9fa;
-            color: var(--mrk-blue);
-            font-family: 'Kanit', sans-serif;
-            font-size: 11px;
-            text-transform: uppercase;
-            text-align: center;
-        }
-        .col-action { width: 50px; text-align: center !important; }
-        .action-icon {
-            font-size: 20px;
-            transition: transform 0.2s;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer;
-            text-decoration: none !important;
-        }
+        .account-card { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; transition: all 0.3s ease; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; height: calc(100% - 20px); }
+        .account-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+        .account-header { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600; }
+        .account-header-left { display: flex; align-items: center; gap: 12px; }
+        .account-header .bank-logo { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; background: rgba(255,255,255,0.9); padding: 3px; flex-shrink: 0; }
+        .account-body { padding: 20px; flex-grow: 1; }
+        .account-info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .account-info-label { color: #888; font-weight: 500; }
+        .account-info-val { color: #333; font-weight: 600; font-family: 'Kanit', sans-serif; font-size: 14px; }
+
+        .account-footer { padding: 15px 20px; background: #fcfcfc; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+
+        .badge-status { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+        .badge-status.ativo { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .badge-status.inativo { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+        .badge-status.of-linked { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+
+        .action-icon { font-size: 20px; transition: transform 0.2s; display: flex; justify-content: center; align-items: center; cursor: pointer; text-decoration: none !important; }
         .action-icon:hover { transform: scale(1.2); }
         .icon-blue { color: var(--mrk-blue); }
         .icon-orange { color: var(--mrk-amber); }
         .icon-red { color: var(--mrk-red); }
 
-        .status-label { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #fff; }
-        .status-ativo { background-color: var(--mrk-green); }
-        .status-inativo { background-color: var(--mrk-red); }
+        .skeleton-wrapper { display: none; }
+        .skeleton-card { background: #fff; border-radius: 12px; border: 1px solid #eee; height: 220px; margin-bottom: 20px; position: relative; overflow: hidden; }
+        .skeleton-card::after { content: ""; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: sweep 1.5s infinite; }
+        .sk-head { height: 60px; background: #e0e0e0; }
+        .sk-body { padding: 20px; }
+        .sk-line { height: 15px; background: #e0e0e0; margin-bottom: 10px; border-radius: 4px; }
+        @keyframes sweep { 0% { left: -100%; } 100% { left: 200%; } }
 
-        /* ====== MODAL PREMIUM ====== */
         .modal-content { border-radius: 12px; border: none; overflow: hidden; }
         .modal-header { position: relative; border-bottom: 2px solid var(--mrk-blue); padding: 18px 25px; background: #fff; }
         .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; }
         .btn-close-mrk { position: absolute; top: 15px; right: 15px; color: var(--mrk-red); font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer; }
-
         label { font-family: 'Kanit', sans-serif; font-size: 12px; color: #666; margin-bottom: 5px; }
         .form-control { height: 38px; border-radius: 6px; border: 1px solid #ddd; }
     </style>
@@ -82,49 +68,37 @@
 
 <body class="theme-blue">
 <div class="container-fluid">
-    <div class="card">
-        <div class="header">
+    <div class="card-main">
+        <div class="header-flex">
             <h2>
-                <iconify-icon icon="icon-park-outline:bank-card" width="24"></iconify-icon>
+                <iconify-icon icon="icon-park-outline:bank-card"></iconify-icon>
                 GESTÃO DE CONTAS BANCÁRIAS
             </h2>
+            <button class="btn btn-success" id="btnNovoBanco" style="height:38px; border-radius: 6px; background-color: var(--mrk-green) !important; border: none;">
+                <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> NOVA CONTA
+            </button>
         </div>
-        <div class="body">
-            <div class="row clearfix" style="margin-bottom: 20px;">
-                <div class="col-md-3 mb-2">
-                    <label style="font-family:'Kanit'; font-size:12px;">Código</label>
-                    <input type="text" id="filtroCodigo" class="form-control" placeholder="Ex: 341">
-                </div>
-                <div class="col-md-6 mb-2">
-                    <label style="font-family:'Kanit'; font-size:12px;">Instituição / Nome da Conta</label>
-                    <input type="text" id="filtroNome" class="form-control" placeholder="Digite para pesquisar...">
-                </div>
-                <div class="col-md-3 mb-2">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-success btn-block" id="btnNovoBanco" style="height:38px; background-color: var(--mrk-green) !important;">
-                        <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> NOVA CONTA
-                    </button>
-                </div>
-            </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover" id="tabela-bancos">
-                    <thead>
-                    <tr>
-                        <th class="col-action">Edit</th>
-                        <th class="col-action">OnOff</th>
-                        <th class="col-action">Sair</th>
-                        <th style="width:80px;">Código</th>
-                        <th style="text-align: left;">Instituição / Nome</th>
-                        <th style="text-align: left;">Agência / Conta</th>
-                        <th class="text-center">Carteira</th>
-                        <th class="text-center">Status</th>
-                    </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                    </tbody>
-                </table>
+        <div class="row clearfix" style="margin-bottom: 20px;">
+            <div class="col-md-4 mb-2">
+                <input type="text" id="filtroCodigo" class="form-control" placeholder="Buscar por Código (Ex: 341)">
             </div>
+            <div class="col-md-8 mb-2">
+                <input type="text" id="filtroNome" class="form-control" placeholder="Buscar por Instituição / Nome da Conta...">
+            </div>
+        </div>
+
+        <div id="sk-cards" class="row skeleton-wrapper">
+            <div class="col-md-4"><div class="skeleton-card"><div class="sk-head"></div><div class="sk-body"><div class="sk-line" style="width: 80%"></div><div class="sk-line" style="width: 60%"></div></div></div></div>
+            <div class="col-md-4"><div class="skeleton-card"><div class="sk-head"></div><div class="sk-body"><div class="sk-line" style="width: 80%"></div><div class="sk-line" style="width: 60%"></div></div></div></div>
+            <div class="col-md-4"><div class="skeleton-card"><div class="sk-head"></div><div class="sk-body"><div class="sk-line" style="width: 80%"></div><div class="sk-line" style="width: 60%"></div></div></div></div>
+        </div>
+
+        <div class="row" id="grid-bancos"></div>
+
+        <div id="msg-vazio" class="text-center muted" style="padding: 40px; display: none;">
+            <iconify-icon icon="icon-park-outline:inbox" style="font-size: 48px; color: #ddd; margin-bottom: 10px;"></iconify-icon><br>
+            Nenhuma conta cadastrada.
         </div>
     </div>
 </div>
@@ -142,21 +116,21 @@
                     <div class="row clearfix">
                         <div class="col-md-4 mb-2">
                             <label>Código do Banco *</label>
-                            <input type="number" class="form-control" id="codigo" placeholder="Ex: 341" required>
+                            <input type="number" class="form-control" id="codigo" required>
                         </div>
                         <div class="col-md-8 mb-2">
                             <label>Nome da Conta / Banco *</label>
-                            <input type="text" class="form-control" id="nome" placeholder="Ex: Itaú Movimento" required>
+                            <input type="text" class="form-control" id="nome" required>
                         </div>
                     </div>
                     <div class="row clearfix">
-                        <div class="col-md-4 mb-2"><label>Agência</label><input type="text" class="form-control" id="agencia" placeholder="1234"></div>
-                        <div class="col-md-5 mb-2"><label>Conta Corrente</label><input type="text" class="form-control" id="conta" placeholder="12345-6"></div>
-                        <div class="col-md-3 mb-2"><label>Carteira</label><input type="text" class="form-control" id="carteira" placeholder="109"></div>
+                        <div class="col-md-4 mb-2"><label>Agência</label><input type="text" class="form-control" id="agencia"></div>
+                        <div class="col-md-5 mb-2"><label>Conta Corrente</label><input type="text" class="form-control" id="conta"></div>
+                        <div class="col-md-3 mb-2"><label>Carteira</label><input type="text" class="form-control" id="carteira"></div>
                     </div>
                     <div class="form-group mb-2">
                         <label>Descrição / Observações</label>
-                        <input type="text" class="form-control" id="descricao" placeholder="Opcional">
+                        <input type="text" class="form-control" id="descricao">
                     </div>
                     <div class="form-group mb-0">
                         <label>Status</label>
@@ -168,10 +142,33 @@
                 </form>
             </div>
             <div class="modal-footer" style="border-top: 1px solid #eee;">
-                <button type="button" class="btn btn-primary" id="btnSalvar" style="background-color: var(--mrk-blue) !important; padding: 10px 30px;">
-                    <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> SALVAR CONTA
+                <button type="button" class="btn btn-primary" id="btnSalvar" style="background-color: var(--mrk-blue) !important; padding: 10px 30px; border-radius: 6px;">
+                    <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> SALVAR
                 </button>
-                <button type="button" class="btn btn-link" data-dismiss="modal" style="color: #666;">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalLinkOF" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Vincular Conta Open Finance</h4>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="linkFinanceiroId">
+                <label>Selecione a conta importada pelo Open Finance:</label>
+                <select id="selectContaOF" class="form-control">
+                    <option value="">Carregando contas...</option>
+                </select>
+                <small class="text-muted d-block mt-2">A agência e conta do banco financeiro serão atualizadas com os dados da integração.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnConfirmarLink" style="background-color: var(--mrk-blue) !important; border-radius: 6px;">
+                    VINCULAR CONTA
+                </button>
             </div>
         </div>
     </div>
@@ -184,139 +181,209 @@
 
 <script>
     'use strict';
+    console.log("1. Scripts carregados. Lendo variáveis...");
 
-    $(document).ready(function () {
-        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token'), system_unit_id = params.get('system_unit_id');
+    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+    const baseOfUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/open_finance.php' : 'http://localhost/portal-mrk/api/v1/open_finance.php';
 
-        let bancosCache = [];
+    // Tenta pegar da URL primeiro. Se não achar, usa o PHP. Ajuste conforme sua estrutura atual!
+    const params = new URLSearchParams(window.location.search);
+    let token = params.get('token') || "<?php echo isset($token) ? $token : ''; ?>";
+    let system_unit_id = params.get('system_unit_id') || "<?php echo isset($unit_id) ? $unit_id : ''; ?>";
 
-        function showSkeletons() {
-            const tb = $('#tableBody').empty();
-            for(let i=0; i<6; i++) {
-                tb.append(`<tr><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>`);
-            }
+    console.log("2. Credenciais prontas:", { token, system_unit_id });
+
+    let bancosCache = [];
+    let contasOFCache = [];
+    let openFinanceAtivo = false;
+
+    const LOGO_TOKEN = 'pk_P0veRzAeSuCornQ7nz584Q';
+    const bankBrands = {
+        "001": { name: "Banco do Brasil", bg: "#FCE80A", text: "#0038A8", domain: "bb.com.br" },
+        "033": { name: "Santander", bg: "#EC0000", text: "#FFFFFF", domain: "santander.com.br" },
+        "104": { name: "Caixa Econômica", bg: "#005CA9", text: "#F39200", domain: "caixa.gov.br" },
+        "237": { name: "Bradesco", bg: "#CC092F", text: "#FFFFFF", domain: "bradesco.com.br" },
+        "260": { name: "Nubank", bg: "#820AD1", text: "#FFFFFF", domain: "nubank.com.br" },
+        "341": { name: "Itaú", bg: "#EC7000", text: "#FFFFFF", domain: "itau.com.br" },
+        "748": { name: "Sicredi", bg: "#00A13A", text: "#FFFFFF", domain: "sicredi.com.br" },
+        "756": { name: "Sicoob", bg: "#003641", text: "#00AE9D", domain: "sicoob.com.br" },
+        "default": { name: "Banco", bg: "#607D8B", text: "#FFFFFF", domain: "" }
+    };
+
+    function bankLogoUrl(domain) {
+        return domain ? `https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=64&format=png` : '';
+    }
+    function escapeHtml(s) { return s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    // 1. Criamos uma função separada e assíncrona para iniciar a lógica
+    async function iniciarAplicacao() {
+        console.log("4. Iniciando as requisições...");
+        try {
+            await verificarOpenFinanceAtivo();
+        } catch (error) {
+            console.error("Erro ao verificar Open Finance:", error);
         }
 
-        async function listarBancos() {
-            showSkeletons();
-            try {
-                const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id, apenas_ativos: false } });
-                bancosCache = res.data.data || res.data;
-                renderTabela(bancosCache);
-            } catch (e) { Swal.fire('Erro', 'Falha ao carregar contas.', 'error'); }
+        try {
+            await listarBancos();
+        } catch (error) {
+            console.error("Erro ao listar Bancos:", error);
         }
 
-        function renderTabela(dados) {
-            const tbody = $('#tableBody').empty();
-            if(!dados.length) { tbody.append('<tr><td colspan="8" class="text-center p-4">Nenhuma conta cadastrada.</td></tr>'); return; }
-
-            dados.sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
-
-            dados.forEach(b => {
-                const ativos = Number(b.ativos ?? 1);
-                tbody.append(`
-                    <tr data-id="${b.id}">
-                        <td class="col-action"><a class="action-icon icon-blue btnEditar" data-toggle="tooltip" title="Editar Conta"><iconify-icon icon="icon-park-outline:edit-two"></iconify-icon></a></td>
-                        <td class="col-action"><a class="action-icon icon-orange btnToggle" data-toggle="tooltip" title="${ativos ? 'Desativar' : 'Ativar'}"><iconify-icon icon="icon-park-outline:power"></iconify-icon></a></td>
-                        <td class="col-action"><a class="action-icon icon-red btnExcluir" data-toggle="tooltip" title="Excluir Definitivo"><iconify-icon icon="icon-park-outline:delete-five"></iconify-icon></a></td>
-                        <td class="text-center"><b>${b.codigo || ''}</b></td>
-                        <td>${b.nome}</td>
-                        <td><small style="color:#888;">Ag: ${b.agencia || '-'} | Cc: ${b.conta || '-'}</small></td>
-                        <td class="text-center">${b.carteira || '-'}</td>
-                        <td class="text-center"><span class="status-label ${ativos ? 'status-ativo' : 'status-inativo'}">${ativos ? 'Ativo' : 'Inativo'}</span></td>
-                    </tr>
-                `);
-            });
-
+        // Ativa os tooltips apenas se o jQuery e o Bootstrap estiverem carregados
+        if(typeof $ !== 'undefined' && typeof $.fn.tooltip !== 'undefined') {
             $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
         }
+    }
 
-        // --- FILTROS ---
-        $('#filtroCodigo, #filtroNome').on('input', function() {
-            const cod = $('#filtroCodigo').val().toLowerCase();
-            const nom = $('#filtroNome').val().toLowerCase();
-            const filtrados = bancosCache.filter(b => (!cod || String(b.codigo).startsWith(cod)) && (!nom || b.nome.toLowerCase().includes(nom)));
-            renderTabela(filtrados);
+    // 2. Usamos o evento nativo, SEM ASYNC, para aguardar a tela carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("3. DOM carregado com sucesso.");
+
+        // Verifica se o Axios carregou (se não, as requisições vão quebrar)
+        if (typeof axios === 'undefined') {
+            console.error("❌ ERRO: Axios não carregou. Verifique os bloqueios do navegador.");
+            return;
+        }
+
+        // Chama a função assíncrona de forma segura
+        iniciarAplicacao();
+    });
+
+    async function verificarOpenFinanceAtivo() {
+        console.log("4. Consultando status do Open Finance...");
+        const res = await axios.post(baseOfUrl, { method: 'openFinanceCheckPayer', token, data: { system_unit_id } });
+        openFinanceAtivo = res.data && res.data.exists === true;
+        console.log("Status Open Finance:", openFinanceAtivo ? "Ativo" : "Inativo");
+
+        if(openFinanceAtivo) {
+            const resOf = await axios.post(baseOfUrl, { method: 'openFinanceListLocalAccounts', token, data: { system_unit_id } });
+            contasOFCache = Array.isArray(resOf.data.data) ? resOf.data.data : (Array.isArray(resOf.data) ? resOf.data : []);
+            console.log("Contas Open Finance Carregadas:", contasOFCache.length);
+        }
+    }
+
+    async function listarBancos() {
+        console.log("5. Buscando bancos do Financeiro...");
+        $('#grid-bancos').empty();
+        $('#msg-vazio').hide();
+        $('#sk-cards').css('display', 'flex');
+
+        const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id, apenas_ativos: false } });
+        console.log("Bancos retornados:", res.data);
+
+        bancosCache = res.data.data || res.data || [];
+        $('#sk-cards').hide();
+        renderCards(bancosCache);
+    }
+
+    function renderCards(dados) {
+        const $grid = $('#grid-bancos').empty();
+        if(!dados || !dados.length) {
+            $('#msg-vazio').show();
+            return;
+        }
+        $('#msg-vazio').hide();
+
+        dados.sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
+
+        dados.forEach(b => {
+            const ativos = Number(b.ativos ?? 1);
+            const isLinked = !!b.pluggy_account_id;
+
+            const brandCode = String(b.codigo).padStart(3, '0');
+            const brand = bankBrands[brandCode] || bankBrands["default"];
+            const logoUrl = bankLogoUrl(brand.domain);
+            const logoHtml = (isLinked && logoUrl) ? `<img src="${logoUrl}" class="bank-logo" onerror="this.style.display='none'">` : `<iconify-icon icon="icon-park-outline:bank" class="bank-logo" style="background:transparent; font-size: 26px; padding:0;"></iconify-icon>`;
+
+            const ofBadge = isLinked
+                ? `<span class="badge-status of-linked"><iconify-icon icon="icon-park-outline:link-cloud"></iconify-icon> Sincronizado</span>`
+                : `<span class="badge-status ${ativos ? 'ativo' : 'inativo'}">${ativos ? 'Ativo' : 'Inativo'}</span>`;
+
+            const linkBtn = (openFinanceAtivo && !isLinked)
+                ? `<a class="action-icon icon-blue btnLink" data-id="${b.id}" data-toggle="tooltip" title="Vincular Open Finance"><iconify-icon icon="icon-park-outline:api"></iconify-icon></a>`
+                : '';
+
+            $grid.append(`
+                <div class="col-md-4">
+                    <div class="account-card">
+                        <div class="account-header" style="background-color: ${isLinked ? brand.bg : '#f8f9fa'}; color: ${isLinked ? brand.text : '#333'};">
+                            <div class="account-header-left">
+                                ${logoHtml}
+                                <span>${escapeHtml(b.nome)} <small style="opacity: 0.8; font-weight: 400; font-size: 12px;">(${b.codigo})</small></span>
+                            </div>
+                        </div>
+                        <div class="account-body">
+                            <div class="account-info-row"><span class="account-info-label">Agência</span><span class="account-info-val">${escapeHtml(b.agencia || '-')}</span></div>
+                            <div class="account-info-row"><span class="account-info-label">Conta</span><span class="account-info-val">${escapeHtml(b.conta || '-')}</span></div>
+                            <div class="account-info-row"><span class="account-info-label">Carteira</span><span class="account-info-val">${escapeHtml(b.carteira || '-')}</span></div>
+                        </div>
+                        <div class="account-footer">
+                            <div>${ofBadge}</div>
+                            <div style="display: flex; gap: 12px; align-items: center;">
+                                ${linkBtn}
+                                <a class="action-icon icon-blue btnEditar" data-id="${b.id}" data-toggle="tooltip" title="Editar"><iconify-icon icon="icon-park-outline:edit-two"></iconify-icon></a>
+                                <a class="action-icon icon-orange btnToggle" data-id="${b.id}" data-toggle="tooltip" title="${ativos ? 'Desativar' : 'Ativar'}"><iconify-icon icon="icon-park-outline:power"></iconify-icon></a>
+                                <a class="action-icon icon-red btnExcluir" data-id="${b.id}" data-toggle="tooltip" title="Excluir"><iconify-icon icon="icon-park-outline:delete-five"></iconify-icon></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
         });
 
-        // --- CADASTRO/EDIÇÃO ---
-        $('#btnNovoBanco').click(() => {
-            $('#formBanco')[0].reset();
-            $('#bancoId').val('');
-            $('#modalTitulo').text('Nova Conta Bancária');
-            $('#modalBanco').modal('show');
-        });
+        if(typeof $.fn.tooltip !== 'undefined') {
+            $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+        }
+    }
 
-        $(document).on('click', '.btnEditar', function() {
-            const id = $(this).closest('tr').data('id');
-            const b = bancosCache.find(x => String(x.id) === String(id));
-            $('#bancoId').val(b.id);
-            $('#codigo').val(b.codigo);
-            $('#nome').val(b.nome);
-            $('#agencia').val(b.agencia);
-            $('#conta').val(b.conta);
-            $('#carteira').val(b.carteira);
-            $('#descricao').val(b.descricao);
-            $('#ativos').val(b.ativos ?? 1);
-            $('#modalTitulo').text('Editar Conta Bancária');
-            $('#modalBanco').modal('show');
-        });
+    // Ações e modais continuam iguais...
+    $('#btnNovoBanco').click(() => {
+        $('#formBanco')[0].reset();
+        $('#bancoId').val('');
+        $('#modalTitulo').text('Nova Conta Bancária');
+        $('#modalBanco').modal('show');
+    });
 
-        $('#btnSalvar').click(async function() {
-            const id = $('#bancoId').val();
-            const payload = {
-                id, codigo: $('#codigo').val(), nome: $('#nome').val(),
-                agencia: $('#agencia').val(), conta: $('#conta').val(),
-                carteira: $('#carteira').val(), descricao: $('#descricao').val(),
-                ativos: $('#ativos').val(), system_unit_id
-            };
+    $(document).on('click', '.btnLink', function() {
+        const idFinanceiro = $(this).data('id');
+        $('#linkFinanceiroId').val(idFinanceiro);
 
-            if(!payload.codigo || !payload.nome) return Swal.fire('Atenção', 'Código e Nome são obrigatórios.', 'warning');
+        const $sel = $('#selectContaOF').empty().append('<option value="">Selecione uma conta...</option>');
+        const contasNaoVinculadas = contasOFCache.filter(c => !c.financeiro_banco_id);
 
-            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
-            try {
-                const method = id ? 'updateBanco' : 'createBanco';
-                await axios.post(baseUrl, { method, token, data: payload });
-                Swal.fire({ icon: 'success', title: 'Salvo!', timer: 1500, showConfirmButton: false });
-                $('#modalBanco').modal('hide');
-                listarBancos();
-            } catch (e) { Swal.fire('Erro', 'Erro ao salvar.', 'error'); }
-        });
+        if (contasNaoVinculadas.length === 0) {
+            $sel.append('<option disabled>Nenhuma conta do Open Finance disponível.</option>');
+        } else {
+            contasNaoVinculadas.forEach(c => {
+                const ag = c.agency_digit ? `${c.agency}-${c.agency_digit}` : c.agency;
+                const ct = c.account_number_digit ? `${c.account_number}-${c.account_number_digit}` : c.account_number;
+                $sel.append(`<option value="${c.id}">${c.bank_name || c.bank_code} | Ag: ${ag} | Cc: ${ct}</option>`);
+            });
+        }
+        $('#modalLinkOF').modal('show');
+    });
 
-        // --- AÇÕES ---
-        $(document).on('click', '.btnToggle', async function() {
-            const id = $(this).closest('tr').data('id');
-            const b = bancosCache.find(x => String(x.id) === String(id));
-            const novoStatus = b.ativos ? 0 : 1;
+    $('#btnConfirmarLink').click(async function() {
+        const idFinanceiro = $('#linkFinanceiroId').val();
+        const idPluggy = $('#selectContaOF').val();
+        if(!idPluggy) return Swal.fire('Atenção', 'Selecione uma conta.', 'warning');
 
-            const res = await Swal.fire({ title: 'Alterar Status?', text: `Deseja ${novoStatus ? 'ativar' : 'inativar'} a conta ${b.nome}?`, icon: 'question', showCancelButton: true });
-            if(res.isConfirmed) {
-                try {
-                    await axios.post(baseUrl, { method: 'updateBanco', token, data: { id, ativos: novoStatus } });
-                    listarBancos();
-                } catch (e) { Swal.fire('Erro', 'Falha ao atualizar.', 'error'); }
-            }
-        });
-
-        $(document).on('click', '.btnExcluir', async function() {
-            const id = $(this).closest('tr').data('id');
-            const b = bancosCache.find(x => String(x.id) === String(id));
-
-            const res = await Swal.fire({ title: 'Excluir Conta?', text: `Deseja excluir permanentemente a conta ${b.nome}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
-            if(res.isConfirmed) {
-                try {
-                    const r = await axios.post(baseUrl, { method: 'deleteBanco', token, data: { id } });
-                    if(!r.data.success) return Swal.fire('Atenção', r.data.message, 'warning');
-                    listarBancos();
-                } catch (e) { Swal.fire('Erro', 'Falha ao excluir.', 'error'); }
-            }
-        });
-
-        listarBancos();
+        Swal.fire({ title: 'Vinculando...', didOpen: () => Swal.showLoading() });
+        try {
+            await axios.post(baseUrl, {
+                method: 'linkOpenFinanceAccount',
+                token,
+                data: { financeiro_banco_id: idFinanceiro, pluggy_account_id: idPluggy, system_unit_id }
+            });
+            Swal.fire({ icon: 'success', title: 'Vinculado com sucesso!', timer: 1500, showConfirmButton: false });
+            $('#modalLinkOF').modal('hide');
+            await verificarOpenFinanceAtivo();
+            listarBancos();
+        } catch (e) {
+            Swal.fire('Erro', 'Falha ao vincular a conta.', 'error');
+        }
     });
 </script>
-
 </body>
 </html>

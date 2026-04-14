@@ -82,6 +82,10 @@ if (isset($data['method']) && isset($data['data'])) {
                     ];
                 }
                 break;
+            case 'linkOpenFinanceAccount':
+                $response = FinanceiroBancoController::linkOpenFinanceAccount($requestData);
+                break;
+
             case 'createBanco':
                 if (
                     isset($requestData['system_unit_id']) &&
