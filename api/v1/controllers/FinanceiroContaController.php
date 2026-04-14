@@ -1817,7 +1817,7 @@ class FinanceiroContaController {
             // ===========================
             $hoje   = new DateTime();
             $dtHoje = $hoje->format('Y-m-d');
-            $dt7    = (clone $hoje)->modify('+7 days')->format('Y-m-d');
+            $dt7    = (clone $hoje)->modify('+6 days')->format('Y-m-d');
             $dt30   = (clone $hoje)->modify('+30 days')->format('Y-m-d');
 
             $whereBaseAberto = "
