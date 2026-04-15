@@ -64,6 +64,52 @@
             padding: 15px 20px;
             border-bottom: 1px solid #eee;
             background: #fdfdfd;
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        .filters-area .form-group {
+            margin-bottom: 0;
+            flex: 1;
+        }
+
+        /* Área da conta carregada */
+        .bank-info-container {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa; /* cor neutra inicial */
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Kanit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px 8px 0 0;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .bank-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            object-fit: contain;
+            background: rgba(255,255,255,0.9);
+            padding: 3px;
+        }
+
+        .bank-details {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .bank-details small {
+            font-size: 12px;
+            opacity: 0.85;
+            font-weight: 400;
+            margin-top: 2px;
         }
 
         /* ====== GRID DE DIAS ====== */
@@ -103,7 +149,6 @@
 <div class="container-fluid">
     <div class="card">
 
-        <!-- HEADER -->
         <div class="card-header-custom">
             <h2>
                 <iconify-icon icon="icon-park-outline:calendar-dot" width="24"></iconify-icon>
@@ -114,41 +159,41 @@
             </a>
         </div>
 
-        <!-- FILTROS -->
-        <div class="filters-area">
-            <div class="row clearfix" style="margin:0;">
-                <div class="col-md-4 mb-2">
-                    <label style="font-family:'Kanit'; font-size:12px; font-weight:600; color:#444;">Conta Bancária</label>
-                    <select id="bancoSelect" class="form-control">
-                        <option value="">Carregando bancos...</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-2">
-                    <label style="font-family:'Kanit'; font-size:12px; font-weight:600; color:#444;">Mês</label>
-                    <select id="monthSelect" class="form-control">
-                        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-                        <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-                        <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-2">
-                    <label style="font-family:'Kanit'; font-size:12px; font-weight:600; color:#444;">Ano</label>
-                    <select id="yearSelect" class="form-control">
-                        <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
-                        <option value="2027">2027</option>
-                    </select>
-                </div>
-                <div class="col-md-2 mb-2" style="display: flex; align-items: flex-end;">
-                    <button id="searchButton" class="btn btn-primary btn-block" style="height:38px; background-color: var(--mrk-blue) !important; border:none; border-radius: 6px;">
-                        <iconify-icon icon="icon-park-outline:search" style="vertical-align:middle; margin-right:4px;"></iconify-icon> FILTRAR
-                    </button>
-                </div>
+        <div class="bank-info-container" id="bankInfoContainer">
+            <div id="bankIconHolder">
+                <iconify-icon icon="mdi:atm" style="font-size: 32px; color: #666;"></iconify-icon>
+            </div>
+            <div class="bank-details">
+                <span id="bankNameDisplay">Carregando informações da conta...</span>
+                <small id="bankAccountDetails"></small>
             </div>
         </div>
 
-        <!-- GRID DE DIAS -->
+        <div class="filters-area">
+            <div class="form-group" style="flex: 2;">
+                <label style="font-family:'Kanit'; font-size:12px; font-weight:600; color:#444;">Mês</label>
+                <select id="monthSelect" class="form-control">
+                    <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                    <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                    <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                    <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 2;">
+                <label style="font-family:'Kanit'; font-size:12px; font-weight:600; color:#444;">Ano</label>
+                <select id="yearSelect" class="form-control">
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <button id="searchButton" class="btn btn-primary btn-block" style="height:38px; background-color: var(--mrk-blue) !important; border:none; border-radius: 6px;">
+                    <iconify-icon icon="icon-park-outline:search" style="vertical-align:middle; margin-right:4px;"></iconify-icon> FILTRAR
+                </button>
+            </div>
+        </div>
+
         <div class="day-grid" id="dayGrid"></div>
 
     </div>
@@ -171,7 +216,14 @@
         const token = params.get('token') || 'test-token';
         const system_unit_id = params.get('system_unit_id') || params.get('unit_id');
         const username = params.get('username') || '';
+
+        // O banco vem obrigatoriamente pela URL
         const paramBancoId = params.get('banco_id') || params.get('financeiro_banco_id');
+
+        if (!paramBancoId) {
+            Swal.fire('Erro', 'Código do banco não informado na URL.', 'error');
+            return;
+        }
 
         // Data inicial
         const now = new Date();
@@ -181,33 +233,85 @@
         // Botão voltar
         $('#btnVoltarBancos').attr('href', `listBancos.html?username=${username}&token=${token}&system_unit_id=${system_unit_id}`);
 
-        async function carregarBancos() {
+        // Marcas Open Finance
+        // Marcas Open Finance
+        const LOGO_TOKEN = 'pk_P0veRzAeSuCornQ7nz584Q';
+        const OF_LOGO_URL = 'https://openfinancebrasil.org.br/wp-content/themes/openbank/assets/img/logo.png';
+        const bankBrands = {
+            "001": { name: "Banco do Brasil", bg: "#FCE80A", text: "#0038A8", domain: "bb.com.br" },
+            "033": { name: "Santander", bg: "#EC0000", text: "#FFFFFF", domain: "santander.com.br" },
+            "104": { name: "Caixa Econômica", bg: "#005CA9", text: "#F39200", domain: "caixa.gov.br" },
+            "237": { name: "Bradesco", bg: "#CC092F", text: "#FFFFFF", domain: "bradesco.com.br" },
+            "260": { name: "Nubank", bg: "#820AD1", text: "#FFFFFF", domain: "nubank.com.br" },
+            "341": { name: "Itaú", bg: "#EC7000", text: "#FFFFFF", domain: "itau.com.br" },
+            "748": { name: "Sicredi", bg: "#00A13A", text: "#FFFFFF", domain: "sicredi.com.br" },
+            "756": { name: "Sicoob", bg: "#003641", text: "#00AE9D", domain: "sicoob.com.br" },
+            "default": { name: "Banco Open Finance", bg: "#E3F2FD", text: "#1565C0", domain: "" }
+        };
+
+        function bankLogoUrl(domain) {
+            return domain ? `https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=64&format=png` : '';
+        }
+
+        // Busca informações completas do banco logado para popular o Header e aplicar a estilização
+        async function carregarInfoBanco() {
             try {
                 const res = await axios.post(baseUrl, {
                     method: 'listBancos',
                     token,
-                    data: { system_unit_id, apenas_ativos: true }
+                    data: { system_unit_id, apenas_ativos: false }
                 });
 
                 const bancos = res.data.data || res.data;
-                const $sel = $('#bancoSelect').empty();
+                if (!bancos || !bancos.length) return;
 
-                if (!bancos || !bancos.length) {
-                    $sel.append('<option value="">Nenhuma conta cadastrada</option>');
-                    return;
+                // Procura o banco específico que o usuário clicou (lendo do paramBancoId que é o código)
+                const bancoAtual = bancos.find(b => String(b.codigo) === String(paramBancoId));
+
+                if (bancoAtual) {
+                    const isLinked = !!bancoAtual.pluggy_account_id;
+
+                    // Configuração Visual Base
+                    let nomeBanco = bancoAtual.nome;
+                    let detalhesConta = `Ag: ${bancoAtual.agencia || '-'} | Cc: ${bancoAtual.conta || '-'} | Código: ${bancoAtual.codigo}`;
+                    let logoHtml = `<img src="https://portal.mrksolucoes.com.br/external/style/img/banco.png" class="bank-logo" style="background: transparent; padding: 0;">`;
+                    let ofBadge = '';
+
+                    // Se tiver Open Finance, aplicamos a tematização e criamos a tag/pílula
+                    if (isLinked) {
+
+                        // Badge Pequena, branca para destacar em qualquer cor de fundo
+                        ofBadge = `<span style="display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; background: #fff; color: #333; border-radius: 12px; font-size: 10px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-left: 12px; vertical-align: middle;">
+                            <img src="${OF_LOGO_URL}" style="height: 10px;"> Open Finance
+                        </span>`;
+
+                        if (bancoAtual.pluggy_bank_code) {
+                            const brandCode = String(bancoAtual.pluggy_bank_code).padStart(3, '0');
+                            const brand = bankBrands[brandCode] || bankBrands["default"];
+                            const logoUrl = bankLogoUrl(brand.domain);
+
+                            // Pinta o container
+                            $('#bankInfoContainer').css({
+                                'background-color': brand.bg,
+                                'color': brand.text
+                            });
+
+                            if (logoUrl) {
+                                logoHtml = `<img src="${logoUrl}" class="bank-logo" onerror="this.style.display='none'">`;
+                            }
+                        }
+                    }
+
+                    // Preenche a UI
+                    // Inserimos a ofBadge colada do lado do nome do banco
+                    $('#bankNameDisplay').html(`${nomeBanco} ${ofBadge}`);
+                    $('#bankAccountDetails').text(detalhesConta);
+                    $('#bankIconHolder').html(logoHtml);
+                } else {
+                    $('#bankNameDisplay').text(`Conta (Código: ${paramBancoId}) não encontrada.`);
                 }
-
-                $sel.append('<option value="">Selecione uma conta...</option>');
-                bancos.forEach(b => {
-                    $sel.append(`<option value="${b.codigo}">${b.nome} (Ag: ${b.agencia || '-'} / Cc: ${b.conta || '-'})</option>`);
-                });
-
-                if (paramBancoId) $sel.val(paramBancoId);
-                if ($sel.val()) loadDays();
-
             } catch (e) {
-                console.error(e);
-                $('#bancoSelect').empty().append('<option value="">Erro ao carregar</option>');
+                console.error("Erro ao buscar dados do banco", e);
             }
         }
 
@@ -219,9 +323,6 @@
         }
 
         async function loadDays() {
-            const financeiro_banco_id = $('#bancoSelect').val();
-            if (!financeiro_banco_id) return;
-
             const year = $('#yearSelect').val();
             const month = $('#monthSelect').val();
 
@@ -230,7 +331,7 @@
                 const res = await axios.post(baseUrl, {
                     method: 'getCalendarioConciliacao',
                     token,
-                    data: { system_unit_id, financeiro_banco_id, ano: year, mes: month }
+                    data: { system_unit_id, financeiro_banco_id: paramBancoId, ano: year, mes: month }
                 });
 
                 if (res.data.success) {
@@ -267,7 +368,7 @@
                 `);
 
                 if (day.status !== 'future') {
-                    card.click(() => abrirTelaDoDia(day.date, $('#bancoSelect').val()));
+                    card.click(() => abrirTelaDoDia(day.date, paramBancoId));
                 }
 
                 grid.append(card);
@@ -279,9 +380,10 @@
         }
 
         $('#searchButton').click(() => loadDays());
-        $('#bancoSelect').change(() => loadDays());
 
-        carregarBancos();
+        // Inicia a tela
+        carregarInfoBanco();
+        loadDays();
     });
 </script>
 </body>
