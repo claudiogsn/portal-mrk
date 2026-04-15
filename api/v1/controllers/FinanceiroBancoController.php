@@ -201,14 +201,22 @@ class FinanceiroBancoController
     {
         global $pdo;
 
-        $sql = "SELECT * FROM financeiro_banco 
-                WHERE system_unit_id = :unit";
+        // Faz o JOIN com a tabela do Open Finance para pegar o código real do banco conectado
+        $sql = "
+        SELECT 
+            fb.*, 
+            pa.bank_code AS pluggy_bank_code 
+        FROM financeiro_banco fb
+        LEFT JOIN pluggy_accounts pa ON pa.id = fb.pluggy_account_id
+        WHERE fb.system_unit_id = :unit
+    ";
 
+        // Adiciona fb. antes das colunas para evitar ambiguidade no banco de dados
         if ($apenasAtivos) {
-            $sql .= " AND ativos = 1";
+            $sql .= " AND fb.ativos = 1";
         }
 
-        $sql .= " ORDER BY nome ASC"; // Ordenar por nome costuma ser melhor para bancos
+        $sql .= " ORDER BY fb.nome ASC";
 
         $stmt = $pdo->prepare($sql);
         $stmt->bindParam(':unit', $system_unit_id, PDO::PARAM_INT);

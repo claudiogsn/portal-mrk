@@ -31,6 +31,7 @@
         .account-header { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600; }
         .account-header-left { display: flex; align-items: center; gap: 12px; }
         .account-header .bank-logo { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; background: rgba(255,255,255,0.9); padding: 3px; flex-shrink: 0; }
+
         .account-body { padding: 20px; flex-grow: 1; }
         .account-info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
         .account-info-label { color: #888; font-weight: 500; }
@@ -41,14 +42,18 @@
         .badge-status { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
         .badge-status.ativo { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
         .badge-status.inativo { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
-        .badge-status.of-linked { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
 
         .action-icon { font-size: 20px; transition: transform 0.2s; display: flex; justify-content: center; align-items: center; cursor: pointer; text-decoration: none !important; }
         .action-icon:hover { transform: scale(1.2); }
         .icon-blue { color: var(--mrk-blue); }
         .icon-orange { color: var(--mrk-amber); }
         .icon-red { color: var(--mrk-red); }
-        .icon-green { color: var(--mrk-green); }
+
+        /* Botão Novo OF */
+        .btn-of-connect { border-color: #ddd; color: #444; transition: 0.2s; background: #fff; }
+        .btn-of-connect img { filter: grayscale(100%); opacity: 0.7; transition: 0.2s; }
+        .btn-of-connect:hover { border-color: #1a73e8; color: #1a73e8; background: #f4f8ff; }
+        .btn-of-connect:hover img { filter: none; opacity: 1; }
 
         .skeleton-wrapper { display: none; }
         .skeleton-card { background: #fff; border-radius: 12px; border: 1px solid #eee; height: 220px; margin-bottom: 20px; position: relative; overflow: hidden; }
@@ -204,6 +209,8 @@
     let openFinanceAtivo = false;
 
     const LOGO_TOKEN = 'pk_P0veRzAeSuCornQ7nz584Q';
+    const OF_LOGO_URL = 'https://openfinancebrasil.org.br/wp-content/themes/openbank/assets/img/logo.png';
+
     const bankBrands = {
         "001": { name: "Banco do Brasil", bg: "#FCE80A", text: "#0038A8", domain: "bb.com.br" },
         "033": { name: "Santander", bg: "#EC0000", text: "#FFFFFF", domain: "santander.com.br" },
@@ -221,10 +228,7 @@
     }
 
     function escapeHtml(s) {
-        return s == null ? '' : String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+        return s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function getConciliacaoUrl(bancoCodigo) {
@@ -299,8 +303,6 @@
             data: { system_unit_id, apenas_ativos: false }
         });
 
-        console.log("Bancos retornados:", res.data);
-
         bancosCache = res.data.data || res.data || [];
         $('#sk-cards').hide();
         renderCards(bancosCache);
@@ -315,39 +317,61 @@
         }
 
         $('#msg-vazio').hide();
-
         dados.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
         dados.forEach(b => {
             const ativos = Number(b.ativos ?? 1);
             const isLinked = !!b.pluggy_account_id;
 
-            const brandCode = String(b.codigo).padStart(3, '0');
-            const brand = bankBrands[brandCode] || bankBrands["default"];
-            const logoUrl = bankLogoUrl(brand.domain);
+            // Cores e Ícones do Cabeçalho padrão (Neutro)
+            let headerBg = '#f8f9fa';
+            let headerText = '#333';
+            let logoHtml = `<iconify-icon icon="mdi:atm" class="bank-logo" style="background:transparent; font-size: 26px; padding:0; color: #555;"></iconify-icon>`;
 
-            const logoHtml = (isLinked && logoUrl)
-                ? `<img src="${logoUrl}" class="bank-logo" onerror="this.style.display='none'">`
-                : `<iconify-icon icon="icon-park-outline:bank" class="bank-logo" style="background:transparent; font-size: 26px; padding:0;"></iconify-icon>`;
+            // SÓ PINTA E BUSCA A LOGO SE ESTIVER CONECTADO E TIVER O CÓDIGO DO PLUGGY
+            if (isLinked && b.pluggy_bank_code) {
+                const brandCode = String(b.pluggy_bank_code).padStart(3, '0');
+                const brand = bankBrands[brandCode] || bankBrands["default"];
+                const logoUrl = bankLogoUrl(brand.domain);
 
-            const ofBadge = isLinked
-                ? `<span class="badge-status of-linked"><iconify-icon icon="icon-park-outline:link-cloud"></iconify-icon> Sincronizado</span>`
-                : `<span class="badge-status ${ativos ? 'ativo' : 'inativo'}">${ativos ? 'Ativo' : 'Inativo'}</span>`;
+                headerBg = brand.bg;
+                headerText = brand.text;
+                if (logoUrl) {
+                    logoHtml = `<img src="${logoUrl}" class="bank-logo" onerror="this.style.display='none'">`;
+                }
+            }
 
-            const linkBtn = (openFinanceAtivo && !isLinked)
-                ? `<a class="action-icon icon-blue btnLink" data-id="${b.id}" data-toggle="tooltip" title="Vincular Open Finance"><iconify-icon icon="icon-park-outline:api"></iconify-icon></a>`
-                : '';
+            const statusBadge = `<span class="badge-status ${ativos ? 'ativo' : 'inativo'}">${ativos ? 'Ativo' : 'Inativo'}</span>`;
 
-            const conciliacaoBtn = openFinanceAtivo
-                ? `<a class="action-icon icon-green" href="${getConciliacaoUrl(b.codigo)}" data-toggle="tooltip" title="Conciliação Bancária">
-                        <iconify-icon icon="icon-park-outline:transaction-order"></iconify-icon>
-                   </a>`
-                : '';
+            // ÁREA DE CONEXÃO OPEN FINANCE E CONCILIAÇÃO
+            let openFinanceBlock = '';
+            let btnConciliacao = '';
+
+            if (openFinanceAtivo) {
+                if (isLinked) {
+                    openFinanceBlock = `
+                        <div style="margin-top: 15px; padding: 8px 12px; background: #f4f6f8; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: #555; border: 1px solid #eee;">
+                            Conectado ao <img src="${OF_LOGO_URL}" style="height: 14px;">
+                        </div>
+                    `;
+                    btnConciliacao = `
+                        <a href="${getConciliacaoUrl(b.codigo)}" class="btn btn-primary btn-block" style="margin-top: 10px; background-color: var(--mrk-blue); border: none; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; transition: 0.2s;">
+                            <iconify-icon icon="icon-park-outline:transaction-order" style="font-size: 14px;"></iconify-icon> CONCILIAÇÃO BANCÁRIA
+                        </a>
+                    `;
+                } else {
+                    openFinanceBlock = `
+                        <button class="btn btn-default btn-block btnLink btn-of-connect" data-id="${b.id}" style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; font-weight: 600; border-radius: 6px; padding: 8px;">
+                            <img src="${OF_LOGO_URL}" style="height: 14px;"> Conectar ao Open Finance
+                        </button>
+                    `;
+                }
+            }
 
             $grid.append(`
                 <div class="col-md-4">
                     <div class="account-card">
-                        <div class="account-header" style="background-color: ${isLinked ? brand.bg : '#f8f9fa'}; color: ${isLinked ? brand.text : '#333'};">
+                        <div class="account-header" style="background-color: ${headerBg}; color: ${headerText};">
                             <div class="account-header-left">
                                 ${logoHtml}
                                 <span>${escapeHtml(b.nome)} <small style="opacity: 0.8; font-weight: 400; font-size: 12px;">(${b.codigo})</small></span>
@@ -357,19 +381,20 @@
                             <div class="account-info-row"><span class="account-info-label">Agência</span><span class="account-info-val">${escapeHtml(b.agencia || '-')}</span></div>
                             <div class="account-info-row"><span class="account-info-label">Conta</span><span class="account-info-val">${escapeHtml(b.conta || '-')}</span></div>
                             <div class="account-info-row"><span class="account-info-label">Carteira</span><span class="account-info-val">${escapeHtml(b.carteira || '-')}</span></div>
+
+                            ${openFinanceBlock}
+                            ${btnConciliacao}
                         </div>
                         <div class="account-footer">
-                            <div>${ofBadge}</div>
+                            <div>${statusBadge}</div>
                             <div style="display: flex; gap: 12px; align-items: center;">
-                                ${conciliacaoBtn}
-                                ${linkBtn}
-                                <a class="action-icon icon-blue btnEditar" data-id="${b.id}" data-toggle="tooltip" title="Editar">
+                                <a class="action-icon icon-blue btnEditar" data-id="${b.id}" data-toggle="tooltip" title="Editar Conta">
                                     <iconify-icon icon="icon-park-outline:edit-two"></iconify-icon>
                                 </a>
                                 <a class="action-icon icon-orange btnToggle" data-id="${b.id}" data-toggle="tooltip" title="${ativos ? 'Desativar' : 'Ativar'}">
                                     <iconify-icon icon="icon-park-outline:power"></iconify-icon>
                                 </a>
-                                <a class="action-icon icon-red btnExcluir" data-id="${b.id}" data-toggle="tooltip" title="Excluir">
+                                <a class="action-icon icon-red btnExcluir" data-id="${b.id}" data-toggle="tooltip" title="Excluir Definitivo">
                                     <iconify-icon icon="icon-park-outline:delete-five"></iconify-icon>
                                 </a>
                             </div>
@@ -466,6 +491,72 @@
 
         renderCards(filtrados);
     });
+
+    // EDIÇÃO, TOGGLE E DELETE MANTIDOS DA VERSÃO ORIGINAL
+    $(document).on('click', '.btnEditar', function() {
+        const id = $(this).data('id');
+        const b = bancosCache.find(x => String(x.id) === String(id));
+        $('#bancoId').val(b.id);
+        $('#codigo').val(b.codigo);
+        $('#nome').val(b.nome);
+        $('#agencia').val(b.agencia);
+        $('#conta').val(b.conta);
+        $('#carteira').val(b.carteira);
+        $('#descricao').val(b.descricao);
+        $('#ativos').val(b.ativos ?? 1);
+        $('#modalTitulo').text('Editar Conta Bancária');
+        $('#modalBanco').modal('show');
+    });
+
+    $('#btnSalvar').click(async function() {
+        const id = $('#bancoId').val();
+        const payload = {
+            id, codigo: $('#codigo').val(), nome: $('#nome').val(),
+            agencia: $('#agencia').val(), conta: $('#conta').val(),
+            carteira: $('#carteira').val(), descricao: $('#descricao').val(),
+            ativos: $('#ativos').val(), system_unit_id
+        };
+
+        if(!payload.codigo || !payload.nome) return Swal.fire('Atenção', 'Código e Nome são obrigatórios.', 'warning');
+
+        Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+        try {
+            const method = id ? 'updateBanco' : 'createBanco';
+            await axios.post(baseUrl, { method, token, data: payload });
+            Swal.fire({ icon: 'success', title: 'Salvo!', timer: 1500, showConfirmButton: false });
+            $('#modalBanco').modal('hide');
+            listarBancos();
+        } catch (e) { Swal.fire('Erro', 'Erro ao salvar.', 'error'); }
+    });
+
+    $(document).on('click', '.btnToggle', async function() {
+        const id = $(this).data('id');
+        const b = bancosCache.find(x => String(x.id) === String(id));
+        const novoStatus = b.ativos ? 0 : 1;
+
+        const res = await Swal.fire({ title: 'Alterar Status?', text: `Deseja ${novoStatus ? 'ativar' : 'inativar'} a conta ${b.nome}?`, icon: 'question', showCancelButton: true });
+        if(res.isConfirmed) {
+            try {
+                await axios.post(baseUrl, { method: 'updateBanco', token, data: { id, ativos: novoStatus } });
+                listarBancos();
+            } catch (e) { Swal.fire('Erro', 'Falha ao atualizar.', 'error'); }
+        }
+    });
+
+    $(document).on('click', '.btnExcluir', async function() {
+        const id = $(this).data('id');
+        const b = bancosCache.find(x => String(x.id) === String(id));
+
+        const res = await Swal.fire({ title: 'Excluir Conta?', text: `Deseja excluir permanentemente a conta ${b.nome}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
+        if(res.isConfirmed) {
+            try {
+                const r = await axios.post(baseUrl, { method: 'deleteBanco', token, data: { id } });
+                if(!r.data.success) return Swal.fire('Atenção', r.data.message || 'Erro ao excluir.', 'warning');
+                listarBancos();
+            } catch (e) { Swal.fire('Erro', 'Falha ao excluir.', 'error'); }
+        }
+    });
+
 </script>
 </body>
 </html>
