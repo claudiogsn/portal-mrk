@@ -341,7 +341,14 @@ $data_ref = $_GET['date'] ?? date('Y-m-d');
             try {
                 const res = await axios.post(baseUrl, {
                     method: 'executarConciliacaoMatch', token,
-                    data: { system_unit_id, financeiro_banco_id, usuario_id, sys_ids: Array.from(selSys), ban_ids: Array.from(selBan) }
+                    data: {
+                        system_unit_id,
+                        financeiro_banco_id,
+                        data_ref: data_fixa,
+                        usuario_id,
+                        sys_ids: Array.from(selSys),
+                        ban_ids: Array.from(selBan)
+                    }
                 });
                 if(res.data.success) {
                     Swal.fire({ icon: 'success', title: 'Sucesso!', text: 'Lançamentos conciliados.', timer: 1500, showConfirmButton: false});
@@ -579,17 +586,35 @@ $data_ref = $_GET['date'] ?? date('Y-m-d');
     function aplicarSmartMatch() {
         $('.row-item').removeClass('highlight-match');
 
+        let targetContainer = null; // Variável para saber qual lado deve rolar
+
         if (selSys.size > 0 && selBan.size === 0) {
             selSys.forEach(id => {
                 const el = $(`.row-sys[data-id="${id}"]`);
                 highlightMatches('.row-ban', Math.abs(el.data('valor')), el.data('desc'));
             });
+            targetContainer = '#listaBanco'; // O match aconteceu no lado do banco
         }
         else if (selBan.size > 0 && selSys.size === 0) {
             selBan.forEach(id => {
                 const el = $(`.row-ban[data-id="${id}"]`);
                 highlightMatches('.row-sys', Math.abs(el.data('valor')), el.data('desc'));
             });
+            targetContainer = '#listaSistema'; // O match aconteceu no lado do sistema
+        }
+
+        // --- NOVO: AUTO-SCROLL SUAVE ---
+        if (targetContainer) {
+            // Busca o primeiro item que foi marcado de amarelo naquele container
+            const firstMatch = $(targetContainer).find('.highlight-match').first();
+
+            if (firstMatch.length) {
+                // Rola a tabela até o item e centraliza ele na visão do usuário
+                firstMatch[0].scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
         }
     }
 

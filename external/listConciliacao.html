@@ -351,19 +351,39 @@
             days.forEach(day => {
                 const dayNum = parseInt(day.date.split('-')[2]);
 
-                let statusClass, statusTxt, icon;
+                let statusClass, statusTxt, icon, pendentesHtml = '';
+
                 if (day.status === 'consolidated') {
-                    statusClass = 'day-consolidated'; statusTxt = 'Conciliado'; icon = 'check-one';
+                    statusClass = 'day-consolidated';
+                    statusTxt = 'Conciliado';
+                    icon = 'check-one';
                 } else if (day.status === 'future') {
-                    statusClass = 'day-future'; statusTxt = 'Aguardando'; icon = 'lock';
+                    statusClass = 'day-future';
+                    statusTxt = 'Aguardando';
+                    icon = 'lock';
                 } else {
-                    statusClass = 'day-pending'; statusTxt = 'Pendente'; icon = 'time';
+                    statusClass = 'day-pending';
+                    statusTxt = 'Pendente';
+                    icon = 'time';
+
+                    // Se estiver pendente e o backend trouxer a quantidade
+                    if (day.pendentes > 0) {
+                        pendentesHtml = `<div style="background: rgba(245, 158, 11, 0.15); color: #b45309; font-size: 9px; padding: 2px 6px; border-radius: 10px; margin-top: 4px; font-weight: bold; border: 1px solid rgba(245, 158, 11, 0.3);">
+                            ${day.pendentes} TRNS. RESTANTES
+                        </div>`;
+                    } else {
+                        // Opcional: Se está pendente de fechamento mas não tem transação no banco
+                        pendentesHtml = `<div style="background: rgba(16, 185, 129, 0.1); color: #047857; font-size: 9px; padding: 2px 6px; border-radius: 10px; margin-top: 4px; font-weight: bold;">
+                            PRONTO P/ FECHAR
+                        </div>`;
+                    }
                 }
 
                 const card = $(`
                     <div class="day-card ${statusClass}" data-date="${day.date}">
                         <p>${dayNum}</p>
                         <small><iconify-icon icon="icon-park-outline:${icon}"></iconify-icon> ${statusTxt}</small>
+                        ${pendentesHtml}
                     </div>
                 `);
 

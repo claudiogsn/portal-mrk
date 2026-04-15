@@ -2412,33 +2412,52 @@ class FinanceiroContaController {
 
         try {
             $system_unit_id      = isset($data['system_unit_id']) ? (int)$data['system_unit_id'] : 0;
-            $financeiro_banco_id = isset($data['financeiro_banco_id']) ? (int)$data['financeiro_banco_id'] : 0;
+            // Aqui é o CÓDIGO do banco que vem da URL
+            $banco_codigo        = isset($data['financeiro_banco_id']) ? (int)$data['financeiro_banco_id'] : 0;
             $ano                 = isset($data['ano']) ? (int)$data['ano'] : date('Y');
             $mes                 = isset($data['mes']) ? (int)$data['mes'] : date('m');
 
-            if (!$system_unit_id || !$financeiro_banco_id) {
+            if (!$system_unit_id || !$banco_codigo) {
                 return ['success' => false, 'message' => 'Unidade e Banco são obrigatórios.'];
             }
 
-            // Descobre o último dia do mês informado
+            // Descobre o account_id do Pluggy vinculado a este banco
+            $stBanco = $pdo->prepare("SELECT pluggy_account_id FROM financeiro_banco WHERE codigo = ? AND system_unit_id = ? LIMIT 1");
+            $stBanco->execute([$banco_codigo, $system_unit_id]);
+            $pluggy_account_id = $stBanco->fetchColumn();
+
             $dataInicioMes = sprintf('%04d-%02d-01', $ano, $mes);
             $ultimoDia = (int)date('t', strtotime($dataInicioMes));
             $hoje = date('Y-m-d');
 
-            // Busca os dias que já estão conciliados nesta tabela
-            $stmt = $pdo->prepare("
+            // Busca os dias que já estão 100% FECHADOS/CONCILIADOS
+            $stmtFechados = $pdo->prepare("
                 SELECT data_conciliacao 
                 FROM financeiro_conciliacao_diaria 
                 WHERE system_unit_id = ? 
-                  AND financeiro_banco_id = ? 
+                  AND financeiro_banco_id = (SELECT id FROM financeiro_banco WHERE codigo = ? AND system_unit_id = ? LIMIT 1)
                   AND data_conciliacao BETWEEN ? AND LAST_DAY(?)
             ");
-            $stmt->execute([$system_unit_id, $financeiro_banco_id, $dataInicioMes, $dataInicioMes]);
-            $diasConciliados = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+            $stmtFechados->execute([$system_unit_id, $banco_codigo, $system_unit_id, $dataInicioMes, $dataInicioMes]);
+            $diasFechados = $stmtFechados->fetchAll(PDO::FETCH_COLUMN, 0);
+            $diasMap = array_flip($diasFechados);
 
-            $diasMap = [];
-            foreach ($diasConciliados as $d) {
-                $diasMap[$d] = true;
+            // Busca a contagem de transações PENDENTES do banco (Pluggy) para este mês agrupadas por dia
+            $pendenciasPorDia = [];
+            if ($pluggy_account_id) {
+                $stPendentes = $pdo->prepare("
+                    SELECT date, COUNT(id) as qtd 
+                    FROM pluggy_transactions 
+                    WHERE account_id = ? 
+                      AND system_unit_id = ? 
+                      AND is_conciliated = 0 
+                      AND date BETWEEN ? AND LAST_DAY(?)
+                    GROUP BY date
+                ");
+                $stPendentes->execute([$pluggy_account_id, $system_unit_id, $dataInicioMes, $dataInicioMes]);
+                while ($row = $stPendentes->fetch(PDO::FETCH_ASSOC)) {
+                    $pendenciasPorDia[$row['date']] = (int)$row['qtd'];
+                }
             }
 
             $calendario = [];
@@ -2446,18 +2465,22 @@ class FinanceiroContaController {
             // Monta o array dia a dia
             for ($i = 1; $i <= $ultimoDia; $i++) {
                 $dataAtual = sprintf('%04d-%02d-%02d', $ano, $mes, $i);
+                $qtdPendentes = $pendenciasPorDia[$dataAtual] ?? 0;
 
                 if (isset($diasMap[$dataAtual])) {
-                    $status = 'consolidated'; // Já foi conciliado
+                    // O dia já teve a "Confirmação de Fechamento"
+                    $status = 'consolidated';
                 } else if ($dataAtual > $hoje) {
-                    $status = 'future'; // Dias futuros (não podem ser conciliados ainda)
+                    $status = 'future';
                 } else {
-                    $status = 'pending'; // Passado ou Hoje, mas ainda não conciliado
+                    // Passado ou Hoje que ainda não foi fechado
+                    $status = 'pending';
                 }
 
                 $calendario[] = [
-                    'date'   => $dataAtual,
-                    'status' => $status
+                    'date'      => $dataAtual,
+                    'status'    => $status,
+                    'pendentes' => $qtdPendentes // <-- NOVA PROPRIEDADE AQUI
                 ];
             }
 
@@ -2479,16 +2502,14 @@ class FinanceiroContaController {
 
         try {
             $system_unit_id = $data['system_unit_id'] ?? 0;
-            // Usa o CÓDIGO do banco
-            $banco_codigo   = $data['financeiro_banco_id'] ?? 0;
             $data_ini       = $data['data_ini'] ?? null;
             $data_fim       = $data['data_fim'] ?? null;
 
-            if (!$system_unit_id || !$banco_codigo || !$data_ini || !$data_fim) {
+            if (!$system_unit_id || !$data_ini || !$data_fim) {
                 return ['success' => false, 'message' => 'Parâmetros incompletos para buscar sistema.'];
             }
 
-            // Busca contas do banco, não conciliadas, baseando-se APENAS no vencimento
+            // Busca contas do sistema, não conciliadas, filtradas APENAS pelo vencimento
             $sql = "
                 SELECT 
                     id, 
@@ -2499,7 +2520,6 @@ class FinanceiroContaController {
                     CASE WHEN tipo = 'C' OR tipo = 'R' THEN valor ELSE valor * -1 END as valor
                 FROM financeiro_conta
                 WHERE system_unit_id = :unit 
-                  AND banco = :banco 
                   AND is_conciliated = 0
                   AND vencimento BETWEEN :d1 AND :d2
                 ORDER BY vencimento ASC, id ASC
@@ -2508,7 +2528,6 @@ class FinanceiroContaController {
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
                 ':unit'  => $system_unit_id,
-                ':banco' => $banco_codigo,
                 ':d1'    => $data_ini,
                 ':d2'    => $data_fim
             ]);
@@ -2521,7 +2540,6 @@ class FinanceiroContaController {
             return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
         }
     }
-
     public static function fecharDiaConciliacao(array $data): array
     {
         global $pdo;
@@ -2603,18 +2621,19 @@ class FinanceiroContaController {
             return ['success' => false, 'message' => 'Erro ao fechar dia: ' . $e->getMessage()];
         }
     }
-
     public static function executarConciliacaoMatch(array $data): array
     {
         global $pdo;
 
-        $system_unit_id = $data['system_unit_id'] ?? 0;
-        $sys_ids        = $data['sys_ids'] ?? [];
-        $ban_ids        = $data['ban_ids'] ?? [];
-        $usuario_id     = $data['usuario_id'] ?? 'Sistema';
+        $system_unit_id      = $data['system_unit_id'] ?? 0;
+        $financeiro_banco_id = $data['financeiro_banco_id'] ?? 0; // Código do banco para gravar na conta
+        $data_ref            = $data['data_ref'] ?? null;         // Data do extrato para gravar na baixa_dt
+        $sys_ids             = $data['sys_ids'] ?? [];
+        $ban_ids             = $data['ban_ids'] ?? [];
+        $usuario_id          = $data['usuario_id'] ?? 'Sistema';
 
-        if (!$system_unit_id || empty($sys_ids) || empty($ban_ids)) {
-            return ['success' => false, 'message' => 'Nenhum registro selecionado.'];
+        if (!$system_unit_id || empty($sys_ids) || empty($ban_ids) || !$financeiro_banco_id || !$data_ref) {
+            return ['success' => false, 'message' => 'Parâmetros incompletos para conciliação. Banco e Data são obrigatórios.'];
         }
 
         try {
@@ -2637,7 +2656,7 @@ class FinanceiroContaController {
             $paramsBan = array_merge([$system_unit_id], $ban_ids);
 
             $stSumBan = $pdo->prepare("
-                SELECT SUM(amount) 
+                SELECT SUM(CASE WHEN type = 'debit' THEN amount * -1 ELSE amount END) 
                 FROM pluggy_transactions 
                 WHERE system_unit_id = ? AND is_conciliated = 0 AND id IN ($inBan)
             ");
@@ -2650,13 +2669,19 @@ class FinanceiroContaController {
                 return ['success' => false, 'message' => "Os valores não batem. Sistema: R$ {$somaSys} | Banco: R$ {$somaBan}"];
             }
 
-            // 4. Marca como conciliado no Sistema
+            // 4. Marca como conciliado no Sistema E DÁ BAIXA
+            // Preenche o banco e a baixa_dt com a data da transação do Open Finance
             $stUpdSys = $pdo->prepare("
                 UPDATE financeiro_conta 
-                SET is_conciliated = 1, conciliated_at = NOW(), conciliated_user = ? 
+                SET is_conciliated = 1, 
+                    conciliated_at = NOW(), 
+                    conciliated_user = ?,
+                    banco = ?,
+                    baixa_dt = ?
                 WHERE system_unit_id = ? AND id IN ($inSys)
             ");
-            $paramsUpdSys = array_merge([$usuario_id, $system_unit_id], $sys_ids);
+
+            $paramsUpdSys = array_merge([$usuario_id, $financeiro_banco_id, $data_ref, $system_unit_id], $sys_ids);
             $stUpdSys->execute($paramsUpdSys);
 
             // 5. Marca como conciliado no Banco (Pluggy)
@@ -2677,7 +2702,6 @@ class FinanceiroContaController {
             return ['success' => false, 'message' => 'Erro ao conciliar: ' . $e->getMessage()];
         }
     }
-
     public static function listarTransacoesBancoPendentes(array $data): array
     {
         global $pdo;
