@@ -48,6 +48,7 @@
         .icon-blue { color: var(--mrk-blue); }
         .icon-orange { color: var(--mrk-amber); }
         .icon-red { color: var(--mrk-red); }
+        .icon-green { color: var(--mrk-green); }
 
         .skeleton-wrapper { display: none; }
         .skeleton-card { background: #fff; border-radius: 12px; border: 1px solid #eee; height: 220px; margin-bottom: 20px; position: relative; overflow: hidden; }
@@ -183,15 +184,20 @@
     'use strict';
     console.log("1. Scripts carregados. Lendo variáveis...");
 
-    const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
-    const baseOfUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/open_finance.php' : 'http://localhost/portal-mrk/api/v1/open_finance.php';
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
-    // Tenta pegar da URL primeiro. Se não achar, usa o PHP. Ajuste conforme sua estrutura atual!
+    const baseOfUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/open_finance.php'
+        : 'http://localhost/portal-mrk/api/v1/open_finance.php';
+
     const params = new URLSearchParams(window.location.search);
-    let token = params.get('token') || "<?php echo isset($token) ? $token : ''; ?>";
-    let system_unit_id = params.get('system_unit_id') || "<?php echo isset($unit_id) ? $unit_id : ''; ?>";
+    let token = params.get('token')
+    let system_unit_id = params.get('system_unit_id')
+    let username = params.get('username')
 
-    console.log("2. Credenciais prontas:", { token, system_unit_id });
+    console.log("2. Credenciais prontas:", { token, system_unit_id, username });
 
     let bancosCache = [];
     let contasOFCache = [];
@@ -213,9 +219,18 @@
     function bankLogoUrl(domain) {
         return domain ? `https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&size=64&format=png` : '';
     }
-    function escapeHtml(s) { return s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-    // 1. Criamos uma função separada e assíncrona para iniciar a lógica
+    function escapeHtml(s) {
+        return s == null ? '' : String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function getConciliacaoUrl(bancoCodigo) {
+        return `listConciliacao.html?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}&unit_id=${encodeURIComponent(system_unit_id)}&banco_id=${encodeURIComponent(bancoCodigo)}`;
+    }
+
     async function iniciarAplicacao() {
         console.log("4. Iniciando as requisições...");
         try {
@@ -230,35 +245,44 @@
             console.error("Erro ao listar Bancos:", error);
         }
 
-        // Ativa os tooltips apenas se o jQuery e o Bootstrap estiverem carregados
-        if(typeof $ !== 'undefined' && typeof $.fn.tooltip !== 'undefined') {
+        if (typeof $ !== 'undefined' && typeof $.fn.tooltip !== 'undefined') {
             $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
         }
     }
 
-    // 2. Usamos o evento nativo, SEM ASYNC, para aguardar a tela carregar
     document.addEventListener('DOMContentLoaded', function() {
         console.log("3. DOM carregado com sucesso.");
 
-        // Verifica se o Axios carregou (se não, as requisições vão quebrar)
         if (typeof axios === 'undefined') {
             console.error("❌ ERRO: Axios não carregou. Verifique os bloqueios do navegador.");
             return;
         }
 
-        // Chama a função assíncrona de forma segura
         iniciarAplicacao();
     });
 
     async function verificarOpenFinanceAtivo() {
         console.log("4. Consultando status do Open Finance...");
-        const res = await axios.post(baseOfUrl, { method: 'openFinanceCheckPayer', token, data: { system_unit_id } });
+        const res = await axios.post(baseOfUrl, {
+            method: 'openFinanceCheckPayer',
+            token,
+            data: { system_unit_id }
+        });
+
         openFinanceAtivo = res.data && res.data.exists === true;
         console.log("Status Open Finance:", openFinanceAtivo ? "Ativo" : "Inativo");
 
-        if(openFinanceAtivo) {
-            const resOf = await axios.post(baseOfUrl, { method: 'openFinanceListLocalAccounts', token, data: { system_unit_id } });
-            contasOFCache = Array.isArray(resOf.data.data) ? resOf.data.data : (Array.isArray(resOf.data) ? resOf.data : []);
+        if (openFinanceAtivo) {
+            const resOf = await axios.post(baseOfUrl, {
+                method: 'openFinanceListLocalAccounts',
+                token,
+                data: { system_unit_id }
+            });
+
+            contasOFCache = Array.isArray(resOf.data.data)
+                ? resOf.data.data
+                : (Array.isArray(resOf.data) ? resOf.data : []);
+
             console.log("Contas Open Finance Carregadas:", contasOFCache.length);
         }
     }
@@ -269,7 +293,12 @@
         $('#msg-vazio').hide();
         $('#sk-cards').css('display', 'flex');
 
-        const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id, apenas_ativos: false } });
+        const res = await axios.post(baseUrl, {
+            method: 'listBancos',
+            token,
+            data: { system_unit_id, apenas_ativos: false }
+        });
+
         console.log("Bancos retornados:", res.data);
 
         bancosCache = res.data.data || res.data || [];
@@ -279,13 +308,15 @@
 
     function renderCards(dados) {
         const $grid = $('#grid-bancos').empty();
-        if(!dados || !dados.length) {
+
+        if (!dados || !dados.length) {
             $('#msg-vazio').show();
             return;
         }
+
         $('#msg-vazio').hide();
 
-        dados.sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
+        dados.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
         dados.forEach(b => {
             const ativos = Number(b.ativos ?? 1);
@@ -294,7 +325,10 @@
             const brandCode = String(b.codigo).padStart(3, '0');
             const brand = bankBrands[brandCode] || bankBrands["default"];
             const logoUrl = bankLogoUrl(brand.domain);
-            const logoHtml = (isLinked && logoUrl) ? `<img src="${logoUrl}" class="bank-logo" onerror="this.style.display='none'">` : `<iconify-icon icon="icon-park-outline:bank" class="bank-logo" style="background:transparent; font-size: 26px; padding:0;"></iconify-icon>`;
+
+            const logoHtml = (isLinked && logoUrl)
+                ? `<img src="${logoUrl}" class="bank-logo" onerror="this.style.display='none'">`
+                : `<iconify-icon icon="icon-park-outline:bank" class="bank-logo" style="background:transparent; font-size: 26px; padding:0;"></iconify-icon>`;
 
             const ofBadge = isLinked
                 ? `<span class="badge-status of-linked"><iconify-icon icon="icon-park-outline:link-cloud"></iconify-icon> Sincronizado</span>`
@@ -302,6 +336,12 @@
 
             const linkBtn = (openFinanceAtivo && !isLinked)
                 ? `<a class="action-icon icon-blue btnLink" data-id="${b.id}" data-toggle="tooltip" title="Vincular Open Finance"><iconify-icon icon="icon-park-outline:api"></iconify-icon></a>`
+                : '';
+
+            const conciliacaoBtn = openFinanceAtivo
+                ? `<a class="action-icon icon-green" href="${getConciliacaoUrl(b.codigo)}" data-toggle="tooltip" title="Conciliação Bancária">
+                        <iconify-icon icon="icon-park-outline:transaction-order"></iconify-icon>
+                   </a>`
                 : '';
 
             $grid.append(`
@@ -321,10 +361,17 @@
                         <div class="account-footer">
                             <div>${ofBadge}</div>
                             <div style="display: flex; gap: 12px; align-items: center;">
+                                ${conciliacaoBtn}
                                 ${linkBtn}
-                                <a class="action-icon icon-blue btnEditar" data-id="${b.id}" data-toggle="tooltip" title="Editar"><iconify-icon icon="icon-park-outline:edit-two"></iconify-icon></a>
-                                <a class="action-icon icon-orange btnToggle" data-id="${b.id}" data-toggle="tooltip" title="${ativos ? 'Desativar' : 'Ativar'}"><iconify-icon icon="icon-park-outline:power"></iconify-icon></a>
-                                <a class="action-icon icon-red btnExcluir" data-id="${b.id}" data-toggle="tooltip" title="Excluir"><iconify-icon icon="icon-park-outline:delete-five"></iconify-icon></a>
+                                <a class="action-icon icon-blue btnEditar" data-id="${b.id}" data-toggle="tooltip" title="Editar">
+                                    <iconify-icon icon="icon-park-outline:edit-two"></iconify-icon>
+                                </a>
+                                <a class="action-icon icon-orange btnToggle" data-id="${b.id}" data-toggle="tooltip" title="${ativos ? 'Desativar' : 'Ativar'}">
+                                    <iconify-icon icon="icon-park-outline:power"></iconify-icon>
+                                </a>
+                                <a class="action-icon icon-red btnExcluir" data-id="${b.id}" data-toggle="tooltip" title="Excluir">
+                                    <iconify-icon icon="icon-park-outline:delete-five"></iconify-icon>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -332,12 +379,11 @@
             `);
         });
 
-        if(typeof $.fn.tooltip !== 'undefined') {
+        if (typeof $.fn.tooltip !== 'undefined') {
             $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
         }
     }
 
-    // Ações e modais continuam iguais...
     $('#btnNovoBanco').click(() => {
         $('#formBanco')[0].reset();
         $('#bancoId').val('');
@@ -361,28 +407,64 @@
                 $sel.append(`<option value="${c.id}">${c.bank_name || c.bank_code} | Ag: ${ag} | Cc: ${ct}</option>`);
             });
         }
+
         $('#modalLinkOF').modal('show');
     });
 
     $('#btnConfirmarLink').click(async function() {
         const idFinanceiro = $('#linkFinanceiroId').val();
         const idPluggy = $('#selectContaOF').val();
-        if(!idPluggy) return Swal.fire('Atenção', 'Selecione uma conta.', 'warning');
 
-        Swal.fire({ title: 'Vinculando...', didOpen: () => Swal.showLoading() });
+        if (!idPluggy) {
+            return Swal.fire('Atenção', 'Selecione uma conta.', 'warning');
+        }
+
+        Swal.fire({
+            title: 'Vinculando...',
+            didOpen: () => Swal.showLoading()
+        });
+
         try {
             await axios.post(baseUrl, {
                 method: 'linkOpenFinanceAccount',
                 token,
-                data: { financeiro_banco_id: idFinanceiro, pluggy_account_id: idPluggy, system_unit_id }
+                data: {
+                    financeiro_banco_id: idFinanceiro,
+                    pluggy_account_id: idPluggy,
+                    system_unit_id
+                }
             });
-            Swal.fire({ icon: 'success', title: 'Vinculado com sucesso!', timer: 1500, showConfirmButton: false });
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Vinculado com sucesso!',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
             $('#modalLinkOF').modal('hide');
             await verificarOpenFinanceAtivo();
             listarBancos();
         } catch (e) {
             Swal.fire('Erro', 'Falha ao vincular a conta.', 'error');
         }
+    });
+
+    $('#filtroCodigo, #filtroNome').on('input', function() {
+        const filtroCodigo = ($('#filtroCodigo').val() || '').toString().trim().toLowerCase();
+        const filtroNome = ($('#filtroNome').val() || '').toString().trim().toLowerCase();
+
+        const filtrados = bancosCache.filter(b => {
+            const codigo = String(b.codigo || '').toLowerCase();
+            const nome = String(b.nome || '').toLowerCase();
+
+            const matchCodigo = !filtroCodigo || codigo.includes(filtroCodigo);
+            const matchNome = !filtroNome || nome.includes(filtroNome);
+
+            return matchCodigo && matchNome;
+        });
+
+        renderCards(filtrados);
     });
 </script>
 </body>

@@ -2295,7 +2295,6 @@ class FinanceiroContaController {
             ];
         }
     }
-
     public static function editarContasEmLote($payload) {
         global $pdo;
 
@@ -2407,8 +2406,404 @@ class FinanceiroContaController {
             ];
         }
     }
+    public static function getCalendarioConciliacao(array $data): array
+    {
+        global $pdo;
 
+        try {
+            $system_unit_id      = isset($data['system_unit_id']) ? (int)$data['system_unit_id'] : 0;
+            $financeiro_banco_id = isset($data['financeiro_banco_id']) ? (int)$data['financeiro_banco_id'] : 0;
+            $ano                 = isset($data['ano']) ? (int)$data['ano'] : date('Y');
+            $mes                 = isset($data['mes']) ? (int)$data['mes'] : date('m');
 
+            if (!$system_unit_id || !$financeiro_banco_id) {
+                return ['success' => false, 'message' => 'Unidade e Banco são obrigatórios.'];
+            }
 
+            // Descobre o último dia do mês informado
+            $dataInicioMes = sprintf('%04d-%02d-01', $ano, $mes);
+            $ultimoDia = (int)date('t', strtotime($dataInicioMes));
+            $hoje = date('Y-m-d');
+
+            // Busca os dias que já estão conciliados nesta tabela
+            $stmt = $pdo->prepare("
+                SELECT data_conciliacao 
+                FROM financeiro_conciliacao_diaria 
+                WHERE system_unit_id = ? 
+                  AND financeiro_banco_id = ? 
+                  AND data_conciliacao BETWEEN ? AND LAST_DAY(?)
+            ");
+            $stmt->execute([$system_unit_id, $financeiro_banco_id, $dataInicioMes, $dataInicioMes]);
+            $diasConciliados = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
+            $diasMap = [];
+            foreach ($diasConciliados as $d) {
+                $diasMap[$d] = true;
+            }
+
+            $calendario = [];
+
+            // Monta o array dia a dia
+            for ($i = 1; $i <= $ultimoDia; $i++) {
+                $dataAtual = sprintf('%04d-%02d-%02d', $ano, $mes, $i);
+
+                if (isset($diasMap[$dataAtual])) {
+                    $status = 'consolidated'; // Já foi conciliado
+                } else if ($dataAtual > $hoje) {
+                    $status = 'future'; // Dias futuros (não podem ser conciliados ainda)
+                } else {
+                    $status = 'pending'; // Passado ou Hoje, mas ainda não conciliado
+                }
+
+                $calendario[] = [
+                    'date'   => $dataAtual,
+                    'status' => $status
+                ];
+            }
+
+            return [
+                'success' => true,
+                'data'    => $calendario
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao gerar calendário: ' . $e->getMessage()
+            ];
+        }
+    }
+    public static function getMovimentosSistemaAbertos(array $data): array
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = $data['system_unit_id'] ?? 0;
+            // Usa o CÓDIGO do banco
+            $banco_codigo   = $data['financeiro_banco_id'] ?? 0;
+            $data_ini       = $data['data_ini'] ?? null;
+            $data_fim       = $data['data_fim'] ?? null;
+
+            if (!$system_unit_id || !$banco_codigo || !$data_ini || !$data_fim) {
+                return ['success' => false, 'message' => 'Parâmetros incompletos para buscar sistema.'];
+            }
+
+            // Busca contas do banco, não conciliadas, baseando-se APENAS no vencimento
+            $sql = "
+                SELECT 
+                    id, 
+                    vencimento as data, 
+                    COALESCE(nome, 'Sem descrição') as descricao, 
+                    doc, 
+                    tipo,
+                    CASE WHEN tipo = 'C' OR tipo = 'R' THEN valor ELSE valor * -1 END as valor
+                FROM financeiro_conta
+                WHERE system_unit_id = :unit 
+                  AND banco = :banco 
+                  AND is_conciliated = 0
+                  AND vencimento BETWEEN :d1 AND :d2
+                ORDER BY vencimento ASC, id ASC
+            ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':unit'  => $system_unit_id,
+                ':banco' => $banco_codigo,
+                ':d1'    => $data_ini,
+                ':d2'    => $data_fim
+            ]);
+
+            $movimentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'data' => $movimentos];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
+        }
+    }
+
+    public static function fecharDiaConciliacao(array $data): array
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id      = $data['system_unit_id'] ?? 0;
+            // Usa o CÓDIGO do banco
+            $banco_codigo        = $data['financeiro_banco_id'] ?? 0;
+            $data_conciliacao    = $data['data_conciliacao'] ?? null;
+            $usuario_id          = $data['usuario_id'] ?? 'Sistema';
+
+            if (!$system_unit_id || !$banco_codigo || !$data_conciliacao) {
+                return ['success' => false, 'message' => 'Parâmetros inválidos para fechar o dia.'];
+            }
+
+            $pdo->beginTransaction();
+
+            // 1. Busca o ID REAL do banco e o pluggy_account_id pelo CÓDIGO
+            $stBanco = $pdo->prepare("
+                SELECT id, pluggy_account_id 
+                FROM financeiro_banco 
+                WHERE codigo = ? AND system_unit_id = ?
+                LIMIT 1
+            ");
+            $stBanco->execute([$banco_codigo, $system_unit_id]);
+            $bancoDados = $stBanco->fetch(PDO::FETCH_ASSOC);
+
+            if (!$bancoDados) {
+                $pdo->rollBack();
+                return ['success' => false, 'message' => 'Banco não encontrado.'];
+            }
+
+            $financeiro_banco_id_real = $bancoDados['id'];
+            $pluggy_account_id = $bancoDados['pluggy_account_id'];
+
+            // 2. Calcula totais do dia conciliado no sistema, usando APENAS vencimento
+            $stTotais = $pdo->prepare("
+                SELECT 
+                    SUM(CASE WHEN tipo = 'D' THEN valor ELSE 0 END) as total_debitos,
+                    SUM(CASE WHEN tipo = 'C' OR tipo = 'R' THEN valor ELSE 0 END) as total_creditos
+                FROM financeiro_conta
+                WHERE system_unit_id = ? 
+                  AND banco = ? 
+                  AND is_conciliated = 1 
+                  AND vencimento = ?
+            ");
+            // Passamos o $banco_codigo para a query na tabela financeiro_conta
+            $stTotais->execute([$system_unit_id, $banco_codigo, $data_conciliacao]);
+            $totais = $stTotais->fetch(PDO::FETCH_ASSOC);
+
+            $debitos = (float) ($totais['total_debitos'] ?? 0);
+            $creditos = (float) ($totais['total_creditos'] ?? 0);
+
+            // 3. Insere na tabela de fechamento diário (Aqui usamos o ID real do banco p/ manter integridade relacional)
+            $stInsert = $pdo->prepare("
+                INSERT INTO financeiro_conciliacao_diaria 
+                (system_unit_id, financeiro_banco_id, pluggy_account_id, data_conciliacao, total_debitos, total_creditos, usuario_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                total_debitos = VALUES(total_debitos), total_creditos = VALUES(total_creditos), usuario_id = VALUES(usuario_id), updated_at = NOW()
+            ");
+
+            $stInsert->execute([
+                $system_unit_id,
+                $financeiro_banco_id_real,
+                $pluggy_account_id,
+                $data_conciliacao,
+                $debitos,
+                $creditos,
+                $usuario_id
+            ]);
+
+            $pdo->commit();
+
+            return ['success' => true, 'message' => 'Dia conciliado e fechado com sucesso!'];
+
+        } catch (\Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['success' => false, 'message' => 'Erro ao fechar dia: ' . $e->getMessage()];
+        }
+    }
+
+    public static function executarConciliacaoMatch(array $data): array
+    {
+        global $pdo;
+
+        $system_unit_id = $data['system_unit_id'] ?? 0;
+        $sys_ids        = $data['sys_ids'] ?? [];
+        $ban_ids        = $data['ban_ids'] ?? [];
+        $usuario_id     = $data['usuario_id'] ?? 'Sistema';
+
+        if (!$system_unit_id || empty($sys_ids) || empty($ban_ids)) {
+            return ['success' => false, 'message' => 'Nenhum registro selecionado.'];
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            // 1. Soma os valores do Sistema
+            $inSys = implode(',', array_fill(0, count($sys_ids), '?'));
+            $paramsSys = array_merge([$system_unit_id], $sys_ids);
+
+            $stSumSys = $pdo->prepare("
+                SELECT SUM(CASE WHEN tipo = 'C' OR tipo = 'R' THEN valor ELSE valor * -1 END) 
+                FROM financeiro_conta 
+                WHERE system_unit_id = ? AND is_conciliated = 0 AND id IN ($inSys)
+            ");
+            $stSumSys->execute($paramsSys);
+            $somaSys = (float) $stSumSys->fetchColumn();
+
+            // 2. Soma os valores do Banco (Pluggy)
+            $inBan = implode(',', array_fill(0, count($ban_ids), '?'));
+            $paramsBan = array_merge([$system_unit_id], $ban_ids);
+
+            $stSumBan = $pdo->prepare("
+                SELECT SUM(amount) 
+                FROM pluggy_transactions 
+                WHERE system_unit_id = ? AND is_conciliated = 0 AND id IN ($inBan)
+            ");
+            $stSumBan->execute($paramsBan);
+            $somaBan = (float) $stSumBan->fetchColumn();
+
+            // 3. Valida se os valores absolutos batem (com margem de 1 centavo)
+            if (abs(abs($somaSys) - abs($somaBan)) > 0.01) {
+                $pdo->rollBack();
+                return ['success' => false, 'message' => "Os valores não batem. Sistema: R$ {$somaSys} | Banco: R$ {$somaBan}"];
+            }
+
+            // 4. Marca como conciliado no Sistema
+            $stUpdSys = $pdo->prepare("
+                UPDATE financeiro_conta 
+                SET is_conciliated = 1, conciliated_at = NOW(), conciliated_user = ? 
+                WHERE system_unit_id = ? AND id IN ($inSys)
+            ");
+            $paramsUpdSys = array_merge([$usuario_id, $system_unit_id], $sys_ids);
+            $stUpdSys->execute($paramsUpdSys);
+
+            // 5. Marca como conciliado no Banco (Pluggy)
+            $stUpdBan = $pdo->prepare("
+                UPDATE pluggy_transactions 
+                SET is_conciliated = 1, conciliated_at = NOW(), conciliated_user = ? 
+                WHERE system_unit_id = ? AND id IN ($inBan)
+            ");
+            $paramsUpdBan = array_merge([$usuario_id, $system_unit_id], $ban_ids);
+            $stUpdBan->execute($paramsUpdBan);
+
+            $pdo->commit();
+
+            return ['success' => true, 'message' => 'Conciliação realizada com sucesso!'];
+
+        } catch (\Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            return ['success' => false, 'message' => 'Erro ao conciliar: ' . $e->getMessage()];
+        }
+    }
+
+    public static function listarTransacoesBancoPendentes(array $data): array
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = $data['system_unit_id'] ?? 0;
+            // Recebe o CÓDIGO do banco do financeiro (ex: 341, 001, 1)
+            $banco_codigo   = $data['financeiro_banco_id'] ?? 0;
+
+            // Recebe a data específica do dia
+            $data_ref       = $data['data_ref'] ?? null;
+
+            if (!$system_unit_id || !$banco_codigo || !$data_ref) {
+                return ['success' => false, 'message' => 'Unidade, Banco e Data são obrigatórios.'];
+            }
+
+            // 1. Encontra o ID da conta no Open Finance (Pluggy) pelo CÓDIGO do banco
+            $stBanco = $pdo->prepare("
+                SELECT pluggy_account_id 
+                FROM financeiro_banco 
+                WHERE codigo = ? AND system_unit_id = ?
+                LIMIT 1
+            ");
+            $stBanco->execute([$banco_codigo, $system_unit_id]);
+            $pluggy_account_id = $stBanco->fetchColumn();
+
+            if (!$pluggy_account_id) {
+                return ['success' => true, 'data' => [], 'message' => 'Este banco não possui vínculo com o Open Finance.'];
+            }
+
+            // 2. Monta a query
+            // CORREÇÃO AQUI: Avalia a coluna 'type' para inverter o sinal do 'amount'
+            $sql = "
+                SELECT 
+                    id, 
+                    date as data, 
+                    description as descricao, 
+                    CASE WHEN type = 'debit' THEN amount * -1 ELSE amount END as valor,
+                    is_conciliated
+                FROM pluggy_transactions
+                WHERE account_id = :acc 
+                  AND system_unit_id = :unit
+                  AND is_conciliated = 0
+                  AND date = :dref
+                ORDER BY date ASC, id ASC
+            ";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                ':acc'  => $pluggy_account_id,
+                ':unit' => $system_unit_id,
+                ':dref' => $data_ref
+            ]);
+
+            $transacoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 3. Calcula um resumo de Entradas e Saídas do dia
+            $total_entradas = 0;
+            $total_saidas = 0;
+            foreach ($transacoes as $t) {
+                // Como agora o SQL já traz o valor negativo, a checagem fica simples
+                $valor = (float) $t['valor'];
+
+                if ($valor >= 0) {
+                    $total_entradas += $valor;
+                } else {
+                    // Soma em 'saidas' usando valor absoluto para relatório
+                    $total_saidas += abs($valor);
+                }
+            }
+
+            return [
+                'success' => true,
+                'data' => $transacoes,
+                'resumo' => [
+                    'qtd_movimentos' => count($transacoes),
+                    'total_entradas' => $total_entradas,
+                    'total_saidas'   => $total_saidas,
+                    'saldo_periodo'  => $total_entradas - $total_saidas
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Erro ao listar transações pendentes: ' . $e->getMessage()];
+        }
+    }
+    public static function getInfoBancosConciliacao(array $data): array
+    {
+        global $pdo;
+
+        try {
+            $system_unit_id = $data['system_unit_id'] ?? 0;
+            $banco_codigo   = $data['financeiro_banco_id'] ?? 0;
+
+            if (!$system_unit_id || !$banco_codigo) {
+                return ['success' => false, 'message' => 'Parâmetros incompletos.'];
+            }
+
+            $st = $pdo->prepare("
+                SELECT 
+                    fb.nome as sys_nome, 
+                    fb.agencia as sys_agencia, 
+                    fb.conta as sys_conta, 
+                    fb.codigo as sys_codigo,
+                    pa.bank_name as of_nome, 
+                    pa.agency as of_agencia, 
+                    pa.account_number as of_conta, 
+                    pa.account_number_digit as of_conta_digito,
+                    pa.bank_code as of_codigo
+                FROM financeiro_banco fb
+                LEFT JOIN pluggy_accounts pa ON pa.id = fb.pluggy_account_id
+                WHERE fb.codigo = ? AND fb.system_unit_id = ? 
+                LIMIT 1
+            ");
+            $st->execute([$banco_codigo, $system_unit_id]);
+            $info = $st->fetch(PDO::FETCH_ASSOC);
+
+            if (!$info) {
+                return ['success' => false, 'message' => 'Banco não encontrado.'];
+            }
+
+            return ['success' => true, 'data' => $info];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Erro: ' . $e->getMessage()];
+        }
+    }
 
 }

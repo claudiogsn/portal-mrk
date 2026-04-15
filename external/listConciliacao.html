@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Conciliação Bancária | Portal MRK</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet" />
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
+
+    <style>
+        html, body { background: transparent !important; }
+        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; }
+        .container-fluid { padding-top: 15px; }
+
+        .card {
+            background: rgba(255, 255, 255, 0.98) !important;
+            border-top: 2px solid var(--mrk-blue) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+        }
+        .card .header h2 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); display: flex; align-items: center; gap: 8px; }
+
+        /* ====== GRID DE DIAS ====== */
+        .day-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .day-card {
+            padding: 12px; border-radius: 8px; background: #fff; border: 1px solid #eee;
+            border-left: 4px solid #ccc; display: flex; flex-direction: column; align-items: center;
+        }
+        .day-card p { margin: 0; font-family: 'Kanit'; font-size: 22px; font-weight: 700; color: #333; }
+        .day-card small { font-size: 10px; text-transform: uppercase; font-weight: 600; text-align: center; }
+
+        /* Status Cores */
+        .day-consolidated { border-left-color: var(--mrk-green); background: #f1f8f1; cursor: pointer; transition: 0.2s; }
+        .day-consolidated:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .day-consolidated small { color: var(--mrk-green); }
+
+        .day-pending { border-left-color: var(--mrk-amber); background: #fffaf0; cursor: pointer; transition: 0.2s; }
+        .day-pending:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .day-pending small { color: var(--mrk-amber); }
+
+        .day-future { border-left-color: #ddd; background: #fafafa; opacity: 0.6; cursor: not-allowed; }
+        .day-future small { color: #999; }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 4px;
+        }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="card">
+        <div class="body">
+            <div class="row clearfix">
+                <div class="col-md-4 mb-2">
+                    <label style="font-family:'Kanit'">Conta Bancária</label>
+                    <select id="bancoSelect" class="form-control">
+                        <option value="">Carregando bancos...</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label style="font-family:'Kanit'">Mês</label>
+                    <select id="monthSelect" class="form-control">
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                        <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                        <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label style="font-family:'Kanit'">Ano</label>
+                    <select id="yearSelect" class="form-control">
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2" style="display: flex; align-items: flex-end;">
+                    <button id="searchButton" class="btn btn-primary btn-block" style="height:38px; background-color: var(--mrk-blue) !important; border:none; border-radius: 6px;">
+                        <iconify-icon icon="icon-park-outline:search" style="vertical-align:middle; margin-right:5px;"></iconify-icon> FILTRAR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="header">
+            <h2><iconify-icon icon="icon-park-outline:calendar-dot" width="24"></iconify-icon> CALENDÁRIO DE CONCILIAÇÃO</h2>
+        </div>
+        <div class="body">
+            <div class="day-grid" id="dayGrid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token') || 'test-token';
+        const system_unit_id = params.get('system_unit_id') || params.get('unit_id');
+        const paramBancoId = params.get('banco_id') || params.get('financeiro_banco_id');
+
+        // Configura data inicial
+        const now = new Date();
+        $('#yearSelect').val(now.getFullYear());
+        $('#monthSelect').val(now.getMonth() + 1);
+
+        // ====== INICIALIZAÇÃO ======
+        async function carregarBancos() {
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'listBancos',
+                    token,
+                    data: { system_unit_id, apenas_ativos: true }
+                });
+
+                const bancos = res.data.data || res.data;
+                const $sel = $('#bancoSelect').empty();
+
+                if(!bancos || !bancos.length) {
+                    $sel.append('<option value="">Nenhuma conta cadastrada</option>');
+                    return;
+                }
+
+                // Adiciona um placeholder vazio no topo
+                $sel.append('<option value="">Selecione uma conta...</option>');
+
+                bancos.forEach(b => {
+                    $sel.append(`<option value="${b.codigo}">${b.nome} (Ag: ${b.agencia || '-'} / Cc: ${b.conta || '-'})</option>`);
+                });
+
+                // LÓGICA NOVA: Seleciona o banco vindo da URL (se existir)
+                if (paramBancoId) {
+                    $sel.val(paramBancoId);
+                } else {
+                    // Se não vier na URL, você pode forçar a seleção do primeiro banco da lista, se quiser:
+                    // $sel.prop('selectedIndex', 1);
+                }
+
+                // Se após tudo isso houver um banco selecionado, carrega o calendário
+                if ($sel.val()) {
+                    loadDays();
+                }
+            } catch (e) {
+                console.error(e);
+                $('#bancoSelect').empty().append('<option value="">Erro ao carregar</option>');
+            }
+        }
+
+        function showGridSkeletons() {
+            const grid = $('#dayGrid').empty();
+            for(let i=0; i<30; i++) {
+                grid.append(`<div class="skeleton" style="height: 80px; border-radius:8px;"></div>`);
+            }
+        }
+
+        async function loadDays() {
+            const financeiro_banco_id = $('#bancoSelect').val();
+            if (!financeiro_banco_id) return; // Não carrega se não tiver banco selecionado
+
+            const year = $('#yearSelect').val();
+            const month = $('#monthSelect').val();
+
+            showGridSkeletons();
+            try {
+                const res = await axios.post(baseUrl, {
+                    method: 'getCalendarioConciliacao',
+                    token,
+                    data: { system_unit_id, financeiro_banco_id, ano: year, mes: month }
+                });
+
+                if(res.data.success) {
+                    renderDays(res.data.data);
+                } else {
+                    Swal.fire('Erro', res.data.message, 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error');
+            }
+        }
+
+        function renderDays(days) {
+            const grid = $('#dayGrid').empty();
+
+            days.forEach(day => {
+                const dayNum = parseInt(day.date.split('-')[2]);
+
+                let statusClass, statusTxt, icon;
+                if (day.status === 'consolidated') {
+                    statusClass = 'day-consolidated';
+                    statusTxt = 'Conciliado';
+                    icon = 'check-one';
+                } else if (day.status === 'future') {
+                    statusClass = 'day-future';
+                    statusTxt = 'Aguardando';
+                    icon = 'lock';
+                } else {
+                    statusClass = 'day-pending';
+                    statusTxt = 'Pendente';
+                    icon = 'time';
+                }
+
+                const card = $(`
+                    <div class="day-card ${statusClass}" data-date="${day.date}">
+                        <p>${dayNum}</p>
+                        <small><iconify-icon icon="icon-park-outline:${icon}"></iconify-icon> ${statusTxt}</small>
+                    </div>
+                `);
+
+                // Só adiciona o clique se não for data futura
+                if (day.status !== 'future') {
+                    card.click(() => abrirTelaDoDia(day.date, $('#bancoSelect').val()));
+                }
+
+                grid.append(card);
+            });
+        }
+
+        function abrirTelaDoDia(date, bancoId) {
+            window.location.href = `financeiroConciliacao.php?banco_id=${bancoId}&date=${date}`;
+        }
+
+        // ====== EVENTOS ======
+        $('#searchButton').click(() => loadDays());
+        $('#bancoSelect').change(() => loadDays());
+
+        // Inicia
+        carregarBancos();
+    });
+</script>
+</body>
+</html>

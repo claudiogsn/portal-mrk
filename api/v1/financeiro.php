@@ -564,6 +564,25 @@ if (isset($data['method']) && isset($data['data'])) {
                 $response = FinanceiroContaController::editarContasEmLote($requestData);
                 break;
 
+            case 'getCalendarioConciliacao':
+                $response = FinanceiroContaController::getCalendarioConciliacao($requestData);
+                break;
+            case 'getMovimentosSistemaAbertos':
+                $response = FinanceiroContaController::getMovimentosSistemaAbertos($requestData);
+                break;
+            case 'getExtratoBancoAbertos':
+                $response = FinanceiroContaController::listarTransacoesBancoPendentes($requestData);
+                break;
+            case 'getInfoBancosConciliacao':
+                $response = FinanceiroContaController::getInfoBancosConciliacao($requestData);
+                break;
+            case 'executarConciliacaoMatch':
+                $response = FinanceiroContaController::executarConciliacaoMatch($requestData);
+                break;
+            case 'fecharDiaConciliacao':
+                $response = FinanceiroContaController::fecharDiaConciliacao($requestData);
+                break;
+
             case 'getResumoConferencia':
                 $response = ConferenciaCaixaController::getResumoGeral(
                     $requestData['system_unit_id'] ?? null,

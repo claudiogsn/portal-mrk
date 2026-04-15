@@ -23,6 +23,13 @@
         ::-webkit-scrollbar { display: none; }
         html, body { -ms-overflow-style: none; scrollbar-width: none; }
 
+
+        html, body {
+            overflow-y: auto !important; /* Força a existência da rolagem */
+            height: auto !important;     /* Permite que o body cresça além da tela */
+            min-height: 100%;
+        }
+
         html, body, .container-fluid, .card, .card .body,
         .content, .content .container-fluid { background: #f4f6f9 !important; font-family: 'Kanit', sans-serif; }
 
@@ -73,7 +80,7 @@
 <body class="theme-blue">
 <div class="container-fluid" style="padding-top: 20px;">
     <div class="row">
-        <div class="col-md-10 col-md-offset-1"> <div class="card">
+        <div class="col-md-12"> <div class="card">
             <div class="header">
                 <h2 id="tituloTela"><i class="fas fa-file-invoice-dollar"></i> Conta Financeira</h2>
             </div>
@@ -123,12 +130,20 @@
 
                     <div class="row row-spacing">
                         <div class="col-md-6">
+                            <label><i class="fas fa-university" style="color:#1565C0;margin-right:5px;"></i> Conta Bancária</label>
+                            <select id="banco_conta" class="form-control">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label>Forma de Pagamento</label>
                             <select id="forma_pagamento" class="form-control">
                                 <option value="">Selecione...</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                    </div>
+                    <div class="row row-spacing">
+                        <div class="col-md-12">
                             <label>Documento</label>
                             <input type="text" id="doc" class="form-control" autocomplete="off" placeholder="Ex: NF 1234">
                         </div>
@@ -312,6 +327,9 @@
     const transacaoData  = urlParams.get('transacao_data');
     const transacaoTipo  = urlParams.get('transacao_tipo');
 
+    // banco_id via query string — se informado, o campo fica travado (somente leitura)
+    const paramBancoId   = urlParams.get('banco_id') || urlParams.get('financeiro_banco_id');
+
     // ==============================================================
     // URLS BASE
     // ==============================================================
@@ -382,6 +400,7 @@
     }
 
     function getFormaCodigo() { return $('#forma_pagamento').val(); }
+    function getBancoCodigo() { return $('#banco_conta').val(); }
 
     // ==============================================================
     // INICIALIZAÇÃO
@@ -435,6 +454,7 @@
     function inicializarEventos() {
         if (MODO !== 'nota') { $('#fornecedor').select2({ placeholder: 'Selecione ou digite...', allowClear: true, width: '100%' }); }
         $('#forma_pagamento').select2({ placeholder: 'Selecione a forma...', allowClear: true, width: '100%' });
+        $('#banco_conta').select2({ placeholder: 'Selecione a conta...', allowClear: true, width: '100%' });
 
         $(document).on('input', '.money-input', function () { applyMoneyMask(this); });
 
@@ -491,6 +511,8 @@
         try {
             if (MODO === 'nota') {
                 Swal.fire({ title: 'Carregando dados...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+                await carregarBancos();
+                await carregarFormasPagamento();
                 await carregarPlanos();
                 await carregarDadosNota();
                 Swal.close();
@@ -498,13 +520,15 @@
                 if (!token || !editId) return Swal.fire('Atenção', 'Parâmetros ausentes.', 'warning');
                 await carregarFornecedores();
                 await carregarBancos();
-                // FORÇANDO SEMPRE O USO DO CARREGAMENTO LOCAL, IGNORANDO O SCRIPT EXTERNO
+                await carregarFormasPagamento();
                 await carregarPlanos();
                 await carregarConta();
             } else {
+                // create, transacao
                 await carregarFornecedores();
-                await carregarPlanos();
                 await carregarBancos();
+                await carregarFormasPagamento();
+                await carregarPlanos();
             }
         } catch (e) { console.error('Erro ao carregar dados:', e); }
     }
@@ -519,9 +543,32 @@
 
     async function carregarBancos() {
         try {
-            const res = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+            const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
             BANCOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            BANCOS_CACHE.forEach(b => $('#forma_pagamento').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome || b.descricao), b.codigo)));
+            const $sel = $('#banco_conta');
+            $sel.empty().append(new Option('Selecione...', ''));
+            BANCOS_CACHE.forEach(b => {
+                const label = b.nome + (b.agencia ? ` (Ag: ${b.agencia}` + (b.conta ? ` / Cc: ${b.conta}` : '') + ')' : '');
+                $sel.append(new Option(label, b.codigo));
+            });
+
+            // Se veio banco_id na URL, seleciona e trava o campo
+            if (paramBancoId) {
+                $sel.val(paramBancoId).trigger('change');
+                $sel.prop('disabled', true);
+                // Adiciona badge visual de travado
+                $sel.closest('.col-md-6').find('label').append(
+                    ' <span style="background:#fff3cd;color:#856404;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;border:1px solid #ffc107;"><i class="fas fa-lock"></i> Fixado</span>'
+                );
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function carregarFormasPagamento() {
+        try {
+            const res = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+            const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+            list.forEach(b => $('#forma_pagamento').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome || b.descricao), b.codigo)));
         } catch (e) { console.error(e); }
     }
 
@@ -727,6 +774,14 @@
             let bancoVal = contaLoaded.forma_pagamento || contaLoaded.banco;
             if (bancoVal) $('#forma_pagamento').val(String(bancoVal)).trigger('change');
 
+            // Preencher Conta Bancária no modo edit
+            if (contaLoaded.banco || contaLoaded.financeiro_banco_id) {
+                const bancoContaVal = contaLoaded.financeiro_banco_id || contaLoaded.banco;
+                if (!$('#banco_conta').prop('disabled')) {
+                    $('#banco_conta').val(String(bancoContaVal)).trigger('change');
+                }
+            }
+
             if (contaLoaded.itens_rateio && Array.isArray(contaLoaded.itens_rateio) && contaLoaded.itens_rateio.length > 0) {
                 let totalGrupo = contaLoaded.valor_total_rateio ? parseFloat(contaLoaded.valor_total_rateio) : contaLoaded.itens_rateio.reduce((acc, it) => acc + parseFloat(it.valor), 0);
                 setMoneyValue('#valor_total', totalGrupo);
@@ -841,6 +896,7 @@
         const isParcelado = $('#chkParcelar').is(':checked'), isRateio = $('#chkRateio').is(':checked');
         const formaCod = getFormaCodigo(), planoContas = $('#plano_contas').val();
 
+        if (!getBancoCodigo()) return Swal.fire('Atenção', 'Selecione a Conta Bancária.', 'warning');
         if (!getFornecedorId()) return Swal.fire('Atenção', 'Selecione o Fornecedor.', 'warning');
         if (!$('#doc').val()) return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
         if (!$('#vencimento').val()) return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
@@ -890,7 +946,7 @@
     }
 
     function montarContaBase(valor, plano, desconto = 0, acrescimo = 0) {
-        const base = { fornecedor_id: Number(getFornecedorId()), documento: ($('#doc').val() || '').trim(), emissao: $('#emissao').val() || null, vencimento: $('#vencimento').val(), valor: valor, desconto: desconto, adicional: acrescimo, plano_contas: plano, forma_pagamento: getFormaCodigo() ? Number(getFormaCodigo()) : null, banco: getFormaCodigo() ? Number(getFormaCodigo()) : null, obs_extra: $('#obs_extra').val() };
+        const base = { fornecedor_id: Number(getFornecedorId()), documento: ($('#doc').val() || '').trim(), emissao: $('#emissao').val() || null, vencimento: $('#vencimento').val(), valor: valor, desconto: desconto, adicional: acrescimo, plano_contas: plano, forma_pagamento: getFormaCodigo() ? Number(getFormaCodigo()) : null, banco: getBancoCodigo() ? Number(getBancoCodigo()) : null, obs_extra: $('#obs_extra').val() };
         if (MODO === 'nota') base.chave_acesso = $('#chave_acesso').val();
         return base;
     }
