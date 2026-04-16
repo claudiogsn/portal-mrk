@@ -895,12 +895,10 @@
     async function salvar() {
         const isParcelado = $('#chkParcelar').is(':checked'), isRateio = $('#chkRateio').is(':checked');
         const formaCod = getFormaCodigo(), planoContas = $('#plano_contas').val();
-
-        if (!getBancoCodigo()) return Swal.fire('Atenção', 'Selecione a Conta Bancária.', 'warning');
+        
         if (!getFornecedorId()) return Swal.fire('Atenção', 'Selecione o Fornecedor.', 'warning');
         if (!$('#doc').val()) return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
         if (!$('#vencimento').val()) return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
-        if (!formaCod) return Swal.fire('Atenção', 'Selecione a Forma de Pagamento.', 'warning');
         if (!isRateio && !planoContas) return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
 
         let contas = []; const totalAjustado = getValorAjustado();
