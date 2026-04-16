@@ -382,18 +382,47 @@
         let html = '', byDate = {};
         (mapa?.dias || []).forEach(d => byDate[d.data] = d);
 
-        for(let i=0; i<42; i++) {
+        for (let i = 0; i < 42; i++) {
             const day = i - startDow + 1;
-            if(day < 1 || day > daysInMonth) { html += '<div class="cal-day muted"></div>'; continue; }
+            if (day < 1 || day > daysInMonth) { html += '<div class="cal-day muted"></div>'; continue; }
 
-            const dateStr = `${anoMes}-${String(day).padStart(2,'0')}`;
+            const dateStr = `${anoMes}-${String(day).padStart(2, '0')}`;
             const dados = byDate[dateStr];
-            const has = dados && dados.itens.length > 0;
+            const has = dados && dados.itens && dados.itens.length > 0;
 
-            html += `<div class="cal-day ${has?'hasdata':''}" ${has?`onclick="abrirDia('${dateStr}')"`:''}>
-                <div class="cal-num">${day}</div>
-                ${has ? `<div class="cal-badge">${dados.itens.length}</div><div class="cal-total">${formatBRL(dados.total)}</div>` : '<div class="cal-empty"><iconify-icon icon="icon-park-outline:check-small"></iconify-icon></div>'}
-            </div>`;
+            let innerHtml = '';
+            if (has) {
+                const itens = dados.itens;
+                const debItens = itens.filter(i => (i.tipo||'').toUpperCase() === 'D');
+                const creItens = itens.filter(i => (i.tipo||'').toUpperCase() === 'C');
+                const totDeb = debItens.reduce((a, b) => a + Number(b.valor), 0);
+                const totCre = creItens.reduce((a, b) => a + Number(b.valor), 0);
+
+                const debLine = debItens.length > 0
+                    ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#a32d2d;margin-bottom:2px;">
+                   <span style="width:6px;height:6px;border-radius:50%;background:#e24b4a;display:inline-block;flex-shrink:0;"></span>
+                   D ${debItens.length} · ${formatBRL(totDeb)}
+               </div>` : '';
+
+                const creLine = creItens.length > 0
+                    ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:#0f6e56;">
+                   <span style="width:6px;height:6px;border-radius:50%;background:#1d9e75;display:inline-block;flex-shrink:0;"></span>
+                   C ${creItens.length} · ${formatBRL(totCre)}
+               </div>` : '';
+
+                innerHtml = `
+            <div class="cal-badge">${itens.length}</div>
+            <div style="position:absolute;bottom:24px;left:8px;right:8px;">${debLine}${creLine}</div>
+            <div class="cal-total" style="font-size:10px;color:#555;">${formatBRL(dados.total)}</div>
+        `;
+            } else {
+                innerHtml = `<div class="cal-empty"><iconify-icon icon="icon-park-outline:check-small"></iconify-icon></div>`;
+            }
+
+            html += `<div class="cal-day ${has ? 'hasdata' : ''}" ${has ? `onclick="abrirDia('${dateStr}')"` : ''}>
+        <div class="cal-num">${day}</div>
+        ${innerHtml}
+    </div>`;
         }
         $('#calGrid').html(html);
         $('#calHint').html(`Total Mês: <b>${formatBRL(mapa?.totais?.valor_total)}</b>`);
@@ -401,12 +430,67 @@
 
     function abrirDia(dateStr) {
         const dia = mapaDeContas.dias.find(d => d.data === dateStr);
-        if(!dia) return;
-        let html = `<div class="max-h-[50vh] overflow-y-auto border rounded"><table class="w-full text-xs text-left">
-            <thead class="bg-gray-100 sticky top-0"><tr><th class="p-2">Fornecedor</th><th class="p-2">Doc</th><th class="p-2">Vencimento</th><th class="p-2 text-right">Valor</th></tr></thead>
-            <tbody>${dia.itens.map(i => `<tr><td class="p-2">${i.fornecedor_nome}</td><td class="p-2">${i.documento}</td><td class="p-2">${parseDateLocal(i.vencimento).toLocaleDateString('pt-BR')}</td><td class="p-2 text-right font-bold">${formatBRL(i.valor)}</td></tr>`).join('')}</tbody>
-        </table></div>`;
-        Swal.fire({ title: `Contas de ${parseDateLocal(dateStr).toLocaleDateString('pt-BR')}`, html, width: '800px', confirmButtonColor: MRK.blue });
+        if (!dia) return;
+
+        const tipoLabel = (t) => {
+            const up = (t||'').toUpperCase();
+            if (up === 'D') return '<span style="background:#fde8e8;color:#a32d2d;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">DÉB</span>';
+            if (up === 'C') return '<span style="background:#e6f4ea;color:#1b5e20;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">CRÉ</span>';
+            return '';
+        };
+
+        let html = `<div class="max-h-[55vh] overflow-y-auto border rounded">
+        <table class="w-full text-xs text-left">
+            <thead class="bg-gray-100 sticky top-0 shadow-sm">
+                <tr>
+                    <th class="p-2">Tipo</th>
+                    <th class="p-2">Nome</th>
+                    <th class="p-2">Doc</th>
+                    <th class="p-2">Plano</th>
+                    <th class="p-2">Vencimento</th>
+                    <th class="p-2">Baixa</th>
+                    <th class="p-2 text-right">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${dia.itens.map(i => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2">${tipoLabel(i.tipo)}</td>
+                        <td class="p-2">
+                            <div class="font-medium">${i.nome || '-'}</div>
+                            ${i.obs ? `<div class="text-gray-400 italic">${i.obs}</div>` : ''}
+                        </td>
+                        <td class="p-2 text-gray-500">${i.doc || '-'}</td>
+                        <td class="p-2 text-gray-500">${i.plano_descricao || i.plano_contas || '-'}</td>
+                        <td class="p-2">${i.vencimento ? parseDateLocal(i.vencimento).toLocaleDateString('pt-BR') : '-'}</td>
+                        <td class="p-2">
+                            ${i.pago
+            ? `<span style="color:#1b5e20;font-weight:700;">${parseDateLocal(i.baixa_dt).toLocaleDateString('pt-BR')}</span>`
+            : '<span style="color:#b45309;">Em aberto</span>'
+        }
+                        </td>
+                        <td class="p-2 text-right font-bold">${formatBRL(i.valor)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>`;
+
+        // Totais do dia
+        const totDeb = dia.itens.filter(i=>(i.tipo||'').toUpperCase()==='D').reduce((a,b)=>a+Number(b.valor),0);
+        const totCre = dia.itens.filter(i=>(i.tipo||'').toUpperCase()==='C').reduce((a,b)=>a+Number(b.valor),0);
+        const footer = `<div class="flex justify-end gap-6 mt-2 text-xs font-semibold">
+        <span style="color:#a32d2d;">Débitos: ${formatBRL(totDeb)}</span>
+        <span style="color:#1b5e20;">Créditos: ${formatBRL(totCre)}</span>
+    </div>`;
+
+        const dt = parseDateLocal(dateStr).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+        Swal.fire({
+            title: `Contas de ${dt}`,
+            html: html + footer,
+            width: '70%',
+            confirmButtonColor: MRK.blue
+        });
     }
 
     function navMes(delta) {
