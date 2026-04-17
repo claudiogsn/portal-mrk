@@ -37,6 +37,16 @@ $firstName = explode(' ', trim($userName))[0];
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
+        .mrk-alert-info    { background:#eff6ff; border-left-color:#3b82f6; }
+        .mrk-alert-success { background:#f0fdf4; border-left-color: var(--mrk-green); }
+        .mrk-alert-warning { background:#fffaf0; border-left-color: var(--mrk-amber); }
+        .mrk-alert-danger  { background:#fef2f2; border-left-color: var(--mrk-red); }
+
+        .mrk-alert-info    .alert-icon { background:rgba(59,130,246,.15); color:#3b82f6; }
+        .mrk-alert-success .alert-icon { background:rgba(8,167,148,.15); color: var(--mrk-green); }
+        .mrk-alert-warning .alert-icon { background:rgba(245,166,35,.15); color: var(--mrk-amber); }
+        .mrk-alert-danger  .alert-icon { background:rgba(229,57,53,.15); color: var(--mrk-red); }
+        
         :root {
             --mrk-blue: #0B46AC;
             --mrk-blue-dark: #083682;
@@ -243,8 +253,8 @@ $firstName = explode(' ', trim($userName))[0];
 
         /* ===== ALERTAS ===== */
         .alert-item {
-            display:flex; gap:12px; padding:14px; border-radius:8px;
-            margin-bottom:10px; border-left:4px solid;
+            display:flex; align-items: flex-start; gap:12px; padding:16px; border-radius:8px;
+            margin-bottom:12px; border-left:4px solid; position: relative;
         }
         .alert-item:last-child { margin-bottom:0; }
         .alert-info    { background:#eff6ff; border-left-color:#3b82f6; }
@@ -253,21 +263,28 @@ $firstName = explode(' ', trim($userName))[0];
         .alert-danger  { background:#fef2f2; border-left-color: var(--mrk-red); }
 
         .alert-item .alert-icon {
-            width:32px; height:32px; border-radius:8px; display:flex;
-            align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
+            width:36px; height:36px; border-radius:8px; display:flex;
+            align-items:center; justify-content:center; font-size:20px; flex-shrink:0;
+            margin-top: 2px; /* Alinha o ícone visualmente com a primeira linha do texto */
         }
-        .alert-info    .alert-icon { background:#3b82f620; color:#3b82f6; }
+        .alert-info    .alert-icon { background:rgba(59,130,246,.15); color:#3b82f6; }
         .alert-success .alert-icon { background:rgba(8,167,148,.15); color: var(--mrk-green); }
         .alert-warning .alert-icon { background:rgba(245,166,35,.15); color: var(--mrk-amber); }
         .alert-danger  .alert-icon { background:rgba(229,57,53,.15); color: var(--mrk-red); }
 
         .alert-item .alert-body { flex:1; min-width:0; }
         .alert-item .alert-title {
-            font-family:'Kanit',sans-serif; font-weight:600; font-size:14px;
-            color: var(--mrk-text); margin:0 0 4px;
+            font-family:'Kanit',sans-serif; font-weight:600; font-size:15px;
+            color: var(--mrk-text); margin:0 0 4px; line-height: 1.2;
         }
-        .alert-item .alert-msg { font-size:13px; color:#4b5563; margin:0 0 4px; line-height:1.4; }
-        .alert-item .alert-meta { font-size:11px; color:#9ca3af; font-family:'Poppins',sans-serif; }
+        .alert-item .alert-msg {
+            font-size:13px; color:#4b5563; margin:0 0 6px; line-height:1.5;
+            display: block; width: 100%; word-break: break-word; /* Evita que o texto quebre o layout */
+        }
+        .alert-item .alert-meta {
+            font-size:11px; color:#9ca3af; font-family:'Poppins',sans-serif;
+            display: block; width: 100%;
+        }
 
         .alert-empty {
             text-align:center; padding:30px 20px; color:#9ca3af; font-size:13px;
@@ -328,7 +345,7 @@ $firstName = explode(' ', trim($userName))[0];
     <!-- KPIs -->
     <div class="stat-cards">
         <div class="stat-card card-red" id="kpiAlertas">
-            <div class="stat-icon"><iconify-icon icon="icon-park-outline:notification"></iconify-icon></div>
+            <div class="stat-icon"><iconify-icon icon="icon-park-outline:remind"></iconify-icon></div>
             <div class="stat-number" id="numAlertas"><div class="skeleton-stat"></div></div>
             <div class="stat-label">Alertas Ativos</div>
             <span class="stat-badge badge-neutral" id="badgeAlertas">total</span>
@@ -556,8 +573,8 @@ $firstName = explode(' ', trim($userName))[0];
             const dt   = a.created_at ? new Date(a.created_at).toLocaleString('pt-BR') : '';
 
             $c.append(`
-                <div class="alert-item alert-${escapeHtml(type)}">
-                    <div class="alert-icon"><iconify-icon icon="${icon}"></iconify-icon></div>
+            <div class="alert-item mrk-alert-${escapeHtml(type)}">
+                <div class="alert-icon"><iconify-icon icon="${icon}"></iconify-icon></div>
                     <div class="alert-body">
                         <div class="alert-title">${escapeHtml(a.title)}</div>
                         <div class="alert-msg">${escapeHtml(a.message)}</div>
