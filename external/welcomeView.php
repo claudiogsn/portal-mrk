@@ -715,10 +715,40 @@ $firstName = explode(' ', trim($userName))[0];
 
     function normalizeIcon(icon) {
         if (!icon) return 'icon-park-outline:application-two';
-        if (icon.indexOf(':') !== -1) return icon;
-        if (icon.indexOf('fa-') === 0) return 'fa:' + icon.substring(3);
-        if (icon.indexOf('bs-') === 0) return 'bi:' + icon.substring(3);
-        return 'icon-park-outline:' + icon;
+
+        // 1. Remove classes extras separadas por espaço (ex: "fa-fw")
+        // Ex: "fas:chart-bar fa-fw" vira apenas "fas:chart-bar"
+        let baseIcon = icon.split(' ')[0].trim();
+
+        // 2. Traduz os prefixos salvos no banco para as coleções do Iconify (FontAwesome 6)
+        if (baseIcon.startsWith('fas:')) {
+            return baseIcon.replace('fas:', 'fa6-solid:');
+        }
+        if (baseIcon.startsWith('far:')) {
+            return baseIcon.replace('far:', 'fa6-regular:');
+        }
+        if (baseIcon.startsWith('fab:')) {
+            return baseIcon.replace('fab:', 'fa6-brands:');
+        }
+        if (baseIcon.startsWith('fa:')) {
+            // Se for um ícone de marca genérico como "fa:whatsapp"
+            if (baseIcon.includes('whatsapp') || baseIcon.includes('facebook') || baseIcon.includes('instagram')) {
+                return baseIcon.replace('fa:', 'fa6-brands:');
+            }
+            return baseIcon.replace('fa:', 'fa6-solid:');
+        }
+
+        // 3. Fallback caso o atalho seja uma imagem (como o logo-openfinance.png)
+        // O Iconify não renderiza URLs de imagem, então colocamos um ícone padrão
+        if (baseIcon.includes('.png') || baseIcon.includes('.jpg') || baseIcon.includes('.svg')) {
+            return 'icon-park-outline:api-app';
+        }
+
+        // 4. Se já tiver um prefixo válido (ex: "icon-park-outline:...")
+        if (baseIcon.indexOf(':') !== -1) return baseIcon;
+
+        // 5. Fallback final
+        return 'icon-park-outline:' + baseIcon;
     }
 
     /* ==========================================
