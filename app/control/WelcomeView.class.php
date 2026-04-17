@@ -14,6 +14,8 @@ class WelcomeView extends TPage
         public function __construct($param)
         {
             parent::__construct();
+
+            $logId = AccessLogger::log(__CLASS__);
     
             $username = TSession::getValue('userid');
             $token = TSession::getValue('sessionid');
@@ -21,9 +23,9 @@ class WelcomeView extends TPage
     
     
             if($_SERVER['SERVER_NAME'] == "localhost"){
-                $link = "http://localhost/portal-mrk/external/Dashboard.html?username={$username}&token={$token}&unit_id={$unit_id}";
+                $link = "http://localhost/portal-mrk/external/welcomeView.php";
             }else{
-                $link = "https://portal.mrksolucoes.com.br/external/Dashboard.html?username={$username}&token={$token}&unit_id={$unit_id}";
+                $link = "https://portal.mrksolucoes.com.br/external/welcomeView.php";
             }
     
             $iframe = new TElement('iframe');
@@ -35,6 +37,29 @@ class WelcomeView extends TPage
             $iframe->height = "1000px";
     
             parent::add($iframe);
+
+            if ($logId) {
+                TScript::create("
+                (function() {
+                    var logId = " . (int) $logId . ";
+                    var sent  = false;
+                    function sendExit() {
+                        if (sent) return;
+                        sent = true;
+                        var url = 'engine.php?class=AccessLoggerEndpoint&method=logout&log_id=' + logId;
+                        if (navigator.sendBeacon) {
+                            navigator.sendBeacon(url);
+                        } else {
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('GET', url, false);
+                            try { xhr.send(); } catch(e) {}
+                        }
+                    }
+                    window.addEventListener('beforeunload', sendExit);
+                    window.addEventListener('pagehide', sendExit);
+                })();
+            ");
+            }
         }
         function onFeed($param){
             // $id = $param['key'];
