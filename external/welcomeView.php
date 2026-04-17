@@ -37,6 +37,51 @@ $firstName = explode(' ', trim($userName))[0];
     <link href="style/mrk.css" rel="stylesheet">
 
     <style>
+        /* ===== PAGINAÇÃO DOS ALERTAS ===== */
+        .mrk-pagination {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            margin-top: 15px !important;
+            padding-top: 15px !important;
+            border-top: 1px dashed #e5e7eb !important;
+            width: 100% !important;
+        }
+        .btn-paginate {
+            background: #fff !important;
+            border: 1px solid #d1d5db !important;
+            color: #4b5563 !important;
+            padding: 6px 12px !important;
+            border-radius: 6px !important;
+            font-family: 'Poppins', sans-serif !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            transition: all 0.2s ease;
+            margin: 0 !important;
+        }
+        .btn-paginate:hover:not(:disabled) {
+            background: #f9fafb !important;
+            border-color: var(--mrk-blue) !important;
+            color: var(--mrk-blue) !important;
+        }
+        .btn-paginate:disabled {
+            opacity: 0.4 !important;
+            cursor: not-allowed !important;
+        }
+        .page-info {
+            font-family: 'Poppins', sans-serif !important;
+            font-size: 12px !important;
+            color: #9ca3af !important;
+            font-weight: 500 !important;
+            display: inline-block !important;
+            margin: 0 !important;
+        }
+
         .mrk-alert-info    { background:#eff6ff; border-left-color:#3b82f6; }
         .mrk-alert-success { background:#f0fdf4; border-left-color: var(--mrk-green); }
         .mrk-alert-warning { background:#fffaf0; border-left-color: var(--mrk-amber); }
@@ -46,7 +91,7 @@ $firstName = explode(' ', trim($userName))[0];
         .mrk-alert-success .alert-icon { background:rgba(8,167,148,.15); color: var(--mrk-green); }
         .mrk-alert-warning .alert-icon { background:rgba(245,166,35,.15); color: var(--mrk-amber); }
         .mrk-alert-danger  .alert-icon { background:rgba(229,57,53,.15); color: var(--mrk-red); }
-        
+
         :root {
             --mrk-blue: #0B46AC;
             --mrk-blue-dark: #083682;
@@ -525,11 +570,21 @@ $firstName = explode(' ', trim($userName))[0];
     /* ==========================================
        ALERTAS (KPI + lista lateral)
     ========================================== */
+    /* ==========================================
+         VARIÁVEIS DE ESTADO DA PAGINAÇÃO
+      ========================================== */
+    let currentAlertsPages = [];
+    let currentAlertPageIdx = 0;
+
+    /* ==========================================
+       ALERTAS (KPI + lista lateral)
+    ========================================== */
     async function loadAlertas() {
         try {
+            // Removemos o 'limit' daqui, pois o PHP agora traz tudo e fatia
             const resp = await apiCall('getAlertsForDashboard', {
                 user_id: CONFIG.user_id,
-                filters: { only_unread: false, limit: 5 }
+                filters: { unit_id: CONFIG.unit_id }
             });
 
             if (!resp.success) {
@@ -538,13 +593,18 @@ $firstName = explode(' ', trim($userName))[0];
                 return;
             }
 
-            setKPI('numAlertas', resp.total || 0);
+            // Atualiza o KPI com o total bruto de alertas (total_alerts)
+            setKPI('numAlertas', resp.total_alerts || 0);
             $('#badgeAlertas')
                 .removeClass('badge-up badge-down badge-neutral')
                 .addClass(resp.unread > 0 ? 'badge-down' : 'badge-up')
                 .text(resp.unread > 0 ? resp.unread + ' novos' : 'em dia');
 
-            renderAlertas(resp.alerts || []);
+            // Salva a matriz de páginas na memória e reseta para a página 0
+            currentAlertsPages = resp.alerts || [];
+            currentAlertPageIdx = 0;
+
+            renderAlertasPage();
 
         } catch (err) {
             console.error('loadAlertas:', err);
@@ -553,13 +613,17 @@ $firstName = explode(' ', trim($userName))[0];
         }
     }
 
-    function renderAlertas(alerts) {
+    // Renderiza apenas a página atual e os controles
+    function renderAlertasPage() {
         const $c = $('#alertsContainer').empty();
-        if (!alerts.length) {
+
+        // Se não tem alertas na matriz ou a página atual está vazia
+        if (!currentAlertsPages || currentAlertsPages.length === 0 || !currentAlertsPages[currentAlertPageIdx]) {
             renderAlertasVazio('Nenhum alerta no momento');
             return;
         }
 
+        const pageAlerts = currentAlertsPages[currentAlertPageIdx];
         const iconMap = {
             info:    'icon-park-outline:info',
             success: 'icon-park-outline:check-one',
@@ -567,28 +631,62 @@ $firstName = explode(' ', trim($userName))[0];
             danger:  'icon-park-outline:caution',
         };
 
-        alerts.forEach(a => {
+        // Renderiza os itens da página atual
+        let html = '<div class="alerts-list">';
+        pageAlerts.forEach(a => {
             const type = a.type || 'info';
             const icon = iconMap[type] || iconMap.info;
             const dt   = a.created_at ? new Date(a.created_at).toLocaleString('pt-BR') : '';
 
-            $c.append(`
-            <div class="alert-item mrk-alert-${escapeHtml(type)}">
-                <div class="alert-icon"><iconify-icon icon="${icon}"></iconify-icon></div>
-                    <div class="alert-body">
-                        <div class="alert-title">${escapeHtml(a.title)}</div>
-                        <div class="alert-msg">${escapeHtml(a.message)}</div>
-                        <div class="alert-meta">${escapeHtml(a.unit_name || '')} · ${escapeHtml(dt)}</div>
-                    </div>
+            html += `
+<div class="alert-item mrk-alert-${escapeHtml(type)}">
+<div class="alert-icon"><iconify-icon icon="${icon}"></iconify-icon></div>
+                <div class="alert-body">
+                    <div class="alert-title">${escapeHtml(a.title)}</div>
+                    <div class="alert-msg">${escapeHtml(a.message)}</div>
+                    <div class="alert-meta">${escapeHtml(a.unit_name || '')} · ${escapeHtml(dt)}</div>
                 </div>
-            `);
+            </div>`;
         });
+        html += '</div>';
+
+        // Renderiza a paginação (Apenas se tiver mais de 1 página)
+        const totalPages = currentAlertsPages.length;
+        if (totalPages > 1) {
+            const prevDisabled = currentAlertPageIdx === 0 ? 'disabled' : '';
+            const nextDisabled = currentAlertPageIdx === totalPages - 1 ? 'disabled' : '';
+
+            html += `
+            <div class="mrk-pagination">
+                <button class="btn-paginate" onclick="changeAlertPage(-1)" ${prevDisabled}>
+                    <iconify-icon icon="icon-park-outline:left"></iconify-icon> Anterior
+                </button>
+                <span class="page-info">Pág ${currentAlertPageIdx + 1} de ${totalPages}</span>
+                <button class="btn-paginate" onclick="changeAlertPage(1)" ${nextDisabled}>
+                    Próxima <iconify-icon icon="icon-park-outline:right"></iconify-icon>
+                </button>
+            </div>`;
+        }
+
+        $c.html(html);
+    }
+
+    // Função disparada pelos botões de paginação
+    function changeAlertPage(dir) {
+        currentAlertPageIdx += dir;
+
+        // Travas de segurança para não estourar o índice
+        if (currentAlertPageIdx < 0) currentAlertPageIdx = 0;
+        if (currentAlertPageIdx >= currentAlertsPages.length) currentAlertPageIdx = currentAlertsPages.length - 1;
+
+        // Re-desenha a interface com os novos dados em memória
+        renderAlertasPage();
     }
 
     function renderAlertasVazio(msg) {
         $('#alertsContainer').html(`
             <div class="alert-empty">
-                <iconify-icon icon="icon-park-outline:check-one"></iconify-icon>
+                <iconify-icon icon="icon-park-outline:check-one"></iconify-icon><br>
                 ${escapeHtml(msg)}
             </div>
         `);
@@ -724,7 +822,7 @@ $firstName = explode(' ', trim($userName))[0];
                    title="${escapeHtml(label)} — ${m.total_acessos} acessos nos últimos 30 dias">
                     <div class="sc-icon"><iconify-icon icon="${escapeHtml(icon)}"></iconify-icon></div>
                     <span class="sc-label">${escapeHtml(label)}</span>
-                    <span class="sc-count">${m.total_acessos}</span>
+
                 </a>
             `);
         });

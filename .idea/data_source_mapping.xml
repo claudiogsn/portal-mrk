@@ -3,6 +3,7 @@
   <component name="DataSourcePerFileMappings">
     <file url="file://$PROJECT_DIR$/.idea/queries/Query_2.sql" value="4138875f-b17f-4c2b-ba78-f300fdad275e" />
     <file url="file://$PROJECT_DIR$/api/v1/controllers/AlertController.php" value="4138875f-b17f-4c2b-ba78-f300fdad275e" />
+    <file url="file://$PROJECT_DIR$/api/v1/controllers/BiController.php" value="4138875f-b17f-4c2b-ba78-f300fdad275e" />
     <file url="file://$PROJECT_DIR$/api/v1/controllers/ConferenciaCaixaController.php" value="4138875f-b17f-4c2b-ba78-f300fdad275e" />
     <file url="file://$PROJECT_DIR$/api/v1/controllers/DashboardController.php" value="4138875f-b17f-4c2b-ba78-f300fdad275e" />
     <file url="file://$PROJECT_DIR$/api/v1/controllers/FinanceiroContaController.php" value="4138875f-b17f-4c2b-ba78-f300fdad275e" />

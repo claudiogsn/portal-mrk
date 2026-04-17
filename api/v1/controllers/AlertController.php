@@ -404,13 +404,11 @@ class AlertController
     }
     /**
      * Carrega os alertas do dashboard para um usuário.
-     *
-     * Busca todas as unidades que o usuário tem acesso (system_user_unit)
-     * e retorna os alertas ativos dessas unidades, já com o flag is_read
-     * e o nome da unidade de origem de cada alerta.
+     * Sem filtros aplicados, retornando todos os alertas da unidade paginados
+     * em blocos de 4 (in-memory, para evitar novos requests do front-end).
      *
      * @param int   $user_id
-     * @param array $filters  ['type' => ..., 'category' => ..., 'only_unread' => bool, 'limit' => int]
+     * @param array $filters  Contém a 'unit_id' atual do usuário.
      */
     public static function getAlertsForDashboard(int $user_id, array $filters = []): array
     {
@@ -420,51 +418,44 @@ class AlertController
             return ['success' => false, 'message' => 'user_id inválido'];
         }
 
+        $unit_id_req = $filters['unit_id'] ?? 0;
+
         /* ------------------------------------------------------------
-         * 1) Unidades que o usuário tem acesso
+         * 1) Valida se o usuário tem acesso à unidade solicitada
          * ------------------------------------------------------------ */
         $stmtUnits = $pdo->prepare("
             SELECT system_unit_id
             FROM system_user_unit
-            WHERE system_user_id = :user_id
+            WHERE system_user_id = :user_id AND system_unit_id = :unit_id
         ");
-        $stmtUnits->execute([':user_id' => $user_id]);
+        $stmtUnits->execute([
+            ':user_id' => $user_id,
+            ':unit_id' => $unit_id_req
+        ]);
         $unitIds = $stmtUnits->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($unitIds)) {
             return [
-                'success'  => true,
-                'total'    => 0,
-                'unread'   => 0,
-                'units'    => [],
-                'summary'  => ['info' => 0, 'success' => 0, 'warning' => 0, 'danger' => 0, 'total' => 0],
-                'alerts'   => [],
-                'message'  => 'Usuário não possui unidades vinculadas',
+                'success'      => true,
+                'total_alerts' => 0,
+                'unread'       => 0,
+                'total_pages'  => 0,
+                'units'        => [],
+                'summary'      => ['info' => 0, 'success' => 0, 'warning' => 0, 'danger' => 0, 'total' => 0],
+                'alerts'       => [], // Retorna vazio
+                'message'      => 'Usuário não possui acesso a esta unidade',
             ];
         }
 
-        // Garante int e monta placeholders dinâmicos (IN é chato com PDO)
         $unitIds      = array_map('intval', $unitIds);
         $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
 
         /* ------------------------------------------------------------
-         * 2) Monta WHERE dinâmico com os filtros opcionais
+         * 2) Query principal (Sem filtros extras, pegando tudo que está ativo)
          * ------------------------------------------------------------ */
         $where  = ["a.system_unit_id IN ($placeholders)", "a.active = 'Y'"];
-        $params = $unitIds;  // posicional pro IN
+        $params = $unitIds;
 
-        if (!empty($filters['type'])) {
-            $where[] = "a.type = ?";
-            $params[] = $filters['type'];
-        }
-        if (!empty($filters['category'])) {
-            $where[] = "a.category = ?";
-            $params[] = $filters['category'];
-        }
-
-        /* ------------------------------------------------------------
-         * 3) Query principal
-         * ------------------------------------------------------------ */
         $sql = "
             SELECT
                 a.id,
@@ -481,39 +472,27 @@ class AlertController
             INNER JOIN system_unit u        ON u.id = a.system_unit_id
             LEFT  JOIN mrk_alert_reads r    ON r.alert_id = a.id
                                            AND r.system_user_id = ?
-            WHERE " . implode(' AND ', $where);
-
-        // user_id entra primeiro por causa do LEFT JOIN
-        array_unshift($params, $user_id);
-
-        if (!empty($filters['only_unread'])) {
-            $sql .= " AND r.id IS NULL ";
-        }
-
-        // Prioridade: não lidos primeiro, depois gravidade, depois mais recentes
-        $sql .= "
+            WHERE " . implode(' AND ', $where) . "
             ORDER BY
                 is_read ASC,
                 FIELD(a.type, 'danger','warning','info','success'),
                 a.created_at DESC
         ";
 
-        // Limite opcional
-        if (!empty($filters['limit']) && is_numeric($filters['limit'])) {
-            $sql .= " LIMIT " . (int) $filters['limit'];
-        }
+        // Adiciona o user_id no começo dos parâmetros para o LEFT JOIN
+        array_unshift($params, $user_id);
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $allAlerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* ------------------------------------------------------------
-         * 4) Monta summary em um único loop
+         * 3) Monta summary em um único loop
          * ------------------------------------------------------------ */
         $summary = ['info' => 0, 'success' => 0, 'warning' => 0, 'danger' => 0];
         $unread  = 0;
 
-        foreach ($alerts as $a) {
+        foreach ($allAlerts as $a) {
             if (isset($summary[$a['type']])) {
                 $summary[$a['type']]++;
             }
@@ -523,13 +502,49 @@ class AlertController
         }
         $summary['total'] = array_sum($summary);
 
+        /* ------------------------------------------------------------
+         * 4) Paginação em Memória (Fatiamento)
+         * ------------------------------------------------------------ */
+        // Divide todos os alertas em arrays menores, contendo 4 itens cada
+        $paginatedAlerts = array_chunk($allAlerts, 4);
+
         return [
-            'success' => true,
-            'total'   => count($alerts),
-            'unread'  => $unread,
-            'units'   => $unitIds,
-            'summary' => $summary,
-            'alerts'  => $alerts,
+            'success'      => true,
+            'total_alerts' => count($allAlerts),           // Total bruto de alertas
+            'unread'       => $unread,
+            'total_pages'  => count($paginatedAlerts),     // Quantidade de páginas geradas
+            'per_page'     => 4,
+            'units'        => $unitIds,
+            'summary'      => $summary,
+            'alerts'       => $paginatedAlerts,            // Retorna a matriz já paginada
+        ];
+    }
+
+    // Método para registrar os alertas vindos do worker da Zig
+    public static function registerZigAlerts($data) {
+        $system_unit_id = $data['system_unit_id'] ?? null;
+        $alertas = $data['alertas'] ?? [];
+
+        if (!$system_unit_id || empty($alertas)) {
+            return ['status' => 'success', 'message' => 'Sem alertas para processar.'];
+        }
+
+        foreach ($alertas as $item) {
+            $sku = $item['sku'];
+            $nome = $item['nome'];
+
+            self::create([
+                'system_unit_id' => $system_unit_id,
+                'title'          => "Produto não mapeado na Zig: {$sku}",
+                'message'        => "O produto '{$nome}' (SKU Zig: {$sku}) teve movimentação de saída, mas não possui o 'sku_zig' vinculado no cadastro do Portal MRK.",
+                'type'           => 'warning',
+                'category'       => 'integracao_pdv'
+            ]);
+        }
+
+        return [
+            'status' => 'success',
+            'message' => count($alertas) . ' alertas registrados com sucesso.'
         ];
     }
 }

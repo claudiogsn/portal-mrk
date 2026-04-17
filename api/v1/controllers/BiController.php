@@ -7,6 +7,7 @@ ini_set('max_input_time', '600');
 ini_set('memory_limit', '512M');
 
 require_once __DIR__ . '/../database/db.php';
+require_once 'AlertController.php';
 
 class BiController {
     public static function createGroup($nome, $slug = null, $ativo = 1, $bi = 0) {
@@ -513,6 +514,47 @@ and ge.ativo = 1
     }
     public static function persistSales($salesData) {
         global $pdo;
+
+        // ------------------------------------------------------------------
+        // ETAPA 1: VALIDAÇÃO DE PRODUTOS NÃO MAPEADOS (EVITANDO N+1)
+        // ------------------------------------------------------------------
+
+        $system_unit_id = $salesData[0]['system_unit_id'];
+        $codigosRecebidos = array_unique(array_column($salesData, 'codMaterial'));
+
+        // Busca no banco quais desses códigos realmente existem na tabela products
+        $inQuery = implode(',', array_fill(0, count($codigosRecebidos), '?'));
+        $stmtCheck = $pdo->prepare("
+            SELECT codigo 
+            FROM products 
+            WHERE system_unit_id = ? AND codigo IN ($inQuery)
+        ");
+
+        $paramsCheck = array_merge([$system_unit_id], $codigosRecebidos);
+        $stmtCheck->execute($paramsCheck);
+        $codigosExistentes = $stmtCheck->fetchAll(PDO::FETCH_COLUMN);
+
+        $codigosFaltantes = array_diff($codigosRecebidos, $codigosExistentes);
+
+        if (!empty($codigosFaltantes)) {
+
+            $mapaDescricoes = [];
+            foreach ($salesData as $item) {
+                $mapaDescricoes[$item['codMaterial']] = !empty($item['descricao']) ? $item['descricao'] : 'Sem descrição no PDV';
+            }
+
+            foreach ($codigosFaltantes as $cod) {
+                $descricaoProduto = $mapaDescricoes[$cod];
+
+                AlertController::create([
+                    'system_unit_id' => $system_unit_id,
+                    'title'          => "Produto não mapeado: {$cod}",
+                    'message'        => "O produto '{$descricaoProduto}' (Código PDV: {$cod}) foi vendido, mas não está cadastrado ou vinculado no sistema.",
+                    'type'           => 'warning',
+                    'category'       => 'integracao_pdv'
+                ]);
+            }
+        }
 
         // Inicia a transação
         try {

@@ -137,7 +137,8 @@ if (isset($data['method']) && isset($data['data'])) {
         'listarNotasNaoImportadasUltimos30Dias',
         'getGroupsToConsolidation',
         'getGroupByUnit',
-        'getGroupByUser'
+        'getGroupByUser',
+        'registerZigAlerts'
     ];
 
     if (!in_array($method, $noAuthMethods)) {
@@ -2480,6 +2481,9 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'getAlertsForDashboard':
                 $response = AlertController::getAlertsForDashboard($requestData['user_id'] ?? 0, $requestData['filters'] ?? []);
+                break;
+            case 'registerZigAlerts':
+                $response = AlertController::registerZigAlerts($requestData);
                 break;
 
             case 'getActiveAlertsByUnit':
