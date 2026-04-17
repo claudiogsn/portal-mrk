@@ -2896,6 +2896,119 @@ class DashboardController
         }
     }
 
+    public static function getMostAccessedMenus(array $data): array
+    {
+        global $pdo;
+
+        $userId = isset($data['user_id']) ? (int) $data['user_id'] : 0;
+        $limit  = isset($data['limit'])   ? (int) $data['limit']   : 9;
+        $days   = isset($data['days'])    ? (int) $data['days']    : 30;
+
+        if ($userId <= 0) {
+            return ['success' => false, 'message' => 'user_id é obrigatório'];
+        }
+
+        // Limites razoáveis
+        if ($limit < 1 || $limit > 50) $limit = 9;
+        if ($days  < 1 || $days  > 365) $days = 30;
+
+        try {
+            $sql = "
+                SELECT
+                    l.class_name,
+                    COALESCE(MAX(m.label), l.class_name) AS label,
+                    MAX(m.icon)         AS icon,
+                    MAX(l.frontend_url) AS frontend_url,
+                    COUNT(*)            AS total_acessos,
+                    MAX(l.data_entrada) AS ultimo_acesso
+                FROM mrk_access_log l
+                LEFT JOIN mrk_menu m
+                       ON m.action = l.class_name
+                WHERE l.user_id = :user_id
+                  AND l.data_entrada >= DATE_SUB(NOW(), INTERVAL :days DAY)
+                  AND l.class_name NOT IN ('WelcomeView', 'MudarFilial', 'AccessLoggerEndpoint')
+                GROUP BY l.class_name
+                ORDER BY total_acessos DESC, ultimo_acesso DESC
+                LIMIT " . (int) $limit;
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':days',    $days,   PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'total'   => count($rows),
+                'menus'   => $rows,
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao buscar menus mais acessados: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    public static function getGroupByUserUnit(array $data): array
+    {
+        global $pdo;
+
+        $userId = isset($data['user_id']) ? (int) $data['user_id'] : 0;
+
+        if ($userId <= 0) {
+            return ['success' => false, 'message' => 'user_id é obrigatório'];
+        }
+
+        try {
+            // 1) Descobre o system_unit_id do usuário
+            $stmt = $pdo->prepare("
+                SELECT system_unit_id
+                FROM system_users
+                WHERE id = :user_id AND active = 'Y'
+                LIMIT 1
+            ");
+            $stmt->execute([':user_id' => $userId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row || empty($row['system_unit_id'])) {
+                return ['success' => false, 'message' => 'Usuário não tem unidade definida'];
+            }
+
+            $unitId = (int) $row['system_unit_id'];
+
+            $grupos = BiController::getGroupByUnit($unitId);
+
+            if (empty($grupos)) {
+                return [
+                    'success' => false,
+                    'message' => 'Unidade não vinculada a nenhum grupo',
+                    'unit_id' => $unitId,
+                ];
+            }
+
+            $primeiro = $grupos[0];
+
+            return [
+                'success'  => true,
+                'unit_id'  => $unitId,
+                'group_id' => (int) $primeiro['id'],
+                'group'    => [
+                    'id'   => (int) $primeiro['id'],
+                    'name' => $primeiro['nome']  ?? null,
+                    'slug' => $primeiro['slug']  ?? null,
+                ],
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Erro ao buscar grupo do usuário: ' . $e->getMessage(),
+            ];
+        }
+    }
+
 
 
 

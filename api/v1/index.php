@@ -75,6 +75,7 @@ require_once 'controllers/CategoriaController.php';
 require_once 'controllers/ProjecaoVendasController.php';
 require_once 'controllers/ManipulacaoController.php';
 require_once 'controllers/AlertController.php';
+require_once 'controllers/FinanceiroContaController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -2595,6 +2596,17 @@ if (isset($data['method']) && isset($data['data'])) {
             case 'listSystemUnits':
                 $response = SystemUnitController::listSystemUnits();
                 break;
+            case 'getMostAccessedMenus':
+                $response = DashboardController::getMostAccessedMenus($requestData);
+                break;
+
+            case 'getGroupByUserUnit':
+                $response = DashboardController::getGroupByUserUnit($requestData);
+                break;
+            case 'getDashboardFinanceiroPorGrupo':
+                $response = FinanceiroContaController::getDashboardFinanceiroPorGrupo($requestData);
+                break;
+
 
 
 
