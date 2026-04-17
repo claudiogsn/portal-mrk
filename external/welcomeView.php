@@ -319,7 +319,7 @@ $firstName = explode(' ', trim($userName))[0];
             border-radius: 8px;
             padding: 24px 20px;
             border: 1px solid #eee;
-            border-top: 2px solid var(--mrk-green);
+            border-top: 2px solid var(--mrk-amber);
             position: relative;
             overflow: hidden;
             transition: all 0.3s ease;
@@ -403,7 +403,7 @@ $firstName = explode(' ', trim($userName))[0];
 
         .card {
             background: rgba(255, 255, 255, 0.98) !important;
-            border-top: 2px solid var(--mrk-green) !important;
+            border-top: 2px solid var(--mrk-amber) !important;
             border-radius: 8px !important;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
         }
@@ -411,7 +411,7 @@ $firstName = explode(' ', trim($userName))[0];
         .card .header h2 {
             font-family: 'Kanit', sans-serif;
             font-weight: 600;
-            color: var(--mrk-green);
+            color: var(--mrk-amber);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -424,7 +424,7 @@ $firstName = explode(' ', trim($userName))[0];
         /* ===== SHORTCUTS ===== */
         .shortcuts-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(2, 1fr);
             gap: 12px;
         }
         .shortcut-btn {
@@ -444,7 +444,7 @@ $firstName = explode(' ', trim($userName))[0];
         }
         .shortcut-btn:hover {
             background: #fff;
-            border-color: var(--mrk-green);
+            border-color: var(--mrk-amber);
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(245,166,35,0.12);
             color: var(--mrk-text);
@@ -462,7 +462,7 @@ $firstName = explode(' ', trim($userName))[0];
             transition: all 0.3s;
         }
         .shortcut-btn:hover .sc-icon {
-            background: var(--mrk-green);
+            background: var(--mrk-amber);
             color: #fff;
         }
         .shortcut-btn .sc-label {
@@ -563,30 +563,38 @@ $firstName = explode(' ', trim($userName))[0];
     </div>
 
     <!-- STAT CARDS -->
+    <?php
+    // Base URL do Adianti para os cards do topo também
+    if ($_SERVER['SERVER_NAME'] === 'localhost') {
+        $adiantiBaseTop = 'http://localhost/portal-mrk/index.php';
+    } else {
+        $adiantiBaseTop = 'https://portal.mrksolucoes.com.br/index.php';
+    }
+    ?>
     <div class="stat-cards">
-        <a href="executarManipulacao.php" class="stat-card card-amber">
-            <div class="stat-icon"><iconify-icon icon="icon-park-outline:experiment"></iconify-icon></div>
+        <a href="<?= $adiantiBaseTop ?>?class=DashboardFaturamento" target="_top" class="stat-card card-amber">
+            <div class="stat-icon"><iconify-icon icon="icon-park-outline:sales-report"></iconify-icon></div>
             <div class="stat-number" id="statManipulacoes"><div class="skeleton-stat"></div></div>
-            <div class="stat-label">Manipulações do Dia</div>
+            <div class="stat-label">Faturamento do Dia</div>
             <span class="stat-badge badge-neutral">hoje</span>
         </a>
-        <a href="index.php?class=ListInsumos" class="stat-card card-blue">
+        <a href="<?= $adiantiBaseTop ?>?class=DashboardEstoque" target="_top" class="stat-card card-blue">
             <div class="stat-icon"><iconify-icon icon="icon-park-outline:box"></iconify-icon></div>
             <div class="stat-number" id="statInsumos"><div class="skeleton-stat"></div></div>
             <div class="stat-label">Insumos em Estoque</div>
             <span class="stat-badge badge-up">↑ ativos</span>
         </a>
-        <a href="index.php?class=RelatorioPerdas" class="stat-card card-green">
+        <a href="<?= $adiantiBaseTop ?>?class=DashboardFinanceiro" target="_top" class="stat-card card-green">
             <div class="stat-icon"><iconify-icon icon="icon-park-outline:chart-line"></iconify-icon></div>
             <div class="stat-number" id="statPerda"><div class="skeleton-stat"></div></div>
-            <div class="stat-label">Perda Média (%)</div>
+            <div class="stat-label">Saldo Financeiro</div>
             <span class="stat-badge badge-up">este mês</span>
         </a>
-        <a href="index.php?class=AlertasEstoque" class="stat-card card-red">
-            <div class="stat-icon"><iconify-icon icon="icon-park-outline:alarm"></iconify-icon></div>
+        <a href="<?= $adiantiBaseTop ?>?class=OpenFinanceContas" target="_top" class="stat-card card-red">
+            <div class="stat-icon"><iconify-icon icon="icon-park-outline:bank-card"></iconify-icon></div>
             <div class="stat-number" id="statAlertas"><div class="skeleton-stat"></div></div>
-            <div class="stat-label">Alertas de Estoque</div>
-            <span class="stat-badge badge-down">atenção</span>
+            <div class="stat-label">Contas Open Finance</div>
+            <span class="stat-badge badge-neutral">sincronizadas</span>
         </a>
     </div>
 
@@ -601,42 +609,30 @@ $firstName = explode(' ', trim($userName))[0];
                 </h2>
             </div>
             <div class="body">
+                <?php
+                // Base URL do Adianti (janela de cima do iframe)
+                if ($_SERVER['SERVER_NAME'] === 'localhost') {
+                    $adiantiBase = 'http://localhost/portal-mrk/index.php';
+                } else {
+                    $adiantiBase = 'https://portal.mrksolucoes.com.br/index.php';
+                }
+                ?>
                 <div class="shortcuts-grid">
-                    <a href="executarManipulacao.php" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:experiment"></iconify-icon></div>
-                        <span class="sc-label">Executar Manipulação</span>
+                    <a href="<?= $adiantiBase ?>?class=DashboardFaturamento" target="_top" class="shortcut-btn">
+                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:sales-report"></iconify-icon></div>
+                        <span class="sc-label">Dashboard Faturamento</span>
                     </a>
-                    <a href="index.php?class=ListInsumos" class="shortcut-btn">
+                    <a href="<?= $adiantiBase ?>?class=DashboardEstoque" target="_top" class="shortcut-btn">
                         <div class="sc-icon"><iconify-icon icon="icon-park-outline:box"></iconify-icon></div>
-                        <span class="sc-label">Insumos</span>
+                        <span class="sc-label">Dashboard Estoque</span>
                     </a>
-                    <a href="index.php?class=ListProdutos" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:commodity"></iconify-icon></div>
-                        <span class="sc-label">Produtos</span>
+                    <a href="<?= $adiantiBase ?>?class=DashboardFinanceiro" target="_top" class="shortcut-btn">
+                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:chart-line"></iconify-icon></div>
+                        <span class="sc-label">Dashboard Financeiro</span>
                     </a>
-                    <a href="index.php?class=FichaTecnica" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:file-doc"></iconify-icon></div>
-                        <span class="sc-label">Fichas Técnicas</span>
-                    </a>
-                    <a href="index.php?class=RelatorioPerdas" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:chart-pie"></iconify-icon></div>
-                        <span class="sc-label">Relatório de Perdas</span>
-                    </a>
-                    <a href="index.php?class=MovimentacaoEstoque" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:transfer"></iconify-icon></div>
-                        <span class="sc-label">Movimentações</span>
-                    </a>
-                    <a href="index.php?class=OrdemProducao" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:factory-building"></iconify-icon></div>
-                        <span class="sc-label">Ordem de Produção</span>
-                    </a>
-                    <a href="index.php?class=Dashboard" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:dashboard"></iconify-icon></div>
-                        <span class="sc-label">Dashboard</span>
-                    </a>
-                    <a href="index.php?class=Configuracoes" class="shortcut-btn">
-                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:setting-two"></iconify-icon></div>
-                        <span class="sc-label">Configurações</span>
+                    <a href="<?= $adiantiBase ?>?class=OpenFinanceContas" target="_top" class="shortcut-btn">
+                        <div class="sc-icon"><iconify-icon icon="icon-park-outline:bank-card"></iconify-icon></div>
+                        <span class="sc-label">Open Finance Contas</span>
                     </a>
                 </div>
             </div>

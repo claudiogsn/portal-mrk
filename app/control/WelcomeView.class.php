@@ -15,7 +15,6 @@ class WelcomeView extends TPage
         {
             parent::__construct();
 
-            $logId = AccessLogger::log(__CLASS__);
     
             $username = TSession::getValue('userid');
             $token = TSession::getValue('sessionid');
@@ -27,6 +26,9 @@ class WelcomeView extends TPage
             }else{
                 $link = "https://portal.mrksolucoes.com.br/external/welcomeView.php";
             }
+
+            $linkParaLog = preg_replace('/\?.*$/', '', $link);
+            AccessLogger::log(__CLASS__, null, $linkParaLog);
     
             $iframe = new TElement('iframe');
             $iframe->id = "iframe_external";

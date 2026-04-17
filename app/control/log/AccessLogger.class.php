@@ -3,26 +3,29 @@
  * AccessLogger
  *
  * Service para registrar acessos dos usuários nas telas do sistema.
- * Usa o padrão Adianti: TRecord + TTransaction.
+ * Padrão Adianti: TRecord + TTransaction.
  *
  * Fail-safe: erros nunca quebram a tela do usuário.
  *
- * Uso no controller:
- *   $logId = AccessLogger::log(__CLASS__);
+ * Uso básico:
+ *   AccessLogger::log(__CLASS__);
  *
- * @version    1.0
+ * Uso com URL do iframe:
+ *   AccessLogger::log(__CLASS__, null, $link);
+ *
+ * @version    1.1
  * @package    service
  */
 class AccessLogger
 {
-    /** @var string Nome da conexão Adianti (config em app/config/{conn}.ini) */
+    /** @var string Nome da conexão Adianti */
     const CONNECTION = 'permission';   // ← AJUSTE para o nome da sua conexão
 
-    /** @var int|null ID do último log inserido neste request */
+    /** @var int|null */
     private static $lastLogId = null;
 
     /**
-     * Descobre o IP real do usuário (considera proxies reversos).
+     * Descobre o IP real do cliente.
      */
     private static function getClientIp()
     {
@@ -45,7 +48,7 @@ class AccessLogger
     }
 
     /**
-     * Monta a URL completa acessada.
+     * URL completa do Adianti (com ?class=...).
      */
     private static function getFullUrl()
     {
@@ -58,11 +61,12 @@ class AccessLogger
     /**
      * Registra um acesso à tela.
      *
-     * @param string      $className  Nome da classe do controller (__CLASS__)
-     * @param string|null $action     Ação opcional (ex.: 'onEdit', 'onDelete')
-     * @return int|null  ID do log inserido ou null em caso de falha
+     * @param string      $className    Nome da classe (__CLASS__)
+     * @param string|null $action       Ação opcional
+     * @param string|null $frontendUrl  URL do frontend (iframe) — passe a variável $link do controller
+     * @return int|null
      */
-    public static function log($className, $action = null)
+    public static function log($className, $action = null, $frontendUrl = null)
     {
         try {
             TTransaction::open(self::CONNECTION);
@@ -73,6 +77,7 @@ class AccessLogger
             $log->class_name   = mb_substr($className, 0, 150);
             $log->action       = $action ? mb_substr($action, 0, 50) : null;
             $log->url          = self::getFullUrl();
+            $log->frontend_url = $frontendUrl ? mb_substr($frontendUrl, 0, 1000) : null;
             $log->ip           = self::getClientIp();
             $log->user_agent   = isset($_SERVER['HTTP_USER_AGENT'])
                 ? mb_substr($_SERVER['HTTP_USER_AGENT'], 0, 500)
@@ -89,7 +94,6 @@ class AccessLogger
             return self::$lastLogId;
 
         } catch (Exception $e) {
-            // Fail-safe: não propaga erro. Só anota no log do sistema.
             try { TTransaction::rollback(); } catch (Exception $ex) {}
             error_log('[AccessLogger::log] ' . $e->getMessage());
             return null;
@@ -98,10 +102,6 @@ class AccessLogger
 
     /**
      * Registra a saída da tela e calcula duração.
-     * Chamado via endpoint quando o usuário fecha/troca de tela.
-     *
-     * @param int $logId ID retornado por log()
-     * @return bool
      */
     public static function logout($logId)
     {
@@ -131,9 +131,6 @@ class AccessLogger
         }
     }
 
-    /**
-     * Retorna o último ID de log gerado neste request.
-     */
     public static function getLastLogId()
     {
         return self::$lastLogId;

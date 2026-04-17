@@ -74,6 +74,7 @@ require_once 'controllers/UtilsController.php';
 require_once 'controllers/CategoriaController.php';
 require_once 'controllers/ProjecaoVendasController.php';
 require_once 'controllers/ManipulacaoController.php';
+require_once 'controllers/AlertController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -2474,6 +2475,70 @@ if (isset($data['method']) && isset($data['data'])) {
 
             case 'updateMenu':
                 $response = MenuMobileController::updateMenu($requestData);
+                break;
+
+            case 'getAlertsForDashboard':
+                $response = AlertController::getAlertsForDashboard($requestData['user_id'] ?? 0, $requestData['filters'] ?? []);
+                break;
+
+            case 'getActiveAlertsByUnit':
+                $response = AlertController::getActiveAlertsByUnit(
+                    $requestData['unit_id'] ?? 0,
+                    $requestData['user_id'] ?? null,
+                    $requestData['filters'] ?? []
+                );
+                break;
+
+            case 'getAlertById':
+                $response = AlertController::getById($requestData['alert_id'] ?? 0);
+                break;
+
+            case 'countUnreadAlerts':
+                $response = AlertController::countUnread($requestData['unit_id'] ?? 0, $requestData['user_id'] ?? 0);
+                break;
+
+            case 'getAlertsSummary':
+                $response = AlertController::getSummaryByUnit($requestData['unit_id'] ?? 0, $requestData['user_id'] ?? null);
+                break;
+
+            case 'getAlertCategories':
+                $response = AlertController::getCategoriesByUnit($requestData['unit_id'] ?? 0);
+                break;
+
+            case 'createAlert':
+                $response = AlertController::create($requestData);
+                break;
+
+            case 'updateAlert':
+                $response = AlertController::update($requestData['alert_id'] ?? 0, $requestData);
+                break;
+
+            case 'activateAlert':
+                $response = AlertController::activate($requestData['alert_id'] ?? 0);
+                break;
+
+            case 'deactivateAlert':
+                $response = AlertController::deactivate($requestData['alert_id'] ?? 0);
+                break;
+
+            case 'deleteAlert':
+                $response = AlertController::delete($requestData['alert_id'] ?? 0);
+                break;
+
+            case 'markAlertAsRead':
+                $response = AlertController::markAsRead($requestData['alert_id'] ?? 0, $requestData['user_id'] ?? 0);
+                break;
+
+            case 'markAllAlertsAsRead':
+                $response = AlertController::markAllAsRead($requestData['unit_id'] ?? 0, $requestData['user_id'] ?? 0);
+                break;
+
+            case 'markAlertAsUnread':
+                $response = AlertController::markAsUnread($requestData['alert_id'] ?? 0, $requestData['user_id'] ?? 0);
+                break;
+
+            case 'getAlertReaders':
+                $response = AlertController::getReadersByAlert($requestData['alert_id'] ?? 0);
                 break;
 
             case 'deleteMenu':
