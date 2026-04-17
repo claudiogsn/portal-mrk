@@ -418,6 +418,11 @@ class FinanceiroContaController {
                 throw new Exception("Conta não encontrada para o ID informado.");
             }
 
+            // 🔒 TRAVA DE CONCILIAÇÃO
+            if (isset($conta['is_conciliated']) && $conta['is_conciliated'] == 1) {
+                throw new Exception("Esta conta já foi conciliada via Open Finance e não pode ser excluída.");
+            }
+
             $system_unit_id = (int)$conta['system_unit_id'];
 
             // 🔐 Inicia transação
@@ -498,6 +503,11 @@ class FinanceiroContaController {
 
             if (!$contaAtual) {
                 throw new Exception("Conta não encontrada para o ID informado.");
+            }
+
+            // 🔒 TRAVA DE CONCILIAÇÃO
+            if (isset($contaAtual['is_conciliated']) && $contaAtual['is_conciliated'] == 1) {
+                throw new Exception("Esta conta já foi conciliada via Open Finance e não pode ser alterada.");
             }
 
             $system_unit_id = (int)$contaAtual['system_unit_id'];
@@ -1397,6 +1407,11 @@ class FinanceiroContaController {
 
             if (!empty($contaAtual['baixa_dt']) && $contaAtual['baixa_dt'] !== '0000-00-00') {
                 throw new Exception('Conta já está baixada (quitada).');
+            }
+
+            // 🔒 TRAVA DE CONCILIAÇÃO
+            if (isset($contaAtual['is_conciliated']) && $contaAtual['is_conciliated'] == 1) {
+                throw new Exception("Esta conta já foi conciliada via Open Finance e não pode sofrer baixa manual.");
             }
 
             $system_unit_id = (int)$contaAtual['system_unit_id'];
@@ -2342,6 +2357,10 @@ class FinanceiroContaController {
 
             $mapAntes = [];
             foreach ($contasAntes as $conta) {
+                // 🔒 TRAVA DE CONCILIAÇÃO NO LOTE
+                if (isset($conta['is_conciliated']) && $conta['is_conciliated'] == 1) {
+                    throw new Exception("A conta código/doc '{$conta['codigo']}' do lote já foi conciliada. Nenhuma alteração foi salva.");
+                }
                 $mapAntes[$conta['id']] = $conta;
             }
 
