@@ -1,45 +1,14 @@
 <?php
-/**
- * WelcomeView
- *
- * @version    7.6
- * @package    control
- * @author     Pablo Dall'Oglio
- * @copyright  Copyright (c) 2006 Adianti Solutions Ltd. (http://www.adianti.com.br)
- * @license    https://adiantiframework.com.br/license-template
- */
-class FaturamentoLojaView extends TPage
+class FaturamentoLojaView extends MRKIframePage
+{
+    protected function getFrontendUrl(): string
     {
-        private $form;
-        public function __construct($param)
-        {
-            parent::__construct();
-    
-            $username = TSession::getValue('userid');
-            $token = TSession::getValue('sessionid');
-            $unit_id = TSession::getValue('userunitid');
-    
-    
-            if($_SERVER['SERVER_NAME'] == "localhost"){
-                $link = "http://localhost/portal-mrk/external/dashboardFaturamentoLoja.html?token={$token}&system_unit_id={$unit_id}";
-            }else{
-                $link = "https://portal.mrksolucoes.com.br/external/dashboardFaturamentoLoja.html?token={$token}&system_unit_id={$unit_id}";
-            }
-    
-            $iframe = new TElement('iframe');
-            $iframe->id = "iframe_external";
-            $iframe->src = $link;
-            $iframe->frameborder = "0";
-            $iframe->scrolling = "yes";
-            $iframe->width = "100%";
-            $iframe->height = "1000px";
-    
-            parent::add($iframe);
+        $token = TSession::getValue('sessionid');
+        $unit_id = TSession::getValue('userunitid');
+
+        if ($_SERVER['SERVER_NAME'] == 'localhost') {
+            return "http://localhost/portal-mrk/external/dashboardFaturamentoLoja.html?token={$token}&system_unit_id={$unit_id}";
         }
-        function onFeed($param){
-            // $id = $param['key'];
-        }
-        function onEdit($param){
-            // $id = $param['key'];
-        }
+        return "https://portal.mrksolucoes.com.br/external/dashboardFaturamentoLoja.html?token={$token}&system_unit_id={$unit_id}";
     }
+}
