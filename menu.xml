@@ -39,7 +39,7 @@
                   <action>RelacaoDeContas</action>
                   <icon>fas:circle fa-fw</icon>
               </menuitem>
-            <menuitem label="DRE Gerencial">
+            <menuitem label="Balancete">
               <action>Dre</action>
               <icon>fas:circle fa-fw</icon>
             </menuitem>
