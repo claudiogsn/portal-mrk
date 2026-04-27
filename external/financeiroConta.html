@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <title>Conta Financeira</title>
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <link rel="icon" href="bsb/favicon.ico" type="image/x-icon">
 
-    <link href="https://fonts.googleapis.com/css?family=Kanit:300,400,600,700&subset=latin,cyrillic-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Kanit:300,400,600,700&subset=latin,cyrillic-ext"
+        rel="stylesheet">
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/node-waves/waves.css" rel="stylesheet">
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
@@ -14,61 +16,220 @@
     <link href="bsb/css/themes/all-themes.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     <style>
         /* ==============================================================
            ESTILOS GERAIS E PADRÃO MRK
            ============================================================== */
-        ::-webkit-scrollbar { display: none; }
-        html, body { -ms-overflow-style: none; scrollbar-width: none; }
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        html,
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
 
 
-        html, body {
-            overflow-y: auto !important; /* Força a existência da rolagem */
-            height: auto !important;     /* Permite que o body cresça além da tela */
+        html,
+        body {
+            overflow-y: auto !important;
+            /* Força a existência da rolagem */
+            height: auto !important;
+            /* Permite que o body cresça além da tela */
             min-height: 100%;
         }
 
-        html, body, .container-fluid, .card, .card .body,
-        .content, .content .container-fluid { background: #f4f6f9 !important; font-family: 'Kanit', sans-serif; }
+        html,
+        body,
+        .container-fluid,
+        .card,
+        .card .body,
+        .content,
+        .content .container-fluid {
+            background: #f4f6f9 !important;
+            font-family: 'Kanit', sans-serif;
+        }
 
-        .card { border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: none; }
-        .header h2 { font-weight: 600 !important; color: #1E88E5 !important; }
-        label { font-weight: 600; color: #444; font-size: 13px; margin-bottom: 5px; }
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: none;
+        }
 
-        .form-control { border-radius: 6px; border: 1px solid #cfd8dc; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); height: 38px; transition: all 0.3s ease; }
-        .form-control:focus { border-color: #1E88E5; box-shadow: 0 0 5px rgba(30,136,229,0.3); }
-        .form-control[readonly], .form-control:disabled { background-color: #f1f3f4 !important; cursor: not-allowed; }
+        .header h2 {
+            font-weight: 600 !important;
+            color: #1E88E5 !important;
+        }
 
-        .select2-container .select2-selection--single { height: 38px !important; border-radius: 6px; border: 1px solid #cfd8dc; }
-        .select2-selection__rendered { line-height: 38px !important; padding-left: 12px !important; }
-        .select2-selection__arrow { height: 38px !important; }
+        label {
+            font-weight: 600;
+            color: #444;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
 
-        .money-input { text-align: right; font-weight: 600; color: #2E7D32; font-size: 15px; }
+        .form-control {
+            border-radius: 6px;
+            border: 1px solid #cfd8dc;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+            height: 38px;
+            transition: all 0.3s ease;
+        }
 
-        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
+        .form-control:focus {
+            border-color: #1E88E5;
+            box-shadow: 0 0 5px rgba(30, 136, 229, 0.3);
+        }
 
-        .mrk-fieldset { border: 1px solid #e0e6ed; border-radius: 8px; padding: 25px 20px 10px 20px; margin-bottom: 25px; background-color: #ffffff; position: relative; }
-        .mrk-legend { font-size: 15px; font-weight: 600; color: #1565C0; width: auto; border-bottom: none; padding: 5px 15px; margin-bottom: 0; background: #e3f2fd; border-radius: 20px; position: absolute; top: -18px; left: 20px; border: 1px solid #bbdefb; display: flex; align-items: center; gap: 8px; }
-        .row-spacing { margin-bottom: 15px; }
+        .form-control[readonly],
+        .form-control:disabled {
+            background-color: #f1f3f4 !important;
+            cursor: not-allowed;
+        }
 
-        .rateio-card { border: 1px solid #e0e0e0; border-left: 4px solid #1E88E5; padding: 20px 15px 15px 15px; margin-bottom: 15px; background-color: #fcfcfc; border-radius: 6px; position: relative; transition: all 0.3s; }
-        .rateio-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.08); background-color: #fff; }
-        .btn-remove-rateio { position: absolute; top: 10px; right: 12px; color: #E53935; cursor: pointer; font-size: 16px; z-index: 10; padding: 5px; transition: 0.2s; }
-        .btn-remove-rateio:hover { color: #b71c1c; transform: scale(1.15); }
+        .select2-container .select2-selection--single {
+            height: 38px !important;
+            border-radius: 6px;
+            border: 1px solid #cfd8dc;
+        }
 
-        .panel-extra { padding: 20px; margin-top: 15px; border-radius: 8px; border: 1px solid transparent; }
-        .panel-parcelas { background: #fffde7; border-color: #fff59d; }
-        .panel-rateio { background: #f0f8ff; border-color: #bbdefb; }
+        .select2-selection__rendered {
+            line-height: 38px !important;
+            padding-left: 12px !important;
+        }
 
-        .btn-success { background-color: #2E7D32 !important; box-shadow: 0 3px 6px rgba(46,125,50,0.3) !important; padding: 8px 25px; font-size: 15px;}
-        .btn-success:hover { background-color: #1B5E20 !important; }
+        .select2-selection__arrow {
+            height: 38px !important;
+        }
 
-        .radio-custom { display: flex; gap: 15px; margin-top: 5px; }
-        .radio-custom label { margin-bottom: 0; cursor: pointer; }
-        .radio-custom input[type="radio"]:disabled + label { color: #999 !important; cursor: not-allowed; }
+        .money-input {
+            text-align: right;
+            font-weight: 600;
+            color: #2E7D32;
+            font-size: 15px;
+        }
+
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .mrk-fieldset {
+            border: 1px solid #e0e6ed;
+            border-radius: 8px;
+            padding: 25px 20px 10px 20px;
+            margin-bottom: 25px;
+            background-color: #ffffff;
+            position: relative;
+        }
+
+        .mrk-legend {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1565C0;
+            width: auto;
+            border-bottom: none;
+            padding: 5px 15px;
+            margin-bottom: 0;
+            background: #e3f2fd;
+            border-radius: 20px;
+            position: absolute;
+            top: -18px;
+            left: 20px;
+            border: 1px solid #bbdefb;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .row-spacing {
+            margin-bottom: 15px;
+        }
+
+        .rateio-card {
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #1E88E5;
+            padding: 20px 15px 15px 15px;
+            margin-bottom: 15px;
+            background-color: #fcfcfc;
+            border-radius: 6px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .rateio-card:hover {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            background-color: #fff;
+        }
+
+        .btn-remove-rateio {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            color: #E53935;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 10;
+            padding: 5px;
+            transition: 0.2s;
+        }
+
+        .btn-remove-rateio:hover {
+            color: #b71c1c;
+            transform: scale(1.15);
+        }
+
+        .panel-extra {
+            padding: 20px;
+            margin-top: 15px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+        }
+
+        .panel-parcelas {
+            background: #fffde7;
+            border-color: #fff59d;
+        }
+
+        .panel-rateio {
+            background: #f0f8ff;
+            border-color: #bbdefb;
+        }
+
+        .btn-success {
+            background-color: #2E7D32 !important;
+            box-shadow: 0 3px 6px rgba(46, 125, 50, 0.3) !important;
+            padding: 8px 25px;
+            font-size: 15px;
+        }
+
+        .btn-success:hover {
+            background-color: #1B5E20 !important;
+        }
+
+        .radio-custom {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .radio-custom label {
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
+        .radio-custom input[type="radio"]:disabled+label {
+            color: #999 !important;
+            cursor: not-allowed;
+        }
 
         /* Ajuste visual para itens desabilitados no Select2 ficarem bonitos como títulos */
         .select2-results__option[aria-disabled="true"] {
@@ -77,854 +238,908 @@
         }
     </style>
 </head>
+
 <body class="theme-blue">
-<div class="container-fluid" style="padding-top: 20px;">
-    <div class="row">
-        <div class="col-md-12"> <div class="card">
-            <div class="header">
-                <h2 id="tituloTela"><i class="fas fa-file-invoice-dollar"></i> Conta Financeira</h2>
-            </div>
+    <div class="container-fluid" style="padding-top: 20px;">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="header">
+                        <h2 id="tituloTela"><i class="fas fa-file-invoice-dollar"></i> Conta Financeira</h2>
+                    </div>
 
-            <div class="body">
+                    <div class="body">
 
-                <div class="mrk-fieldset">
-                    <div class="mrk-legend"><i class="fas fa-tags"></i> Classificação</div>
+                        <div class="mrk-fieldset">
+                            <div class="mrk-legend"><i class="fas fa-tags"></i> Classificação</div>
 
-                    <div class="row row-spacing" style="padding-bottom: 10px; border-bottom: 1px solid #eee;">
-                        <div class="col-md-12">
-                            <label>Tipo da Conta</label>
-                            <div class="radio-custom">
-                                <div>
-                                    <input type="radio" name="tipo_conta" id="tipoDespesa" value="D" checked class="with-gap">
-                                    <label for="tipoDespesa" style="font-weight:bold; color:#D32F2F;">Despesa</label>
+                            <div class="row row-spacing" style="padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                                <div class="col-md-12">
+                                    <label>Tipo da Conta</label>
+                                    <div class="radio-custom">
+                                        <div>
+                                            <input type="radio" name="tipo_conta" id="tipoDespesa" value="D" checked
+                                                class="with-gap">
+                                            <label for="tipoDespesa"
+                                                style="font-weight:bold; color:#D32F2F;">Despesa</label>
+                                        </div>
+                                        <div style="margin-left: 20px;">
+                                            <input type="radio" name="tipo_conta" id="tipoReceita" value="R"
+                                                class="with-gap">
+                                            <label for="tipoReceita"
+                                                style="font-weight:bold; color:#2E7D32;">Receita</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="margin-left: 20px;">
-                                    <input type="radio" name="tipo_conta" id="tipoReceita" value="R" class="with-gap">
-                                    <label for="tipoReceita" style="font-weight:bold; color:#2E7D32;">Receita</label>
+                            </div>
+
+                            <div class="row row-spacing" style="margin-top: 15px;">
+                                <div class="col-md-6" id="divFornecedorSelect">
+                                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Fornecedor / Cliente</span>
+                                        <a href="#" id="btnNovoFornecedorInline"
+                                            style="color: #1E88E5; font-size: 12px; text-decoration: none; font-weight: 600;"><i
+                                                class="fa fa-plus"></i> Novo</a>
+                                    </label>
+                                    <select id="fornecedor" class="form-control">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6" id="divFornecedorReadonly" style="display:none;">
+                                    <label>Fornecedor / Cliente</label>
+                                    <input type="hidden" id="fornecedor_id_nota">
+                                    <input type="hidden" id="chave_acesso">
+                                    <input type="text" id="fornecedor_nome" class="form-control" readonly>
+                                </div>
+
+                                <div class="col-md-6" id="divPlanoPrincipal">
+                                    <label>Plano de Contas</label>
+                                    <select id="plano_contas" class="form-control">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row row-spacing">
+                                <div class="col-md-6">
+                                    <label><i class="fas fa-university" style="color:#1565C0;margin-right:5px;"></i>
+                                        Banco</label>
+                                    <select id="banco_conta" class="form-control">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label>Forma de Pagamento</label>
+                                    <select id="forma_pagamento" class="form-control">
+                                        <option value="">Selecione...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row row-spacing">
+                                <div class="col-md-12">
+                                    <label>Documento</label>
+                                    <input type="text" id="doc" class="form-control" autocomplete="off"
+                                        placeholder="Ex: NF 1234">
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="row row-spacing" style="margin-top: 15px;">
-                        <div class="col-md-6" id="divFornecedorSelect">
-                            <label style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>Fornecedor / Cliente</span>
-                                <a href="#" id="btnNovoFornecedorInline" style="color: #1E88E5; font-size: 12px; text-decoration: none; font-weight: 600;"><i class="fa fa-plus"></i> Novo</a>
-                            </label>
-                            <select id="fornecedor" class="form-control">
-                                <option value="">Selecione...</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6" id="divFornecedorReadonly" style="display:none;">
-                            <label>Fornecedor / Cliente</label>
-                            <input type="hidden" id="fornecedor_id_nota">
-                            <input type="hidden" id="chave_acesso">
-                            <input type="text" id="fornecedor_nome" class="form-control" readonly>
+                        <div class="mrk-fieldset">
+                            <div class="mrk-legend"><i class="far fa-calendar-alt"></i> Datas</div>
+                            <div class="row row-spacing">
+                                <div class="col-md-4">
+                                    <label>Emissão</label>
+                                    <input type="date" id="emissao" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Vencimento</label>
+                                    <input type="date" id="vencimento" class="form-control">
+                                </div>
+                                <div class="col-md-4" id="colBaixa" style="display:none;">
+                                    <label>Data da Baixa</label>
+                                    <input type="date" id="baixa_dt" class="form-control">
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="col-md-6" id="divPlanoPrincipal">
-                            <label>Plano de Contas</label>
-                            <select id="plano_contas" class="form-control">
-                                <option value="">Selecione...</option>
-                            </select>
+                        <div class="mrk-fieldset">
+                            <div class="mrk-legend"><i class="fas fa-dollar-sign"></i> Valores Financeiros</div>
+                            <div class="row row-spacing">
+                                <div class="col-md-4">
+                                    <label>Valor Total</label>
+                                    <input type="text" id="valor_total" class="form-control money-input"
+                                        placeholder="R$ 0,00" autocomplete="off">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Desconto (-)</label>
+                                    <input type="text" id="desconto" class="form-control money-input"
+                                        placeholder="R$ 0,00" autocomplete="off" style="color: #D32F2F;">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Acréscimo (+)</label>
+                                    <input type="text" id="acrescimo" class="form-control money-input"
+                                        placeholder="R$ 0,00" autocomplete="off" style="color: #F57C00;">
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="row row-spacing">
-                        <div class="col-md-6">
-                            <label><i class="fas fa-university" style="color:#1565C0;margin-right:5px;"></i> Banco</label>
-                            <select id="banco_conta" class="form-control">
-                                <option value="">Selecione...</option>
-                            </select>
+                        <div class="mrk-fieldset">
+                            <div class="mrk-legend"><i class="fas fa-align-left"></i> Observações Gerais</div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <input type="text" id="obs_extra" class="form-control" autocomplete="off"
+                                        placeholder="Adicione alguma observação se necessário...">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label>Forma de Pagamento</label>
-                            <select id="forma_pagamento" class="form-control">
-                                <option value="">Selecione...</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row row-spacing">
-                        <div class="col-md-12">
-                            <label>Documento</label>
-                            <input type="text" id="doc" class="form-control" autocomplete="off" placeholder="Ex: NF 1234">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="mrk-fieldset">
-                    <div class="mrk-legend"><i class="far fa-calendar-alt"></i> Datas</div>
-                    <div class="row row-spacing">
-                        <div class="col-md-4">
-                            <label>Emissão</label>
-                            <input type="date" id="emissao" class="form-control">
+                        <div class="row" id="areaChecksAdicionais">
+                            <div class="col-md-12">
+                                <hr style="margin-top:0;">
+                            </div>
+                            <div class="col-md-6">
+                                <div class="checkbox">
+                                    <input id="chkParcelar" type="checkbox" class="filled-in chk-col-blue">
+                                    <label for="chkParcelar" style="font-size: 14px; font-weight: 600;"> <i
+                                            class="fas fa-copy"></i> Deseja parcelar esta conta?</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="checkbox">
+                                    <input id="chkRateio" type="checkbox" class="filled-in chk-col-blue">
+                                    <label for="chkRateio" style="font-size: 14px; font-weight: 600;"><i
+                                            class="fas fa-chart-pie"></i> Deseja ratear o plano de contas?</label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label>Vencimento</label>
-                            <input type="date" id="vencimento" class="form-control">
-                        </div>
-                        <div class="col-md-4" id="colBaixa" style="display:none;">
-                            <label>Data da Baixa</label>
-                            <input type="date" id="baixa_dt" class="form-control">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="mrk-fieldset">
-                    <div class="mrk-legend"><i class="fas fa-dollar-sign"></i> Valores Financeiros</div>
-                    <div class="row row-spacing">
-                        <div class="col-md-4">
-                            <label>Valor Total</label>
-                            <input type="text" id="valor_total" class="form-control money-input" placeholder="R$ 0,00" autocomplete="off">
-                        </div>
-                        <div class="col-md-4">
-                            <label>Desconto (-)</label>
-                            <input type="text" id="desconto" class="form-control money-input" placeholder="R$ 0,00" autocomplete="off" style="color: #D32F2F;">
-                        </div>
-                        <div class="col-md-4">
-                            <label>Acréscimo (+)</label>
-                            <input type="text" id="acrescimo" class="form-control money-input" placeholder="R$ 0,00" autocomplete="off" style="color: #F57C00;">
-                        </div>
-                    </div>
-                </div>
+                        <div id="areaParcelas" class="panel-extra panel-parcelas" style="display:none;">
+                            <h4 style="margin-top:0; color: #F57F17; font-weight: 600;"><i class="fas fa-list-ol"></i>
+                                Geração de Parcelas</h4>
 
-                <div class="mrk-fieldset">
-                    <div class="mrk-legend"><i class="fas fa-align-left"></i> Observações Gerais</div>
-                    <div class="row">
-                        <div class="col-md-12">
-                            <input type="text" id="obs_extra" class="form-control" autocomplete="off" placeholder="Adicione alguma observação se necessário...">
-                        </div>
-                    </div>
-                </div>
+                            <div id="avisoPreRequisitosParcela"
+                                style="display:none; margin-bottom: 15px; background: #FFF3E0; border: 1px solid #FFE0B2; padding: 12px; border-radius: 6px; color: #E65100; font-size: 14px;">
+                                <i class="fas fa-exclamation-circle" style="margin-right: 5px;"></i>
+                                <strong>Ação necessária:</strong> Para gerar as parcelas, preencha os campos
+                                obrigatórios acima: <span id="textoFaltantesParcela"
+                                    style="font-weight: 700; text-decoration: underline;"></span>.
+                            </div>
 
-                <div class="row" id="areaChecksAdicionais">
-                    <div class="col-md-12">
-                        <hr style="margin-top:0;">
-                    </div>
-                    <div class="col-md-6">
-                        <div class="checkbox">
-                            <input id="chkParcelar" type="checkbox" class="filled-in chk-col-blue">
-                            <label for="chkParcelar" style="font-size: 14px; font-weight: 600;"> <i class="fas fa-copy"></i> Deseja parcelar esta conta?</label>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label>Qtd. Parcelas</label>
+                                    <input type="number" id="qtParcelas" class="form-control" min="1" step="1"
+                                        value="1">
+                                </div>
+                                <div class="col-md-3" style="margin-top:27px;">
+                                    <button type="button" class="btn btn-warning btn-sm" id="btnGerarParcelas"
+                                        style="box-shadow: none;">
+                                        <i class="fas fa-sync-alt"></i> Gerar parcelas
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive" style="margin-top:15px;">
+                                <table class="table table-striped bg-white" id="tblParcelas">
+                                    <thead style="background-color: #F57F17;">
+                                        <tr>
+                                            <th style="width:90px; text-align: center;">Parcela</th>
+                                            <th>Documento</th>
+                                            <th>Vencimento</th>
+                                            <th>Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 text-right">
+                                    <h4 style="margin:0;">Total Parcelas: <span id="totalParcelas"
+                                            style="color:#2E7D32;">R$ 0,00</span></h4>
+                                    <small id="avisoParcelas" class="text-danger"
+                                        style="display:none; font-weight:bold;">Atenção: A soma das parcelas está
+                                        diferente do total!</small>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="checkbox">
-                            <input id="chkRateio" type="checkbox" class="filled-in chk-col-blue">
-                            <label for="chkRateio" style="font-size: 14px; font-weight: 600;"><i class="fas fa-chart-pie"></i> Deseja ratear o plano de contas?</label>
+
+                        <div id="areaRateio" class="panel-extra panel-rateio" style="display:none;">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h4 style="margin-top:0; color: #1565C0; font-weight: 600;"><i
+                                            class="fas fa-pie-chart"></i> Itens do Rateio</h4>
+                                    <p class="text-muted" style="margin-bottom:0;">Defina os planos de contas e os
+                                        valores proporcionais.</p>
+                                </div>
+                                <div class="col-md-4 text-right">
+                                    <button type="button" class="btn btn-primary btn-sm" id="btnAddRateioItem"
+                                        style="margin-top: 5px;">
+                                        <i class="fa fa-plus"></i> Adicionar
+                                    </button>
+                                </div>
+                            </div>
+                            <hr style="border-top:1px solid #bbdefb; margin: 15px 0;">
+                            <div id="listaRateioCards"></div>
+                            <div class="row"
+                                style="margin-top:15px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #bbdefb; margin-left:0; margin-right:0;">
+                                <div class="col-md-6" style="padding-top: 8px;">
+                                    <span id="avisoRateio" class="text-danger" style="display:none; font-weight:bold;">
+                                        <i class="fas fa-exclamation-triangle"></i> A soma do rateio difere do Valor
+                                        Total!
+                                    </span>
+                                </div>
+                                <div class="col-md-6 text-right">
+                                    <h4 style="margin:0;">Total Rateado: <span id="totalRateio"
+                                            style="color:#1565C0;">R$ 0,00</span></h4>
+                                    <small style="color:#666;">Total Esperado: <span id="metaRateio">R$
+                                            0,00</span></small>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div id="areaParcelas" class="panel-extra panel-parcelas" style="display:none;">
-                    <h4 style="margin-top:0; color: #F57F17; font-weight: 600;"><i class="fas fa-list-ol"></i> Geração de Parcelas</h4>
-
-                    <div id="avisoPreRequisitosParcela" style="display:none; margin-bottom: 15px; background: #FFF3E0; border: 1px solid #FFE0B2; padding: 12px; border-radius: 6px; color: #E65100; font-size: 14px;">
-                        <i class="fas fa-exclamation-circle" style="margin-right: 5px;"></i>
-                        <strong>Ação necessária:</strong> Para gerar as parcelas, preencha os campos obrigatórios acima: <span id="textoFaltantesParcela" style="font-weight: 700; text-decoration: underline;"></span>.
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-3">
-                            <label>Qtd. Parcelas</label>
-                            <input type="number" id="qtParcelas" class="form-control" min="1" step="1" value="1">
-                        </div>
-                        <div class="col-md-3" style="margin-top:27px;">
-                            <button type="button" class="btn btn-warning btn-sm" id="btnGerarParcelas" style="box-shadow: none;">
-                                <i class="fas fa-sync-alt"></i> Gerar parcelas
+                        <div class="text-right" style="margin-top:25px; border-top: 1px solid #eee; padding-top: 20px;">
+                            <button type="button" class="btn btn-default waves-effect" onclick="fecharModalParent()"
+                                style="margin-right: 10px;">
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn btn-success waves-effect" id="btnSalvar">
+                                <i class="fa fa-save" style="margin-right: 5px;"></i> SALVAR CONTA
                             </button>
                         </div>
-                    </div>
-                    <div class="table-responsive" style="margin-top:15px;">
-                        <table class="table table-striped bg-white" id="tblParcelas">
-                            <thead style="background-color: #F57F17;">
-                            <tr>
-                                <th style="width:90px; text-align: center;">Parcela</th>
-                                <th>Documento</th>
-                                <th>Vencimento</th>
-                                <th>Valor</th>
-                            </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12 text-right">
-                            <h4 style="margin:0;">Total Parcelas: <span id="totalParcelas" style="color:#2E7D32;">R$ 0,00</span></h4>
-                            <small id="avisoParcelas" class="text-danger" style="display:none; font-weight:bold;">Atenção: A soma das parcelas está diferente do total!</small>
-                        </div>
+
                     </div>
                 </div>
-
-                <div id="areaRateio" class="panel-extra panel-rateio" style="display:none;">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h4 style="margin-top:0; color: #1565C0; font-weight: 600;"><i class="fas fa-pie-chart"></i> Itens do Rateio</h4>
-                            <p class="text-muted" style="margin-bottom:0;">Defina os planos de contas e os valores proporcionais.</p>
-                        </div>
-                        <div class="col-md-4 text-right">
-                            <button type="button" class="btn btn-primary btn-sm" id="btnAddRateioItem" style="margin-top: 5px;">
-                                <i class="fa fa-plus"></i> Adicionar
-                            </button>
-                        </div>
-                    </div>
-                    <hr style="border-top:1px solid #bbdefb; margin: 15px 0;">
-                    <div id="listaRateioCards"></div>
-                    <div class="row" style="margin-top:15px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #bbdefb; margin-left:0; margin-right:0;">
-                        <div class="col-md-6" style="padding-top: 8px;">
-                                <span id="avisoRateio" class="text-danger" style="display:none; font-weight:bold;">
-                                    <i class="fas fa-exclamation-triangle"></i> A soma do rateio difere do Valor Total!
-                                </span>
-                        </div>
-                        <div class="col-md-6 text-right">
-                            <h4 style="margin:0;">Total Rateado: <span id="totalRateio" style="color:#1565C0;">R$ 0,00</span></h4>
-                            <small style="color:#666;">Total Esperado: <span id="metaRateio">R$ 0,00</span></small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-right" style="margin-top:25px; border-top: 1px solid #eee; padding-top: 20px;">
-                    <button type="button" class="btn btn-default waves-effect" onclick="fecharModalParent()" style="margin-right: 10px;">
-                        Cancelar
-                    </button>
-                    <button type="button" class="btn btn-success waves-effect" id="btnSalvar">
-                        <i class="fa fa-save" style="margin-right: 5px;"></i> SALVAR CONTA
-                    </button>
-                </div>
-
-            </div>
-        </div>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL NOVO FORNECEDOR -->
-<div class="modal fade" id="modalFornecedor" tabindex="-1" role="dialog" style="z-index: 1050;">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
-            <div class="modal-header" style="position: relative; border-bottom: 2px solid #1E88E5; padding: 18px 25px; background: #fff;">
-                <h4 class="modal-title" style="font-family: 'Kanit', sans-serif; color: #1E88E5; font-weight: 600;">Cadastrar Novo Fornecedor</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="position: absolute; top: 15px; right: 15px; font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="formFornecedor">
-                    <div class="row clearfix">
-                        <div class="col-md-6 mb-2">
-                            <label>Nome Fantasia *</label>
-                            <input type="text" class="form-control" id="f_nome" placeholder="Ex: Mercado do João" required>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Razão Social</label>
-                            <input type="text" class="form-control" id="f_razao" placeholder="Ex: Mercado do João LTDA">
-                        </div>
-                    </div>
-                    <div class="row clearfix" style="margin-top: 10px;">
-                        <div class="col-md-6 mb-2">
-                            <label>CNPJ / CPF *</label>
-                            <input type="text" class="form-control" id="f_cnpj_cpf" placeholder="Somente números" required>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Telefone</label>
-                            <input type="text" class="form-control" id="f_fone" placeholder="(00) 00000-0000">
-                        </div>
-                    </div>
-                    <div class="form-group mb-2" style="margin-top: 10px;">
-                        <label>Endereço Completo</label>
-                        <input type="text" class="form-control" id="f_endereco" placeholder="Rua, número, bairro, cidade - UF">
-                    </div>
-                    <div class="row clearfix" style="margin-top: 10px;">
-                        <div class="col-md-4 mb-0">
-                            <label>CEP</label>
-                            <input type="text" class="form-control" id="f_cep" placeholder="00000-000">
-                        </div>
-                        <div class="col-md-8 mb-0">
-                            <label>Inscrição Estadual</label>
-                            <input type="text" class="form-control" id="f_insc_estadual" placeholder="Isento ou Número">
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer" style="border-top: 1px solid #eee;">
-                <button type="button" class="btn btn-primary" id="btnSalvarFornecedor" style="background-color: #1E88E5 !important; padding: 10px 30px;">
-                    <i class="fa fa-save"></i> SALVAR FORNECEDOR
-                </button>
-                <button type="button" class="btn btn-link" data-dismiss="modal" style="color: #666;">CANCELAR</button>
             </div>
         </div>
     </div>
-</div>
 
-<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
-<script src="bsb/plugins/node-waves/waves.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- MODAL NOVO FORNECEDOR -->
+    <div class="modal fade" id="modalFornecedor" tabindex="-1" role="dialog" style="z-index: 1050;">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+                <div class="modal-header"
+                    style="position: relative; border-bottom: 2px solid #1E88E5; padding: 18px 25px; background: #fff;">
+                    <h4 class="modal-title" style="font-family: 'Kanit', sans-serif; color: #1E88E5; font-weight: 600;">
+                        Cadastrar Novo Fornecedor</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"
+                        style="position: absolute; top: 15px; right: 15px; font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="formFornecedor">
+                        <div class="row clearfix">
+                            <div class="col-md-6 mb-2">
+                                <label>Nome Fantasia *</label>
+                                <input type="text" class="form-control" id="f_nome" placeholder="Ex: Mercado do João"
+                                    required>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label>Razão Social</label>
+                                <input type="text" class="form-control" id="f_razao"
+                                    placeholder="Ex: Mercado do João LTDA">
+                            </div>
+                        </div>
+                        <div class="row clearfix" style="margin-top: 10px;">
+                            <div class="col-md-6 mb-2">
+                                <label>CNPJ / CPF *</label>
+                                <input type="text" class="form-control" id="f_cnpj_cpf" placeholder="Somente números"
+                                    required>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label>Telefone</label>
+                                <input type="text" class="form-control" id="f_fone" placeholder="(00) 00000-0000">
+                            </div>
+                        </div>
+                        <div class="form-group mb-2" style="margin-top: 10px;">
+                            <label>Endereço Completo</label>
+                            <input type="text" class="form-control" id="f_endereco"
+                                placeholder="Rua, número, bairro, cidade - UF">
+                        </div>
+                        <div class="row clearfix" style="margin-top: 10px;">
+                            <div class="col-md-4 mb-0">
+                                <label>CEP</label>
+                                <input type="text" class="form-control" id="f_cep" placeholder="00000-000">
+                            </div>
+                            <div class="col-md-8 mb-0">
+                                <label>Inscrição Estadual</label>
+                                <input type="text" class="form-control" id="f_insc_estadual"
+                                    placeholder="Isento ou Número">
+                            </div>
+                        </div>
+                        <div class="row clearfix" style="margin-top: 10px;">
+                            <div class="col-md-12 mb-2">
+                                <label>Plano de Contas Padrão</label>
+                                <select class="form-control" id="f_plano_contas">
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #eee;">
+                    <button type="button" class="btn btn-primary" id="btnSalvarFornecedor"
+                        style="background-color: #1E88E5 !important; padding: 10px 30px;">
+                        <i class="fa fa-save"></i> SALVAR FORNECEDOR
+                    </button>
+                    <button type="button" class="btn btn-link" data-dismiss="modal"
+                        style="color: #666;">CANCELAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script src="script/planoContasTree.js"></script>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="bsb/plugins/node-waves/waves.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-<script>
-    // ==============================================================
-    // PARÂMETROS DA URL
-    // ==============================================================
-    const urlParams = new URLSearchParams(window.location.search);
-    const token     = urlParams.get('token');
-    const unit_id   = urlParams.get('system_unit_id') || urlParams.get('unit_id');
-    const user_id   = urlParams.get('user_id') || urlParams.get('username');
+    <script src="script/planoContasTree.js"></script>
 
-    const MODO = urlParams.get('modo') || 'create';
-    const editId = urlParams.get('id');
+    <script>
+        // ==============================================================
+        // PARÂMETROS DA URL
+        // ==============================================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const unit_id = urlParams.get('system_unit_id') || urlParams.get('unit_id');
+        const user_id = urlParams.get('user_id') || urlParams.get('username');
 
-    const notaChaveAcesso = urlParams.get('chave_acesso');
-    const notaIdNota      = urlParams.get('id_nota') || urlParams.get('id');
-    const notaFornecedor  = decodeURIComponent(urlParams.get('fornecedor') || '');
+        const MODO = urlParams.get('modo') || 'create';
+        const editId = urlParams.get('id');
 
-    const transacaoId    = urlParams.get('transacao_id');
-    const transacaoDesc  = urlParams.get('transacao_desc') ? decodeURIComponent(urlParams.get('transacao_desc')) : '';
-    const transacaoValor = urlParams.get('transacao_valor');
-    const transacaoData  = urlParams.get('transacao_data');
-    const transacaoTipo  = urlParams.get('transacao_tipo');
+        const notaChaveAcesso = urlParams.get('chave_acesso');
+        const notaIdNota = urlParams.get('id_nota') || urlParams.get('id');
+        const notaFornecedor = decodeURIComponent(urlParams.get('fornecedor') || '');
 
-    // banco_id via query string — se informado, o campo fica travado (somente leitura)
-    const paramBancoId   = urlParams.get('banco_id') || urlParams.get('financeiro_banco_id');
+        const transacaoId = urlParams.get('transacao_id');
+        const transacaoDesc = urlParams.get('transacao_desc') ? decodeURIComponent(urlParams.get('transacao_desc')) : '';
+        const transacaoValor = urlParams.get('transacao_valor');
+        const transacaoData = urlParams.get('transacao_data');
+        const transacaoTipo = urlParams.get('transacao_tipo');
 
-    // ==============================================================
-    // URLS BASE
-    // ==============================================================
-    const baseUrl = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
-        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+        // banco_id via query string — se informado, o campo fica travado (somente leitura)
+        const paramBancoId = urlParams.get('banco_id') || urlParams.get('financeiro_banco_id');
 
-    const baseUrlEstoque = window.location.hostname !== 'localhost'
-        ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
-        : 'http://localhost/portal-mrk/api/v1/index.php';
+        // ==============================================================
+        // URLS BASE
+        // ==============================================================
+        const baseUrl = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+            : 'http://localhost/portal-mrk/api/v1/financeiro.php';
 
-    // ==============================================================
-    // CACHES
-    // ==============================================================
-    let BANCOS_CACHE  = [];
-    let PLANOS_CACHE  = [];
-    let contaLoaded   = null;
+        const baseUrlEstoque = window.location.hostname !== 'localhost'
+            ? 'https://portal.mrksolucoes.com.br/api/v1/index.php'
+            : 'http://localhost/portal-mrk/api/v1/index.php';
 
-    // ==============================================================
-    // HELPERS
-    // ==============================================================
-    function pad2(n) { return String(n).padStart(2, '0'); }
+        // ==============================================================
+        // CACHES
+        // ==============================================================
+        let BANCOS_CACHE = [];
+        let PLANOS_CACHE = [];
+        let contaLoaded = null;
 
-    function addMonths(dateStr, months) {
-        const d = new Date(dateStr);
-        d.setMonth(d.getMonth() + months);
-        const tz = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-        return tz.toISOString().slice(0, 10);
-    }
+        // ==============================================================
+        // HELPERS
+        // ==============================================================
+        function pad2(n) { return String(n).padStart(2, '0'); }
 
-    function parseMoney(str) {
-        if (str === null || str === undefined) return 0;
-        if (typeof str === 'number') return str;
-        let clean = String(str).replace(/[R$\s]/g, '').trim();
-        if (!clean) return 0;
-        if (clean.indexOf(',') > -1) { clean = clean.replace(/\./g, '').replace(',', '.'); }
-        return parseFloat(clean) || 0;
-    }
-
-    function formatMoney(val) {
-        return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    function applyMoneyMask(input) {
-        let rawDigits = input.value.replace(/\D/g, '');
-        if (rawDigits === '') { input.value = ''; return; }
-        rawDigits = rawDigits.replace(/^0+(?=\d)/, '');
-        const cents = parseInt(rawDigits, 10);
-        const reais = (cents / 100).toFixed(2);
-        input.value = parseFloat(reais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    function setMoneyValue(selector, val) {
-        const numVal = Number(val) || 0;
-        $(selector).val(numVal > 0 ? formatMoney(numVal) : '');
-    }
-
-    function getValorAjustado() {
-        const total = parseMoney($('#valor_total').val());
-        const desc  = parseMoney($('#desconto').val());
-        const acres = parseMoney($('#acrescimo').val());
-        return Math.max(0, total - desc + acres);
-    }
-
-    function getFornecedorId() {
-        if (MODO === 'nota') return $('#fornecedor_id_nota').val();
-        return $('#fornecedor').val();
-    }
-
-    function getFormaCodigo() { return $('#forma_pagamento').val(); }
-    function getBancoCodigo() { return $('#banco_conta').val(); }
-
-    // ==============================================================
-    // INICIALIZAÇÃO
-    // ==============================================================
-    $(document).ready(function () {
-        configurarTelaPorModo();
-        inicializarEventos();
-        carregarDados();
-
-        if (window.parent && window.parent.document.getElementById('iframeNovaConta')) {
-            const resizeObserver = new ResizeObserver(() => {
-                const docHeight = document.documentElement.scrollHeight;
-                window.parent.document.getElementById('iframeNovaConta').style.height = (docHeight + 20) + 'px';
-            });
-            resizeObserver.observe(document.body);
+        function addMonths(dateStr, months) {
+            const d = new Date(dateStr);
+            d.setMonth(d.getMonth() + months);
+            const tz = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+            return tz.toISOString().slice(0, 10);
         }
-    });
 
-    function configurarTelaPorModo() {
-        const titulos = {
-            create: '<i class="fas fa-file-invoice-dollar"></i> Nova Conta Financeira',
-            edit:   '<i class="fas fa-edit"></i> Editar Conta Financeira',
-            nota:   '<i class="fas fa-file-import"></i> Inclusão Financeira (Nota Fiscal)',
-            transacao: '<i class="fas fa-exchange-alt"></i> Novo Lançamento via Transação'
-        };
-        $('#tituloTela').html(titulos[MODO] || titulos.create);
-
-        if (MODO === 'edit') { $('#colBaixa').show(); }
-        if (MODO === 'nota') {
-            $('#divFornecedorSelect').hide();
-            $('#divFornecedorReadonly').show();
-            if (notaFornecedor) $('#fornecedor_nome').val(notaFornecedor);
-            $('#doc').prop('readonly', true);
+        function parseMoney(str) {
+            if (str === null || str === undefined) return 0;
+            if (typeof str === 'number') return str;
+            let clean = String(str).replace(/[R$\s]/g, '').trim();
+            if (!clean) return 0;
+            if (clean.indexOf(',') > -1) { clean = clean.replace(/\./g, '').replace(',', '.'); }
+            return parseFloat(clean) || 0;
         }
-        if (MODO === 'transacao') {
-            $('#colBaixa').show();
-            $('#areaChecksAdicionais').hide();
-            if (transacaoData) {
-                const dataFormatada = transacaoData.split('T')[0];
-                $('#emissao').val(dataFormatada);
-                $('#vencimento').val(dataFormatada);
-                $('#baixa_dt').val(dataFormatada);
-            }
-            if (transacaoValor) { $('#valor_total').val(formatMoney(transacaoValor)); }
-            if (transacaoTipo === 'credit') { $('#tipoReceita').prop('checked', true); }
-            else if (transacaoTipo === 'debit') { $('#tipoDespesa').prop('checked', true); }
-            if (transacaoDesc) { $('#obs_extra').val(`Gerado a partir da transação bancária: ${transacaoDesc}`); }
+
+        function formatMoney(val) {
+            return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
-    }
 
-    function inicializarEventos() {
-        if (MODO !== 'nota') { $('#fornecedor').select2({ placeholder: 'Selecione ou digite...', allowClear: true, width: '100%' }); }
-        $('#forma_pagamento').select2({ placeholder: 'Selecione a forma...', allowClear: true, width: '100%' });
-        $('#banco_conta').select2({ placeholder: 'Selecione a conta...', allowClear: true, width: '100%' });
+        function applyMoneyMask(input) {
+            let rawDigits = input.value.replace(/\D/g, '');
+            if (rawDigits === '') { input.value = ''; return; }
+            rawDigits = rawDigits.replace(/^0+(?=\d)/, '');
+            const cents = parseInt(rawDigits, 10);
+            const reais = (cents / 100).toFixed(2);
+            input.value = parseFloat(reais).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
 
-        $(document).on('input', '.money-input', function () { applyMoneyMask(this); });
+        function setMoneyValue(selector, val) {
+            const numVal = Number(val) || 0;
+            $(selector).val(numVal > 0 ? formatMoney(numVal) : '');
+        }
 
-        $('#chkParcelar').on('change', function () {
-            if ($(this).is(':checked')) {
-                if ($('#chkRateio').is(':checked')) $('#chkRateio').prop('checked', false).trigger('change');
-                $('#areaParcelas').slideDown();
-                gerarParcelas();
-            } else {
-                $('#areaParcelas').slideUp();
-                limparParcelasUI();
+        function getValorAjustado() {
+            const total = parseMoney($('#valor_total').val());
+            const desc = parseMoney($('#desconto').val());
+            const acres = parseMoney($('#acrescimo').val());
+            return Math.max(0, total - desc + acres);
+        }
+
+        function getFornecedorId() {
+            if (MODO === 'nota') return $('#fornecedor_id_nota').val();
+            return $('#fornecedor').val();
+        }
+
+        function getFormaCodigo() { return $('#forma_pagamento').val(); }
+        function getBancoCodigo() { return $('#banco_conta').val(); }
+
+        // ==============================================================
+        // INICIALIZAÇÃO
+        // ==============================================================
+        $(document).ready(function () {
+            configurarTelaPorModo();
+            inicializarEventos();
+            carregarDados();
+
+            if (window.parent && window.parent.document.getElementById('iframeNovaConta')) {
+                const resizeObserver = new ResizeObserver(() => {
+                    const docHeight = document.documentElement.scrollHeight;
+                    window.parent.document.getElementById('iframeNovaConta').style.height = (docHeight + 20) + 'px';
+                });
+                resizeObserver.observe(document.body);
             }
         });
 
-        $('#chkRateio').on('change', function () {
-            if ($(this).is(':checked')) {
-                if ($('#chkParcelar').is(':checked')) $('#chkParcelar').prop('checked', false).trigger('change');
-                $('#divPlanoPrincipal').slideUp();
-                $('#plano_contas').val(null).trigger('change');
-                $('#areaRateio').slideDown();
-                if ($('.rateio-card').length === 0) adicionarItemRateio();
-                atualizarTotalRateio();
-            } else {
-                $('#divPlanoPrincipal').slideDown();
-                $('#areaRateio').slideUp();
-                $('#listaRateioCards').empty();
-                atualizarTotalRateio();
-            }
-        });
-
-        $('#btnAddRateioItem').on('click', () => adicionarItemRateio());
-        $('#btnGerarParcelas').on('click', gerarParcelas);
-
-        $('#qtParcelas, #valor_total, #desconto, #acrescimo, #vencimento, #doc').on('change input', () => {
-            if ($('#chkParcelar').is(':checked')) gerarParcelas();
-            if ($('#chkRateio').is(':checked')) atualizarTotalRateio();
-        });
-
-        $(document).on('input change', '.valorParcela', function () { applyMoneyMask(this); atualizarTotalParcelas(); });
-        $(document).on('input change', '.valorRateio', function () { applyMoneyMask(this); atualizarTotalRateio(); });
-
-        $(document).on('click', '.btn-remove-rateio', function () {
-            $(this).closest('.rateio-card').fadeOut(300, function () { $(this).remove(); atualizarTotalRateio(); });
-        });
-
-        $('#btnSalvar').on('click', salvar);
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); fecharModalParent(); } });
-
-        // Eventos para o Novo Fornecedor Inline
-        $('#btnNovoFornecedorInline').on('click', function(e) {
-            e.preventDefault();
-            $('#formFornecedor')[0].reset();
-            $('#modalFornecedor').modal('show');
-        });
-
-        $('#f_cnpj_cpf').mask('00.000.000/0000-00', { reverse: true });
-        $('#f_fone').mask('(00) 00000-0000');
-        $('#f_cep').mask('00000-000');
-
-        $('#btnSalvarFornecedor').on('click', async function() {
-            const payload = {
-                system_unit_id: Number(unit_id),
-                nome: $('#f_nome').val(),
-                razao: $('#f_razao').val(),
-                cnpj_cpf: $('#f_cnpj_cpf').val().replace(/\D/g, ''),
-                fone: $('#f_fone').val().replace(/\D/g, ''),
-                endereco: $('#f_endereco').val(),
-                cep: $('#f_cep').val().replace(/\D/g, ''),
-                insc_estadual: $('#f_insc_estadual').val()
+        function configurarTelaPorModo() {
+            const titulos = {
+                create: '<i class="fas fa-file-invoice-dollar"></i> Nova Conta Financeira',
+                edit: '<i class="fas fa-edit"></i> Editar Conta Financeira',
+                nota: '<i class="fas fa-file-import"></i> Inclusão Financeira (Nota Fiscal)',
+                transacao: '<i class="fas fa-exchange-alt"></i> Novo Lançamento via Transação'
             };
+            $('#tituloTela').html(titulos[MODO] || titulos.create);
 
-            if(!payload.nome || !payload.cnpj_cpf) {
-                return Swal.fire('Atenção', 'Nome e CNPJ são obrigatórios.', 'warning');
+            if (MODO === 'edit') { $('#colBaixa').show(); }
+            if (MODO === 'nota') {
+                $('#divFornecedorSelect').hide();
+                $('#divFornecedorReadonly').show();
+                if (notaFornecedor) $('#fornecedor_nome').val(notaFornecedor);
+                $('#doc').prop('readonly', true);
+            }
+            if (MODO === 'transacao') {
+                $('#colBaixa').show();
+                $('#areaChecksAdicionais').hide();
+                if (transacaoData) {
+                    const dataFormatada = transacaoData.split('T')[0];
+                    $('#emissao').val(dataFormatada);
+                    $('#vencimento').val(dataFormatada);
+                    $('#baixa_dt').val(dataFormatada);
+                }
+                if (transacaoValor) { $('#valor_total').val(formatMoney(transacaoValor)); }
+                if (transacaoTipo === 'credit') { $('#tipoReceita').prop('checked', true); }
+                else if (transacaoTipo === 'debit') { $('#tipoDespesa').prop('checked', true); }
+                if (transacaoDesc) { $('#obs_extra').val(`Gerado a partir da transação bancária: ${transacaoDesc}`); }
+            }
+        }
+
+        function inicializarEventos() {
+            if (MODO !== 'nota') { $('#fornecedor').select2({ placeholder: 'Selecione ou digite...', allowClear: true, width: '100%' }); }
+            $('#forma_pagamento').select2({ placeholder: 'Selecione a forma...', allowClear: true, width: '100%' });
+            $('#banco_conta').select2({ placeholder: 'Selecione a conta...', allowClear: true, width: '100%' });
+
+            $(document).on('input', '.money-input', function () { applyMoneyMask(this); });
+
+            $('#chkParcelar').on('change', function () {
+                if ($(this).is(':checked')) {
+                    if ($('#chkRateio').is(':checked')) $('#chkRateio').prop('checked', false).trigger('change');
+                    $('#areaParcelas').slideDown();
+                    gerarParcelas();
+                } else {
+                    $('#areaParcelas').slideUp();
+                    limparParcelasUI();
+                }
+            });
+
+            $('#chkRateio').on('change', function () {
+                if ($(this).is(':checked')) {
+                    if ($('#chkParcelar').is(':checked')) $('#chkParcelar').prop('checked', false).trigger('change');
+                    $('#divPlanoPrincipal').slideUp();
+                    $('#plano_contas').val(null).trigger('change');
+                    $('#areaRateio').slideDown();
+                    if ($('.rateio-card').length === 0) adicionarItemRateio();
+                    atualizarTotalRateio();
+                } else {
+                    $('#divPlanoPrincipal').slideDown();
+                    $('#areaRateio').slideUp();
+                    $('#listaRateioCards').empty();
+                    atualizarTotalRateio();
+                }
+            });
+
+            $('#btnAddRateioItem').on('click', () => adicionarItemRateio());
+            $('#btnGerarParcelas').on('click', gerarParcelas);
+
+            $('#qtParcelas, #valor_total, #desconto, #acrescimo, #vencimento, #doc').on('change input', () => {
+                if ($('#chkParcelar').is(':checked')) gerarParcelas();
+                if ($('#chkRateio').is(':checked')) atualizarTotalRateio();
+            });
+
+            $(document).on('input change', '.valorParcela', function () { applyMoneyMask(this); atualizarTotalParcelas(); });
+            $(document).on('input change', '.valorRateio', function () { applyMoneyMask(this); atualizarTotalRateio(); });
+
+            $(document).on('click', '.btn-remove-rateio', function () {
+                $(this).closest('.rateio-card').fadeOut(300, function () { $(this).remove(); atualizarTotalRateio(); });
+            });
+
+            $('#btnSalvar').on('click', salvar);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); fecharModalParent(); } });
+
+            // Eventos para o Novo Fornecedor Inline
+            $('#btnNovoFornecedorInline').on('click', function (e) {
+                e.preventDefault();
+                $('#formFornecedor')[0].reset();
+                $('#modalFornecedor').modal('show');
+            });
+
+            $('#f_cnpj_cpf').mask('00.000.000/0000-00', { reverse: true });
+            $('#f_fone').mask('(00) 00000-0000');
+            $('#f_cep').mask('00000-000');
+
+            $('#btnSalvarFornecedor').on('click', async function () {
+                const payload = {
+                    system_unit_id: Number(unit_id),
+                    nome: $('#f_nome').val(),
+                    razao: $('#f_razao').val(),
+                    cnpj_cpf: $('#f_cnpj_cpf').val().replace(/\D/g, ''),
+                    fone: $('#f_fone').val().replace(/\D/g, ''),
+                    endereco: $('#f_endereco').val(),
+                    cep: $('#f_cep').val().replace(/\D/g, ''),
+                    insc_estadual: $('#f_insc_estadual').val(),
+                    plano_contas: $('#f_plano_contas').val()
+                };
+
+                if (!payload.nome || !payload.cnpj_cpf) {
+                    return Swal.fire('Atenção', 'Nome e CNPJ são obrigatórios.', 'warning');
+                }
+
+                Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+                try {
+                    const res = await axios.post(baseUrl, { method: 'createFornecedor', token, data: payload });
+                    Swal.close();
+                    if (res.data && res.data.success !== false) {
+                        Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1500, showConfirmButton: false });
+                        $('#modalFornecedor').modal('hide');
+
+                        const novoId = res.data.id || (res.data.data && res.data.data.id);
+
+                        $('#fornecedor').empty().append(new Option('Selecione...', ''));
+                        await carregarFornecedores();
+
+                        if (novoId) {
+                            $('#fornecedor').val(novoId).trigger('change');
+                        }
+                    } else {
+                        Swal.fire('Erro', 'Falha ao salvar fornecedor. ' + (res.data.message || ''), 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Erro', 'Falha ao salvar fornecedor.', 'error');
+                }
+            });
+        }
+
+        // ==============================================================
+        // CARREGAMENTO DE DADOS
+        // ==============================================================
+        async function carregarDados() {
+            try {
+                if (MODO === 'nota') {
+                    Swal.fire({ title: 'Carregando dados...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+                    await carregarBancos();
+                    await carregarFormasPagamento();
+                    await carregarPlanos();
+                    await carregarDadosNota();
+                    Swal.close();
+                } else if (MODO === 'edit') {
+                    if (!token || !editId) return Swal.fire('Atenção', 'Parâmetros ausentes.', 'warning');
+                    await carregarFornecedores();
+                    await carregarBancos();
+                    await carregarFormasPagamento();
+                    await carregarPlanos();
+                    await carregarConta();
+                } else {
+                    // create, transacao
+                    await carregarFornecedores();
+                    await carregarBancos();
+                    await carregarFormasPagamento();
+                    await carregarPlanos();
+                }
+            } catch (e) { console.error('Erro ao carregar dados:', e); }
+        }
+
+        async function carregarFornecedores() {
+            try {
+                const res = await axios.post(baseUrl, { method: 'listFornecedores', token, data: { system_unit_id: Number(unit_id) } });
+                const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+                list.forEach(f => $('#fornecedor').append(new Option(`${f.id} - ${f.razao || f.nome}`, f.id)));
+            } catch (e) { console.error(e); }
+        }
+
+        async function carregarBancos() {
+            try {
+                const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+                BANCOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+                const $sel = $('#banco_conta');
+                $sel.empty().append(new Option('Selecione...', ''));
+                BANCOS_CACHE.forEach(b => {
+                    const label = b.nome + (b.agencia ? ` (Ag: ${b.agencia}` + (b.conta ? ` / Cc: ${b.conta}` : '') + ')' : '');
+                    $sel.append(new Option(label, b.codigo));
+                });
+
+                // Se veio banco_id na URL, seleciona e trava o campo
+                if (paramBancoId) {
+                    $sel.val(paramBancoId).trigger('change');
+                    $sel.prop('disabled', true);
+                    // Adiciona badge visual de travado
+                    $sel.closest('.col-md-6').find('label').append(
+                        ' <span style="background:#fff3cd;color:#856404;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;border:1px solid #ffc107;"><i class="fas fa-lock"></i> Fixado</span>'
+                    );
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function carregarFormasPagamento() {
+            try {
+                const res = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
+                const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+                list.forEach(b => $('#forma_pagamento').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome || b.descricao), b.codigo)));
+            } catch (e) { console.error(e); }
+        }
+
+        async function carregarPlanos() {
+            try {
+                const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
+                PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+                PLANOS_CACHE.sort((a, b) => a.codigo.localeCompare(b.codigo));
+                PLANOS_CACHE.forEach(p => {
+                    p.nivel = Math.floor((p.codigo.length - 2) / 2);
+                    p.isParent = PLANOS_CACHE.some(child => child.codigo.startsWith(p.codigo) && child.codigo.length > p.codigo.length);
+                });
+                popularSelectPlanos($('#plano_contas'));
+                popularSelectPlanos($('#f_plano_contas'));
+            } catch (e) { console.error(e); }
+        }
+
+        // ==============================================================
+        // LÓGICA DO PLANO DE CONTAS (ITENS 8 E 9 CORRIGIDOS)
+        // ==============================================================
+
+        // Função MATCH CUSTOMIZADA para o Select2 não sumir com os pais quando você pesquisa um filho
+        function customPlanoMatcher(params, data) {
+            if ($.trim(params.term) === '') { return data; }
+            if (typeof data.text === 'undefined') { return null; }
+
+            let term = params.term.toLowerCase();
+            let text = data.text.toLowerCase();
+            let $el = $(data.element);
+            let codigo = $el.data('codigo');
+
+            // Se não tem código (como o placeholder "Selecione..."), verifica normalmente
+            if (!codigo) {
+                return text.indexOf(term) > -1 ? data : null;
             }
 
-            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
-            try {
-                const res = await axios.post(baseUrl, { method: 'createFornecedor', token, data: payload });
-                Swal.close();
-                if (res.data && res.data.success !== false) {
-                    Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1500, showConfirmButton: false });
-                    $('#modalFornecedor').modal('hide');
-                    
-                    const novoId = res.data.id || (res.data.data && res.data.data.id);
-                    
-                    $('#fornecedor').empty().append(new Option('Selecione...', ''));
-                    await carregarFornecedores();
-                    
-                    if (novoId) {
-                        $('#fornecedor').val(novoId).trigger('change');
+            // Match direto (se bate com o nome ou código da linha atual)
+            if (text.indexOf(term) > -1) {
+                return data;
+            }
+
+            // Se eu pesquisei Aluguel (Filho), o Select2 verifica se o código atual é Pai de algum "Aluguel"
+            let hasMatchingChild = PLANOS_CACHE.some(p => {
+                if (p.codigo.startsWith(codigo) && p.codigo.length > codigo.length) {
+                    let childText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
+                    return childText.indexOf(term) > -1;
+                }
+                return false;
+            });
+
+            if (hasMatchingChild) {
+                return data; // O filho deu match, então MANTÉM O PAI na lista
+            }
+
+            // Se eu pesquisei Despesas (Pai), o Select2 garante que vai mostrar os filhos desse pai
+            let hasMatchingParent = PLANOS_CACHE.some(p => {
+                if (codigo.startsWith(p.codigo) && codigo.length > p.codigo.length) {
+                    let parentText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
+                    return parentText.indexOf(term) > -1;
+                }
+                return false;
+            });
+
+            if (hasMatchingParent) {
+                return data; // O pai deu match, MANTÉM O FILHO na lista
+            }
+
+            return null;
+        }
+
+        function popularSelectPlanos($select) {
+            if ($select.hasClass("select2-hidden-accessible")) $select.select2('destroy');
+            $select.empty().append(new Option('Selecione...', ''));
+
+            PLANOS_CACHE.forEach(p => {
+                let nome = p.descricao || p.nome || '';
+                let opt = $('<option>', {
+                    value: p.codigo,
+                    text: p.codigo + ' - ' + nome, // Mantido formato original (Código - Nome)
+                    'data-codigo': p.codigo,
+                    'data-nome': nome,
+                    'data-parent': p.isParent,
+                    'data-nivel': p.nivel
+                });
+
+                // ATENÇÃO (Item 8): Adicionando 'disabled' o Select2 INCLUI O PAI NA LISTA,
+                // mas IMPEDE QUE SEJA SELECIONADO NATIVAMENTE.
+                if (p.isParent) {
+                    opt.prop('disabled', true);
+                }
+
+                $select.append(opt);
+            });
+
+            $select.select2({
+                placeholder: 'Selecione o plano',
+                allowClear: true,
+                width: '100%',
+                templateResult: formatarPlanoConta,
+                matcher: customPlanoMatcher,
+                dropdownParent: $select.closest('.modal').length ? $select.closest('.modal') : null
+            });
+        }
+
+        function formatarPlanoConta(data) {
+            if (!data.id) return data.text;
+            let $el = $(data.element);
+
+            let padding = (parseInt($el.data('nivel')) || 0) * 20;
+            let isParent = $el.data('parent') === true || $el.data('parent') === "true";
+
+            let fontWeight = isParent ? 'bold' : 'normal';
+            let color = isParent ? '#1565C0' : '#444'; // Pais ficam com cor azul forte
+
+            let icon = isParent
+                ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${$el.data('codigo')}" style="margin-right:8px; width:15px; text-align:center;"></i>`
+                : `<i class="fas fa-circle" style="color:#cfd8dc; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
+
+            return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight}; color:${color};">${icon}<span>${data.text}</span></div>`);
+        }
+
+        // Toggle para esconder/mostrar as filhas quando clica na setinha do pai (se necessário)
+        $(document).on('mouseup', '.tree-toggle', function (e) {
+            e.stopPropagation(); e.preventDefault();
+            let $icon = $(this), codigo = $icon.data('codigo');
+            if ($icon.hasClass('fa-chevron-down')) {
+                $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+                $('.tree-node').each(function () {
+                    let childCode = $(this).data('codigo');
+                    if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                        $(this).closest('.select2-results__option').hide();
+                        let $childIcon = $(this).find('.tree-toggle');
+                        if ($childIcon.length) $childIcon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
                     }
+                });
+            } else {
+                $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+                $('.tree-node').each(function () {
+                    let childCode = $(this).data('codigo');
+                    if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                        $(this).closest('.select2-results__option').show();
+                        let $childIcon = $(this).find('.tree-toggle');
+                        if ($childIcon.length) $childIcon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+                    }
+                });
+            }
+        });
+
+        async function carregarDadosNota() {
+            try {
+                const res = await axios.post(baseUrlEstoque, { method: 'getNotaFinanceiroPayload', token, data: { system_unit_id: Number(unit_id), chave_acesso: notaChaveAcesso, id: notaIdNota } });
+                if (res.data.success) {
+                    const d = res.data.data;
+                    $('#fornecedor_id_nota').val(d.fornecedor_id);
+                    $('#chave_acesso').val(notaChaveAcesso);
+                    $('#doc').val(d.documento || '');
+                    $('#emissao').val(d.emissao || '');
+                    $('#valor_total').val(formatMoney(Number(d.valor_total || 0)));
+
+                    const $forma = $('#forma_pagamento').empty().append('<option value="">Selecione...</option>');
+                    const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (d.formas_de_pagamento || []);
+                    formas.forEach(f => $forma.append(new Option(f.descricao || f.nome, f.id)));
+                    $forma.select2({ placeholder: 'Selecione...', width: '100%' });
+
+                    if (d.duplicatas?.length > 1) {
+                        $('#chkParcelar').prop('checked', true).trigger('change');
+                        $('#qtParcelas').val(d.duplicatas.length);
+                        $('#vencimento').val((d.duplicatas[0].vencimento || '').substring(0, 10));
+                        gerarParcelas();
+                    } else if (d.duplicatas?.length === 1) {
+                        $('#vencimento').val((d.duplicatas[0].vencimento || '').substring(0, 10));
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function carregarConta() {
+            try {
+                Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
+                const res = await axios.post(baseUrl, { method: 'getContaById', token, data: { id: Number(editId) } });
+                Swal.close();
+
+                if (!res.data || !res.data.id) return Swal.fire('Erro', 'Conta não encontrada.', 'error');
+                contaLoaded = res.data;
+
+                // Tratativa reforçada para identificar o tipo real
+                const tipoConta = String(contaLoaded.tipo_conta || contaLoaded.tipo || contaLoaded.natureza || 'D').toUpperCase();
+                if (tipoConta === 'R' || tipoConta === 'RECEITA' || tipoConta === 'C' || tipoConta === 'CREDITO') {
+                    $('#tipoReceita').prop('checked', true);
                 } else {
-                    Swal.fire('Erro', 'Falha ao salvar fornecedor. ' + (res.data.message || ''), 'error');
+                    $('#tipoDespesa').prop('checked', true);
+                }
+
+                $('#doc').val(contaLoaded.doc || '');
+                $('#emissao').val(contaLoaded.emissao || '');
+                $('#vencimento').val(contaLoaded.vencimento || '');
+                $('#desconto').val('');
+                setMoneyValue('#acrescimo', contaLoaded.adic || 0);
+                $('#obs_extra').val(contaLoaded.obs || '');
+
+                if (contaLoaded.entidade) $('#fornecedor').val(String(contaLoaded.entidade)).trigger('change');
+                if (contaLoaded.plano_contas) $('#plano_contas').val(String(contaLoaded.plano_contas)).trigger('change');
+                if (contaLoaded.baixa_dt) $('#baixa_dt').val(contaLoaded.baixa_dt.substring(0, 10));
+
+                let bancoVal = contaLoaded.forma_pagamento || contaLoaded.banco;
+                if (bancoVal) $('#forma_pagamento').val(String(bancoVal)).trigger('change');
+
+                // Preencher Conta Bancária no modo edit
+                if (contaLoaded.banco || contaLoaded.financeiro_banco_id) {
+                    const bancoContaVal = contaLoaded.financeiro_banco_id || contaLoaded.banco;
+                    if (!$('#banco_conta').prop('disabled')) {
+                        $('#banco_conta').val(String(bancoContaVal)).trigger('change');
+                    }
+                }
+
+                if (contaLoaded.itens_rateio && Array.isArray(contaLoaded.itens_rateio) && contaLoaded.itens_rateio.length > 0) {
+                    let totalGrupo = contaLoaded.valor_total_rateio ? parseFloat(contaLoaded.valor_total_rateio) : contaLoaded.itens_rateio.reduce((acc, it) => acc + parseFloat(it.valor), 0);
+                    setMoneyValue('#valor_total', totalGrupo);
+                    $('#chkRateio').prop('checked', true).trigger('change');
+                    $('#listaRateioCards').empty();
+                    contaLoaded.itens_rateio.forEach(item => adicionarItemRateio(item.plano_contas, item.valor));
+                    atualizarTotalRateio();
+                } else {
+                    setMoneyValue('#valor_total', contaLoaded.valor || 0);
                 }
             } catch (e) {
-                Swal.fire('Erro', 'Falha ao salvar fornecedor.', 'error');
+                Swal.fire('Erro', 'Falha ao carregar a conta.', 'error');
             }
-        });
-    }
+        }
 
-    // ==============================================================
-    // CARREGAMENTO DE DADOS
-    // ==============================================================
-    async function carregarDados() {
-        try {
-            if (MODO === 'nota') {
-                Swal.fire({ title: 'Carregando dados...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-                await carregarBancos();
-                await carregarFormasPagamento();
-                await carregarPlanos();
-                await carregarDadosNota();
-                Swal.close();
-            } else if (MODO === 'edit') {
-                if (!token || !editId) return Swal.fire('Atenção', 'Parâmetros ausentes.', 'warning');
-                await carregarFornecedores();
-                await carregarBancos();
-                await carregarFormasPagamento();
-                await carregarPlanos();
-                await carregarConta();
+        // ==============================================================
+        // RATEIO / PARCELA
+        // ==============================================================
+        function adicionarItemRateio(planoPreSelecionado = null, valorPreenchido = null) {
+            const idUnico = 'rateio_' + Date.now() + Math.floor(Math.random() * 1000);
+            let valorInput = '';
+            if (valorPreenchido !== null) {
+                valorInput = formatMoney(parseFloat(valorPreenchido));
             } else {
-                // create, transacao
-                await carregarFornecedores();
-                await carregarBancos();
-                await carregarFormasPagamento();
-                await carregarPlanos();
-            }
-        } catch (e) { console.error('Erro ao carregar dados:', e); }
-    }
-
-    async function carregarFornecedores() {
-        try {
-            const res = await axios.post(baseUrl, { method: 'listFornecedores', token, data: { system_unit_id: Number(unit_id) } });
-            const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            list.forEach(f => $('#fornecedor').append(new Option(`${f.id} - ${f.razao || f.nome}`, f.id)));
-        } catch (e) { console.error(e); }
-    }
-
-    async function carregarBancos() {
-        try {
-            const res = await axios.post(baseUrl, { method: 'listBancos', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
-            BANCOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            const $sel = $('#banco_conta');
-            $sel.empty().append(new Option('Selecione...', ''));
-            BANCOS_CACHE.forEach(b => {
-                const label = b.nome + (b.agencia ? ` (Ag: ${b.agencia}` + (b.conta ? ` / Cc: ${b.conta}` : '') + ')' : '');
-                $sel.append(new Option(label, b.codigo));
-            });
-
-            // Se veio banco_id na URL, seleciona e trava o campo
-            if (paramBancoId) {
-                $sel.val(paramBancoId).trigger('change');
-                $sel.prop('disabled', true);
-                // Adiciona badge visual de travado
-                $sel.closest('.col-md-6').find('label').append(
-                    ' <span style="background:#fff3cd;color:#856404;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;border:1px solid #ffc107;"><i class="fas fa-lock"></i> Fixado</span>'
-                );
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async function carregarFormasPagamento() {
-        try {
-            const res = await axios.post(baseUrl, { method: 'listFormasPagamento', token, data: { system_unit_id: Number(unit_id), apenas_ativos: true } });
-            const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            list.forEach(b => $('#forma_pagamento').append(new Option((b.codigo ? `${b.codigo} - ` : '') + (b.nome || b.descricao), b.codigo)));
-        } catch (e) { console.error(e); }
-    }
-
-    async function carregarPlanos() {
-        try {
-            const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id: Number(unit_id) } });
-            PLANOS_CACHE = Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            PLANOS_CACHE.sort((a, b) => a.codigo.localeCompare(b.codigo));
-            PLANOS_CACHE.forEach(p => {
-                p.nivel = Math.floor((p.codigo.length - 2) / 2);
-                p.isParent = PLANOS_CACHE.some(child => child.codigo.startsWith(p.codigo) && child.codigo.length > p.codigo.length);
-            });
-            popularSelectPlanos($('#plano_contas'));
-        } catch (e) { console.error(e); }
-    }
-
-    // ==============================================================
-    // LÓGICA DO PLANO DE CONTAS (ITENS 8 E 9 CORRIGIDOS)
-    // ==============================================================
-
-    // Função MATCH CUSTOMIZADA para o Select2 não sumir com os pais quando você pesquisa um filho
-    function customPlanoMatcher(params, data) {
-        if ($.trim(params.term) === '') { return data; }
-        if (typeof data.text === 'undefined') { return null; }
-
-        let term = params.term.toLowerCase();
-        let text = data.text.toLowerCase();
-        let $el = $(data.element);
-        let codigo = $el.data('codigo');
-
-        // Se não tem código (como o placeholder "Selecione..."), verifica normalmente
-        if (!codigo) {
-            return text.indexOf(term) > -1 ? data : null;
-        }
-
-        // Match direto (se bate com o nome ou código da linha atual)
-        if (text.indexOf(term) > -1) {
-            return data;
-        }
-
-        // Se eu pesquisei Aluguel (Filho), o Select2 verifica se o código atual é Pai de algum "Aluguel"
-        let hasMatchingChild = PLANOS_CACHE.some(p => {
-            if (p.codigo.startsWith(codigo) && p.codigo.length > codigo.length) {
-                let childText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
-                return childText.indexOf(term) > -1;
-            }
-            return false;
-        });
-
-        if (hasMatchingChild) {
-            return data; // O filho deu match, então MANTÉM O PAI na lista
-        }
-
-        // Se eu pesquisei Despesas (Pai), o Select2 garante que vai mostrar os filhos desse pai
-        let hasMatchingParent = PLANOS_CACHE.some(p => {
-            if (codigo.startsWith(p.codigo) && codigo.length > p.codigo.length) {
-                let parentText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
-                return parentText.indexOf(term) > -1;
-            }
-            return false;
-        });
-
-        if (hasMatchingParent) {
-            return data; // O pai deu match, MANTÉM O FILHO na lista
-        }
-
-        return null;
-    }
-
-    function popularSelectPlanos($select) {
-        if ($select.hasClass("select2-hidden-accessible")) $select.select2('destroy');
-        $select.empty().append(new Option('Selecione...', ''));
-
-        PLANOS_CACHE.forEach(p => {
-            let nome = p.descricao || p.nome || '';
-            let opt = $('<option>', {
-                value: p.codigo,
-                text: p.codigo + ' - ' + nome, // Mantido formato original (Código - Nome)
-                'data-codigo': p.codigo,
-                'data-nome': nome,
-                'data-parent': p.isParent,
-                'data-nivel': p.nivel
-            });
-
-            // ATENÇÃO (Item 8): Adicionando 'disabled' o Select2 INCLUI O PAI NA LISTA,
-            // mas IMPEDE QUE SEJA SELECIONADO NATIVAMENTE.
-            if (p.isParent) {
-                opt.prop('disabled', true);
+                let somaAtual = 0;
+                $('.valorRateio').each(function () { somaAtual += parseMoney($(this).val()); });
+                valorInput = formatMoney(Math.max(0, getValorAjustado() - somaAtual));
             }
 
-            $select.append(opt);
-        });
-
-        $select.select2({
-            placeholder: 'Selecione o plano',
-            allowClear: true,
-            width: '100%',
-            templateResult: formatarPlanoConta,
-            matcher: customPlanoMatcher // Registra nossa lógica avançada de hierarquia no search
-        });
-    }
-
-    function formatarPlanoConta(data) {
-        if (!data.id) return data.text;
-        let $el = $(data.element);
-
-        let padding = (parseInt($el.data('nivel')) || 0) * 20;
-        let isParent = $el.data('parent') === true || $el.data('parent') === "true";
-
-        let fontWeight = isParent ? 'bold' : 'normal';
-        let color = isParent ? '#1565C0' : '#444'; // Pais ficam com cor azul forte
-
-        let icon = isParent
-            ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${$el.data('codigo')}" style="margin-right:8px; width:15px; text-align:center;"></i>`
-            : `<i class="fas fa-circle" style="color:#cfd8dc; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
-
-        return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight}; color:${color};">${icon}<span>${data.text}</span></div>`);
-    }
-
-    // Toggle para esconder/mostrar as filhas quando clica na setinha do pai (se necessário)
-    $(document).on('mouseup', '.tree-toggle', function (e) {
-        e.stopPropagation(); e.preventDefault();
-        let $icon = $(this), codigo = $icon.data('codigo');
-        if ($icon.hasClass('fa-chevron-down')) {
-            $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
-            $('.tree-node').each(function () {
-                let childCode = $(this).data('codigo');
-                if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
-                    $(this).closest('.select2-results__option').hide();
-                    let $childIcon = $(this).find('.tree-toggle');
-                    if ($childIcon.length) $childIcon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
-                }
-            });
-        } else {
-            $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
-            $('.tree-node').each(function () {
-                let childCode = $(this).data('codigo');
-                if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
-                    $(this).closest('.select2-results__option').show();
-                    let $childIcon = $(this).find('.tree-toggle');
-                    if ($childIcon.length) $childIcon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
-                }
-            });
-        }
-    });
-
-    async function carregarDadosNota() {
-        try {
-            const res = await axios.post(baseUrlEstoque, { method: 'getNotaFinanceiroPayload', token, data: { system_unit_id: Number(unit_id), chave_acesso: notaChaveAcesso, id: notaIdNota } });
-            if (res.data.success) {
-                const d = res.data.data;
-                $('#fornecedor_id_nota').val(d.fornecedor_id);
-                $('#chave_acesso').val(notaChaveAcesso);
-                $('#doc').val(d.documento || '');
-                $('#emissao').val(d.emissao || '');
-                $('#valor_total').val(formatMoney(Number(d.valor_total || 0)));
-
-                const $forma = $('#forma_pagamento').empty().append('<option value="">Selecione...</option>');
-                const formas = Array.isArray(d.formas_pagamento) ? d.formas_pagamento : (d.formas_de_pagamento || []);
-                formas.forEach(f => $forma.append(new Option(f.descricao || f.nome, f.id)));
-                $forma.select2({ placeholder: 'Selecione...', width: '100%' });
-
-                if (d.duplicatas?.length > 1) {
-                    $('#chkParcelar').prop('checked', true).trigger('change');
-                    $('#qtParcelas').val(d.duplicatas.length);
-                    $('#vencimento').val((d.duplicatas[0].vencimento || '').substring(0, 10));
-                    gerarParcelas();
-                } else if (d.duplicatas?.length === 1) {
-                    $('#vencimento').val((d.duplicatas[0].vencimento || '').substring(0, 10));
-                }
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async function carregarConta() {
-        try {
-            Swal.fire({ title: 'Carregando...', didOpen: () => Swal.showLoading() });
-            const res = await axios.post(baseUrl, { method: 'getContaById', token, data: { id: Number(editId) } });
-            Swal.close();
-
-            if (!res.data || !res.data.id) return Swal.fire('Erro', 'Conta não encontrada.', 'error');
-            contaLoaded = res.data;
-
-            // Tratativa reforçada para identificar o tipo real
-            const tipoConta = String(contaLoaded.tipo_conta || contaLoaded.tipo || contaLoaded.natureza || 'D').toUpperCase();
-            if (tipoConta === 'R' || tipoConta === 'RECEITA' || tipoConta === 'C' || tipoConta === 'CREDITO') {
-                $('#tipoReceita').prop('checked', true);
-            } else {
-                $('#tipoDespesa').prop('checked', true);
-            }
-
-            $('#doc').val(contaLoaded.doc || '');
-            $('#emissao').val(contaLoaded.emissao || '');
-            $('#vencimento').val(contaLoaded.vencimento || '');
-            $('#desconto').val('');
-            setMoneyValue('#acrescimo', contaLoaded.adic || 0);
-            $('#obs_extra').val(contaLoaded.obs || '');
-
-            if (contaLoaded.entidade) $('#fornecedor').val(String(contaLoaded.entidade)).trigger('change');
-            if (contaLoaded.plano_contas) $('#plano_contas').val(String(contaLoaded.plano_contas)).trigger('change');
-            if (contaLoaded.baixa_dt) $('#baixa_dt').val(contaLoaded.baixa_dt.substring(0, 10));
-
-            let bancoVal = contaLoaded.forma_pagamento || contaLoaded.banco;
-            if (bancoVal) $('#forma_pagamento').val(String(bancoVal)).trigger('change');
-
-            // Preencher Conta Bancária no modo edit
-            if (contaLoaded.banco || contaLoaded.financeiro_banco_id) {
-                const bancoContaVal = contaLoaded.financeiro_banco_id || contaLoaded.banco;
-                if (!$('#banco_conta').prop('disabled')) {
-                    $('#banco_conta').val(String(bancoContaVal)).trigger('change');
-                }
-            }
-
-            if (contaLoaded.itens_rateio && Array.isArray(contaLoaded.itens_rateio) && contaLoaded.itens_rateio.length > 0) {
-                let totalGrupo = contaLoaded.valor_total_rateio ? parseFloat(contaLoaded.valor_total_rateio) : contaLoaded.itens_rateio.reduce((acc, it) => acc + parseFloat(it.valor), 0);
-                setMoneyValue('#valor_total', totalGrupo);
-                $('#chkRateio').prop('checked', true).trigger('change');
-                $('#listaRateioCards').empty();
-                contaLoaded.itens_rateio.forEach(item => adicionarItemRateio(item.plano_contas, item.valor));
-                atualizarTotalRateio();
-            } else {
-                setMoneyValue('#valor_total', contaLoaded.valor || 0);
-            }
-        } catch (e) {
-            Swal.fire('Erro', 'Falha ao carregar a conta.', 'error');
-        }
-    }
-
-    // ==============================================================
-    // RATEIO / PARCELA
-    // ==============================================================
-    function adicionarItemRateio(planoPreSelecionado = null, valorPreenchido = null) {
-        const idUnico = 'rateio_' + Date.now() + Math.floor(Math.random() * 1000);
-        let valorInput = '';
-        if (valorPreenchido !== null) {
-            valorInput = formatMoney(parseFloat(valorPreenchido));
-        } else {
-            let somaAtual = 0;
-            $('.valorRateio').each(function () { somaAtual += parseMoney($(this).val()); });
-            valorInput = formatMoney(Math.max(0, getValorAjustado() - somaAtual));
-        }
-
-        const html = `
+            const html = `
         <div class="rateio-card" id="card_${idUnico}">
             <i class="fa fa-times btn-remove-rateio" title="Remover item"></i>
             <div class="row">
@@ -941,133 +1156,134 @@
             </div>
         </div>`;
 
-        $('#listaRateioCards').append(html);
+            $('#listaRateioCards').append(html);
 
-        // REPLICANDO A MESMA LÓGICA NO RATEIO
-        popularSelectPlanos($(`#sel_${idUnico}`));
+            // REPLICANDO A MESMA LÓGICA NO RATEIO
+            popularSelectPlanos($(`#sel_${idUnico}`));
 
-        if (planoPreSelecionado) $(`#sel_${idUnico}`).val(planoPreSelecionado).trigger('change');
-        atualizarTotalRateio();
-    }
-
-    function atualizarTotalRateio() {
-        let soma = 0;
-        $('.valorRateio').each(function () { soma += parseMoney($(this).val()); });
-        const meta = getValorAjustado();
-        $('#totalRateio').text(formatMoney(soma));
-        $('#metaRateio').text(formatMoney(meta));
-
-        if (Math.abs(soma - meta) > 0.01) {
-            $('#avisoRateio').show(); $('#totalRateio').css('color', '#D32F2F');
-        } else {
-            $('#avisoRateio').hide(); $('#totalRateio').css('color', '#1565C0');
+            if (planoPreSelecionado) $(`#sel_${idUnico}`).val(planoPreSelecionado).trigger('change');
+            atualizarTotalRateio();
         }
-    }
 
-    function limparParcelasUI() {
-        $('#tblParcelas tbody').empty(); $('#totalParcelas').text('R$ 0,00'); $('#avisoParcelas').hide();
-    }
+        function atualizarTotalRateio() {
+            let soma = 0;
+            $('.valorRateio').each(function () { soma += parseMoney($(this).val()); });
+            const meta = getValorAjustado();
+            $('#totalRateio').text(formatMoney(soma));
+            $('#metaRateio').text(formatMoney(meta));
 
-    function gerarParcelas() {
-        const qt = Math.max(1, parseInt($('#qtParcelas').val() || '1'));
-        const docBase = ($('#doc').val() || '').trim();
-        const emissao = $('#emissao').val();
-        const vencInicial = $('#vencimento').val();
-        const totalAjustado = getValorAjustado();
+            if (Math.abs(soma - meta) > 0.01) {
+                $('#avisoRateio').show(); $('#totalRateio').css('color', '#D32F2F');
+            } else {
+                $('#avisoRateio').hide(); $('#totalRateio').css('color', '#1565C0');
+            }
+        }
 
-        if (!docBase || !vencInicial || totalAjustado <= 0) return;
+        function limparParcelasUI() {
+            $('#tblParcelas tbody').empty(); $('#totalParcelas').text('R$ 0,00'); $('#avisoParcelas').hide();
+        }
 
-        const base = Math.floor((totalAjustado / qt) * 100) / 100;
-        let soma = 0;
-        const tbody = $('#tblParcelas tbody').empty();
+        function gerarParcelas() {
+            const qt = Math.max(1, parseInt($('#qtParcelas').val() || '1'));
+            const docBase = ($('#doc').val() || '').trim();
+            const emissao = $('#emissao').val();
+            const vencInicial = $('#vencimento').val();
+            const totalAjustado = getValorAjustado();
 
-        for (let i = 1; i <= qt; i++) {
-            let val = (i < qt) ? base : +(totalAjustado - soma).toFixed(2);
-            soma += val;
-            tbody.append(`
+            if (!docBase || !vencInicial || totalAjustado <= 0) return;
+
+            const base = Math.floor((totalAjustado / qt) * 100) / 100;
+            let soma = 0;
+            const tbody = $('#tblParcelas tbody').empty();
+
+            for (let i = 1; i <= qt; i++) {
+                let val = (i < qt) ? base : +(totalAjustado - soma).toFixed(2);
+                soma += val;
+                tbody.append(`
             <tr>
                 <td style="text-align: center; vertical-align: middle; color: #F57F17; "><strong>${i}/${qt}</strong></td>
                 <td><input type="text" class="form-control docParcela" value="${docBase}-${pad2(i)}"></td>
                 <td><input type="date" class="form-control vencParcela" value="${addMonths(vencInicial, i - 1)}"></td>
                 <td><input type="text" class="form-control money-input valorParcela" value="${formatMoney(val)}"></td>
             </tr>`);
+            }
+            atualizarTotalParcelas();
         }
-        atualizarTotalParcelas();
-    }
 
-    function atualizarTotalParcelas() {
-        let soma = 0;
-        $('.valorParcela').each(function () { soma += parseMoney($(this).val()); });
-        $('#totalParcelas').text(formatMoney(soma));
-        $('#avisoParcelas').toggle(Math.abs(soma - getValorAjustado()) > 0.01);
-    }
-
-    // ==============================================================
-    // SALVAR
-    // ==============================================================
-    async function salvar() {
-        const isParcelado = $('#chkParcelar').is(':checked'), isRateio = $('#chkRateio').is(':checked');
-        const formaCod = getFormaCodigo(), planoContas = $('#plano_contas').val();
-        
-        if (!getFornecedorId()) return Swal.fire('Atenção', 'Selecione o Fornecedor.', 'warning');
-        if (!$('#doc').val()) return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
-        if (!$('#vencimento').val()) return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
-        if (!isRateio && !planoContas) return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
-
-        let contas = []; const totalAjustado = getValorAjustado();
-
-        if (isRateio) {
-            let somaRateio = 0; const items = [];
-            $('.rateio-card').each(function () {
-                const plano = $(this).find('.select-rateio-plano').val(), valor = parseMoney($(this).find('.valorRateio').val());
-                if (plano && valor > 0) { items.push({ plano, valor }); somaRateio += valor; }
-            });
-            if (items.length === 0) return Swal.fire('Erro', 'Adicione pelo menos um item ao rateio.', 'warning');
-            if (Math.abs(somaRateio - totalAjustado) > 0.01) return Swal.fire('Erro', 'A soma do rateio não bate com o valor total.', 'error');
-            items.forEach(item => contas.push(montarContaBase(item.valor, item.plano)));
-        } else if (isParcelado) {
+        function atualizarTotalParcelas() {
             let soma = 0;
-            $('#tblParcelas tbody tr').each(function () {
-                const doc = $(this).find('.docParcela').val(), ven = $(this).find('.vencParcela').val(), val = parseMoney($(this).find('.valorParcela').val());
-                if (doc && ven && val > 0) {
-                    soma += val; const c = montarContaBase(val, planoContas); c.documento = doc; c.vencimento = ven; contas.push(c);
-                }
-            });
-            if (contas.length === 0) return Swal.fire('Atenção', 'Gere as parcelas antes de salvar.', 'warning');
-            if (Math.abs(soma - totalAjustado) > 0.01) return Swal.fire('Erro', 'Soma das parcelas incorreta.', 'error');
-        } else {
-            contas.push(montarContaBase(parseMoney($('#valor_total').val()), planoContas, parseMoney($('#desconto').val()), parseMoney($('#acrescimo').val())));
+            $('.valorParcela').each(function () { soma += parseMoney($(this).val()); });
+            $('#totalParcelas').text(formatMoney(soma));
+            $('#avisoParcelas').toggle(Math.abs(soma - getValorAjustado()) > 0.01);
         }
 
-        Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+        // ==============================================================
+        // SALVAR
+        // ==============================================================
+        async function salvar() {
+            const isParcelado = $('#chkParcelar').is(':checked'), isRateio = $('#chkRateio').is(':checked');
+            const formaCod = getFormaCodigo(), planoContas = $('#plano_contas').val();
 
-        try {
-            let res;
-            if (MODO === 'edit') res = await axios.post(baseUrl, { method: 'editConta', token, data: Object.assign({ id: Number(editId), system_unit_id: Number(unit_id), usuario_id: user_id || null, entidade: contas[0].fornecedor_id, doc: contas[0].documento, emissao: contas[0].emissao, vencimento: contas[0].vencimento, valor: Math.max(0, contas[0].valor - contas[0].desconto + contas[0].adicional), adic: contas[0].adicional, plano_contas: contas[0].plano_contas, forma_pagamento: contas[0].forma_pagamento, banco: contas[0].banco, obs: contas[0].obs_extra, baixa_dt: $('#baixa_dt').val() || null }) });
-            else if (MODO === 'nota') res = await axios.post(baseUrl, { method: 'lancarNotaNoFinanceiroContaLote', token, data: { system_unit_id: Number(unit_id), contas: contas } });
-            else res = await axios.post(baseUrl, { method: 'createContaLote', token, data: { system_unit_id: Number(unit_id), usuario_id: user_id || null, rateio: isRateio ? 1 : 0, contas: contas } });
+            if (!getFornecedorId()) return Swal.fire('Atenção', 'Selecione o Fornecedor.', 'warning');
+            if (!$('#doc').val()) return Swal.fire('Atenção', 'Informe o Documento.', 'warning');
+            if (!$('#vencimento').val()) return Swal.fire('Atenção', 'Informe o Vencimento.', 'warning');
+            if (!isRateio && !planoContas) return Swal.fire('Atenção', 'Selecione o Plano de Contas.', 'warning');
 
-            Swal.close();
-            if (res.data && res.data.success) {
-                await Swal.fire({ icon: 'success', title: 'Sucesso', text: 'Conta salva com sucesso!' });
-                fecharModalParent();
-                if (window.parent && typeof window.parent.buscar === 'function') window.parent.buscar();
-            } else { Swal.fire('Erro', res.data?.message || res.data?.error || 'Erro desconhecido', 'error'); }
-        } catch (e) { Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error'); }
-    }
+            let contas = []; const totalAjustado = getValorAjustado();
 
-    function montarContaBase(valor, plano, desconto = 0, acrescimo = 0) {
-        const base = { fornecedor_id: Number(getFornecedorId()), documento: ($('#doc').val() || '').trim(), emissao: $('#emissao').val() || null, vencimento: $('#vencimento').val(), valor: valor, desconto: desconto, adicional: acrescimo, plano_contas: plano, forma_pagamento: getFormaCodigo() ? Number(getFormaCodigo()) : null, banco: getBancoCodigo() ? Number(getBancoCodigo()) : null, obs_extra: $('#obs_extra').val() };
-        if (MODO === 'nota') base.chave_acesso = $('#chave_acesso').val();
-        return base;
-    }
+            if (isRateio) {
+                let somaRateio = 0; const items = [];
+                $('.rateio-card').each(function () {
+                    const plano = $(this).find('.select-rateio-plano').val(), valor = parseMoney($(this).find('.valorRateio').val());
+                    if (plano && valor > 0) { items.push({ plano, valor }); somaRateio += valor; }
+                });
+                if (items.length === 0) return Swal.fire('Erro', 'Adicione pelo menos um item ao rateio.', 'warning');
+                if (Math.abs(somaRateio - totalAjustado) > 0.01) return Swal.fire('Erro', 'A soma do rateio não bate com o valor total.', 'error');
+                items.forEach(item => contas.push(montarContaBase(item.valor, item.plano)));
+            } else if (isParcelado) {
+                let soma = 0;
+                $('#tblParcelas tbody tr').each(function () {
+                    const doc = $(this).find('.docParcela').val(), ven = $(this).find('.vencParcela').val(), val = parseMoney($(this).find('.valorParcela').val());
+                    if (doc && ven && val > 0) {
+                        soma += val; const c = montarContaBase(val, planoContas); c.documento = doc; c.vencimento = ven; contas.push(c);
+                    }
+                });
+                if (contas.length === 0) return Swal.fire('Atenção', 'Gere as parcelas antes de salvar.', 'warning');
+                if (Math.abs(soma - totalAjustado) > 0.01) return Swal.fire('Erro', 'Soma das parcelas incorreta.', 'error');
+            } else {
+                contas.push(montarContaBase(parseMoney($('#valor_total').val()), planoContas, parseMoney($('#desconto').val()), parseMoney($('#acrescimo').val())));
+            }
 
-    function fecharModalParent() {
-        const $p = (window.parent && window.parent.$) ? window.parent.$ : null;
-        if (!$p) return;
-        ['#modalEditConta', '#modalNovaConta', '#modalImportacao', '#modalFinanceiro', '#modalFinanceiroIframe'].forEach(sel => { if ($p(sel).length) $p(sel).modal('hide'); });
-        $p('.modal.in, .modal.show').modal('hide');
-    }
-</script>
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                let res;
+                if (MODO === 'edit') res = await axios.post(baseUrl, { method: 'editConta', token, data: Object.assign({ id: Number(editId), system_unit_id: Number(unit_id), usuario_id: user_id || null, entidade: contas[0].fornecedor_id, doc: contas[0].documento, emissao: contas[0].emissao, vencimento: contas[0].vencimento, valor: Math.max(0, contas[0].valor - contas[0].desconto + contas[0].adicional), adic: contas[0].adicional, plano_contas: contas[0].plano_contas, forma_pagamento: contas[0].forma_pagamento, banco: contas[0].banco, obs: contas[0].obs_extra, baixa_dt: $('#baixa_dt').val() || null }) });
+                else if (MODO === 'nota') res = await axios.post(baseUrl, { method: 'lancarNotaNoFinanceiroContaLote', token, data: { system_unit_id: Number(unit_id), contas: contas } });
+                else res = await axios.post(baseUrl, { method: 'createContaLote', token, data: { system_unit_id: Number(unit_id), usuario_id: user_id || null, rateio: isRateio ? 1 : 0, contas: contas } });
+
+                Swal.close();
+                if (res.data && res.data.success) {
+                    await Swal.fire({ icon: 'success', title: 'Sucesso', text: 'Conta salva com sucesso!' });
+                    fecharModalParent();
+                    if (window.parent && typeof window.parent.buscar === 'function') window.parent.buscar();
+                } else { Swal.fire('Erro', res.data?.message || res.data?.error || 'Erro desconhecido', 'error'); }
+            } catch (e) { Swal.fire('Erro', 'Falha na comunicação com o servidor.', 'error'); }
+        }
+
+        function montarContaBase(valor, plano, desconto = 0, acrescimo = 0) {
+            const base = { fornecedor_id: Number(getFornecedorId()), documento: ($('#doc').val() || '').trim(), emissao: $('#emissao').val() || null, vencimento: $('#vencimento').val(), valor: valor, desconto: desconto, adicional: acrescimo, plano_contas: plano, forma_pagamento: getFormaCodigo() ? Number(getFormaCodigo()) : null, banco: getBancoCodigo() ? Number(getBancoCodigo()) : null, obs_extra: $('#obs_extra').val() };
+            if (MODO === 'nota') base.chave_acesso = $('#chave_acesso').val();
+            return base;
+        }
+
+        function fecharModalParent() {
+            const $p = (window.parent && window.parent.$) ? window.parent.$ : null;
+            if (!$p) return;
+            ['#modalEditConta', '#modalNovaConta', '#modalImportacao', '#modalFinanceiro', '#modalFinanceiroIframe'].forEach(sel => { if ($p(sel).length) $p(sel).modal('hide'); });
+            $p('.modal.in, .modal.show').modal('hide');
+        }
+    </script>
 </body>
+
 </html>

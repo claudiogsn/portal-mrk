@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,10 +8,14 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
 
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
     <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
     <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
@@ -25,23 +30,52 @@
             background-size: 200px 100%;
             background-repeat: no-repeat;
             display: inline-block;
-            width: 100%; height: 15px; border-radius: 4px;
+            width: 100%;
+            height: 15px;
+            border-radius: 4px;
             animation: skeleton-loading 1.5s infinite;
         }
-        @keyframes skeleton-loading { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
+
+        @keyframes skeleton-loading {
+            0% {
+                background-position: -200px 0;
+            }
+
+            100% {
+                background-position: calc(200px + 100%) 0;
+            }
+        }
 
         /* ====== AJUSTES GERAIS MRK ====== */
-        html, body { background: transparent !important; }
-        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; }
-        .container-fluid { padding-top: 15px; }
+        html,
+        body {
+            background: transparent !important;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #F4F7F6;
+        }
+
+        .container-fluid {
+            padding-top: 15px;
+        }
 
         .card {
             background: rgba(255, 255, 255, 0.98) !important;
             border-top: 2px solid var(--mrk-blue) !important;
             border-radius: 8px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
         }
-        .card .header h2 { font-family: 'Kanit', sans-serif; font-weight: 600; color: var(--mrk-blue); display: flex; align-items: center; gap: 10px; }
+
+        .card .header h2 {
+            font-family: 'Kanit', sans-serif;
+            font-weight: 600;
+            color: var(--mrk-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
         /* Tabela e Ações */
         .table thead th {
@@ -52,211 +86,445 @@
             text-transform: uppercase;
             text-align: center;
         }
-        .col-action { width: 50px; text-align: center !important; }
+
+        .col-action {
+            width: 50px;
+            text-align: center !important;
+        }
+
         .action-icon {
             font-size: 20px;
             transition: transform 0.2s;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer; text-decoration: none !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            text-decoration: none !important;
         }
-        .action-icon:hover { transform: scale(1.2); }
-        .icon-blue { color: var(--mrk-blue); }
-        .icon-green { color: var(--mrk-green); }
+
+        .action-icon:hover {
+            transform: scale(1.2);
+        }
+
+        .icon-blue {
+            color: var(--mrk-blue);
+        }
+
+        .icon-green {
+            color: var(--mrk-green);
+        }
 
         /* ====== MODAL PREMIUM ====== */
-        .modal-content { border-radius: 12px; border: none; overflow: hidden; }
-        .modal-header { position: relative; border-bottom: 2px solid var(--mrk-blue); padding: 18px 25px; background: #fff; }
-        .modal-title { font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; }
-        .btn-close-mrk { position: absolute; top: 15px; right: 15px; color: var(--mrk-red); font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer; }
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+            overflow: hidden;
+        }
 
-        label { font-family: 'Kanit', sans-serif; font-size: 12px; color: #666; margin-bottom: 5px; }
-        .form-control { height: 38px; border-radius: 6px; border: 1px solid #ddd; }
+        .modal-header {
+            position: relative;
+            border-bottom: 2px solid var(--mrk-blue);
+            padding: 18px 25px;
+            background: #fff;
+        }
 
-        .whatsapp-link { color: #25D366; font-weight: 600; text-decoration: none !important; }
-        .whatsapp-link:hover { color: #128C7E; text-decoration: underline !important; }
+        .modal-title {
+            font-family: 'Kanit', sans-serif;
+            color: var(--mrk-blue);
+            font-weight: 600;
+        }
+
+        .btn-close-mrk {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: var(--mrk-red);
+            font-size: 26px;
+            background: none;
+            border: none;
+            outline: none !important;
+            cursor: pointer;
+        }
+
+        label {
+            font-family: 'Kanit', sans-serif;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .form-control {
+            height: 38px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .select2-container .select2-selection--single {
+            height: 38px !important;
+            border-radius: 6px;
+            border: 1px solid #cfd8dc;
+        }
+
+        .select2-selection__rendered {
+            line-height: 38px !important;
+            padding-left: 12px !important;
+        }
+
+        .select2-selection__arrow {
+            height: 38px !important;
+        }
+
+        .select2-results__option[aria-disabled="true"] {
+            background-color: transparent !important;
+            color: #1565C0 !important;
+        }
+
+        .whatsapp-link {
+            color: #25D366;
+            font-weight: 600;
+            text-decoration: none !important;
+        }
+
+        .whatsapp-link:hover {
+            color: #128C7E;
+            text-decoration: underline !important;
+        }
     </style>
 </head>
 
 <body class="theme-blue">
-<div class="container-fluid">
-    <div class="card">
-        <div class="header">
-            <h2>
-                <iconify-icon icon="icon-park-outline:delivery" width="24"></iconify-icon>
-                GESTÃO DE FORNECEDORES
-            </h2>
-        </div>
-        <div class="body">
-            <div class="row clearfix" style="margin-bottom: 20px;">
-                <div class="col-md-4 mb-2">
-                    <label>Nome Fantasia / Razão</label>
-                    <input type="text" id="filtroNome" class="form-control" placeholder="Digite para pesquisar...">
+    <div class="container-fluid">
+        <div class="card">
+            <div class="header">
+                <h2>
+                    <iconify-icon icon="icon-park-outline:delivery" width="24"></iconify-icon>
+                    GESTÃO DE FORNECEDORES
+                </h2>
+            </div>
+            <div class="body">
+                <div class="row clearfix" style="margin-bottom: 20px;">
+                    <div class="col-md-4 mb-2">
+                        <label>Nome Fantasia / Razão</label>
+                        <input type="text" id="filtroNome" class="form-control" placeholder="Digite para pesquisar...">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label>CNPJ / CPF</label>
+                        <input type="text" id="filtroCnpj" class="form-control" placeholder="00.000.000/0000-00">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-success btn-block" id="btnNovoFornecedor"
+                            style="height:38px; background-color: var(--mrk-green) !important;">
+                            <iconify-icon icon="icon-park-outline:plus"
+                                style="vertical-align: middle; margin-right: 5px;"></iconify-icon> NOVO FORNECEDOR
+                        </button>
+                    </div>
                 </div>
-                <div class="col-md-4 mb-2">
-                    <label>CNPJ / CPF</label>
-                    <input type="text" id="filtroCnpj" class="form-control" placeholder="00.000.000/0000-00">
-                </div>
-                <div class="col-md-4 mb-2">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-success btn-block" id="btnNovoFornecedor" style="height:38px; background-color: var(--mrk-green) !important;">
-                        <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> NOVO FORNECEDOR
-                    </button>
-                </div>
-            </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover" id="tabela-fornecedores">
-                    <thead>
-                    <tr>
-                        <th class="col-action">Edit</th>
-                        <th class="col-action">Itens</th>
-                        <th style="width:160px; text-align: left;">CNPJ / CPF</th>
-                        <th style="text-align: left;">Fornecedor (Nome / Razão)</th>
-                        <th style="text-align: left;">Telefone / WhatsApp</th>
-                    </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalFornecedor" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="modalTitulo">Cadastrar Fornecedor</h4>
-                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
-            </div>
-            <div class="modal-body">
-                <form id="formFornecedor">
-                    <input type="hidden" id="fornecedorId">
-                    <div class="row clearfix">
-                        <div class="col-md-6 mb-2">
-                            <label>Nome Fantasia *</label>
-                            <input type="text" class="form-control" id="nome" placeholder="Ex: Mercado do João" required>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Razão Social</label>
-                            <input type="text" class="form-control" id="razao" placeholder="Ex: Mercado do João LTDA">
-                        </div>
-                    </div>
-                    <div class="row clearfix">
-                        <div class="col-md-6 mb-2">
-                            <label>CNPJ / CPF *</label>
-                            <input type="text" class="form-control" id="cnpj_cpf" placeholder="Somente números" required>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label>Telefone</label>
-                            <input type="text" class="form-control" id="fone" placeholder="(00) 00000-0000">
-                        </div>
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Endereço Completo</label>
-                        <input type="text" class="form-control" id="endereco" placeholder="Rua, número, bairro, cidade - UF">
-                    </div>
-                    <div class="row clearfix">
-                        <div class="col-md-4 mb-0">
-                            <label>CEP</label>
-                            <input type="text" class="form-control" id="cep" placeholder="00000-000">
-                        </div>
-                        <div class="col-md-8 mb-0">
-                            <label>Inscrição Estadual</label>
-                            <input type="text" class="form-control" id="insc_estadual" placeholder="Isento ou Número">
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer" style="border-top: 1px solid #eee;">
-                <button type="button" class="btn btn-primary" id="btnSalvar" style="background-color: var(--mrk-blue) !important; padding: 10px 30px;">
-                    <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon> SALVAR FORNECEDOR
-                </button>
-                <button type="button" class="btn btn-link" data-dismiss="modal" style="color: #666;">CANCELAR</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalItensFornecedor" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="tituloModalItensFornecedor">Itens do Fornecedor</h4>
-                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="table-responsive" style="max-height: 500px;">
-                    <table class="table table-hover mb-0" id="tabela-itens-fornecedor">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabela-fornecedores">
                         <thead>
-                        <tr>
-                            <th style="text-align: left; padding-left: 20px;">Cód.</th>
-                            <th style="text-align: left;">Produto Interno</th>
-                            <th style="text-align: left;">Desc. na Nota</th>
-                            <th class="text-center">UN Nota</th>
-                            <th class="text-center">Fator</th>
-                            <th class="text-center">Cód. Nota</th>
-                        </tr>
+                            <tr>
+                                <th class="col-action">Edit</th>
+                                <th class="col-action">Itens</th>
+                                <th style="width:160px; text-align: left;">CNPJ / CPF</th>
+                                <th style="text-align: left;">Fornecedor (Nome / Razão)</th>
+                                <th style="text-align: left;">Telefone / WhatsApp</th>
+                            </tr>
                         </thead>
-                        <tbody id="itensTableBody"></tbody>
+                        <tbody id="tableBody">
+                        </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-link" data-dismiss="modal" style="color: #666;">FECHAR</button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalFornecedor" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="modalTitulo">Cadastrar Fornecedor</h4>
+                    <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon
+                            icon="icon-park-outline:close-small"></iconify-icon></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formFornecedor">
+                        <input type="hidden" id="fornecedorId">
+                        <div class="row clearfix">
+                            <div class="col-md-6 mb-2">
+                                <label>Nome Fantasia *</label>
+                                <input type="text" class="form-control" id="nome" placeholder="Ex: Mercado do João"
+                                    required>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label>Razão Social</label>
+                                <input type="text" class="form-control" id="razao"
+                                    placeholder="Ex: Mercado do João LTDA">
+                            </div>
+                        </div>
+                        <div class="row clearfix">
+                            <div class="col-md-6 mb-2">
+                                <label>CNPJ / CPF *</label>
+                                <input type="text" class="form-control" id="cnpj_cpf" placeholder="Somente números"
+                                    required>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label>Telefone</label>
+                                <input type="text" class="form-control" id="fone" placeholder="(00) 00000-0000">
+                            </div>
+                        </div>
+                        <div class="form-group mb-2">
+                            <label>Endereço Completo</label>
+                            <input type="text" class="form-control" id="endereco"
+                                placeholder="Rua, número, bairro, cidade - UF">
+                        </div>
+                        <div class="row clearfix">
+                            <div class="col-md-4 mb-0">
+                                <label>CEP</label>
+                                <input type="text" class="form-control" id="cep" placeholder="00000-000">
+                            </div>
+                            <div class="col-md-8 mb-0">
+                                <label>Inscrição Estadual</label>
+                                <input type="text" class="form-control" id="insc_estadual"
+                                    placeholder="Isento ou Número">
+                            </div>
+                        </div>
+                        <div class="row clearfix" style="margin-top: 10px;">
+                            <div class="col-md-12 mb-2">
+                                <label>Plano de Contas Padrão</label>
+                                <select class="form-control" id="plano_contas">
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #eee;">
+                    <button type="button" class="btn btn-primary" id="btnSalvar"
+                        style="background-color: var(--mrk-blue) !important; padding: 10px 30px;">
+                        <iconify-icon icon="icon-park-outline:save"
+                            style="vertical-align: middle; margin-right: 5px;"></iconify-icon> SALVAR FORNECEDOR
+                    </button>
+                    <button type="button" class="btn btn-link" data-dismiss="modal"
+                        style="color: #666;">CANCELAR</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <div class="modal fade" id="modalItensFornecedor" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="tituloModalItensFornecedor">Itens do Fornecedor</h4>
+                    <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon
+                            icon="icon-park-outline:close-small"></iconify-icon></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive" style="max-height: 500px;">
+                        <table class="table table-hover mb-0" id="tabela-itens-fornecedor">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding-left: 20px;">Cód.</th>
+                                    <th style="text-align: left;">Produto Interno</th>
+                                    <th style="text-align: left;">Desc. na Nota</th>
+                                    <th class="text-center">UN Nota</th>
+                                    <th class="text-center">Fator</th>
+                                    <th class="text-center">Cód. Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itensTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link" data-dismiss="modal" style="color: #666;">FECHAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-    'use strict';
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    $(document).ready(function () {
-        const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token'), system_unit_id = params.get('system_unit_id');
+    <script>
+        'use strict';
 
-        let fornecedoresCache = [];
+        $(document).ready(function () {
+            const baseUrl = window.location.hostname !== 'localhost' ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php' : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token'), system_unit_id = params.get('system_unit_id');
 
-        // Mascaras
-        $('#cnpj_cpf').mask('00.000.000/0000-00', { reverse: true });
-        $('#fone').mask('(00) 00000-0000');
-        $('#cep').mask('00000-000');
+            let fornecedoresCache = [];
 
-        function showSkeletons() {
-            const tb = $('#tableBody').empty();
-            for(let i=0; i<8; i++) {
-                tb.append(`<tr><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>`);
+            // Mascaras
+            $('#cnpj_cpf').mask('00.000.000/0000-00', { reverse: true });
+            $('#fone').mask('(00) 00000-0000');
+            $('#cep').mask('00000-000');
+
+            function showSkeletons() {
+                const tb = $('#tableBody').empty();
+                for (let i = 0; i < 8; i++) {
+                    tb.append(`<tr><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td class="col-action"><div class="skeleton" style="width:25px;height:25px;border-radius:50%"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td><td><div class="skeleton"></div></td></tr>`);
+                }
             }
-        }
 
-        async function listarFornecedores() {
-            showSkeletons();
-            try {
-                const res = await axios.post(baseUrl, { method: 'listFornecedores', token, data: { system_unit_id } });
-                fornecedoresCache = res.data.data || res.data;
-                renderTabela(fornecedoresCache);
-            } catch (e) { Swal.fire('Erro', 'Falha ao carregar fornecedores.', 'error'); }
-        }
+            let planosCache = [];
 
-        function renderTabela(dados) {
-            const tbody = $('#tableBody').empty();
-            if(!dados.length) { tbody.append('<tr><td colspan="5" class="text-center p-4">Nenhum fornecedor cadastrado.</td></tr>'); return; }
+            function customPlanoMatcher(params, data) {
+                if ($.trim(params.term) === '') { return data; }
+                if (typeof data.text === 'undefined') { return null; }
 
-            dados.forEach(f => {
-                const nomeFantasia = (f.nome || '').trim();
-                const razaoSocial = (f.razao || '').trim();
-                const nomeExib = razaoSocial ? `<b>${nomeFantasia}</b><br><small style="color:#888;">${razaoSocial}</small>` : `<b>${nomeFantasia}</b>`;
+                let term = params.term.toLowerCase();
+                let text = data.text.toLowerCase();
+                let $el = $(data.element);
+                let codigo = $el.data('codigo');
 
-                tbody.append(`
+                if (!codigo) { return text.indexOf(term) > -1 ? data : null; }
+                if (text.indexOf(term) > -1) { return data; }
+
+                let hasMatchingChild = planosCache.some(p => {
+                    if (p.codigo.startsWith(codigo) && p.codigo.length > codigo.length) {
+                        let childText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
+                        return childText.indexOf(term) > -1;
+                    }
+                    return false;
+                });
+
+                if (hasMatchingChild) { return data; }
+
+                let hasMatchingParent = planosCache.some(p => {
+                    if (codigo.startsWith(p.codigo) && codigo.length > p.codigo.length) {
+                        let parentText = (p.codigo + ' - ' + (p.descricao || p.nome || '')).toLowerCase();
+                        return parentText.indexOf(term) > -1;
+                    }
+                    return false;
+                });
+
+                if (hasMatchingParent) { return data; }
+
+                return null;
+            }
+
+            function formatarPlanoConta(data) {
+                if (!data.id) return data.text;
+                let $el = $(data.element);
+
+                let padding = (parseInt($el.data('nivel')) || 0) * 20;
+                let isParent = $el.data('parent') === true || $el.data('parent') === "true";
+
+                let fontWeight = isParent ? 'bold' : 'normal';
+                let color = isParent ? '#1565C0' : '#444';
+
+                let icon = isParent
+                    ? `<i class="fas fa-chevron-down tree-toggle" data-codigo="${$el.data('codigo')}" style="margin-right:8px; width:15px; text-align:center;"></i>`
+                    : `<i class="fas fa-circle" style="color:#cfd8dc; margin-right:8px; font-size:6px; width:15px; text-align:center; vertical-align:middle;"></i>`;
+
+                return $(`<div class="tree-node" data-codigo="${$el.data('codigo')}" style="padding-left:${padding}px; display:flex; align-items:center; font-weight:${fontWeight}; color:${color};">${icon}<span>${data.text}</span></div>`);
+            }
+
+            function popularSelectPlanos($select) {
+                if ($select.hasClass("select2-hidden-accessible")) $select.select2('destroy');
+                $select.empty().append(new Option('Selecione...', ''));
+
+                planosCache.forEach(p => {
+                    let nome = p.descricao || p.nome || '';
+                    let opt = $('<option>', {
+                        value: p.codigo,
+                        text: p.codigo + ' - ' + nome,
+                        'data-codigo': p.codigo,
+                        'data-nome': nome,
+                        'data-parent': p.isParent,
+                        'data-nivel': p.nivel
+                    });
+
+                    if (p.isParent) {
+                        opt.prop('disabled', true);
+                    }
+
+                    $select.append(opt);
+                });
+
+                $select.select2({
+                    placeholder: 'Selecione o plano',
+                    allowClear: true,
+                    width: '100%',
+                    templateResult: formatarPlanoConta,
+                    matcher: customPlanoMatcher,
+                    dropdownParent: $select.closest('.modal').length ? $select.closest('.modal') : null
+                });
+            }
+
+            $(document).on('mouseup', '.tree-toggle', function (e) {
+                e.stopPropagation(); e.preventDefault();
+                let $icon = $(this), codigo = $icon.data('codigo');
+                if ($icon.hasClass('fa-chevron-down')) {
+                    $icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+                    $('.tree-node').each(function () {
+                        let childCode = $(this).data('codigo');
+                        if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                            $(this).closest('.select2-results__option').hide();
+                            let $childIcon = $(this).find('.tree-toggle');
+                            if ($childIcon.length) $childIcon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
+                        }
+                    });
+                } else {
+                    $icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+                    $('.tree-node').each(function () {
+                        let childCode = $(this).data('codigo');
+                        if (childCode && childCode.startsWith(codigo) && childCode.length > codigo.length) {
+                            $(this).closest('.select2-results__option').show();
+                            let $childIcon = $(this).find('.tree-toggle');
+                            if ($childIcon.length) $childIcon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
+                        }
+                    });
+                }
+            });
+
+            async function carregarPlanos() {
+                try {
+                    const res = await axios.post(baseUrl, { method: 'listPlanos', token, data: { system_unit_id } });
+                    planosCache = res.data.data || (Array.isArray(res.data) ? res.data : []);
+
+                    planosCache.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo)));
+
+                    const codigos = planosCache.map(p => String(p.codigo).trim());
+                    planosCache.forEach(p => {
+                        p.codigo = String(p.codigo).trim();
+                        p.nivel = Math.floor((p.codigo.length - 2) / 2);
+                        p.isParent = codigos.some(c => c !== p.codigo && c.startsWith(p.codigo));
+                    });
+
+                    popularSelectPlanos($('#plano_contas'));
+                } catch (e) {
+                    console.error('Falha ao carregar planos', e);
+                }
+            }
+
+            async function listarFornecedores() {
+                showSkeletons();
+                try {
+                    const res = await axios.post(baseUrl, { method: 'listFornecedores', token, data: { system_unit_id } });
+                    fornecedoresCache = res.data.data || res.data;
+                    renderTabela(fornecedoresCache);
+                } catch (e) { Swal.fire('Erro', 'Falha ao carregar fornecedores.', 'error'); }
+            }
+
+            function renderTabela(dados) {
+                const tbody = $('#tableBody').empty();
+                if (!dados.length) { tbody.append('<tr><td colspan="5" class="text-center p-4">Nenhum fornecedor cadastrado.</td></tr>'); return; }
+
+                dados.forEach(f => {
+                    const nomeFantasia = (f.nome || '').trim();
+                    const razaoSocial = (f.razao || '').trim();
+                    const nomeExib = razaoSocial ? `<b>${nomeFantasia}</b><br><small style="color:#888;">${razaoSocial}</small>` : `<b>${nomeFantasia}</b>`;
+
+                    tbody.append(`
                     <tr data-id="${f.id}">
                         <td class="col-action"><a class="action-icon icon-blue btnEditar" data-toggle="tooltip" title="Editar Cadastro"><iconify-icon icon="icon-park-outline:edit-two"></iconify-icon></a></td>
                         <td class="col-action"><a class="action-icon icon-green btnItens" data-toggle="tooltip" title="Ver Relacionamento de Itens"><iconify-icon icon="icon-park-outline:view-list"></iconify-icon></a></td>
@@ -265,86 +533,88 @@
                         <td>${f.fone ? `<a href="#" class="whatsapp-link" data-telefone="${f.fone}"><iconify-icon icon="icon-park-outline:whatsapp" style="vertical-align:middle; margin-right:3px;"></iconify-icon>${formatTelefone(f.fone)}</a>` : '-'}</td>
                     </tr>
                 `);
+                });
+
+                $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+            }
+
+            // --- FILTROS ---
+            $('#filtroNome, #filtroCnpj').on('input', function () {
+                const nome = $('#filtroNome').val().toLowerCase();
+                const cnpj = $('#filtroCnpj').val().replace(/\D/g, '');
+                const filtrados = fornecedoresCache.filter(f =>
+                    (f.nome.toLowerCase().includes(nome) || (f.razao && f.razao.toLowerCase().includes(nome))) &&
+                    (!cnpj || f.cnpj_cpf.includes(cnpj))
+                );
+                renderTabela(filtrados);
             });
 
-            $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
-        }
+            // --- CADASTRO/EDIÇÃO ---
+            $('#btnNovoFornecedor').click(() => {
+                $('#formFornecedor')[0].reset();
+                $('#fornecedorId').val('');
+                $('#modalTitulo').text('Cadastrar Novo Fornecedor');
+                $('#modalFornecedor').modal('show');
+            });
 
-        // --- FILTROS ---
-        $('#filtroNome, #filtroCnpj').on('input', function() {
-            const nome = $('#filtroNome').val().toLowerCase();
-            const cnpj = $('#filtroCnpj').val().replace(/\D/g, '');
-            const filtrados = fornecedoresCache.filter(f =>
-                (f.nome.toLowerCase().includes(nome) || (f.razao && f.razao.toLowerCase().includes(nome))) &&
-                (!cnpj || f.cnpj_cpf.includes(cnpj))
-            );
-            renderTabela(filtrados);
-        });
+            $(document).on('click', '.btnEditar', function () {
+                const id = $(this).closest('tr').data('id');
+                const f = fornecedoresCache.find(x => String(x.id) === String(id));
+                $('#fornecedorId').val(f.id);
+                $('#nome').val(f.nome);
+                $('#razao').val(f.razao);
+                $('#cnpj_cpf').val(f.cnpj_cpf).trigger('input');
+                $('#fone').val(f.fone).trigger('input');
+                $('#endereco').val(f.endereco);
+                $('#cep').val(f.cep).trigger('input');
+                $('#insc_estadual').val(f.insc_estadual);
+                $('#plano_contas').val(f.plano_contas || f.plano_contas || '').trigger('change');
+                $('#modalTitulo').text('Editar Fornecedor');
+                $('#modalFornecedor').modal('show');
+            });
 
-        // --- CADASTRO/EDIÇÃO ---
-        $('#btnNovoFornecedor').click(() => {
-            $('#formFornecedor')[0].reset();
-            $('#fornecedorId').val('');
-            $('#modalTitulo').text('Cadastrar Novo Fornecedor');
-            $('#modalFornecedor').modal('show');
-        });
+            $('#btnSalvar').click(async function () {
+                const id = $('#fornecedorId').val();
+                const payload = {
+                    id, system_unit_id,
+                    nome: $('#nome').val(), razao: $('#razao').val(),
+                    cnpj_cpf: $('#cnpj_cpf').val().replace(/\D/g, ''),
+                    fone: $('#fone').val().replace(/\D/g, ''),
+                    endereco: $('#endereco').val(),
+                    cep: $('#cep').val().replace(/\D/g, ''),
+                    insc_estadual: $('#insc_estadual').val(),
+                    plano_contas: $('#plano_contas').val()
+                };
 
-        $(document).on('click', '.btnEditar', function() {
-            const id = $(this).closest('tr').data('id');
-            const f = fornecedoresCache.find(x => String(x.id) === String(id));
-            $('#fornecedorId').val(f.id);
-            $('#nome').val(f.nome);
-            $('#razao').val(f.razao);
-            $('#cnpj_cpf').val(f.cnpj_cpf).trigger('input');
-            $('#fone').val(f.fone).trigger('input');
-            $('#endereco').val(f.endereco);
-            $('#cep').val(f.cep).trigger('input');
-            $('#insc_estadual').val(f.insc_estadual);
-            $('#modalTitulo').text('Editar Fornecedor');
-            $('#modalFornecedor').modal('show');
-        });
+                if (!payload.nome || !payload.cnpj_cpf) return Swal.fire('Atenção', 'Nome e CNPJ são obrigatórios.', 'warning');
 
-        $('#btnSalvar').click(async function() {
-            const id = $('#fornecedorId').val();
-            const payload = {
-                id, system_unit_id,
-                nome: $('#nome').val(), razao: $('#razao').val(),
-                cnpj_cpf: $('#cnpj_cpf').val().replace(/\D/g, ''),
-                fone: $('#fone').val().replace(/\D/g, ''),
-                endereco: $('#endereco').val(),
-                cep: $('#cep').val().replace(/\D/g, ''),
-                insc_estadual: $('#insc_estadual').val()
-            };
+                Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+                try {
+                    const method = id ? 'updateFornecedor' : 'createFornecedor';
+                    await axios.post(baseUrl, { method, token, data: payload });
+                    Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1500, showConfirmButton: false });
+                    $('#modalFornecedor').modal('hide');
+                    listarFornecedores();
+                } catch (e) { Swal.fire('Erro', 'Falha ao salvar fornecedor.', 'error'); }
+            });
 
-            if(!payload.nome || !payload.cnpj_cpf) return Swal.fire('Atenção', 'Nome e CNPJ são obrigatórios.', 'warning');
+            // --- RELACIONAMENTO DE ITENS ---
+            $(document).on('click', '.btnItens', async function () {
+                const id = $(this).closest('tr').data('id');
+                const f = fornecedoresCache.find(x => String(x.id) === String(id));
+                $('#tituloModalItensFornecedor').text(`Itens Vinculados: ${f.nome || f.razao}`);
 
-            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
-            try {
-                const method = id ? 'updateFornecedor' : 'createFornecedor';
-                await axios.post(baseUrl, { method, token, data: payload });
-                Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1500, showConfirmButton: false });
-                $('#modalFornecedor').modal('hide');
-                listarFornecedores();
-            } catch (e) { Swal.fire('Erro', 'Falha ao salvar fornecedor.', 'error'); }
-        });
+                const tbody = $('#itensTableBody').empty().append('<tr><td colspan="6" class="text-center p-4"><div class="skeleton"></div></td></tr>');
+                $('#modalItensFornecedor').modal('show');
 
-        // --- RELACIONAMENTO DE ITENS ---
-        $(document).on('click', '.btnItens', async function() {
-            const id = $(this).closest('tr').data('id');
-            const f = fornecedoresCache.find(x => String(x.id) === String(id));
-            $('#tituloModalItensFornecedor').text(`Itens Vinculados: ${f.nome || f.razao}`);
+                try {
+                    const res = await axios.post(baseUrl, { method: 'listItensFornecedor', token, data: { system_unit_id, fornecedor_id: id } });
+                    tbody.empty();
+                    const itens = res.data.data || res.data;
+                    if (!itens.length) { tbody.append('<tr><td colspan="6" class="text-center p-4">Nenhum item vinculado a este fornecedor.</td></tr>'); return; }
 
-            const tbody = $('#itensTableBody').empty().append('<tr><td colspan="6" class="text-center p-4"><div class="skeleton"></div></td></tr>');
-            $('#modalItensFornecedor').modal('show');
-
-            try {
-                const res = await axios.post(baseUrl, { method: 'listItensFornecedor', token, data: { system_unit_id, fornecedor_id: id } });
-                tbody.empty();
-                const itens = res.data.data || res.data;
-                if(!itens.length) { tbody.append('<tr><td colspan="6" class="text-center p-4">Nenhum item vinculado a este fornecedor.</td></tr>'); return; }
-
-                itens.forEach(i => {
-                    tbody.append(`
+                    itens.forEach(i => {
+                        tbody.append(`
                         <tr>
                             <td style="padding-left:20px;"><b>${i.produto_codigo || '-'}</b></td>
                             <td>${i.nome_produto || '-'}</td>
@@ -354,41 +624,43 @@
                             <td class="text-center">${i.codigo_nota || '-'}</td>
                         </tr>
                     `);
-                });
-            } catch (e) { tbody.empty().append('<tr><td colspan="6" class="text-center text-danger p-4">Erro ao carregar itens.</td></tr>'); }
-        });
-
-        // --- WHATSAPP LINK ---
-        $(document).on('click', '.whatsapp-link', function(e) {
-            e.preventDefault();
-            const tel = $(this).data('telefone');
-            Swal.fire({
-                title: 'WhatsApp Fornecedor',
-                text: `Deseja abrir conversa com ${tel}?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Abrir WhatsApp',
-                confirmButtonColor: '#25D366'
-            }).then(r => {
-                if(r.isConfirmed) window.open(`https://wa.me/55${tel.replace(/\D/g, '')}`, '_blank');
+                    });
+                } catch (e) { tbody.empty().append('<tr><td colspan="6" class="text-center text-danger p-4">Erro ao carregar itens.</td></tr>'); }
             });
+
+            // --- WHATSAPP LINK ---
+            $(document).on('click', '.whatsapp-link', function (e) {
+                e.preventDefault();
+                const tel = $(this).data('telefone');
+                Swal.fire({
+                    title: 'WhatsApp Fornecedor',
+                    text: `Deseja abrir conversa com ${tel}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Abrir WhatsApp',
+                    confirmButtonColor: '#25D366'
+                }).then(r => {
+                    if (r.isConfirmed) window.open(`https://wa.me/55${tel.replace(/\D/g, '')}`, '_blank');
+                });
+            });
+
+            // Helpers
+            function formatCnpjCpf(v) {
+                v = v.replace(/\D/g, '');
+                if (v.length === 14) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            }
+            function formatTelefone(v) {
+                v = v.replace(/\D/g, '');
+                if (v.length === 11) return v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+                return v.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+            }
+
+            listarFornecedores();
+            carregarPlanos();
         });
-
-        // Helpers
-        function formatCnpjCpf(v) {
-            v = v.replace(/\D/g, '');
-            if (v.length === 14) return v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-            return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-        }
-        function formatTelefone(v) {
-            v = v.replace(/\D/g, '');
-            if (v.length === 11) return v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-            return v.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-        }
-
-        listarFornecedores();
-    });
-</script>
+    </script>
 
 </body>
+
 </html>
