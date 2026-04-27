@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs basename *)",
+      "Bash(grep -r \"class.*extends.*TPage\" /Users/claudiogomes/projects/portal-mrk/app/control/*.class.php)",
+      "Bash(git -C /Users/claudiogomes/projects/portal-mrk log --oneline)",
+      "Bash(grep -r \"class.*Form.*extends\" /Users/claudiogomes/projects/portal-mrk/app/control/*.class.php)"
+    ]
+  }
+}

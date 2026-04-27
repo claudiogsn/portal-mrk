@@ -143,10 +143,20 @@
             <div class="modal-body">
                 <form id="formPlano">
                     <input type="hidden" id="planoId">
+
+                    <div class="form-group mb-3">
+                        <label>Conta Origem (Pai)</label>
+                        <select class="form-control" id="planoPai">
+                            <option value="">Nenhuma (Conta Raiz)</option>
+                        </select>
+                    </div>
+
                     <div class="form-group mb-3">
                         <label>Código Estrutural *</label>
                         <input type="text" class="form-control" id="codigo" placeholder="Ex: 010101" required>
+                        <small class="text-muted" style="font-size: 11px;">O próximo código da sequência é sugerido automaticamente.</small>
                     </div>
+
                     <div class="form-group mb-0">
                         <label>Descrição da Conta *</label>
                         <input type="text" class="form-control" id="descricao" placeholder="Ex: RECEITAS OPERACIONAIS" required>
@@ -235,6 +245,56 @@
             $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
         }
 
+        // --- FUNÇÃO PARA POPULAR O SELECT DE CONTA ORIGEM ---
+        function popularSelectPlanosPai(codigoIgnorado = null) {
+            const select = $('#planoPai');
+            select.empty();
+            select.append('<option value="">Nenhuma (Conta Raiz)</option>');
+
+            // Cria uma cópia e ordena para a lista ficar correta
+            const options = [...planosCache].sort((a, b) => String(a.codigo).localeCompare(String(b.codigo)));
+
+            options.forEach(p => {
+                const cod = String(p.codigo).trim();
+                // Na edição, impede que o plano seja pai dele mesmo ou de seus próprios filhos
+                if (codigoIgnorado && cod.startsWith(String(codigoIgnorado))) return;
+
+                select.append(`<option value="${cod}">${cod} - ${p.descricao}</option>`);
+            });
+        }
+
+        // --- LÓGICA DE AUTO-GERAR O PRÓXIMO CÓDIGO ---
+        $('#planoPai').change(function() {
+            // Se o campo código estiver desabilitado (modo edição), não mexe no valor
+            if ($('#codigo').is(':disabled')) return;
+
+            const paiCod = $(this).val();
+            let proximoCodigo = "";
+
+            if (!paiCod) {
+                // Descobre a próxima conta Raiz (Ex: 01, 02, 03...)
+                const raizes = planosCache
+                    .filter(p => String(p.codigo).trim().length === 2)
+                    .map(p => parseInt(p.codigo));
+                const max = raizes.length ? Math.max(...raizes) : 0;
+                proximoCodigo = String(max + 1).padStart(2, '0');
+            } else {
+                // Descobre a próxima conta filha (Ex: Pai 01 -> filhos 0101, 0102...)
+                const tamanhoFilho = paiCod.length + 2;
+                const filhos = planosCache
+                    .filter(p => {
+                        const c = String(p.codigo).trim();
+                        return c.startsWith(paiCod) && c.length === tamanhoFilho;
+                    })
+                    .map(p => parseInt(String(p.codigo).trim().substring(paiCod.length)));
+
+                const max = filhos.length ? Math.max(...filhos) : 0;
+                proximoCodigo = paiCod + String(max + 1).padStart(2, '0');
+            }
+
+            $('#codigo').val(proximoCodigo);
+        });
+
         $(document).on('click', '.toggle-child', function(e) {
             const icon = $(this);
             const tr = icon.closest('tr');
@@ -277,19 +337,43 @@
             });
         });
 
+        // --- AÇÃO: NOVO PLANO ---
         $('#btnNovoPlano').click(() => {
             $('#formPlano')[0].reset();
             $('#planoId').val('');
             $('#codigo').prop('disabled', false);
+            $('#planoPai').prop('disabled', false); // Libera a escolha da origem
+
+            popularSelectPlanosPai(); // Carrega os planos no select
+            $('#planoPai').val('').trigger('change'); // Aciona a sugestão do 1º código raiz disponível
+
             $('#modalTitulo').text('Cadastrar Plano de Contas');
             $('#modalPlano').modal('show');
         });
 
+        // --- AÇÃO: EDITAR PLANO ---
         $(document).on('click', '.btnEditar', function() {
             const id = $(this).closest('tr').data('id');
             const p = planosCache.find(x => String(x.id) === String(id));
+            const codigoStr = String(p.codigo).trim();
+
             $('#planoId').val(p.id);
-            $('#codigo').val(p.codigo).prop('disabled', true);
+
+            // Popula o select ignorando a si mesmo e os próprios filhos
+            popularSelectPlanosPai(codigoStr);
+
+            // Descobre quem é o pai deste plano para deixar selecionado
+            if (codigoStr.length > 2) {
+                const pai = codigoStr.substring(0, codigoStr.length - 2);
+                $('#planoPai').val(pai);
+            } else {
+                $('#planoPai').val(''); // É conta raiz
+            }
+
+            // Bloqueia campos estruturais durante a edição para evitar quebra da árvore
+            $('#planoPai').prop('disabled', true);
+            $('#codigo').val(codigoStr).prop('disabled', true);
+
             $('#descricao').val(p.descricao);
             $('#modalTitulo').text('Editar Plano');
             $('#modalPlano').modal('show');
