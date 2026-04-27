@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contas Recorrentes | Portal MRK</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.8/dist/iconify-icon.min.js"></script>
+
+    <link href="bsb/plugins/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <link href="bsb/plugins/animate-css/animate.css" rel="stylesheet">
+    <link href="bsb/plugins/sweetalert/sweetalert.css" rel="stylesheet">
+    <link href="bsb/css/style.css" rel="stylesheet">
+    <link href="style/mrk.css" rel="stylesheet">
+
+    <style>
+        html, body { background: transparent !important; }
+        body { font-family: 'Poppins', sans-serif; background-color: #F4F7F6; overflow-x: hidden; }
+        .container-fluid { padding-top: 15px; }
+
+        /* === Card principal === */
+        .card-main {
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            border-top: 3px solid var(--mrk-blue) !important;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        .header-flex {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;
+        }
+        .header-flex h2 {
+            margin: 0; font-family: 'Kanit', sans-serif; font-size: 20px;
+            color: var(--mrk-blue); display: flex; align-items: center; gap: 10px;
+        }
+
+        /* === Card de recorrência === */
+        .rec-card {
+            background: #fff; border-radius: 12px; border: 1px solid #e0e0e0;
+            overflow: hidden; transition: all 0.3s ease; margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            display: flex; flex-direction: column; height: calc(100% - 20px);
+        }
+        .rec-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+
+        .rec-header {
+            padding: 15px 20px; display: flex; align-items: center; justify-content: space-between;
+            font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600;
+            color: #fff;
+        }
+        .rec-header.tipo-c { background: linear-gradient(135deg, #2E7D32, #43A047); }
+        .rec-header.tipo-d { background: linear-gradient(135deg, #C62828, #E53935); }
+
+        .rec-header-left { display: flex; align-items: center; gap: 12px; }
+        .rec-header-left iconify-icon { font-size: 26px; }
+        .rec-header-tipo {
+            background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+        }
+
+        .rec-body { padding: 20px; flex-grow: 1; }
+        .rec-info-row {
+            display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px;
+        }
+        .rec-info-label { color: #888; font-weight: 500; }
+        .rec-info-val {
+            color: #333; font-weight: 600; font-family: 'Kanit', sans-serif; font-size: 14px;
+        }
+        .rec-valor-destaque {
+            font-size: 22px !important; color: var(--mrk-blue) !important;
+        }
+        .rec-valor-destaque.tipo-d { color: var(--mrk-red) !important; }
+
+        .progress-bar-mrk {
+            height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden;
+            margin-top: 6px;
+        }
+        .progress-bar-mrk-fill {
+            height: 100%; background: linear-gradient(90deg, var(--mrk-blue), var(--mrk-green));
+            transition: width 0.5s ease;
+        }
+
+        .rec-footer {
+            padding: 15px 20px; background: #fcfcfc; border-top: 1px solid #f0f0f0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .badge-status {
+            padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .badge-status.ativo  { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .badge-status.inativo{ background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+
+        .action-icon {
+            font-size: 20px; transition: transform 0.2s;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; text-decoration: none !important;
+        }
+        .action-icon:hover { transform: scale(1.2); }
+        .icon-blue   { color: var(--mrk-blue); }
+        .icon-green  { color: #2E7D32; }
+        .icon-orange { color: var(--mrk-amber); }
+        .icon-red    { color: var(--mrk-red); }
+
+        /* === Skeleton === */
+        .skeleton-wrapper { display: none; }
+        .skeleton-card {
+            background: #fff; border-radius: 12px; border: 1px solid #eee; height: 260px;
+            margin-bottom: 20px; position: relative; overflow: hidden;
+        }
+        .skeleton-card::after {
+            content: ""; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            animation: sweep 1.5s infinite;
+        }
+        .sk-head { height: 60px; background: #e0e0e0; }
+        .sk-body { padding: 20px; }
+        .sk-line { height: 15px; background: #e0e0e0; margin-bottom: 10px; border-radius: 4px; }
+        @keyframes sweep { 0% { left: -100%; } 100% { left: 200%; } }
+
+        /* === Modais === */
+        .modal-content { border-radius: 12px; border: none; overflow: hidden; }
+        .modal-header  { position: relative; border-bottom: 2px solid var(--mrk-blue); padding: 18px 25px; background: #fff; }
+        .modal-title   { font-family: 'Kanit', sans-serif; color: var(--mrk-blue); font-weight: 600; }
+        .btn-close-mrk {
+            position: absolute; top: 15px; right: 15px; color: var(--mrk-red);
+            font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer;
+        }
+        label { font-family: 'Kanit', sans-serif; font-size: 12px; color: #666; margin-bottom: 5px; }
+        .form-control { height: 38px; border-radius: 6px; border: 1px solid #ddd; }
+
+        /* === Modal de prévia (parcelas) === */
+        .preview-summary {
+            background: linear-gradient(135deg, var(--mrk-blue), #4E6FE8);
+            color: #fff; padding: 18px 22px; border-radius: 10px; margin-bottom: 18px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .preview-summary h4 { margin: 0; font-family: 'Kanit', sans-serif; font-size: 14px; opacity: 0.85; }
+        .preview-summary .big { font-size: 24px; font-weight: 700; font-family: 'Kanit', sans-serif; }
+
+        .table-parcelas { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .table-parcelas thead th {
+            background: #f8f9fa; padding: 10px 12px; text-align: left;
+            font-family: 'Kanit', sans-serif; font-size: 12px; color: #555; font-weight: 600;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .table-parcelas tbody td {
+            padding: 9px 12px; border-bottom: 1px solid #f0f0f0;
+            font-family: 'Kanit', sans-serif;
+        }
+        .table-parcelas tbody tr:hover { background: #fafbfc; }
+
+        .doc-pill {
+            background: #E3F2FD; color: var(--mrk-blue); padding: 2px 8px; border-radius: 4px;
+            font-family: 'Kanit', sans-serif; font-size: 11px; font-weight: 600;
+        }
+        .badge-pago      { background: #E8F5E9; color: #2E7D32; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .badge-pendente  { background: #FFF3E0; color: #E65100; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .badge-conciliado{ background: #E3F2FD; color: var(--mrk-blue); padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+
+        .scroll-parcelas { max-height: 420px; overflow-y: auto; border: 1px solid #eee; border-radius: 6px; }
+
+        /* Hint sobre o documento */
+        .doc-hint {
+            background: #F0F4FF; border-left: 3px solid var(--mrk-blue);
+            padding: 10px 12px; border-radius: 4px; font-size: 12px; color: #444;
+            margin-top: 6px;
+        }
+        .doc-hint code {
+            background: #fff; padding: 2px 6px; border-radius: 3px; color: var(--mrk-blue);
+            font-weight: 600; border: 1px solid #dde;
+        }
+
+        /* Tipo (Receita/Despesa) toggle visual */
+        .tipo-toggle { display: flex; gap: 8px; margin-top: 4px; }
+        .tipo-toggle button {
+            flex: 1; padding: 10px; border-radius: 6px; border: 2px solid #e0e0e0;
+            background: #fff; font-family: 'Kanit', sans-serif; font-weight: 600;
+            cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .tipo-toggle button.active.receita { border-color: #2E7D32; background: #E8F5E9; color: #2E7D32; }
+        .tipo-toggle button.active.despesa { border-color: #C62828; background: #FFEBEE; color: #C62828; }
+        .tipo-toggle button iconify-icon { font-size: 18px; }
+
+        /* Botão preview */
+        .btn-preview {
+            background: #fff; border: 1.5px dashed var(--mrk-blue); color: var(--mrk-blue);
+            border-radius: 6px; padding: 8px 16px; font-weight: 600; font-size: 12px;
+            font-family: 'Kanit', sans-serif; transition: 0.2s; cursor: pointer;
+        }
+        .btn-preview:hover { background: var(--mrk-blue); color: #fff; }
+    </style>
+</head>
+
+<body class="theme-blue">
+
+<div class="container-fluid">
+    <div class="card-main">
+        <div class="header-flex">
+            <h2>
+                <iconify-icon icon="icon-park-outline:cycle"></iconify-icon>
+                CONTAS RECORRENTES
+            </h2>
+            <button class="btn btn-success" id="btnNovaRecorrencia"
+                    style="height:38px; border-radius: 6px; background-color: var(--mrk-green) !important; border: none;">
+                <iconify-icon icon="icon-park-outline:plus" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                NOVA RECORRÊNCIA
+            </button>
+        </div>
+
+        <div class="row clearfix" style="margin-bottom: 20px;">
+            <div class="col-md-3 mb-2">
+                <select id="filtroTipo" class="form-control">
+                    <option value="">Todos os tipos</option>
+                    <option value="C">Receita</option>
+                    <option value="D">Despesa</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <select id="filtroStatus" class="form-control">
+                    <option value="1">Apenas ativas</option>
+                    <option value="0">Todas (incluindo inativas)</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-2">
+                <input type="text" id="filtroBusca" class="form-control"
+                       placeholder="Buscar por nome, fornecedor ou código...">
+            </div>
+        </div>
+
+        <div id="sk-cards" class="row skeleton-wrapper">
+            <div class="col-md-4"><div class="skeleton-card"><div class="sk-head"></div><div class="sk-body"><div class="sk-line" style="width: 80%"></div><div class="sk-line" style="width: 60%"></div><div class="sk-line" style="width: 70%"></div></div></div></div>
+            <div class="col-md-4"><div class="skeleton-card"><div class="sk-head"></div><div class="sk-body"><div class="sk-line" style="width: 80%"></div><div class="sk-line" style="width: 60%"></div><div class="sk-line" style="width: 70%"></div></div></div></div>
+            <div class="col-md-4"><div class="skeleton-card"><div class="sk-head"></div><div class="sk-body"><div class="sk-line" style="width: 80%"></div><div class="sk-line" style="width: 60%"></div><div class="sk-line" style="width: 70%"></div></div></div></div>
+        </div>
+
+        <div class="row" id="grid-recorrencias"></div>
+
+        <div id="msg-vazio" class="text-center muted" style="padding: 40px; display: none;">
+            <iconify-icon icon="icon-park-outline:inbox" style="font-size: 48px; color: #ddd; margin-bottom: 10px;"></iconify-icon><br>
+            Nenhuma recorrência cadastrada.
+        </div>
+    </div>
+</div>
+
+<!-- ============== MODAL CRIAR/EDITAR ============== -->
+<div class="modal fade" id="modalRecorrencia" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="modalTitulo">Nova Recorrência</h4>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body">
+                <form id="formRecorrencia">
+                    <input type="hidden" id="recorrenciaId">
+
+                    <!-- Tipo -->
+                    <div class="form-group mb-2">
+                        <label>Tipo *</label>
+                        <div class="tipo-toggle">
+                            <button type="button" class="tipo-btn-receita active receita" data-tipo="C">
+                                <iconify-icon icon="icon-park-outline:income"></iconify-icon> RECEITA
+                            </button>
+                            <button type="button" class="tipo-btn-despesa despesa" data-tipo="D">
+                                <iconify-icon icon="icon-park-outline:expenses"></iconify-icon> DESPESA
+                            </button>
+                        </div>
+                        <input type="hidden" id="tipo" value="C">
+                    </div>
+
+                    <div class="row clearfix">
+                        <div class="col-md-8 mb-2">
+                            <label>Nome / Descrição *</label>
+                            <input type="text" class="form-control" id="nome" maxlength="255" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Código</label>
+                            <input type="text" class="form-control" id="codigo" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="row clearfix">
+                        <div class="col-md-8 mb-2">
+                            <label>Fornecedor / Entidade</label>
+                            <input type="text" class="form-control" id="entidade" maxlength="100">
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>CNPJ/CPF</label>
+                            <input type="text" class="form-control" id="cgc" maxlength="20">
+                        </div>
+                    </div>
+
+                    <hr style="border-color:#eee;">
+
+                    <div class="row clearfix">
+                        <div class="col-md-4 mb-2">
+                            <label>Valor Mensal (R$) *</label>
+                            <input type="text" class="form-control" id="valor" placeholder="0,00" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Dia da Emissão *</label>
+                            <input type="number" class="form-control" id="diaEmissao" min="1" max="31" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>Dia do Vencimento *</label>
+                            <input type="number" class="form-control" id="diaVencimento" min="1" max="31" required>
+                        </div>
+                    </div>
+
+                    <div class="row clearfix">
+                        <div class="col-md-6 mb-2">
+                            <label>Mês de Início *</label>
+                            <input type="month" class="form-control" id="dataInicio" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Quantidade de Meses * <span style="color:#999; font-weight:400;">(máx. 60 = 5 anos)</span></label>
+                            <input type="number" class="form-control" id="qtdMeses" min="1" max="60" value="12" required>
+                        </div>
+                    </div>
+
+                    <div class="row clearfix">
+                        <div class="col-md-4 mb-2">
+                            <label>Prefixo do Documento</label>
+                            <input type="text" class="form-control" id="prefixoDoc" value="R" maxlength="10">
+                        </div>
+                        <div class="col-md-8 mb-2">
+                            <label>&nbsp;</label>
+                            <div class="doc-hint">
+                                Os documentos serão gerados como
+                                <code id="hintDoc">R-04.2026</code>
+                                seguindo o mês/ano da emissão.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="border-color:#eee;">
+
+                    <div class="row clearfix">
+                        <div class="col-md-6 mb-2">
+                            <label>Plano de Contas</label>
+                            <input type="text" class="form-control" id="planoContas" maxlength="50">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Banco / Conta</label>
+                            <input type="text" class="form-control" id="banco" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="row clearfix">
+                        <div class="col-md-6 mb-2">
+                            <label>Segmento</label>
+                            <input type="text" class="form-control" id="segmento" maxlength="100">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Status</label>
+                            <select id="ativo" class="form-control">
+                                <option value="1">Ativa</option>
+                                <option value="0">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label>Observações</label>
+                        <textarea class="form-control" id="obs" rows="2" style="height: auto;"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" class="btn-preview" id="btnPreview">
+                    <iconify-icon icon="icon-park-outline:preview-open" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                    PRÉ-VISUALIZAR PARCELAS
+                </button>
+                <button type="button" class="btn btn-primary" id="btnSalvar"
+                        style="background-color: var(--mrk-blue) !important; padding: 10px 30px; border-radius: 6px; border: none;">
+                    <iconify-icon icon="icon-park-outline:save" style="vertical-align: middle; margin-right: 5px;"></iconify-icon>
+                    SALVAR
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== MODAL PRÉVIA ============== -->
+<div class="modal fade" id="modalPreview" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    <iconify-icon icon="icon-park-outline:preview-open" style="vertical-align: middle; margin-right: 6px;"></iconify-icon>
+                    Prévia das Parcelas
+                </h4>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-summary">
+                    <div>
+                        <h4>QUANTIDADE</h4>
+                        <div class="big" id="previewQtd">—</div>
+                    </div>
+                    <div>
+                        <h4>VALOR POR PARCELA</h4>
+                        <div class="big" id="previewValor">—</div>
+                    </div>
+                    <div>
+                        <h4>VALOR TOTAL</h4>
+                        <div class="big" id="previewTotal">—</div>
+                    </div>
+                </div>
+
+                <div class="scroll-parcelas">
+                    <table class="table-parcelas">
+                        <thead>
+                        <tr>
+                            <th width="60">#</th>
+                            <th>Documento</th>
+                            <th>Emissão</th>
+                            <th>Vencimento</th>
+                            <th class="text-right">Valor</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbodyPreview"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-default" data-dismiss="modal" style="border-radius: 6px;">FECHAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============== MODAL DETALHE (parcelas geradas) ============== -->
+<div class="modal fade" id="modalDetalhe" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="detalheTitulo">Parcelas Geradas</h4>
+                <button class="btn-close-mrk" data-dismiss="modal"><iconify-icon icon="icon-park-outline:close-small"></iconify-icon></button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-summary">
+                    <div>
+                        <h4>TOTAL</h4>
+                        <div class="big" id="detTotal">—</div>
+                    </div>
+                    <div>
+                        <h4>BAIXADAS</h4>
+                        <div class="big" id="detBaixadas">—</div>
+                    </div>
+                    <div>
+                        <h4>PENDENTES</h4>
+                        <div class="big" id="detPendentes">—</div>
+                    </div>
+                </div>
+
+                <div class="scroll-parcelas">
+                    <table class="table-parcelas">
+                        <thead>
+                        <tr>
+                            <th width="60">#</th>
+                            <th>Documento</th>
+                            <th>Emissão</th>
+                            <th>Vencimento</th>
+                            <th class="text-right">Valor</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbodyDetalhe"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-default" data-dismiss="modal" style="border-radius: 6px;">FECHAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    'use strict';
+    console.log("1. Scripts carregados.");
+
+    const baseUrl = window.location.hostname !== 'localhost'
+        ? 'https://portal.mrksolucoes.com.br/api/v1/financeiro.php'
+        : 'http://localhost/portal-mrk/api/v1/financeiro.php';
+
+    const params = new URLSearchParams(window.location.search);
+    const token          = params.get('token');
+    const system_unit_id = params.get('system_unit_id');
+    const username       = params.get('username');
+
+    let recorrenciasCache = [];
+
+    /* ==========================================================
+     *  HELPERS
+     * ==========================================================*/
+    function escapeHtml(s) {
+        return s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatBRL(v) {
+        const num = Number(v || 0);
+        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatDateBR(iso) {
+        if (!iso) return '-';
+        const [y, m, d] = String(iso).split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    // Aplica máscara monetária no input (R$ 0,00)
+    function aplicarMascaraMoeda($el) {
+        $el.on('input', function() {
+            let v = this.value.replace(/\D/g, '');
+            v = (Number(v) / 100).toFixed(2);
+            v = v.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            this.value = v;
+        });
+    }
+
+    function parseMoedaParaFloat(str) {
+        if (!str) return 0;
+        return parseFloat(String(str).replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
+    // Atualiza o hint do documento ex.: R-04.2026
+    function atualizarHintDoc() {
+        const prefixo = ($('#prefixoDoc').val() || 'R').toUpperCase();
+        const dataInicio = $('#dataInicio').val();
+        let mm = '04', aaaa = '2026';
+        if (dataInicio && /^\d{4}-\d{2}/.test(dataInicio)) {
+            const [y, m] = dataInicio.split('-');
+            aaaa = y; mm = m;
+        }
+        $('#hintDoc').text(`${prefixo}-${mm}.${aaaa}`);
+    }
+
+    /* ==========================================================
+     *  LISTAGEM
+     * ==========================================================*/
+    async function listarRecorrencias() {
+        $('#grid-recorrencias').empty();
+        $('#msg-vazio').hide();
+        $('#sk-cards').css('display', 'flex');
+
+        try {
+            const apenas_ativos = $('#filtroStatus').val();
+            const tipo          = $('#filtroTipo').val();
+            const busca         = $('#filtroBusca').val();
+
+            const res = await axios.post(baseUrl, {
+                method: 'listRecorrencias',
+                token,
+                data: { system_unit_id, apenas_ativos, tipo, busca }
+            });
+
+            recorrenciasCache = res.data.data || [];
+            $('#sk-cards').hide();
+            renderCards(recorrenciasCache);
+        } catch (err) {
+            console.error(err);
+            $('#sk-cards').hide();
+            Swal.fire('Erro', 'Falha ao carregar recorrências.', 'error');
+        }
+    }
+
+    function renderCards(dados) {
+        const $grid = $('#grid-recorrencias').empty();
+
+        if (!dados || !dados.length) {
+            $('#msg-vazio').show();
+            return;
+        }
+
+        $('#msg-vazio').hide();
+
+        dados.forEach(r => {
+            const ativo = Number(r.ativo ?? 1);
+            const tipo  = (r.tipo || 'C').toUpperCase();
+            const tipoClass = tipo === 'D' ? 'tipo-d' : 'tipo-c';
+            const tipoLabel = tipo === 'D' ? 'DESPESA' : 'RECEITA';
+            const tipoIcon  = tipo === 'D' ? 'icon-park-outline:expenses' : 'icon-park-outline:income';
+
+            const totalContas    = Number(r.total_contas ?? r.qtd_meses ?? 0);
+            const contasBaixadas = Number(r.contas_baixadas ?? 0);
+            const pct = totalContas > 0 ? (contasBaixadas / totalContas) * 100 : 0;
+
+            const statusBadge = `<span class="badge-status ${ativo ? 'ativo' : 'inativo'}">${ativo ? 'Ativa' : 'Inativa'}</span>`;
+
+            $grid.append(`
+            <div class="col-md-4">
+                <div class="rec-card">
+                    <div class="rec-header ${tipoClass}">
+                        <div class="rec-header-left">
+                            <iconify-icon icon="${tipoIcon}"></iconify-icon>
+                            <span>${escapeHtml(r.nome)}</span>
+                        </div>
+                        <span class="rec-header-tipo">${tipoLabel}</span>
+                    </div>
+                    <div class="rec-body">
+                        <div class="rec-info-row">
+                            <span class="rec-info-label">Valor Mensal</span>
+                            <span class="rec-info-val rec-valor-destaque ${tipoClass === 'tipo-d' ? 'tipo-d' : ''}">${formatBRL(r.valor)}</span>
+                        </div>
+                        <div class="rec-info-row">
+                            <span class="rec-info-label">Fornecedor</span>
+                            <span class="rec-info-val">${escapeHtml(r.entidade || '-')}</span>
+                        </div>
+                        <div class="rec-info-row">
+                            <span class="rec-info-label">Emissão / Venc.</span>
+                            <span class="rec-info-val">dia ${r.dia_emissao} / dia ${r.dia_vencimento}</span>
+                        </div>
+                        <div class="rec-info-row">
+                            <span class="rec-info-label">Início</span>
+                            <span class="rec-info-val">${formatDateBR(r.data_inicio)}</span>
+                        </div>
+                        <div class="rec-info-row" style="margin-top: 10px;">
+                            <span class="rec-info-label">Progresso</span>
+                            <span class="rec-info-val">${contasBaixadas} / ${totalContas} parcelas</span>
+                        </div>
+                        <div class="progress-bar-mrk"><div class="progress-bar-mrk-fill" style="width:${pct}%"></div></div>
+                    </div>
+                    <div class="rec-footer">
+                        <div>${statusBadge}</div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <a class="action-icon icon-green btnVerParcelas" data-id="${r.id}" data-toggle="tooltip" title="Ver parcelas">
+                                <iconify-icon icon="icon-park-outline:list-view"></iconify-icon>
+                            </a>
+                            <a class="action-icon icon-blue btnEditar" data-id="${r.id}" data-toggle="tooltip" title="Editar">
+                                <iconify-icon icon="icon-park-outline:edit-two"></iconify-icon>
+                            </a>
+                            <a class="action-icon icon-red btnExcluir" data-id="${r.id}" data-toggle="tooltip" title="Inativar / Excluir">
+                                <iconify-icon icon="icon-park-outline:delete-five"></iconify-icon>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        });
+
+        if (typeof $.fn.tooltip !== 'undefined') {
+            $('[data-toggle="tooltip"]').tooltip({ container: 'body' });
+        }
+    }
+
+    /* ==========================================================
+     *  MODAL CRIAR / EDITAR
+     * ==========================================================*/
+    function abrirNova() {
+        $('#formRecorrencia')[0].reset();
+        $('#recorrenciaId').val('');
+        $('#tipo').val('C');
+        $('.tipo-btn-receita').addClass('active');
+        $('.tipo-btn-despesa').removeClass('active');
+        $('#qtdMeses').val(12);
+        $('#prefixoDoc').val('R');
+        $('#ativo').val(1);
+
+        // Default: mês corrente
+        const hoje = new Date();
+        const yyyy = hoje.getFullYear();
+        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+        $('#dataInicio').val(`${yyyy}-${mm}`);
+
+        atualizarHintDoc();
+        $('#modalTitulo').text('Nova Recorrência');
+        $('#modalRecorrencia').modal('show');
+    }
+
+    function abrirEdicao(id) {
+        const r = recorrenciasCache.find(x => String(x.id) === String(id));
+        if (!r) return Swal.fire('Erro', 'Recorrência não encontrada.', 'error');
+
+        $('#recorrenciaId').val(r.id);
+        $('#nome').val(r.nome);
+        $('#codigo').val(r.codigo || '');
+        $('#entidade').val(r.entidade || '');
+        $('#cgc').val(r.cgc || '');
+
+        const tipo = (r.tipo || 'C').toUpperCase();
+        $('#tipo').val(tipo);
+        if (tipo === 'D') {
+            $('.tipo-btn-receita').removeClass('active');
+            $('.tipo-btn-despesa').addClass('active');
+        } else {
+            $('.tipo-btn-receita').addClass('active');
+            $('.tipo-btn-despesa').removeClass('active');
+        }
+
+        // Valor com máscara
+        const valor = Number(r.valor || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        $('#valor').val(valor);
+
+        $('#diaEmissao').val(r.dia_emissao);
+        $('#diaVencimento').val(r.dia_vencimento);
+        $('#dataInicio').val((r.data_inicio || '').substring(0, 7));
+        $('#qtdMeses').val(r.qtd_meses);
+        $('#prefixoDoc').val(r.prefixo_doc || 'R');
+        $('#planoContas').val(r.plano_contas || '');
+        $('#banco').val(r.banco || '');
+        $('#segmento').val(r.segmento || '');
+        $('#ativo').val(r.ativo ?? 1);
+        $('#obs').val(r.obs || '');
+
+        atualizarHintDoc();
+        $('#modalTitulo').text('Editar Recorrência');
+        $('#modalRecorrencia').modal('show');
+    }
+
+    function montarPayloadFormulario() {
+        return {
+            id:               $('#recorrenciaId').val() || null,
+            system_unit_id,
+            usuario_id:       username,
+            nome:             $('#nome').val().trim(),
+            codigo:           $('#codigo').val().trim() || null,
+            entidade:         $('#entidade').val().trim() || null,
+            cgc:              $('#cgc').val().trim() || null,
+            tipo:             $('#tipo').val(),
+            valor:            parseMoedaParaFloat($('#valor').val()),
+            dia_emissao:      parseInt($('#diaEmissao').val(), 10),
+            dia_vencimento:   parseInt($('#diaVencimento').val(), 10),
+            data_inicio:      $('#dataInicio').val(),
+            qtd_meses:        parseInt($('#qtdMeses').val(), 10),
+            prefixo_doc:      ($('#prefixoDoc').val() || 'R').toUpperCase(),
+            plano_contas:     $('#planoContas').val().trim() || null,
+            banco:            $('#banco').val().trim() || null,
+            segmento:         $('#segmento').val().trim() || null,
+            ativo:            parseInt($('#ativo').val(), 10),
+            obs:              $('#obs').val().trim() || null
+        };
+    }
+
+    function validarPayload(p) {
+        if (!p.nome) return 'Informe o nome.';
+        if (!p.tipo || !['C', 'D'].includes(p.tipo)) return 'Selecione o tipo.';
+        if (!p.valor || p.valor <= 0) return 'Informe um valor maior que zero.';
+        if (!p.dia_emissao || p.dia_emissao < 1 || p.dia_emissao > 31) return 'Dia de emissão deve estar entre 1 e 31.';
+        if (!p.dia_vencimento || p.dia_vencimento < 1 || p.dia_vencimento > 31) return 'Dia de vencimento deve estar entre 1 e 31.';
+        if (!p.data_inicio) return 'Informe o mês de início.';
+        if (!p.qtd_meses || p.qtd_meses < 1 || p.qtd_meses > 60) return 'Quantidade de meses deve estar entre 1 e 60.';
+        return null;
+    }
+
+    /* ==========================================================
+     *  PRÉ-VIEW DE PARCELAS
+     * ==========================================================*/
+    async function previsualizarParcelas() {
+        const payload = montarPayloadFormulario();
+        const erro = validarPayload(payload);
+        if (erro) return Swal.fire('Atenção', erro, 'warning');
+
+        Swal.fire({ title: 'Calculando...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'previewParcelasRecorrencia',
+                token,
+                data: payload
+            });
+
+            Swal.close();
+
+            if (!res.data.success) {
+                return Swal.fire('Erro', res.data.message || 'Falha ao gerar prévia.', 'error');
+            }
+
+            const parcelas = res.data.parcelas || [];
+            $('#previewQtd').text(res.data.total);
+            $('#previewValor').text(formatBRL(payload.valor));
+            $('#previewTotal').text(formatBRL(res.data.valor_total));
+
+            const $tb = $('#tbodyPreview').empty();
+            parcelas.forEach(p => {
+                $tb.append(`
+                <tr>
+                    <td><strong>${p.parcela}</strong></td>
+                    <td><span class="doc-pill">${escapeHtml(p.doc)}</span></td>
+                    <td>${formatDateBR(p.emissao)}</td>
+                    <td>${formatDateBR(p.vencimento)}</td>
+                    <td class="text-right"><strong>${formatBRL(p.valor)}</strong></td>
+                </tr>
+            `);
+            });
+
+            $('#modalPreview').modal('show');
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao gerar prévia.', 'error');
+        }
+    }
+
+    /* ==========================================================
+     *  SALVAR
+     * ==========================================================*/
+    async function salvar() {
+        const payload = montarPayloadFormulario();
+        const erro = validarPayload(payload);
+        if (erro) return Swal.fire('Atenção', erro, 'warning');
+
+        const id = payload.id;
+
+        // Aviso adicional ao editar (regenera parcelas se mudar campos estruturais)
+        if (id) {
+            const conf = await Swal.fire({
+                title: 'Confirmar edição?',
+                html: `As contas <strong>pendentes</strong> vinculadas a esta recorrência serão atualizadas.<br>
+                   Caso você altere data, dia, prefixo ou quantidade de meses, as parcelas pendentes serão <strong>regeneradas</strong>.<br>
+                   <small>Parcelas já baixadas ou conciliadas via Open Finance serão preservadas.</small>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sim, salvar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#1a73e8'
+            });
+            if (!conf.isConfirmed) return;
+        }
+
+        Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const method = id ? 'updateRecorrencia' : 'createRecorrencia';
+            const res = await axios.post(baseUrl, { method, token, data: payload });
+
+            if (!res.data.success) {
+                return Swal.fire('Erro', res.data.message || 'Falha ao salvar.', 'error');
+            }
+
+            const msg = id
+                ? 'Recorrência atualizada com sucesso!'
+                : `Recorrência criada com sucesso! ${res.data.contas_geradas || 0} contas foram geradas.`;
+
+            Swal.fire({ icon: 'success', title: 'Salvo!', text: msg, timer: 2200, showConfirmButton: false });
+            $('#modalRecorrencia').modal('hide');
+            listarRecorrencias();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao salvar recorrência.', 'error');
+        }
+    }
+
+    /* ==========================================================
+     *  EXCLUIR (soft delete)
+     * ==========================================================*/
+    async function excluir(id) {
+        const r = recorrenciasCache.find(x => String(x.id) === String(id));
+        if (!r) return;
+
+        const conf = await Swal.fire({
+            title: 'Inativar Recorrência?',
+            html: `Deseja inativar <strong>${escapeHtml(r.nome)}</strong>?<br>
+               <small>As contas pendentes (não baixadas/conciliadas) serão removidas. As já pagas serão preservadas.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sim, inativar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!conf.isConfirmed) return;
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'deleteRecorrencia',
+                token,
+                data: { id, usuario_id: username }
+            });
+
+            if (!res.data.success) {
+                return Swal.fire('Erro', res.data.message || 'Falha ao inativar.', 'error');
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Inativada!',
+                text: `${res.data.contas_removidas || 0} contas pendentes foram removidas.`,
+                timer: 2200,
+                showConfirmButton: false
+            });
+            listarRecorrencias();
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao inativar recorrência.', 'error');
+        }
+    }
+
+    /* ==========================================================
+     *  VER PARCELAS GERADAS (detalhe)
+     * ==========================================================*/
+    async function verParcelas(id) {
+        const r = recorrenciasCache.find(x => String(x.id) === String(id));
+        if (!r) return;
+
+        Swal.fire({ title: 'Carregando parcelas...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await axios.post(baseUrl, {
+                method: 'getRecorrencia',
+                token,
+                data: { id }
+            });
+
+            Swal.close();
+
+            if (!res.data.success) {
+                return Swal.fire('Erro', res.data.message || 'Falha ao carregar.', 'error');
+            }
+
+            const dados = res.data.data;
+            const contas = dados.contas || [];
+
+            let baixadas = 0, pendentes = 0;
+            contas.forEach(c => {
+                const isBaixada = c.baixa_dt && c.baixa_dt !== '0000-00-00' && c.baixa_dt !== '';
+                if (isBaixada) baixadas++; else pendentes++;
+            });
+
+            $('#detalheTitulo').text(`Parcelas — ${dados.nome}`);
+            $('#detTotal').text(contas.length);
+            $('#detBaixadas').text(baixadas);
+            $('#detPendentes').text(pendentes);
+
+            const $tb = $('#tbodyDetalhe').empty();
+            contas.forEach(c => {
+                const isBaixada = c.baixa_dt && c.baixa_dt !== '0000-00-00' && c.baixa_dt !== '';
+                const isConciliada = Number(c.is_conciliated || 0) === 1;
+                let badge = '<span class="badge-pendente">Pendente</span>';
+                if (isConciliada)   badge = '<span class="badge-conciliado">Conciliada</span>';
+                else if (isBaixada) badge = '<span class="badge-pago">Baixada</span>';
+
+                $tb.append(`
+                <tr>
+                    <td><strong>${c.recorrencia_parcela}</strong></td>
+                    <td><span class="doc-pill">${escapeHtml(c.doc || '-')}</span></td>
+                    <td>${formatDateBR(c.emissao)}</td>
+                    <td>${formatDateBR(c.vencimento)}</td>
+                    <td class="text-right"><strong>${formatBRL(c.valor)}</strong></td>
+                    <td>${badge}</td>
+                </tr>
+            `);
+            });
+
+            $('#modalDetalhe').modal('show');
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Erro', 'Falha ao carregar parcelas.', 'error');
+        }
+    }
+
+    /* ==========================================================
+     *  EVENTOS
+     * ==========================================================*/
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof axios === 'undefined') {
+            console.error('Axios não carregou.');
+            return;
+        }
+
+        aplicarMascaraMoeda($('#valor'));
+        listarRecorrencias();
+    });
+
+    // Toggle Receita/Despesa
+    $(document).on('click', '.tipo-btn-receita, .tipo-btn-despesa', function() {
+        const tipo = $(this).data('tipo');
+        $('#tipo').val(tipo);
+        $('.tipo-btn-receita, .tipo-btn-despesa').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    // Atualiza hint de documento ao mudar prefixo ou data
+    $(document).on('input change', '#prefixoDoc, #dataInicio', atualizarHintDoc);
+
+    // Filtros
+    $('#filtroTipo, #filtroStatus').on('change', listarRecorrencias);
+    $('#filtroBusca').on('input', function() {
+        const termo = ($(this).val() || '').toLowerCase().trim();
+        if (!termo) return renderCards(recorrenciasCache);
+
+        const filtrados = recorrenciasCache.filter(r => {
+            return (String(r.nome     || '').toLowerCase().includes(termo)) ||
+                (String(r.entidade || '').toLowerCase().includes(termo)) ||
+                (String(r.codigo   || '').toLowerCase().includes(termo));
+        });
+        renderCards(filtrados);
+    });
+
+    // Botões da listagem
+    $('#btnNovaRecorrencia').click(abrirNova);
+    $(document).on('click', '.btnEditar',      function() { abrirEdicao($(this).data('id')); });
+    $(document).on('click', '.btnExcluir',     function() { excluir($(this).data('id')); });
+    $(document).on('click', '.btnVerParcelas', function() { verParcelas($(this).data('id')); });
+
+    // Botões do modal
+    $('#btnPreview').click(previsualizarParcelas);
+    $('#btnSalvar').click(salvar);
+
+</script>
+</body>
+</html>

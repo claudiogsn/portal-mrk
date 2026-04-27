@@ -30,6 +30,7 @@ require_once 'controllers/ConferenciaCaixaController.php';
 require_once 'controllers/FinanceiroFormaPagamentoController.php';
 require_once 'controllers/FinanceiroOpcoesRecebimentoController.php';
 require_once 'controllers/UtilsController.php';
+require_once 'controllers/FinanceiroRecorrenciaController.php';
 
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -619,6 +620,28 @@ if (isset($data['method']) && isset($data['data'])) {
                     $requestData['data_contabil'] ?? null,
                     $requestData['user_id'] ?? $_SESSION['user_id'] ?? null
                 );
+                break;
+            case 'createRecorrencia':
+                $response = FinanceiroRecorrenciaController::createRecorrencia($requestData);
+                break;
+            case 'updateRecorrencia':
+                $id = (int)($requestData['id'] ?? 0);
+                $response = FinanceiroRecorrenciaController::updateRecorrencia($id, $requestData);
+                break;
+            case 'deleteRecorrencia':
+                $id = (int)($requestData['id'] ?? 0);
+                $usuario_id = $requestData['usuario_id'] ?? null;
+                $response = FinanceiroRecorrenciaController::deleteRecorrencia($id, $usuario_id);
+                break;
+            case 'listRecorrencias':
+                $response = FinanceiroRecorrenciaController::listRecorrencias($requestData);
+                break;
+            case 'getRecorrencia':
+                $id = (int)($requestData['id'] ?? 0);
+                $response = FinanceiroRecorrenciaController::getRecorrencia($id);
+                break;
+            case 'previewParcelasRecorrencia':
+                $response = FinanceiroRecorrenciaController::previewParcelas($requestData);
                 break;
 
 
