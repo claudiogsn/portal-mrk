@@ -108,7 +108,10 @@
 
                     <div class="row row-spacing" style="margin-top: 15px;">
                         <div class="col-md-6" id="divFornecedorSelect">
-                            <label>Fornecedor / Cliente</label>
+                            <label style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Fornecedor / Cliente</span>
+                                <a href="#" id="btnNovoFornecedorInline" style="color: #1E88E5; font-size: 12px; text-decoration: none; font-weight: 600;"><i class="fa fa-plus"></i> Novo</a>
+                            </label>
                             <select id="fornecedor" class="form-control">
                                 <option value="">Selecione...</option>
                             </select>
@@ -295,8 +298,67 @@
     </div>
 </div>
 
+<!-- MODAL NOVO FORNECEDOR -->
+<div class="modal fade" id="modalFornecedor" tabindex="-1" role="dialog" style="z-index: 1050;">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+            <div class="modal-header" style="position: relative; border-bottom: 2px solid #1E88E5; padding: 18px 25px; background: #fff;">
+                <h4 class="modal-title" style="font-family: 'Kanit', sans-serif; color: #1E88E5; font-weight: 600;">Cadastrar Novo Fornecedor</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="position: absolute; top: 15px; right: 15px; font-size: 26px; background: none; border: none; outline: none !important; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formFornecedor">
+                    <div class="row clearfix">
+                        <div class="col-md-6 mb-2">
+                            <label>Nome Fantasia *</label>
+                            <input type="text" class="form-control" id="f_nome" placeholder="Ex: Mercado do João" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Razão Social</label>
+                            <input type="text" class="form-control" id="f_razao" placeholder="Ex: Mercado do João LTDA">
+                        </div>
+                    </div>
+                    <div class="row clearfix" style="margin-top: 10px;">
+                        <div class="col-md-6 mb-2">
+                            <label>CNPJ / CPF *</label>
+                            <input type="text" class="form-control" id="f_cnpj_cpf" placeholder="Somente números" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label>Telefone</label>
+                            <input type="text" class="form-control" id="f_fone" placeholder="(00) 00000-0000">
+                        </div>
+                    </div>
+                    <div class="form-group mb-2" style="margin-top: 10px;">
+                        <label>Endereço Completo</label>
+                        <input type="text" class="form-control" id="f_endereco" placeholder="Rua, número, bairro, cidade - UF">
+                    </div>
+                    <div class="row clearfix" style="margin-top: 10px;">
+                        <div class="col-md-4 mb-0">
+                            <label>CEP</label>
+                            <input type="text" class="form-control" id="f_cep" placeholder="00000-000">
+                        </div>
+                        <div class="col-md-8 mb-0">
+                            <label>Inscrição Estadual</label>
+                            <input type="text" class="form-control" id="f_insc_estadual" placeholder="Isento ou Número">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-primary" id="btnSalvarFornecedor" style="background-color: #1E88E5 !important; padding: 10px 30px;">
+                    <i class="fa fa-save"></i> SALVAR FORNECEDOR
+                </button>
+                <button type="button" class="btn btn-link" data-dismiss="modal" style="color: #666;">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 <script src="bsb/plugins/bootstrap/js/bootstrap.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script src="bsb/plugins/node-waves/waves.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="bsb/plugins/bootstrap-notify/bootstrap-notify.min.js"></script>
@@ -502,6 +564,57 @@
 
         $('#btnSalvar').on('click', salvar);
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); fecharModalParent(); } });
+
+        // Eventos para o Novo Fornecedor Inline
+        $('#btnNovoFornecedorInline').on('click', function(e) {
+            e.preventDefault();
+            $('#formFornecedor')[0].reset();
+            $('#modalFornecedor').modal('show');
+        });
+
+        $('#f_cnpj_cpf').mask('00.000.000/0000-00', { reverse: true });
+        $('#f_fone').mask('(00) 00000-0000');
+        $('#f_cep').mask('00000-000');
+
+        $('#btnSalvarFornecedor').on('click', async function() {
+            const payload = {
+                system_unit_id: Number(unit_id),
+                nome: $('#f_nome').val(),
+                razao: $('#f_razao').val(),
+                cnpj_cpf: $('#f_cnpj_cpf').val().replace(/\D/g, ''),
+                fone: $('#f_fone').val().replace(/\D/g, ''),
+                endereco: $('#f_endereco').val(),
+                cep: $('#f_cep').val().replace(/\D/g, ''),
+                insc_estadual: $('#f_insc_estadual').val()
+            };
+
+            if(!payload.nome || !payload.cnpj_cpf) {
+                return Swal.fire('Atenção', 'Nome e CNPJ são obrigatórios.', 'warning');
+            }
+
+            Swal.fire({ title: 'Salvando...', didOpen: () => Swal.showLoading() });
+            try {
+                const res = await axios.post(baseUrl, { method: 'createFornecedor', token, data: payload });
+                Swal.close();
+                if (res.data && res.data.success !== false) {
+                    Swal.fire({ icon: 'success', title: 'Sucesso!', timer: 1500, showConfirmButton: false });
+                    $('#modalFornecedor').modal('hide');
+                    
+                    const novoId = res.data.id || (res.data.data && res.data.data.id);
+                    
+                    $('#fornecedor').empty().append(new Option('Selecione...', ''));
+                    await carregarFornecedores();
+                    
+                    if (novoId) {
+                        $('#fornecedor').val(novoId).trigger('change');
+                    }
+                } else {
+                    Swal.fire('Erro', 'Falha ao salvar fornecedor. ' + (res.data.message || ''), 'error');
+                }
+            } catch (e) {
+                Swal.fire('Erro', 'Falha ao salvar fornecedor.', 'error');
+            }
+        });
     }
 
     // ==============================================================
